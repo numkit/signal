@@ -3,17 +3,17 @@
 // freqz / phasez / grpdelay (frequency-domain analysis of an existing
 // filter) live in filter_analysis/frequency_response.cpp.
 
-#include <nk/signal/filter_design/filter_design.hpp>
-#include <nk/signal/transforms/fft.hpp>
-#include <nk/builtin/polyfun.hpp>  // tf2zp (ZPK 3-output)
+#include <numkit/signal/filter_design/filter_design.hpp>
+#include <numkit/signal/transforms/fft.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>  // tf2zp (ZPK 3-output)
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/argcheck.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/argcheck.hpp>
 
 #include "../dsp_helpers.hpp"           // Complex typedef
-#include <nk/ops/poly_helpers.hpp>             // polyExpandFromRoots
+#include <numkit/ops/poly_helpers.hpp>             // polyExpandFromRoots
 
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -24,7 +24,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -51,7 +51,7 @@ ScratchVec<Complex> butterworthPoles(int N, std::pmr::memory_resource *mr)
     return poles;
 }
 
-using nk::ops::polyExpandFromRoots;
+using numkit::ops::polyExpandFromRoots;
 
 // Bilinear-transform helper: take an arbitrary set of analog poles and
 // zeros (already pre-warped + frequency-transformed) and produce the
@@ -475,7 +475,7 @@ Value fir2(int n, const Value &f, const Value &m,
 
     // ── 1. Validate n ──────────────────────────────────────────────────
     if (n <= 0)
-        throw nk::Error("n must be a positive integer.", 0, 0, "fir2", "",
+        throw numkit::Error("n must be a positive integer.", 0, 0, "fir2", "",
                             "nk:fir2:BadN");
 
     // ── 2. Read and validate f, m ──────────────────────────────────────
@@ -484,11 +484,11 @@ Value fir2(int n, const Value &f, const Value &m,
     readVec(m, mv);
 
     if (fv.size() != mv.size())
-        throw nk::Error("The frequency and magnitude vectors must be the "
+        throw numkit::Error("The frequency and magnitude vectors must be the "
                             "same length.",
                             0, 0, "fir2", "", "nk:fir2:MismatchedDimensions");
     if (fv.size() < 2)
-        throw nk::Error("The frequency vector must have at least 2 "
+        throw numkit::Error("The frequency vector must have at least 2 "
                             "elements.",
                             0, 0, "fir2", "", "nk:fir2:BadFLen");
 
@@ -496,13 +496,13 @@ Value fir2(int n, const Value &f, const Value &m,
 
     // f must start at 0 and end at 1.
     if (fv[0] != 0.0 || fv[nf - 1] != 1.0)
-        throw nk::Error("The first frequency must be 0 and the last 1.",
+        throw numkit::Error("The first frequency must be 0 and the last 1.",
                             0, 0, "fir2", "", "nk:fir2:InvalidRange");
 
     // f must be non-decreasing.
     for (size_t i = 1; i < nf; ++i) {
         if (fv[i] < fv[i - 1])
-            throw nk::Error("Frequencies must be non-decreasing.", 0, 0,
+            throw numkit::Error("Frequencies must be non-decreasing.", 0, 0,
                                 "fir2", "", "nk:fir2:InvalidFreqVec");
     }
 
@@ -521,7 +521,7 @@ Value fir2(int n, const Value &f, const Value &m,
     if (!nptDefaulted) {
         // A user-supplied npt must satisfy 2*npt >= nn.
         if (2 * npt < nn)
-            throw nk::Error("The number of grid points must be greater "
+            throw numkit::Error("The number of grid points must be greater "
                                 "than or equal to ceil(nn/2).",
                                 0, 0, "fir2", "", "nk:fir2:InvalidNpt");
     } else {
@@ -547,7 +547,7 @@ Value fir2(int n, const Value &f, const Value &m,
     // Helper: range-checked 1-based store into H.
     auto putH = [&](int j1, double val) {
         if (j1 < 1 || j1 > npt1)
-            throw nk::Error("Internal grid index out of range.", 0, 0,
+            throw numkit::Error("Internal grid index out of range.", 0, 0,
                                 "fir2", "", "nk:fir2:SignalErr");
         H[j1 - 1] = Complex(val, 0.0);
     };
@@ -568,7 +568,7 @@ Value fir2(int n, const Value &f, const Value &m,
         }
 
         if (nb < 1 || ne > npt1)
-            throw nk::Error("Internal grid index out of range.", 0, 0,
+            throw numkit::Error("Internal grid index out of range.", 0, 0,
                                 "fir2", "", "nk:fir2:SignalErr");
 
         for (int j = nb; j <= ne; ++j) {
@@ -614,7 +614,7 @@ Value fir2(int n, const Value &f, const Value &m,
     ScratchVec<double> win(0, &arena);
     if (!opts.window.isEmpty()) {
         if (static_cast<int>(opts.window.numel()) != nn)
-            throw nk::Error("The window length must equal the filter "
+            throw numkit::Error("The window length must equal the filter "
                                 "length.",
                                 0, 0, "fir2", "", "nk:fir2:BadWindow");
         readVec(opts.window, win);
@@ -1200,4 +1200,4 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
 }
 
 
-} // namespace nk::signal
+} // namespace numkit::signal

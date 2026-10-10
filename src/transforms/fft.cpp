@@ -7,10 +7,10 @@
 // functions with an explicit memory_resource parameter vs an engine-registered
 // lambda that reached into CallContext).
 
-#include <nk/signal/transforms/fft.hpp>
+#include <numkit/signal/transforms/fft.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"
 #include "../signal_detail.hpp"     // shared argcheck cores
@@ -19,7 +19,7 @@
 // Highway intrinsics for the SIMD twist loop in the rfft path. Only
 // the unit-stride dst case uses SIMD; non-unit stride and the scalar
 // tail keep the plain C++ formulation.
-#if !defined(__EMSCRIPTEN__) && defined(NK_WITH_SIMD)
+#if !defined(__EMSCRIPTEN__) && defined(NUMKIT_WITH_SIMD)
   #include <hwy/highway.h>
 #endif
 
@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -300,7 +300,7 @@ static Value fftAlongDim(const Value &x, size_t N_req, int dim, int dir, std::pm
     // native. Sized fftLen / 2 because rfft does a half-size complex
     // FFT internally. On WASM we don't take this path; the buffers
     // stay at zero size with no allocation cost.
-#if !defined(__EMSCRIPTEN__) && defined(NK_WITH_SIMD)
+#if !defined(__EMSCRIPTEN__) && defined(NUMKIT_WITH_SIMD)
     thread_local std::vector<double> tlsRfftRe;
     thread_local std::vector<double> tlsRfftIm;
 #endif
@@ -350,7 +350,7 @@ static Value fftAlongDim(const Value &x, size_t N_req, int dim, int dir, std::pm
     //   call AoS FFT, twist from AoS. SoA paths regress on this ISA
     //   because LoadInterleaved2 is cheap on 128-bit lanes — see
     //   fft_highway.cpp threshold comments.
-#if !defined(__EMSCRIPTEN__) && defined(NK_WITH_SIMD)
+#if !defined(__EMSCRIPTEN__) && defined(NUMKIT_WITH_SIMD)
     const std::size_t halfLen = fftLen / 2;
     if (rfftEligible) {
         if (tlsRfftRe.size() < halfLen) tlsRfftRe.resize(halfLen);
@@ -1155,4 +1155,4 @@ Value interpft(const Value &x, int n, int dim, std::pmr::memory_resource *mr)
                  0, 0, "interpft", "", "nk:interpft:dimUnsupported");
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

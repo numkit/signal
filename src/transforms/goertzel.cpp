@@ -2,13 +2,13 @@
 //
 // Goertzel single-bin DFT. Split from toolboxes/signal/src/.
 
-#include <nk/signal/transforms/goertzel.hpp>
+#include <numkit/signal/transforms/goertzel.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
-#include <nk/value/scratch.hpp>
+#include <numkit/value/scratch.hpp>
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 #include "../signal_detail.hpp" // shared argcheck cores
@@ -20,7 +20,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 // Goertzel computes a single DFT bin via a 2nd-order IIR. For each
 // 1-based bin index k in `ind` (1 == DC, 2 == lowest non-DC, ..., N
@@ -100,4 +100,4 @@ Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
     return r;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

@@ -3,18 +3,18 @@
 // FFT-based Hilbert transform + envelope. unwrap moved to
 // filter_analysis/unwrap.cpp.
 
-#include <nk/signal/transforms/hilbert.hpp>
+#include <numkit/signal/transforms/hilbert.hpp>
 
-#include <nk/signal/transforms/fft.hpp>  // general fft/ifft for non-pow2 N
-#include <nk/builtin/polyfun.hpp>     // interp1 (spline)
-#include <nk/signal/windows/windows.hpp>          // kaiser
+#include <numkit/signal/transforms/fft.hpp>  // general fft/ifft for non-pow2 N
+#include <numkit/signal/internal/shims/polyfun.hpp>     // interp1 (spline)
+#include <numkit/signal/windows/windows.hpp>          // kaiser
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"  // Complex, FFT helpers
-#include <nk/ops/helpers.hpp>         // createLike
+#include <numkit/ops/helpers.hpp>         // createLike
 
 #include <algorithm>
 #include <cmath>
@@ -22,7 +22,7 @@
 #include <memory_resource>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -119,8 +119,8 @@ ScratchVec<double> ampl_fir(const Value &x_centered, size_t n, std::pmr::memory_
     const size_t N = x_centered.numel();
     auto x = read_real(x_centered, mr);
 
-    // Kaiser window via nk::signal::kaiser (returns Value 1×n).
-    Value kw = nk::signal::kaiser(n, 8.0, mr);
+    // Kaiser window via numkit::signal::kaiser (returns Value 1×n).
+    Value kw = numkit::signal::kaiser(n, 8.0, mr);
     const double *kd = kw.doubleData();
 
     // hfilt[k] = sinc(t_k) · exp(iπ·t_k), windowed.
@@ -287,7 +287,7 @@ void env_peak(const Value &x, size_t n, ScratchVec<double> &up, ScratchVec<doubl
             yd[i] = sig[locs[i]];
         }
         for (size_t i = 0; i < N; ++i) qd[i] = double(i + 1);
-        Value yi = nk::builtin::interp1(x_loc, y_loc, xq, "spline", mr);
+        Value yi = numkit::builtin::interp1(x_loc, y_loc, xq, "spline", mr);
         for (size_t i = 0; i < N; ++i) out[i] = yi.elemAsDouble(i);
     };
     build_envelope(v, up);
@@ -369,4 +369,4 @@ envelope_pair(const Value &x, std::pmr::memory_resource *mr)
     return envelope_full(x, 0, 0, mr);
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

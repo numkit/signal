@@ -23,18 +23,18 @@
 //   - Walsh, "A Closed Set of Normal Orthogonal Functions",
 //     Amer. J. Math. 45 (1923) 5-24.
 
-#include <nk/signal/transforms/fwht.hpp>
+#include <numkit/signal/transforms/fwht.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -245,4 +245,4 @@ Value ifwht(const Value &y, std::size_t n, const std::string &ordering,
     return runWalshHadamard(y, n, ordering, /*forward=*/false, mr);
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

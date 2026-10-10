@@ -7,13 +7,13 @@
 // O(N²) direct path (closed gap to MATLAB; bench reports ~50× win
 // vs prior nk and beats Octave on small N).
 
-#include <nk/signal/transforms/dct.hpp>
-#include <nk/signal/transforms/fft.hpp>
+#include <numkit/signal/transforms/dct.hpp>
+#include <numkit/signal/transforms/fft.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>
+#include <numkit/ops/helpers.hpp>
 #include "dct_detail.hpp"
 
 #include <cmath>
@@ -24,7 +24,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -372,4 +372,4 @@ Value dctTyped(const Value &x, int n, int dim, double type, bool inverse,
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

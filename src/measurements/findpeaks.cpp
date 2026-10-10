@@ -4,12 +4,12 @@
 // options (MinPeakHeight, Threshold, MinPeakDistance, NPeaks, SortStr)
 // plus the location form findpeaks(Y,X) / findpeaks(Y,Fs).
 
-#include <nk/signal/measurements/findpeaks.hpp>
+#include <numkit/signal/measurements/findpeaks.hpp>
 #include "findpeaks_detail.hpp"
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -17,7 +17,7 @@
 #include <limits>
 #include <string>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -276,4 +276,4 @@ findpeaks(const Value &x, std::pmr::memory_resource *mr)
     return std::make_tuple(std::move(v), std::move(l));
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

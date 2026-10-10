@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split — see project_layering_refactor memory.
 
-#include <nk/signal/digital_filtering/shiftdata.hpp>
+#include <numkit/signal/digital_filtering/shiftdata.hpp>
 
-#include <nk/core/engine.hpp>   // CallContext, Span, ctx.engine->resource()
-#include <nk/value/value.hpp>
-#include <nk/value/argcheck.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/value/value.hpp>
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -52,4 +52,4 @@ void unshiftdata_reg(Span<const Value> args, size_t /*nargout*/,
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

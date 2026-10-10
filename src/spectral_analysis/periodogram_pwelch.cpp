@@ -3,13 +3,13 @@
 // periodogram + pwelch. Split from spectral_analysis/. spectrogram lives in
 // time_frequency/spectrogram.cpp.
 
-#include <nk/signal/spectral_analysis/periodogram_pwelch.hpp>
+#include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/builtin/specfun.hpp>
-#include <nk/signal/transforms/fft.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/signal/internal/shims/specfun.hpp>
+#include <numkit/signal/transforms/fft.hpp>
 
 #include "../dsp_helpers.hpp"
 
@@ -18,7 +18,7 @@
 #include <complex>
 #include <memory_resource>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -120,8 +120,8 @@ periodogramConf(const Value &Pxx, double confidenceLevel, bool realInput, bool n
     //   chi2inv(q, 1) = (√2 · erfinv(q))²     (folded normal / 1 DOF)
     const double c2Lo = -2.0 * std::log(1.0 - qLo);
     const double c2Hi = -2.0 * std::log(1.0 - qHi);
-    const double eLo  = nk::builtin::erfinv(Value::scalar(qLo, mr)).toScalar();
-    const double eHi  = nk::builtin::erfinv(Value::scalar(qHi, mr)).toScalar();
+    const double eLo  = numkit::builtin::erfinv(Value::scalar(qLo, mr)).toScalar();
+    const double eHi  = numkit::builtin::erfinv(Value::scalar(qHi, mr)).toScalar();
     const double c1Lo = 2.0 * eLo * eLo;
     const double c1Hi = 2.0 * eHi * eHi;
 
@@ -395,4 +395,4 @@ tfestimate(const Value &x, const Value &y, const Value &window, size_t noverlap,
     return std::make_tuple(std::move(Txy), std::move(F));
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

@@ -9,14 +9,14 @@
 
 #pragma once
 
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
 #include <string>
 #include <string_view>
 
-namespace nk::signal::detail {
+namespace numkit::signal::detail {
 
 // Render "2x2x2" for got-clauses.
 inline std::string shapeOf(const Value &v)
@@ -157,4 +157,4 @@ inline void validateShapeOption(const std::string &shape, std::string_view fn)
                 "nk:" + std::string(fn) + ":badShape");
 }
 
-} // namespace nk::signal::detail
+} // namespace numkit::signal::detail

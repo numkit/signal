@@ -4,12 +4,12 @@
 // time-collapsed power-spectrum estimators periodogram / pwelch
 // live in spectral_analysis/periodogram_pwelch.cpp.
 
-#include <nk/signal/time_frequency/spectrogram.hpp>
-#include <nk/signal/transforms/fft.hpp>
+#include <numkit/signal/time_frequency/spectrogram.hpp>
+#include <numkit/signal/transforms/fft.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"
 #include "../signal_detail.hpp"     // shared argcheck cores
@@ -22,7 +22,7 @@
 #include <string>
 #include <tuple>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -429,4 +429,4 @@ iscola(const Value &window, std::size_t noverlap, const std::string &method,
     return { std::move(out_tf), std::move(out_m), std::move(out_dev) };
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

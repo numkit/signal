@@ -2,13 +2,13 @@
 //
 // medfilt1 — sliding-window median. Split from toolboxes/signal/src/.
 
-#include <nk/signal/smoothing/medfilt.hpp>
+#include <numkit/signal/smoothing/medfilt.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>
+#include <numkit/ops/helpers.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -17,7 +17,7 @@
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -131,4 +131,4 @@ Value medfilt1(const Value &x, size_t k, bool zeropad, std::pmr::memory_resource
     return r;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

@@ -4,15 +4,15 @@
 // Split from library.cpp (transform-domain helpers nextpow2 /
 // fftshift / ifftshift moved to transforms/transform_helpers.cpp).
 
-#include <nk/signal/waveform_generation/waveform_generation.hpp>
-#include <nk/signal/filter_design/filter_design.hpp>     // butter
-#include <nk/signal/digital_filtering/filter.hpp>        // filtfilt
-#include <nk/signal/transforms/hilbert.hpp>              // hilbert
+#include <numkit/signal/waveform_generation/waveform_generation.hpp>
+#include <numkit/signal/filter_design/filter_design.hpp>     // butter
+#include <numkit/signal/digital_filtering/filter.hpp>        // filtfilt
+#include <numkit/signal/transforms/hilbert.hpp>              // hilbert
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>  // createLike
+#include <numkit/ops/helpers.hpp>  // createLike
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 
@@ -21,7 +21,7 @@
 #include <cstring>
 #include <string>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -425,7 +425,7 @@ Value demod(const Value &y, double Fc, double Fs,
                                               : y.elemAsDouble(r + c * len);
             }
         }
-        Value h = nk::signal::hilbert(yVal, mr);
+        Value h = numkit::signal::hilbert(yVal, mr);
         const Complex *hd = h.complexData();
 
         Value out = Value::matrix(len, cols, ValueType::DOUBLE, mr);
@@ -489,9 +489,9 @@ Value demod(const Value &y, double Fc, double Fs,
     const double Wn = Fc * 2.0 / Fs;
     Value out;
     if (Wn > 0.0 && Wn < 1.0) {
-        auto [bp, ap] = nk::signal::butter(5, Wn, "low", mr);
+        auto [bp, ap] = numkit::signal::butter(5, Wn, "low", mr);
         // filtfilt per column: process the entire matrix (filtfilt handles cols).
-        out = nk::signal::filtfilt(bp, ap, mixed, mr);
+        out = numkit::signal::filtfilt(bp, ap, mixed, mr);
     } else {
         out = mixed;
     }
@@ -576,7 +576,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         for (std::size_t c = 0; c < cols; ++c)
             for (std::size_t r = 0; r < len; ++r)
                 xd[r + c * len] = getX(r, c);
-        Value h = nk::signal::hilbert(xVal, mr);
+        Value h = numkit::signal::hilbert(xVal, mr);
         const Complex *hd = h.complexData();
         for (std::size_t c = 0; c < cols; ++c) {
             for (std::size_t r = 0; r < len; ++r) {
@@ -740,4 +740,4 @@ Value vco(const Value &x, double fmin, double fmax, double fs,
     return vcoImpl(x, fc, range1, fs, mr);
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

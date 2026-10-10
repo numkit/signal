@@ -8,14 +8,14 @@
 // power-band integrations yield rad/s. When fs is supplied, freqs run
 // [0, fs/2] and integrations yield Hz.
 
-#include <nk/signal/spectral_analysis/spectral_metrics.hpp>
-#include <nk/signal/spectral_analysis/periodogram_pwelch.hpp>
-#include <nk/signal/transforms/fft.hpp>
-#include <nk/signal/transforms/hilbert.hpp>
-#include <nk/signal/windows/windows.hpp>
+#include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
+#include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
+#include <numkit/signal/transforms/fft.hpp>
+#include <numkit/signal/transforms/hilbert.hpp>
+#include <numkit/signal/windows/windows.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 
@@ -32,7 +32,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -671,4 +671,4 @@ Value instbw(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

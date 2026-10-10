@@ -3,11 +3,11 @@
 // Phase 2b compute/register split — see project_layering_refactor memory.
 #pragma once
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
-#include <nk/ops/reductions.hpp>  // engine-free nk::builtin::detail dim-infra (ops re-export)
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
+#include <numkit/ops/reductions.hpp>  // engine-free numkit::builtin::detail dim-infra (ops re-export)
 
 #include <algorithm>
 #include <cmath>
@@ -26,7 +26,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::builtin {
+namespace numkit::builtin {
 
 namespace {
 
@@ -93,24 +93,24 @@ void trimLeadingZeros(ScratchVec<double> &v)
 } // namespace
 namespace {
 
-ScratchVec<nk::ops::Complex> readVecAsComplex(const Value &v, const char *fn, std::pmr::memory_resource *mr)
+ScratchVec<numkit::ops::Complex> readVecAsComplex(const Value &v, const char *fn, std::pmr::memory_resource *mr)
 {
     if (!v.dims().isVector() && !v.isScalar() && !v.isEmpty())
         throw Error(std::string(fn) + ": argument must be a vector",
                      0, 0, fn, "", std::string("nk:") + fn + ":notVector");
     const std::size_t n = v.numel();
-    ScratchVec<nk::ops::Complex> r(n, mr);
+    ScratchVec<numkit::ops::Complex> r(n, mr);
     if (v.type() == ValueType::COMPLEX) {
         const auto *p = v.complexData();
         for (std::size_t i = 0; i < n; ++i) r[i] = p[i];
     } else {
         for (std::size_t i = 0; i < n; ++i)
-            r[i] = nk::ops::Complex(v.elemAsDouble(i), 0.0);
+            r[i] = numkit::ops::Complex(v.elemAsDouble(i), 0.0);
     }
     return r;
 }
 
-Value complexColFromVec(const nk::ops::Complex *v, std::size_t n, std::pmr::memory_resource *mr)
+Value complexColFromVec(const numkit::ops::Complex *v, std::size_t n, std::pmr::memory_resource *mr)
 {
     auto out = Value::complexMatrix(n, 1, mr);
     for (std::size_t i = 0; i < n; ++i)
@@ -118,7 +118,7 @@ Value complexColFromVec(const nk::ops::Complex *v, std::size_t n, std::pmr::memo
     return out;
 }
 
-Value realColIfFlat(const nk::ops::Complex *v, std::size_t n, std::pmr::memory_resource *mr)
+Value realColIfFlat(const numkit::ops::Complex *v, std::size_t n, std::pmr::memory_resource *mr)
 {
     bool anyComplex = false;
     for (std::size_t i = 0; i < n; ++i)
@@ -137,4 +137,4 @@ Value realColIfFlat(const nk::ops::Complex *v, std::size_t n, std::pmr::memory_r
 
 } // namespace
 
-} // namespace nk::builtin
+} // namespace numkit::builtin

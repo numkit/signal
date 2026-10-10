@@ -1,13 +1,13 @@
 // src/shims/specfun.cpp
-#include <nk/builtin/specfun.hpp>
-#include <nk/ops/helpers.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/signal/internal/shims/specfun.hpp>
+#include <numkit/ops/helpers.hpp>
+#include <numkit/value/error.hpp>
 
 #include <cmath>
 #include <limits>
 #include <algorithm>
 
-namespace nk::builtin {
+namespace numkit::builtin {
 
 namespace {
 
@@ -91,4 +91,4 @@ EllipKE ellipke(const Value &m, std::pmr::memory_resource *mr)
     return { std::move(K), std::move(E) };
 }
 
-} // namespace nk::builtin
+} // namespace numkit::builtin

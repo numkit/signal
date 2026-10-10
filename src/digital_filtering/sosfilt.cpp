@@ -3,31 +3,31 @@
 // Apply an SOS biquad cascade to a signal. Conversions
 // zp2sos / tf2sos live in filter_implementation/conversions.cpp.
 
-#include <nk/signal/digital_filtering/sosfilt.hpp>
+#include <numkit/signal/digital_filtering/sosfilt.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
-#include <nk/ops/helpers.hpp>
-#include <nk/ops/iir_filter.hpp>
+#include <numkit/ops/helpers.hpp>
+#include <numkit/ops/iir_filter.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
 // The raw-buffer biquad DF2T recurrence kernels moved to the kernel layer —
-// nk::ops::biquadDf2t{,WithState} (nk/ops/iir_filter.hpp). Re-export
+// numkit::ops::biquadDf2t{,WithState} (nk/ops/iir_filter.hpp). Re-export
 // them so the Value-coupled cascade orchestration below calls them unqualified.
 // The steady-state-IC helper (biquadZi) and the cascade logic stay in signal.
-using nk::ops::biquadDf2t;
-using nk::ops::biquadDf2tWithState;
+using numkit::ops::biquadDf2t;
+using numkit::ops::biquadDf2tWithState;
 
 // Steady-state initial conditions (s1, s2) for one biquad: when input
 // is constant 1, applying these as initial state makes the output
@@ -340,4 +340,4 @@ Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *m
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

@@ -21,17 +21,17 @@
 //
 // PMR HARD RULE.
 
-#include <nk/signal/digital_filtering/quantizers.hpp>
+#include <numkit/signal/digital_filtering/quantizers.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <string>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -176,4 +176,4 @@ Value udecode(const Value &u, int N, double V, bool wrapOnOverflow, std::pmr::me
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

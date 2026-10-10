@@ -11,15 +11,15 @@
 // For bandpass/bandstop, Wn is a 2-vector [Wlo, Whi]; the prototype is
 // scaled to centre Ω₀ = √(Wlo·Whi), bandwidth Bw = Whi - Wlo.
 
-#include <nk/signal/filter_design/iir_designs.hpp>
+#include <numkit/signal/filter_design/iir_designs.hpp>
 
-#include <nk/signal/filter_design/analog_filters.hpp>
-#include <nk/builtin/polyfun.hpp>
-#include <nk/builtin/specfun.hpp>
+#include <numkit/signal/filter_design/analog_filters.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>
+#include <numkit/signal/internal/shims/specfun.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/argcheck.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/argcheck.hpp>
 
 #include <cctype>
 #include <cmath>
@@ -31,7 +31,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -98,7 +98,7 @@ std::tuple<Value, Value>
 finishDesign(Value z, Value p, Value k_v, bool analog, std::pmr::memory_resource *mr)
 {
     const double k = k_v.toScalar();
-    auto [b, a] = ::nk::builtin::zp2tf(z, p, k, mr);
+    auto [b, a] = ::numkit::builtin::zp2tf(z, p, k, mr);
     if (analog) return std::make_tuple(std::move(b), std::move(a));
     // bilinear with fs = 1 reverses the pre-warp we applied earlier
     // (Ω = 2·tan(π·Wn/2) with fs = 1).
@@ -398,13 +398,13 @@ double findElliporderImpl(const std::vector<double> &WA, double Rp, double Rs, s
     Value mk = Value::matrix(1, 2, ValueType::DOUBLE, mr);
     mk.doubleDataMut()[0] = k * k;
     mk.doubleDataMut()[1] = 1.0 - k * k;
-    auto capk = nk::builtin::ellipke(mk, mr);
+    auto capk = numkit::builtin::ellipke(mk, mr);
 
     // capk1 = ellipke([k1², 1-k1²])
     Value mk1 = Value::matrix(1, 2, ValueType::DOUBLE, mr);
     mk1.doubleDataMut()[0] = k1 * k1;
     mk1.doubleDataMut()[1] = 1.0 - k1 * k1;
-    auto capk1 = nk::builtin::ellipke(mk1, mr);
+    auto capk1 = numkit::builtin::ellipke(mk1, mr);
 
     // capk.K is 1×2: [K(k²), K(1-k²)]; same for capk.E. Need:
     //   N = ceil(K(k²) * E1(1-k1²) / (K(k²)... wait MATLAB uses capk(2) for
@@ -763,4 +763,4 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
     return {N, Wn, bta, ftype};
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

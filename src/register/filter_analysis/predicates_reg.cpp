@@ -6,15 +6,15 @@
 //
 // Phase 2b compute/register split — see project_layering_refactor memory.
 
-#include <nk/signal/filter_analysis/predicates.hpp>
-#include <nk/signal/filter_analysis/frequency_response.hpp>
+#include <numkit/signal/filter_analysis/predicates.hpp>
+#include <numkit/signal/filter_analysis/frequency_response.hpp>
 #include "filter_analysis/predicates_detail.hpp"
 
-#include <nk/core/engine.hpp>   // CallContext, Span, ctx.engine->resource()
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -26,9 +26,9 @@
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <nk/value/argcheck.hpp>
+#include <numkit/value/argcheck.hpp>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -177,4 +177,4 @@ double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory
     return std::sqrt(sum / static_cast<double>(kNpts - 1));
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

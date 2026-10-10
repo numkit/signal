@@ -1,23 +1,23 @@
 // toolboxes/signal/src/digital_filtering/filter.cpp
 
-#include <nk/signal/digital_filtering/filter.hpp>
+#include <numkit/signal/digital_filtering/filter.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/value_type.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/value_type.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>
+#include <numkit/ops/helpers.hpp>
 #include "filter_detail.hpp"
 
 #include <algorithm>
 #include <cstring>
 #include <memory_resource>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 // The raw-buffer IIR recurrence kernels (applyFilterDf2t / ...Complex) moved to
-// the kernel layer — nk::ops::applyFilterDf2t{,Complex} (nk/ops/
+// the kernel layer — numkit::ops::applyFilterDf2t{,Complex} (nk/ops/
 // iir_filter.hpp), re-exported into this namespace by filter_detail.hpp. The
 // Value-level marshalling helpers below stay in signal.
 
@@ -316,4 +316,4 @@ Value filtfilt(const Value &b, const Value &a, const Value &x, std::pmr::memory_
     return r;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

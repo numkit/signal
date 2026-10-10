@@ -4,11 +4,11 @@
 // grpdelay. Filter design (butter / fir1) lives in
 // filter_design/filter_design.cpp.
 
-#include <nk/signal/filter_analysis/frequency_response.hpp>
+#include <numkit/signal/filter_analysis/frequency_response.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 
@@ -22,7 +22,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 std::tuple<Value, Value>
 freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::pmr::memory_resource *mr)
@@ -194,4 +194,4 @@ grpdelay(const Value &b, const Value &a, size_t npts, double fs, std::pmr::memor
     return std::make_tuple(std::move(gd), std::move(W));
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

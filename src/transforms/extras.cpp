@@ -1,19 +1,19 @@
 // toolboxes/signal/src/transforms/extras.cpp
 // dftmtx / bitrevorder / dst / idst / rceps / cceps / icceps.
 
-#include <nk/signal/transforms/extras.hpp>
+#include <numkit/signal/transforms/extras.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/signal/filter_analysis/unwrap.hpp>      // (used externally; not needed here)
-#include <nk/signal/transforms/fft.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/signal/filter_analysis/unwrap.hpp>      // (used externally; not needed here)
+#include <numkit/signal/transforms/fft.hpp>
 
 #include "../dsp_helpers.hpp"   // fftRadix2, fillFftTwiddles, nextPow2, Complex
 #include "../signal_detail.hpp" // shared argcheck cores
 #include "extras_detail.hpp"    // bitReverse (shared compute/register)
 
-#include <nk/value/value_type.hpp>   // mtypeName / isIntegerType
+#include <numkit/value/value_type.hpp>   // mtypeName / isIntegerType
 
 #include <algorithm>
 #include <cmath>
@@ -23,7 +23,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 // External linkage (declared in extras_detail.hpp): bit-reversal permutation
 // index, shared by the engine-free compute (bitrevorder) and the CallContext
@@ -314,4 +314,4 @@ Value icceps(const Value &c, std::pmr::memory_resource *mr)
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

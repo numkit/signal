@@ -18,11 +18,11 @@
 // PMR HARD RULE: every fn takes std::pmr::memory_resource *mr. Scratch
 // via ScratchArena/ScratchVec.
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
 #include <algorithm>
 #include <cmath>
@@ -31,7 +31,7 @@
 #include "../signal_detail.hpp"     // shared argcheck cores
 #include "../dsp_helpers.hpp"       // Complex typedef (extractsigroi)
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -384,4 +384,4 @@ Value sigrangebinmask(const Value &x, double lo, double hi,
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

@@ -1,18 +1,18 @@
 // toolboxes/signal/src/smoothing/sgolay.cpp
 
-#include <nk/signal/smoothing/sgolay.hpp>
+#include <numkit/signal/smoothing/sgolay.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>
+#include <numkit/ops/helpers.hpp>
 
 #include <cmath>
 #include <cstring>
 #include <memory_resource>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -323,4 +323,4 @@ Value sgolayfilt(const Value &x, int order, int framelen,
     return sgolayfiltImpl(x, order, framelen, w.data(), dim, mr);
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

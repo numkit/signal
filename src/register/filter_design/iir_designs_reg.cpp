@@ -4,18 +4,18 @@
 // The detail{{}} *_reg fns were interleaved with compute in the original
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
-#include <nk/core/engine.hpp>
-#include <nk/builtin/polyfun.hpp>
-#include <nk/builtin/specfun.hpp>
-#include <nk/signal/filter_design/analog_filters.hpp>
-#include <nk/signal/filter_design/iir_designs.hpp>
-#include <nk/signal/filter_implementation/conversions_extras.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/argcheck.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>
+#include <numkit/signal/internal/shims/specfun.hpp>
+#include <numkit/signal/filter_design/analog_filters.hpp>
+#include <numkit/signal/filter_design/iir_designs.hpp>
+#include <numkit/signal/filter_implementation/conversions_extras.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -292,4 +292,4 @@ void butter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

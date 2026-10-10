@@ -3,14 +3,14 @@
 // CallContext register half of measurements/sigroi.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <nk/core/engine.hpp>
-#include <nk/signal/measurements/sigroi.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/measurements/sigroi.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -21,9 +21,9 @@
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <nk/value/argcheck.hpp>
+#include <numkit/value/argcheck.hpp>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -121,4 +121,4 @@ void sigrangebinmask_reg(Span<const Value> args, size_t /*nargout*/,
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

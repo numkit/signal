@@ -6,14 +6,14 @@
 // reuse intfilt (a sinc-with-Hamming-window FIR) and the existing
 // filter() / upsample() / downsample() primitives.
 
-#include <nk/signal/multirate/extras.hpp>
+#include <numkit/signal/multirate/extras.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/signal/digital_filtering/filter.hpp>
-#include <nk/signal/filter_design/filter_design.hpp>   // firls
-#include <nk/signal/multirate/multirate.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/signal/digital_filtering/filter.hpp>
+#include <numkit/signal/filter_design/filter_design.hpp>   // firls
+#include <numkit/signal/multirate/multirate.hpp>
 
 #include "../dsp_helpers.hpp"   // fftRadix2, fillFftTwiddles, nextPow2, Complex
 
@@ -26,7 +26,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -226,4 +226,4 @@ Value fftfilt(const Value &b, const Value &x, size_t nfft, std::pmr::memory_reso
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

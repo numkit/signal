@@ -4,14 +4,14 @@
 // contracts. Algorithms unchanged from the previous lambda form — only
 // moved into named free functions that take std::pmr::memory_resource* explicitly.
 
-#include <nk/signal/convolution/convolution.hpp>
+#include <numkit/signal/convolution/convolution.hpp>
 
-#include <nk/ops/conv.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/ops/conv.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 #include <tuple>
-#include <nk/value/value_type.hpp>
+#include <numkit/value/value_type.hpp>
 
 #include "../dsp_helpers.hpp"
 #include "signal_detail.hpp"     // shared argcheck cores
@@ -20,7 +20,7 @@
 #include <cmath>
 #include <memory_resource>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 // ── conv argcheck ─────────────────────────────────────────────────────
 // Reference (R2025b) rejects char/cell with a numeric-or-logical class,
@@ -337,7 +337,7 @@ xcov(const Value &x, const Value &y, int maxlag,
 
 // ── Pack 36: conv2 / filter2 / convn ─────────────────────────────────
 // The direct 2-D convolution kernel moved to the kernel layer —
-// nk::ops::conv2Direct (nk/ops/conv.hpp), the 2-D companion to
+// numkit::ops::conv2Direct (nk/ops/conv.hpp), the 2-D companion to
 // ops::convDirect. The Value-level shape-crop + validation stay here.
 namespace {
 
@@ -580,4 +580,4 @@ Value convn(const Value &A, const Value &B, const std::string &shape, std::pmr::
                  0, 0, "convn", "", "nk:convn:badShape");
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

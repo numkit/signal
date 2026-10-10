@@ -16,10 +16,10 @@
 // Both give similar PSDs on stationary input; pburg is preferred on
 // short signals because it doesn't bias σ² downward.
 
-#include <nk/signal/spectral_analysis/periodogram_pwelch.hpp>
+#include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -30,7 +30,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -189,4 +189,4 @@ pburg(const Value &x, int p, size_t nfft, std::pmr::memory_resource *mr)
     return arSpectrum(a, sigma2, nfft, mr);
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

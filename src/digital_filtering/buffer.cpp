@@ -17,11 +17,11 @@
 //
 // PMR HARD RULE.
 
-#include <nk/signal/digital_filtering/buffer.hpp>
+#include <numkit/signal/digital_filtering/buffer.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 #include <tuple>
 #include <cctype>
 
@@ -29,7 +29,7 @@
 #include <cmath>
 #include <cstring>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -218,4 +218,4 @@ buffer2(const Value &x, int n, int p, const Value &opt, std::pmr::memory_resourc
     return {r.Y, z};
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

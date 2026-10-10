@@ -2,12 +2,12 @@
 //
 // db / db2mag / mag2db / pow2db / db2pow.
 
-#include <nk/signal/measurements/dbconv.hpp>
+#include <numkit/signal/measurements/dbconv.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>  // createLike (toolboxes/builtin/src/)
+#include <numkit/ops/helpers.hpp>  // createLike (toolboxes/builtin/src/)
 
 #include <algorithm>
 #include <cctype>
@@ -15,7 +15,7 @@
 #include <complex>
 #include <string>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -98,4 +98,4 @@ Value pow2db(const Value &p, std::pmr::memory_resource *mr)
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

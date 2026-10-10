@@ -14,16 +14,16 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <nk/core/engine.hpp>
-#include <nk/signal/time_frequency/spectrogram.hpp>
-#include <nk/signal/transforms/fft.hpp>
-#include <nk/value/argcheck.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/time_frequency/spectrogram.hpp>
+#include <numkit/signal/transforms/fft.hpp>
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -35,7 +35,7 @@
 #include <utility>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -365,4 +365,4 @@ void istft_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

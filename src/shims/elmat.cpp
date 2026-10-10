@@ -2,21 +2,21 @@
 //
 // Standalone implementations of permute, ipermute, shiftdim, shiftdimAuto for signal toolbox.
 
-#include <nk/builtin/elmat.hpp>
+#include <numkit/signal/internal/shims/elmat.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/shape_ops.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value_type.hpp>
-#include <nk/ops/helpers.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/shape_ops.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value_type.hpp>
+#include <numkit/ops/helpers.hpp>
 
 #include <algorithm>
 #include <cstring>
 #include <numeric>
 #include <vector>
 
-namespace nk::builtin {
+namespace numkit::builtin {
 
 namespace {
 
@@ -245,4 +245,4 @@ ShiftDimAuto shiftdimAuto(const Value &x, std::pmr::memory_resource *mr)
     return { std::move(y), static_cast<size_t>(k) };
 }
 
-} // namespace nk::builtin
+} // namespace numkit::builtin

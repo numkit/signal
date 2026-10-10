@@ -1,10 +1,10 @@
 // toolboxes/signal/src/windows/windows.cpp
 
-#include <nk/signal/windows/windows.hpp>
+#include <numkit/signal/windows/windows.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
 #include "dsp_helpers.hpp"  // fillFftTwiddles, fftRadix2, nextPow2
 
@@ -17,7 +17,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -481,4 +481,4 @@ Value barthannwin(size_t N, std::pmr::memory_resource *mr)
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

@@ -1,21 +1,21 @@
 // toolboxes/signal/src/filter_implementation/conversions_extras.cpp
 // sos2tf / sos2zp / tf2zpk + tf↔ss + sos↔ss + zpk↔ss adapters.
 
-#include <nk/signal/filter_implementation/conversions_extras.hpp>
+#include <numkit/signal/filter_implementation/conversions_extras.hpp>
 
-#include <nk/builtin/polyfun.hpp>      // tf2zp / zp2tf / roots
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>      // tf2zp / zp2tf / roots
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 #include <tuple>
-#include <nk/signal/filter_implementation/conversions.hpp>  // tf2sos
+#include <numkit/signal/filter_implementation/conversions.hpp>  // tf2sos
 
 #include <algorithm>
 #include <cmath>
 #include <complex>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -57,7 +57,7 @@ void appendRoots(const double *coeffs, size_t n, std::vector<Complex> &out, std:
     auto p = Value::matrix(1, trimmed.size(), ValueType::DOUBLE, mr);
     for (size_t i = 0; i < trimmed.size(); ++i)
         p.doubleDataMut()[i] = trimmed[i];
-    auto r = nk::builtin::roots(p, mr);
+    auto r = numkit::builtin::roots(p, mr);
     if (r.isComplex()) {
         const Complex *src = r.complexData();
         for (size_t i = 0; i < r.numel(); ++i) out.push_back(src[i]);
@@ -137,7 +137,7 @@ sos2zp(const Value &sos, double g, std::pmr::memory_resource *mr)
 std::tuple<Value, Value, double>
 tf2zpk(const Value &b, const Value &a, std::pmr::memory_resource *mr)
 {
-    auto [z, p, k] = nk::builtin::tf2zp(b, a, mr);
+    auto [z, p, k] = numkit::builtin::tf2zp(b, a, mr);
     return std::make_tuple(std::move(z), std::move(p),
                             (k.numel() == 0) ? 0.0 : k.toScalar());
 }
@@ -338,7 +338,7 @@ ss2zp(const Value &A, const Value &B, const Value &C, double D,
 std::tuple<Value, Value, Value, Value>
 zp2ss(const Value &z, const Value &p, double k, std::pmr::memory_resource *mr)
 {
-    auto [b, a] = nk::builtin::zp2tf(z, p, k, mr);
+    auto [b, a] = numkit::builtin::zp2tf(z, p, k, mr);
     return tf2ss(b, a, mr);
 }
 
@@ -512,7 +512,7 @@ Value scaleFilterSections(const Value &CTFNum, const Value &SV,
     const bool scalarG = (nsv == 1);
     const bool vectorG = (nsv == K + 1);
     if (!scalarG && !vectorG) {
-        throw nk::Error(
+        throw numkit::Error(
             "Invalid number of scale values. Specify either a scalar "
             "or a vector of length equal to the number of sections + 1.",
             0, 0, "scaleFilterSections", "",
@@ -570,4 +570,4 @@ Value scaleFilterSections(const Value &CTFNum, const Value &SV,
     return out;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

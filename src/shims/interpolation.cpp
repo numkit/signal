@@ -3,13 +3,13 @@
 // 1-D / 2-D / 3-D interpolation. polyfit / polyval moved to
 // math/elementary/polynomials.cpp; trapz to math/integration/integration.cpp.
 
-#include <nk/builtin/polyfun.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 
-#include <nk/ops/helpers.hpp>
+#include <numkit/ops/helpers.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -21,7 +21,7 @@
 
 #include "interp_detail.hpp"
 
-namespace nk::builtin {
+namespace numkit::builtin {
 
 // ── Internal algorithm helpers ────────────────────────────────────────
 
@@ -216,4 +216,4 @@ Value ppval(const Value &pp, const Value &x, std::pmr::memory_resource *mr)
     return out;
 }
 
-} // namespace nk::builtin
+} // namespace numkit::builtin

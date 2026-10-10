@@ -2,19 +2,19 @@
 //
 // Standalone implementations of roots, poly, tf2zp, zp2tf for signal toolbox.
 
-#include <nk/builtin/polyfun.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
-#include <nk/ops/helpers.hpp>
-#include <nk/ops/poly_helpers.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/ops/helpers.hpp>
+#include <numkit/ops/poly_helpers.hpp>
 
 #include <cmath>
 #include <cstring>
 #include <memory_resource>
 #include <tuple>
 
-namespace nk::builtin {
+namespace numkit::builtin {
 
 namespace {
 
@@ -92,7 +92,7 @@ Value roots(const Value &p, std::pmr::memory_resource *mr)
     for (std::size_t i = 0; i < n; ++i)
         coeffs[i] = p.elemAsDouble(i);
 
-    auto rs = nk::ops::polyRootsDurandKerner(&scratch, coeffs.data(), coeffs.size());
+    auto rs = numkit::ops::polyRootsDurandKerner(&scratch, coeffs.data(), coeffs.size());
     return realColIfFlat(rs.data(), rs.size(), mr);
 }
 
@@ -109,7 +109,7 @@ Value poly(const Value &r, std::pmr::memory_resource *mr)
         const double *p = r.doubleData();
         for (size_t i = 0; i < n; ++i) cv[i] = Complex(p[i], 0.0);
     }
-    auto coeffs = nk::ops::polyExpandFromRoots(&scratch, cv.data(), n);
+    auto coeffs = numkit::ops::polyExpandFromRoots(&scratch, cv.data(), n);
     return rowFromVec(coeffs.data(), coeffs.size(), mr);
 }
 
@@ -126,13 +126,13 @@ tf2zp(const Value &b, const Value &a, std::pmr::memory_resource *mr)
     while (bnz < bv.size() && bv[bnz] == 0.0) ++bnz;
     if (bv.empty() || bnz == bv.size()) {
         auto z = Value::matrix(0, 1, ValueType::DOUBLE, mr);
-        auto pRoots = nk::ops::polyRootsDurandKerner(&scratch, av.data(), av.size());
+        auto pRoots = numkit::ops::polyRootsDurandKerner(&scratch, av.data(), av.size());
         auto p = realColIfFlat(pRoots.data(), pRoots.size(), mr);
         auto k = Value::scalar(0.0, mr);
         return std::make_tuple(std::move(z), std::move(p), std::move(k));
     }
-    auto zRoots = nk::ops::polyRootsDurandKerner(&scratch, bv.data(), bv.size());
-    auto pRoots = nk::ops::polyRootsDurandKerner(&scratch, av.data(), av.size());
+    auto zRoots = numkit::ops::polyRootsDurandKerner(&scratch, bv.data(), bv.size());
+    auto pRoots = numkit::ops::polyRootsDurandKerner(&scratch, av.data(), av.size());
     const double k = bv[bnz] / av[0];
 
     return std::make_tuple(realColIfFlat(zRoots.data(), zRoots.size(), mr),
@@ -146,8 +146,8 @@ zp2tf(const Value &z, const Value &p, double k, std::pmr::memory_resource *mr)
     ScratchArena scratch(mr);
     auto zv = readVecAsComplex(z, "zp2tf", &scratch);
     auto pv = readVecAsComplex(p, "zp2tf", &scratch);
-    auto bRaw = nk::ops::polyExpandFromRoots(&scratch, zv.data(), zv.size());
-    auto aRaw = nk::ops::polyExpandFromRoots(&scratch, pv.data(), pv.size());
+    auto bRaw = numkit::ops::polyExpandFromRoots(&scratch, zv.data(), zv.size());
+    auto aRaw = numkit::ops::polyExpandFromRoots(&scratch, pv.data(), pv.size());
     for (auto &v : bRaw) v *= k;
     if (bRaw.size() < aRaw.size()) {
         const size_t off = aRaw.size() - bRaw.size();
@@ -161,4 +161,4 @@ zp2tf(const Value &z, const Value &p, double k, std::pmr::memory_resource *mr)
                            rowFromVec(aRaw.data(), aRaw.size(), mr));
 }
 
-} // namespace nk::builtin
+} // namespace numkit::builtin

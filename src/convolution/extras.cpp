@@ -2,14 +2,14 @@
 //
 // cconv / convmtx / xcorr2 / finddelay / alignsignals.
 
-#include <nk/signal/convolution/extras.hpp>
+#include <numkit/signal/convolution/extras.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 #include <tuple>
-#include <nk/signal/convolution/convolution.hpp>     // xcorr
-#include <nk/signal/transforms/fft.hpp>              // fft / ifft
+#include <numkit/signal/convolution/convolution.hpp>     // xcorr
+#include <numkit/signal/transforms/fft.hpp>              // fft / ifft
 
 #include <algorithm>
 #include <cmath>
@@ -18,7 +18,7 @@
 
 #include "signal_detail.hpp"     // shared argcheck cores
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -370,4 +370,4 @@ alignsignals(const Value &x, const Value &y, long max_lag, std::pmr::memory_reso
     return std::make_tuple(orient(x, pad_x), orient(y, pad_y));
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

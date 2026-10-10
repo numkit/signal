@@ -3,17 +3,17 @@
 // CallContext register half of waveform_generation/waveform_generation.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <nk/core/engine.hpp>
-#include <nk/signal/digital_filtering/filter.hpp>        // filtfilt
-#include <nk/signal/filter_design/filter_design.hpp>     // butter
-#include <nk/signal/transforms/hilbert.hpp>              // hilbert
-#include <nk/signal/waveform_generation/waveform_generation.hpp>
-#include <nk/value/argcheck.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/digital_filtering/filter.hpp>        // filtfilt
+#include <numkit/signal/filter_design/filter_design.hpp>     // butter
+#include <numkit/signal/transforms/hilbert.hpp>              // hilbert
+#include <numkit/signal/waveform_generation/waveform_generation.hpp>
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -212,4 +212,4 @@ void chirp_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

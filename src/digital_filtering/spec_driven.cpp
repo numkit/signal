@@ -10,20 +10,20 @@
 // where fstop = fpass + (1 - Steepness)*(1 - fpass), Steepness = 0.85.
 // We compose ellip() + filtfilt() with the same parameters.
 
-#include <nk/signal/digital_filtering/spec_driven.hpp>
+#include <numkit/signal/digital_filtering/spec_driven.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/signal/digital_filtering/filter.hpp>
-#include <nk/signal/digital_filtering/sosfilt.hpp>
-#include <nk/signal/filter_design/filter_design.hpp>
-#include <nk/signal/filter_design/iir_designs.hpp>
-#include <nk/signal/filter_implementation/conversions.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/signal/digital_filtering/filter.hpp>
+#include <numkit/signal/digital_filtering/sosfilt.hpp>
+#include <numkit/signal/filter_design/filter_design.hpp>
+#include <numkit/signal/filter_design/iir_designs.hpp>
+#include <numkit/signal/filter_implementation/conversions.hpp>
 
 #include <cmath>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace {
 
@@ -118,4 +118,4 @@ Value bandstop(const Value &x, double flo, double fhi, double fs, int order, std
     return sosfiltfilt(sos, x, mr);
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

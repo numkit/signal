@@ -2,12 +2,12 @@
 //
 // CallContext register half of spectral_analysis/pseudospectrum.cpp
 // (pmusic / peig). Parses (x, p[, nfft[, fs]]) and threads (P, F) by nargout.
-#include <nk/core/engine.hpp>
-#include <nk/signal/spectral_analysis/signal_modeling.hpp>
-#include <nk/value/argcheck.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/spectral_analysis/signal_modeling.hpp>
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/span.hpp>
 
 #include <tuple>
 #include <utility>
@@ -16,7 +16,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -46,4 +46,4 @@ void peig_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCont
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

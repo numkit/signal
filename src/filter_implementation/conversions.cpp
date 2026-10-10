@@ -3,15 +3,15 @@
 // zp2sos / tf2sos — convert filter representations to SOS form. The
 // cascade applicator sosfilt lives in digital_filtering/sosfilt.cpp.
 
-#include <nk/signal/filter_implementation/conversions.hpp>
+#include <numkit/signal/filter_implementation/conversions.hpp>
 
-#include <nk/value/value.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/error.hpp>
 #include <tuple>
 
 #include "../dsp_helpers.hpp"
-#include <nk/ops/poly_helpers.hpp>
+#include <numkit/ops/poly_helpers.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -22,13 +22,13 @@
 #include <memory_resource>
 #include <utility>
 
-namespace nk::signal {
+namespace numkit::signal {
 
-using nk::Complex;
+using numkit::Complex;
 
 namespace {
 
-using nk::ops::polyRootsDurandKerner;
+using numkit::ops::polyRootsDurandKerner;
 
 constexpr double kImagThresh = 1e-10;  // |Im(r)| below this → treat as real
 
@@ -360,4 +360,4 @@ Value tf2sos(const Value &b, const Value &a, std::pmr::memory_resource *mr)
     return sos;
 }
 
-} // namespace nk::signal
+} // namespace numkit::signal

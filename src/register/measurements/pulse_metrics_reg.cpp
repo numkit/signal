@@ -3,14 +3,14 @@
 // CallContext register half of measurements/pulse_metrics.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <nk/core/engine.hpp>
-#include <nk/signal/measurements/pulse_metrics.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/measurements/pulse_metrics.hpp>
 #include "measurements/pulse_metrics_detail.hpp"
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -21,9 +21,9 @@
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <nk/value/argcheck.hpp>
+#include <numkit/value/argcheck.hpp>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -84,4 +84,4 @@ NK_PULSE_REG(dutycycle,   dutycycle)
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

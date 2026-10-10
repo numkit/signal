@@ -10,14 +10,14 @@
 // of cross-domain general-purpose ops): fft, ifft, fftshift, ifftshift,
 // conv, xcorr.
 
-#include <nk/signal/library.hpp>
+#include <numkit/signal/library.hpp>
 
-#include <nk/core/engine.hpp>
-#include <nk/core/types.hpp>  // ExternalFunc, CallContext, Span, Value
+#include <numkit/plugin.hpp>
+#include <numkit/plugin.hpp>  // ExternalFunc, CallContext, Span, Value
 
-namespace nk::signal::detail {
+namespace numkit::signal::detail {
 // Forward declarations for adapters implemented in dedicated files
-// (public C++ API functions live in nk::signal; these are their
+// (public C++ API functions live in numkit::signal; these are their
 // Engine-registration bridges).
 void fft_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void ifft_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
@@ -296,9 +296,9 @@ void sigrangebinmask_reg(Span<const Value>, size_t, Span<Value>, CallContext &);
 void seqperiod_reg     (Span<const Value>, size_t, Span<Value>, CallContext &);
 void zerocrossrate_reg (Span<const Value>, size_t, Span<Value>, CallContext &);
 void cusum_reg         (Span<const Value>, size_t, Span<Value>, CallContext &);
-} // namespace nk::signal::detail
+} // namespace numkit::signal::detail
 
-namespace nk {
+namespace numkit {
 
 void SignalLibrary::install(Engine &engine)
 {
@@ -596,4 +596,4 @@ void SignalLibrary::install(Engine &engine)
     // across all three registrations.
 }
 
-} // namespace nk
+} // namespace numkit

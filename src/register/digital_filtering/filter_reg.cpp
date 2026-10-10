@@ -9,14 +9,14 @@
 // lives in compute behind filter_argcheck/runFilter (argcheck-separation
 // pattern, dev-docs/todo/argcheck_separation.md).
 
-#include <nk/signal/digital_filtering/filter.hpp>
+#include <numkit/signal/digital_filtering/filter.hpp>
 
-#include <nk/core/engine.hpp>   // CallContext, Span, ctx.engine->resource()
-#include <nk/value/argcheck.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
+#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -52,4 +52,4 @@ void filtfilt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal

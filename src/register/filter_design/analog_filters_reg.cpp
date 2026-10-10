@@ -3,17 +3,17 @@
 // CallContext register half of filter_design/analog_filters.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <nk/core/engine.hpp>
-#include <nk/builtin/polyfun.hpp>
-#include <nk/ops/poly_helpers.hpp>
-#include <nk/signal/filter_design/analog_filters.hpp>
-#include <nk/signal/filter_implementation/conversions_extras.hpp>
-#include <nk/value/argcheck.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/value.hpp>
-#include <nk/value/error.hpp>
-#include <nk/value/scratch.hpp>
-#include <nk/value/span.hpp>
+#include <numkit/plugin.hpp>
+#include <numkit/signal/internal/shims/polyfun.hpp>
+#include <numkit/ops/poly_helpers.hpp>
+#include <numkit/signal/filter_design/analog_filters.hpp>
+#include <numkit/signal/filter_implementation/conversions_extras.hpp>
+#include <numkit/value/argcheck.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/value.hpp>
+#include <numkit/value/error.hpp>
+#include <numkit/value/scratch.hpp>
+#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-namespace nk::signal {
+namespace numkit::signal {
 
 namespace detail {
 
@@ -114,7 +114,7 @@ static Value lp2StripLeadingZeros(const Value &b, std::pmr::memory_resource *mr)
             const double Wo = args[2].toScalar();                                \
             auto [z0, p0, k0] = tf2zpk(args[0], args[1], mr);                    \
             auto [zt, pt, kt] = fn(z0, p0, k0, Wo, mr);                          \
-            auto [bt, at] = nk::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
+            auto [bt, at] = numkit::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
             bt = lp2StripLeadingZeros(bt, mr);                                   \
             outs[0] = std::move(bt);                                             \
             if (nargout > 1) outs[1] = std::move(at);                            \
@@ -147,7 +147,7 @@ NK_LP2X1_REG(lp2hp, lp2hp)
             const double Bw = args[3].toScalar();                                \
             auto [z0, p0, k0] = tf2zpk(args[0], args[1], mr);                    \
             auto [zt, pt, kt] = fn(z0, p0, k0, Wo, Bw, mr);                      \
-            auto [bt, at] = nk::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
+            auto [bt, at] = numkit::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
             bt = lp2StripLeadingZeros(bt, mr);                                   \
             outs[0] = std::move(bt);                                             \
             if (nargout > 1) outs[1] = std::move(at);                            \
@@ -221,7 +221,7 @@ struct FreqsRoot {
 
 std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
 {
-    using nk::ops::polyRootsDurandKerner;
+    using numkit::ops::polyRootsDurandKerner;
     constexpr double kEps = 2.220446049250313e-16;
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
     ScratchArena scratch(mr);
@@ -373,4 +373,4 @@ void freqs_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
 
 } // namespace detail
 
-} // namespace nk::signal
+} // namespace numkit::signal
