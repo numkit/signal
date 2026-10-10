@@ -300,7 +300,7 @@ void cusum_reg         (Span<const Value>, size_t, Span<Value>, CallContext &);
 
 namespace numkit {
 
-void SignalLibrary::install(Engine &engine)
+void SignalLibrary::install(PluginContext &engine)
 {
     // Local helper — signal is MATLAB-mirror, every fn registered in
     // signal.<sub>.<name> AND aliased into compat.<name>.

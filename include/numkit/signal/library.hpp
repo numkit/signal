@@ -5,15 +5,12 @@
 namespace numkit {
 
 /// @addtogroup group_signal
-/// @{
- class Engine; }
-
-namespace numkit {
+class PluginContext;
 
 class SignalLibrary
 {
 public:
-    static void install(Engine &engine);
+    static void install(PluginContext &engine);
 };
 
 
