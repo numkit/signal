@@ -5,9 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(NUMKIT_WITH_SIMD "Enable Highway SIMD acceleration" ON)
-if(DEFINED NK_WITH_SIMD)
-    set(NUMKIT_WITH_SIMD ${NK_WITH_SIMD})
-endif()
 
 include(FetchContent)
 
@@ -69,10 +66,8 @@ endif()
 add_library(numkit_signal SHARED ${SIGNAL_SOURCES})
 
 add_library(numkit::signal ALIAS numkit_signal)
-add_library(nk_signal ALIAS numkit_signal)
-add_library(nk::signal ALIAS numkit_signal)
 
-target_compile_definitions(numkit_signal PRIVATE NUMKIT_PLUGIN_BUILD=1 NK_PLUGIN_BUILD=1)
+target_compile_definitions(numkit_signal PRIVATE NUMKIT_PLUGIN_BUILD=1)
 
 target_include_directories(numkit_signal
     PUBLIC
@@ -85,7 +80,7 @@ target_include_directories(numkit_signal
 target_link_libraries(numkit_signal PUBLIC numkit_value numkit_ops)
 
 if(NUMKIT_WITH_SIMD)
-    target_compile_definitions(numkit_signal PUBLIC NUMKIT_WITH_SIMD=1 NK_WITH_SIMD=1)
+    target_compile_definitions(numkit_signal PUBLIC NUMKIT_WITH_SIMD=1)
     target_link_libraries(numkit_signal PRIVATE hwy hwy_contrib)
 endif()
 

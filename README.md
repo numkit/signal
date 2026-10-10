@@ -29,7 +29,7 @@ cmake -B build -S .
 cmake --build build --config Release
 ```
 
-Produces `nk_signal.dll` (Windows) or `nk_signal.so` (Linux/macOS).
+Produces `numkit_signal.dll` (Windows) or `libnumkit_signal.so` (Linux/macOS).
 
 ---
 
