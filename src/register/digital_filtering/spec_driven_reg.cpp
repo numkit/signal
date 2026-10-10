@@ -30,10 +30,6 @@ namespace numkit::signal {
 
 namespace detail {
 
-static double scalarOr(const Value &v, double dflt) {
-    return v.numel() ? v.toScalar() : dflt;
-}
-
 // MATLAB lowpass/highpass/bandpass/bandstop: when fs is omitted, the
 // cutoffs are interpreted as already normalized to Nyquist, equivalent
 // to fs = 2 (so fpass in [0, 1] maps to [0, pi] in normalized rad/sample).
@@ -77,7 +73,6 @@ void bandstop_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandstop"), 4, "order", "bandstop") : 8;
     outs[0] = bandstop(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->resource());
-    (void)scalarOr;   // silence unused-helper warning
 }
 
 } // namespace detail

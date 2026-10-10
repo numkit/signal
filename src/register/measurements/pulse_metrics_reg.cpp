@@ -27,7 +27,7 @@ namespace numkit::signal {
 
 namespace detail {
 
-#define NK_PULSE_REG(name, fn)  /* no max: name-value tail in the reference */\
+#define NUMKIT_PULSE_REG(name, fn)  /* no max: name-value tail in the reference */\
     void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -71,16 +71,16 @@ void falltime_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     pulseRiseFall(args, nargout, outs, /*rising=*/false, "falltime", ctx.engine->resource());
 }
 
-NK_PULSE_REG(midcross,    midcross)
-NK_PULSE_REG(slewrate,    slewrate)
-NK_PULSE_REG(overshoot,   overshoot)
-NK_PULSE_REG(undershoot,  undershoot)
-NK_PULSE_REG(pulsewidth,  pulsewidth)
-NK_PULSE_REG(pulseperiod, pulseperiod)
-NK_PULSE_REG(pulsesep,    pulsesep)
-NK_PULSE_REG(dutycycle,   dutycycle)
+NUMKIT_PULSE_REG(midcross,    midcross)
+NUMKIT_PULSE_REG(slewrate,    slewrate)
+NUMKIT_PULSE_REG(overshoot,   overshoot)
+NUMKIT_PULSE_REG(undershoot,  undershoot)
+NUMKIT_PULSE_REG(pulsewidth,  pulsewidth)
+NUMKIT_PULSE_REG(pulseperiod, pulseperiod)
+NUMKIT_PULSE_REG(pulsesep,    pulsesep)
+NUMKIT_PULSE_REG(dutycycle,   dutycycle)
 
-#undef NK_PULSE_REG
+#undef NUMKIT_PULSE_REG
 
 } // namespace detail
 

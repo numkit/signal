@@ -65,7 +65,7 @@ void obw_reg(Span<const Value> args, size_t nargout,
     if (nargout > 3) outs[3] = std::move(pw);
 }
 
-#define NK_SPEC1_REG(name, fn, mn, mx)                                          \
+#define NUMKIT_SPEC1_REG(name, fn, mn, mx)                                          \
     void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -73,7 +73,7 @@ void obw_reg(Span<const Value> args, size_t nargout,
         const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;          \
         outs[0] = fn(args[0], fs, ctx.engine->resource());                      \
     }
-#define NK_SPEC1_NV_REG(name, fn)  /* no max: name-value tail in the reference */\
+#define NUMKIT_SPEC1_NV_REG(name, fn)  /* no max: name-value tail in the reference */\
     void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -82,19 +82,19 @@ void obw_reg(Span<const Value> args, size_t nargout,
         outs[0] = fn(args[0], fs, ctx.engine->resource());                      \
     }
 
-NK_SPEC1_REG(meanfreq,         meanfreq, 1, 4)
-NK_SPEC1_REG(medfreq,          medfreq, 1, 4)
-NK_SPEC1_REG(enbw,             enbw, 1, 2)
-NK_SPEC1_REG(powerbw,          powerbw, 1, 5)
-NK_SPEC1_NV_REG(spectralcrest,    spectralcrest)
-NK_SPEC1_NV_REG(spectralflatness, spectralflatness)
-NK_SPEC1_NV_REG(spectralentropy,  spectralentropy)
-NK_SPEC1_NV_REG(spectralkurtosis, spectralkurtosis)
-NK_SPEC1_NV_REG(spectralskewness, spectralskewness)
-NK_SPEC1_REG(snr,              snr, 1, 6)
-NK_SPEC1_REG(sinad,            sinad, 1, 4)
-NK_SPEC1_REG(thd,              thd, 1, 6)
-NK_SPEC1_REG(sfdr,             sfdr, 1, 4)
+NUMKIT_SPEC1_REG(meanfreq,         meanfreq, 1, 4)
+NUMKIT_SPEC1_REG(medfreq,          medfreq, 1, 4)
+NUMKIT_SPEC1_REG(enbw,             enbw, 1, 2)
+NUMKIT_SPEC1_REG(powerbw,          powerbw, 1, 5)
+NUMKIT_SPEC1_NV_REG(spectralcrest,    spectralcrest)
+NUMKIT_SPEC1_NV_REG(spectralflatness, spectralflatness)
+NUMKIT_SPEC1_NV_REG(spectralentropy,  spectralentropy)
+NUMKIT_SPEC1_NV_REG(spectralkurtosis, spectralkurtosis)
+NUMKIT_SPEC1_NV_REG(spectralskewness, spectralskewness)
+NUMKIT_SPEC1_REG(snr,              snr, 1, 6)
+NUMKIT_SPEC1_REG(sinad,            sinad, 1, 4)
+NUMKIT_SPEC1_REG(thd,              thd, 1, 6)
+NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
 // instfreq: x, fs, plus MATLAB's 'Method' name-value ('hilbert' exact;
 // 'tfmoment' — MATLAB's DEFAULT — pending the pspectrum port, honest
 // not-supported error; bugs/opened/signal/instfreq-instbw.md).
@@ -122,9 +122,9 @@ void instfreq_reg(Span<const Value> args, size_t, Span<Value> outs,
                           ? args[1] : Value::Empty;
     outs[0] = instfreq(args[0], fs, ctx.engine->resource());
 }
-NK_SPEC1_REG(instbw,           instbw, 1, 7)
+NUMKIT_SPEC1_REG(instbw,           instbw, 1, 7)
 
-#undef NK_SPEC1_REG
+#undef NUMKIT_SPEC1_REG
 
 } // namespace detail
 

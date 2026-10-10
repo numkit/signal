@@ -49,7 +49,7 @@ void rlevinson_reg(Span<const Value> args, size_t nargout,
     if (nargout > 1) outs[1] = std::move(k);
 }
 
-#define NK_AR_REG(name, fn)                                                     \
+#define NUMKIT_AR_REG(name, fn)                                                     \
     void name##_reg(Span<const Value> args, size_t nargout,                    \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -62,10 +62,10 @@ void rlevinson_reg(Span<const Value> args, size_t nargout,
         if (nargout > 2) outs[2] = std::move(k);                                 \
     }
 
-NK_AR_REG(aryule, aryule)
-NK_AR_REG(arburg, arburg)
+NUMKIT_AR_REG(aryule, aryule)
+NUMKIT_AR_REG(arburg, arburg)
 
-#undef NK_AR_REG
+#undef NUMKIT_AR_REG
 
 void lpc_reg(Span<const Value> args, size_t nargout,
              Span<Value> outs, CallContext &ctx)
@@ -136,7 +136,7 @@ void rc2poly_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallC
     if (nargout > 1) outs[1] = std::move(efinal);
 }
 
-#define NK_UNARY_CONV_REG(name)                                                 \
+#define NUMKIT_UNARY_CONV_REG(name)                                                 \
     void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -144,16 +144,16 @@ void rc2poly_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallC
         outs[0] = name(args[0], ctx.engine->resource());                         \
     }
 
-NK_UNARY_CONV_REG(is2rc)
-NK_UNARY_CONV_REG(rc2is)
-NK_UNARY_CONV_REG(lar2rc)
-NK_UNARY_CONV_REG(rc2lar)
-NK_UNARY_CONV_REG(poly2lsf)
-NK_UNARY_CONV_REG(lsf2poly)
+NUMKIT_UNARY_CONV_REG(is2rc)
+NUMKIT_UNARY_CONV_REG(rc2is)
+NUMKIT_UNARY_CONV_REG(lar2rc)
+NUMKIT_UNARY_CONV_REG(rc2lar)
+NUMKIT_UNARY_CONV_REG(poly2lsf)
+NUMKIT_UNARY_CONV_REG(lsf2poly)
 
-#undef NK_UNARY_CONV_REG
+#undef NUMKIT_UNARY_CONV_REG
 
-#define NK_AR2_REG(name, fn)                                                    \
+#define NUMKIT_AR2_REG(name, fn)                                                    \
     void name##_reg(Span<const Value> args, size_t nargout,                    \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -165,10 +165,10 @@ NK_UNARY_CONV_REG(lsf2poly)
         if (nargout > 1) outs[1] = std::move(e);                                 \
     }
 
-NK_AR2_REG(arcov,  arcov)
-NK_AR2_REG(armcov, armcov)
+NUMKIT_AR2_REG(arcov,  arcov)
+NUMKIT_AR2_REG(armcov, armcov)
 
-#undef NK_AR2_REG
+#undef NUMKIT_AR2_REG
 
 void prony_reg(Span<const Value> args, size_t nargout,
                Span<Value> outs, CallContext &ctx)

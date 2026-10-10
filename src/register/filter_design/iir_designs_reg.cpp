@@ -190,7 +190,7 @@ inline bool parseAnalogFromOrdArgs(Span<const Value> args, size_t start) {
 }
 }
 
-#define NK_ORD_REG(name)                                                          \
+#define NUMKIT_ORD_REG(name)                                                          \
     void name##_reg(Span<const Value> args, size_t nargout,                       \
                     Span<Value> outs, CallContext &ctx)                           \
     {                                                                              \
@@ -205,11 +205,11 @@ inline bool parseAnalogFromOrdArgs(Span<const Value> args, size_t start) {
         if (nargout > 1) outs[1] = std::move(Wn);                                 \
     }
 
-NK_ORD_REG(buttord)
-NK_ORD_REG(cheb1ord)
-NK_ORD_REG(cheb2ord)
+NUMKIT_ORD_REG(buttord)
+NUMKIT_ORD_REG(cheb1ord)
+NUMKIT_ORD_REG(cheb2ord)
 
-#undef NK_ORD_REG
+#undef NUMKIT_ORD_REG
 
 } // namespace detail
 

@@ -31,7 +31,7 @@ namespace numkit::signal {
 
 namespace detail {
 
-#define NK_PROTO0_REG(name)                                                     \
+#define NUMKIT_PROTO0_REG(name)                                                     \
     void name##_reg(Span<const Value> args, size_t nargout,                    \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -44,7 +44,7 @@ namespace detail {
         if (nargout > 2) outs[2] = std::move(k);                                 \
     }
 
-#define NK_PROTO1_REG(name)                                                     \
+#define NUMKIT_PROTO1_REG(name)                                                     \
     void name##_reg(Span<const Value> args, size_t nargout,                    \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -58,10 +58,10 @@ namespace detail {
         if (nargout > 2) outs[2] = std::move(k);                                 \
     }
 
-NK_PROTO0_REG(buttap)
-NK_PROTO0_REG(besselap)
-NK_PROTO1_REG(cheb1ap)
-NK_PROTO1_REG(cheb2ap)
+NUMKIT_PROTO0_REG(buttap)
+NUMKIT_PROTO0_REG(besselap)
+NUMKIT_PROTO1_REG(cheb1ap)
+NUMKIT_PROTO1_REG(cheb2ap)
 
 // ellipap takes 3 args (N, Rp, Rs).
 void ellipap_reg(Span<const Value> args, size_t nargout,
@@ -77,8 +77,8 @@ void ellipap_reg(Span<const Value> args, size_t nargout,
     if (nargout > 2) outs[2] = std::move(k);
 }
 
-#undef NK_PROTO0_REG
-#undef NK_PROTO1_REG
+#undef NUMKIT_PROTO0_REG
+#undef NUMKIT_PROTO1_REG
 
 // MATLAB's lp2* TF form returns the numerator at its true polynomial degree
 // (length = #zeros + 1), NOT zero-padded to the denominator length the way
@@ -103,7 +103,7 @@ static Value lp2StripLeadingZeros(const Value &b, std::pmr::memory_resource *mr)
 //   [bt, at]     = lp2lp(b, a, Wo)      -- TF form  (3 args)
 // Same for lp2hp. The TF form is identified by the 3-arg call and
 // dispatches via tf2zpk -> ZPK lp2lp -> zp2tf.
-#define NK_LP2X1_REG(name, fn)                                                  \
+#define NUMKIT_LP2X1_REG(name, fn)                                                  \
     void name##_reg(Span<const Value> args, size_t nargout,                    \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -127,15 +127,15 @@ static Value lp2StripLeadingZeros(const Value &b, std::pmr::memory_resource *mr)
         if (nargout > 2) outs[2] = std::move(k);                                 \
     }
 
-NK_LP2X1_REG(lp2lp, lp2lp)
-NK_LP2X1_REG(lp2hp, lp2hp)
+NUMKIT_LP2X1_REG(lp2lp, lp2lp)
+NUMKIT_LP2X1_REG(lp2hp, lp2hp)
 
-#undef NK_LP2X1_REG
+#undef NUMKIT_LP2X1_REG
 
 // MATLAB lp2bp/lp2bs accept BOTH:
 //   [zt, pt, kt] = lp2bp(z, p, k, Wo, Bw)   -- ZPK form (5 args)
 //   [bt, at]     = lp2bp(b, a, Wo, Bw)      -- TF form  (4 args)
-#define NK_LP2X2_REG(name, fn)                                                  \
+#define NUMKIT_LP2X2_REG(name, fn)                                                  \
     void name##_reg(Span<const Value> args, size_t nargout,                    \
                     Span<Value> outs, CallContext &ctx)                        \
     {                                                                            \
@@ -164,10 +164,10 @@ NK_LP2X1_REG(lp2hp, lp2hp)
         if (nargout > 2) outs[2] = std::move(k);                                 \
     }
 
-NK_LP2X2_REG(lp2bp, lp2bp)
-NK_LP2X2_REG(lp2bs, lp2bs)
+NUMKIT_LP2X2_REG(lp2bp, lp2bp)
+NUMKIT_LP2X2_REG(lp2bs, lp2bs)
 
-#undef NK_LP2X2_REG
+#undef NUMKIT_LP2X2_REG
 
 void bilinear_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
