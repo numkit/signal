@@ -3,7 +3,7 @@
 // Plugin entry point for numkit_signal dynamic module.
 // Exports numkit_plugin_init conforming to NUMKIT_PLUGIN_ABI_VERSION.
 
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/library.hpp>
 
 extern "C" NUMKIT_PLUGIN_EXPORT bool numkit_plugin_init(numkit::PluginContext &ctx)
