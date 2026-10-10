@@ -1,0 +1,57 @@
+// toolboxes/signal/src/spectral_analysis/ar_reg.cpp
+//
+// CallContext register half of spectral_analysis/ar.cpp (Phase 2b compute/register split).
+// Engine-coupled glue: marshals CallContext args/outs into the engine-free
+// compute API declared in the headers below. See project_layering_refactor.
+#include <nk/core/engine.hpp>
+#include <nk/signal/spectral_analysis/periodogram_pwelch.hpp>
+#include <nk/value/argcheck.hpp>
+#include <nk/value/error.hpp>
+#include <nk/value/value.hpp>
+#include <nk/value/error.hpp>
+#include <nk/value/scratch.hpp>
+#include <nk/value/span.hpp>
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <complex>
+#include <cstddef>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
+namespace nk::signal {
+
+namespace detail {
+
+void pyulear_reg(Span<const Value> args, size_t nargout,
+                 Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 8, "pyulear");
+    const int p     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pyulear"), 2, "p", "pyulear");
+    const size_t nf = (args.size() >= 3 && !args[2].isEmpty())
+                      ? static_cast<size_t>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pyulear"), 3, "nfft", "pyulear")) : 0;
+    auto [Pxx, F] = pyulear(args[0], p, nf, ctx.engine->resource());
+    outs[0] = std::move(Pxx);
+    if (nargout > 1) outs[1] = std::move(F);
+}
+
+void pburg_reg(Span<const Value> args, size_t nargout,
+               Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 8, "pburg");
+    const int p     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pburg"), 2, "p", "pburg");
+    const size_t nf = (args.size() >= 3 && !args[2].isEmpty())
+                      ? static_cast<size_t>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pburg"), 3, "nfft", "pburg")) : 0;
+    auto [Pxx, F] = pburg(args[0], p, nf, ctx.engine->resource());
+    outs[0] = std::move(Pxx);
+    if (nargout > 1) outs[1] = std::move(F);
+}
+
+// aryule_reg / lpc_reg live in signal_modeling.cpp.
+
+} // namespace detail
+
+} // namespace nk::signal

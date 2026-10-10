@@ -1,0 +1,70 @@
+// toolboxes/signal/src/transforms/hilbert_reg.cpp
+//
+// CallContext register half of transforms/hilbert.cpp (Phase 2b compute/register split).
+// Engine-coupled glue: marshals CallContext args/outs into the engine-free
+// compute API declared in the headers below. See project_layering_refactor.
+#include <nk/core/engine.hpp>
+#include <nk/builtin/polyfun.hpp>     // interp1 (spline)
+#include <nk/signal/transforms/hilbert.hpp>
+#include <nk/signal/windows/windows.hpp>          // kaiser
+#include <nk/value/error.hpp>
+#include <nk/value/scratch.hpp>
+#include <nk/value/value.hpp>
+#include <nk/value/error.hpp>
+#include <nk/value/scratch.hpp>
+#include <nk/value/span.hpp>
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <complex>
+#include <cstddef>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+#include <nk/value/argcheck.hpp>
+
+namespace nk::signal {
+
+namespace detail {
+
+void hilbert_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 2, "hilbert");
+    outs[0] = hilbert(args[0], ctx.engine->resource());
+}
+
+void envelope_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 3, "envelope");
+    auto *mr = ctx.engine->resource();
+    int mode = 0;     // 0=default, 1=analytic, 2=rms, 3=peak
+    size_t n = 0;
+    if (args.size() >= 2 && !args[1].isEmpty())
+        n = (size_t)args[1].toScalar();
+    if (args.size() >= 3 && (args[2].isChar() || args[2].isString())) {
+        std::string m = args[2].toString();
+        for (auto &c : m) c = (char)std::tolower((unsigned char)c);
+        if      (m == "analytic")           mode = 1;
+        else if (m == "rms")                mode = 2;
+        else if (m == "peak" || m == "peaks") mode = 3;
+        else throw Error("envelope: unknown method '" + m +
+                         "' (expected 'analytic', 'rms', or 'peak')",
+                         0, 0, "envelope", "", "nk:envelope:badmethod");
+    } else if (args.size() >= 2) {
+        // n given but no method → MATLAB defaults to 'analytic'.
+        mode = 1;
+    }
+    if ((mode == 1 || mode == 2 || mode == 3) && n == 0)
+        throw Error("envelope: n must be a positive integer for "
+                    "'analytic'/'rms'/'peak' modes",
+                    0, 0, "envelope", "", "nk:envelope:badn");
+    auto [up, lo] = envelope_full(args[0], mode, n, mr);
+    outs[0] = std::move(up);
+    if (nargout > 1) outs[1] = std::move(lo);
+}
+
+} // namespace detail
+
+} // namespace nk::signal

@@ -1,0 +1,20 @@
+{
+  "name": "signal",
+  "version": "0.1.0",
+  "description": "Signal Processing Toolbox for NumKit",
+  "author": "NumKit",
+  "license": "0BSD",
+  "exports": [
+    "fft", "ifft", "fft2", "ifft2", "fftn", "ifftn", "czt", "interpft",
+    "conv", "deconv", "xcorr", "xcov", "conv2", "filter2", "convn",
+    "filter", "filtfilt", "buffer", "uencode", "udecode",
+    "fir1", "fir2", "firls", "butter", "cheby1", "cheby2", "ellip", "besself",
+    "freqz", "phasez", "grpdelay", "periodogram", "pwelch", "spectrogram",
+    "hilbert", "dct", "idct", "dst", "idst", "fwht", "ifwht", "goertzel",
+    "resample", "downsample", "upsample", "decimate", "interp",
+    "medfilt1", "sgolay", "sgolayfilt",
+    "findpeaks", "peak2peak", "peak2rms", "snr", "sinad", "thd",
+    "sawtooth", "square", "chirp", "sinc", "diric", "gauspuls", "rectpuls", "tripuls",
+    "kaiser", "hamming", "hann", "blackman", "rectwin", "bartlett", "triang", "tukeywin", "chebwin"
+  ]
+}

@@ -1,0 +1,373 @@
+// toolboxes/signal/src/convolution/extras.cpp
+//
+// cconv / convmtx / xcorr2 / finddelay / alignsignals.
+
+#include <nk/signal/convolution/extras.hpp>
+
+#include <nk/value/value.hpp>
+#include <nk/value/scratch.hpp>
+#include <nk/value/error.hpp>
+#include <tuple>
+#include <nk/signal/convolution/convolution.hpp>     // xcorr
+#include <nk/signal/transforms/fft.hpp>              // fft / ifft
+
+#include <algorithm>
+#include <cmath>
+#include <complex>
+#include <cstring>
+
+#include "signal_detail.hpp"     // shared argcheck cores
+
+namespace nk::signal {
+
+namespace {
+
+double readReal(const Value &v, size_t i)
+{
+    return v.elemAsDouble(i);
+}
+
+} // namespace
+
+// ── cconv ─────────────────────────────────────────────────────────────
+// MATLAB default for cconv(x, y) (no N): N = length(x) + length(y) - 1
+// — the linear-convolution length. The 3-arg form cconv(x, y, n) does
+// true circular convolution with period n. See BUGS.md #33.
+Value cconv(const Value &x, const Value &y, size_t n, std::pmr::memory_resource *mr)
+{
+    const size_t nx = x.numel(), ny = y.numel();
+    if (n == 0) {
+        if (nx == 0 || ny == 0) n = 0;
+        else                    n = nx + ny - 1;
+    }
+    auto out = Value::matrix(1, n, ValueType::DOUBLE, mr);
+    if (n == 0) return out;
+    double *dst = out.doubleDataMut();
+    std::fill(dst, dst + n, 0.0);
+
+    // Fast path: when n ≥ nx + ny - 1 (the default form), circular
+    // conv of period n equals linear conv truncated/padded to n. We
+    // pad x and y to length nextPow2(n), FFT both, multiply, IFFT,
+    // and copy the first n samples. Closes the ~30× perf gap to
+    // FFTW-backed Octave / MATLAB.
+    if (nx > 0 && ny > 0 && n >= nx + ny - 1) {
+        // Promote both to length-n column vectors so fft picks up the
+        // axis. Pad with zeros past nx / ny.
+        auto xp = Value::matrix(n, 1, ValueType::DOUBLE, mr);
+        auto yp = Value::matrix(n, 1, ValueType::DOUBLE, mr);
+        double *xd = xp.doubleDataMut();
+        double *yd = yp.doubleDataMut();
+        std::fill(xd, xd + n, 0.0);
+        std::fill(yd, yd + n, 0.0);
+        for (size_t i = 0; i < nx; ++i) xd[i] = readReal(x, i);
+        for (size_t i = 0; i < ny; ++i) yd[i] = readReal(y, i);
+        // nk's fft pads non-pow2 to nextPow2 internally, so for
+        // arbitrary n this would corrupt the spectrum. We only enter
+        // this branch when we don't need true length-n circular conv;
+        // padding to any size ≥ nx+ny-1 yields the same first-n
+        // samples of the linear conv. Force length-nextPow2 explicitly
+        // for predictable behaviour.
+        const size_t fftLen = [&]() {
+            size_t r = 1; while (r < n) r <<= 1; return r;
+        }();
+        Value X = fft(xp, static_cast<int>(fftLen), /*dim=*/0, mr);
+        Value Y = fft(yp, static_cast<int>(fftLen), /*dim=*/0, mr);
+        // Pointwise multiply.
+        auto Z = Value::complexMatrix(fftLen, 1, mr);
+        const std::complex<double> *Xc = X.complexData();
+        const std::complex<double> *Yc = Y.complexData();
+        std::complex<double> *Zc = Z.complexDataMut();
+        for (size_t k = 0; k < fftLen; ++k) Zc[k] = Xc[k] * Yc[k];
+        Value z = ifft(Z, /*n=*/-1, /*dim=*/0, mr);
+        // ifft can return REAL when the spectrum is conjugate-symmetric.
+        if (z.type() == ValueType::COMPLEX) {
+            const std::complex<double> *zd = z.complexData();
+            for (size_t k = 0; k < n; ++k) dst[k] = zd[k].real();
+        } else {
+            const double *zd = z.doubleData();
+            for (size_t k = 0; k < n; ++k) dst[k] = zd[k];
+        }
+        return out;
+    }
+
+    // Slow path: n < nx + ny - 1 means actual aliased circular conv;
+    // use the direct O(n²) loop.
+    for (size_t k = 0; k < n; ++k) {
+        double s = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            const double xi = (i < nx) ? readReal(x, i) : 0.0;
+            const size_t j = (k + n - i) % n;     // (k - i) mod n
+            const double yj = (j < ny) ? readReal(y, j) : 0.0;
+            s += xi * yj;
+        }
+        dst[k] = s;
+    }
+    return out;
+}
+
+// ── convmtx ───────────────────────────────────────────────────────────
+// MATLAB shape rules (from `help convmtx`):
+//   * h is a row    → returns n × (n+nh-1) matrix; row k is h shifted
+//     right by k (so X*h_col == conv(x, h)).
+//   * h is a column → returns (n+nh-1) × n matrix; column k is h
+//     shifted down by k.
+// See BUGS.md #34.
+//
+// Type contract (probed R2025b): h accepts double / single / complex /
+// integer classes but NOT logical; single and complex results are
+// class-preserving (the matrix cells are copies of h, so the exact
+// element bits survive). Integer classes would need integer-class
+// outputs which the Value kernel layer cannot allocate yet
+// (bugs/opened/signal/integer-class-outputs.md).
+Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
+{
+    if (n == 0)
+        throw Error("convmtx: n must be positive",
+                     0, 0, "convmtx", "", "nk:convmtx:badN");
+    const size_t nh = h.numel();
+    if (nh == 0)
+        throw Error("convmtx: h must be non-empty",
+                     0, 0, "convmtx", "", "nk:convmtx:emptyH");
+    detail::requireVectorInput(h, "convmtx", "h", 1);
+    const ValueType ht = h.type();
+    const bool isSingle = (ht == ValueType::SINGLE);
+    const bool isComplex = (ht == ValueType::COMPLEX);
+    if (ht != ValueType::DOUBLE && !isSingle && !isComplex) {
+        if (isIntegerType(ht))
+            throw Error("convmtx: input 1 (h): integer-class inputs are not "
+                        "supported yet (got a " + detail::shapeOf(h) + " "
+                        + mtypeName(ht) + " array).",
+                        0, 0, "convmtx", "",
+                        "nk:convmtx:integerUnsupported");
+        // The reference accepts every numeric class EXCEPT logical.
+        detail::throwInputType(h, "convmtx", "h", 1, "numeric");
+    }
+
+    // Element reader dispatching to the matching storage.
+    auto elem = [&](size_t i) -> double {
+        if (isSingle)   return static_cast<double>(h.singleData()[i]);
+        return h.elemAsDouble(i);
+    };
+
+    // Default to row-form when h is a vector with rows() == 1 OR is
+    // 1-D / scalar. Column form only when h is explicitly Nx1 (rows>1).
+    const bool hIsColumn = (h.dims().rows() > 1 && h.dims().cols() == 1);
+
+    const auto outType = isComplex ? ValueType::COMPLEX
+                        : isSingle ? ValueType::SINGLE
+                                   : ValueType::DOUBLE;
+
+    if (hIsColumn) {
+        const size_t rows = n + nh - 1;
+        auto out = Value::matrix(rows, n, outType, mr);
+        if (isComplex) {
+            Complex *dst = out.complexDataMut();
+            std::fill(dst, dst + rows * n, Complex(0.0, 0.0));
+            const Complex *src = h.complexData();
+            for (size_t col = 0; col < n; ++col)
+                for (size_t i = 0; i < nh; ++i)
+                    dst[(col + i) + col * rows] = src[i];
+        } else if (isSingle) {
+            float *dst = out.singleDataMut();
+            std::fill(dst, dst + rows * n, 0.0f);
+            for (size_t col = 0; col < n; ++col)
+                for (size_t i = 0; i < nh; ++i)
+                    dst[(col + i) + col * rows] =
+                        static_cast<float>(elem(i));
+        } else {
+            double *dst = out.doubleDataMut();
+            std::fill(dst, dst + rows * n, 0.0);
+            for (size_t col = 0; col < n; ++col)
+                for (size_t i = 0; i < nh; ++i)
+                    dst[(col + i) + col * rows] = elem(i);
+        }
+        return out;
+    }
+
+    // Row form: out(row, row+i) = h(i), for row in [0, n) and i in [0, nh).
+    // Output is n × (n + nh - 1).
+    const size_t cols = n + nh - 1;
+    auto out = Value::matrix(n, cols, outType, mr);
+    if (isComplex) {
+        Complex *dst = out.complexDataMut();
+        std::fill(dst, dst + n * cols, Complex(0.0, 0.0));
+        const Complex *src = h.complexData();
+        for (size_t row = 0; row < n; ++row)
+            for (size_t i = 0; i < nh; ++i)
+                dst[row + (row + i) * n] = src[i];
+    } else if (isSingle) {
+        float *dst = out.singleDataMut();
+        std::fill(dst, dst + n * cols, 0.0f);
+        for (size_t row = 0; row < n; ++row)
+            for (size_t i = 0; i < nh; ++i)
+                dst[row + (row + i) * n] = static_cast<float>(elem(i));
+    } else {
+        double *dst = out.doubleDataMut();
+        std::fill(dst, dst + n * cols, 0.0);
+        for (size_t row = 0; row < n; ++row)
+            for (size_t i = 0; i < nh; ++i)
+                dst[row + (row + i) * n] = elem(i);
+    }
+    return out;
+}
+
+// ── xcorr2 ────────────────────────────────────────────────────────────
+// Direct O(rA*cA*rB*cB). Output shape (rA+rB-1) × (cA+cB-1).
+// Type contract (probed R2025b): numeric + logical inputs pass (result
+// double), N-D input is rejected, single and complex are honest kernel
+// gaps (bugs/opened/signal/single-float-inputs.md,
+// bugs/opened/signal/complex-kernel-gaps.md).
+Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
+{
+    detail::requireNumericSignalInput(A, "xcorr2", "A", 1);
+    detail::requireNumericSignalInput(B, "xcorr2", "B", 2);
+    if (A.isComplex() || B.isComplex())
+        throw Error("xcorr2: complex inputs are not supported yet",
+                     0, 0, "xcorr2", "", "nk:xcorr2:complexUnsupported");
+    if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
+        throw Error("xcorr2: N-D arrays are not supported",
+                     0, 0, "xcorr2", "", "nk:xcorr2:nd");
+    Value aHold, bHold;
+    if (A.isLogical() || isIntegerType(A.type()))
+        aHold = [&]() {
+            const auto &d = A.dims();
+            Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
+            for (size_t i = 0; i < r.numel(); ++i)
+                r.doubleDataMut()[i] = A.elemAsDouble(i);
+            return r;
+        }();
+    if (B.isLogical() || isIntegerType(B.type()))
+        bHold = [&]() {
+            const auto &d = B.dims();
+            Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
+            for (size_t i = 0; i < r.numel(); ++i)
+                r.doubleDataMut()[i] = B.elemAsDouble(i);
+            return r;
+        }();
+    const Value &Av = aHold.isEmpty() ? A : aHold;
+    const Value &Bv = bHold.isEmpty() ? B : bHold;
+
+    const size_t rA = Av.dims().rows(), cA = Av.dims().cols();
+    const size_t rB = Bv.dims().rows(), cB = Bv.dims().cols();
+    if (rA == 0 || cA == 0 || rB == 0 || cB == 0)
+        return Value::matrix(0, 0, ValueType::DOUBLE, mr);
+    const size_t rOut = rA + rB - 1;
+    const size_t cOut = cA + cB - 1;
+    auto out = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
+    double *dst = out.doubleDataMut();
+    std::fill(dst, dst + rOut * cOut, 0.0);
+
+    // FFT-based fast path: cross-correlation == conv2(A, flip(B)). Pad
+    // A (zero) and the flipped B into rOut × cOut grids, fft2 both,
+    // multiply pointwise, ifft2, take real part. Threshold below the
+    // FFT path's startup cost — for tiny problems direct is faster.
+    const size_t cellsOut = rOut * cOut;
+    const size_t cellsDirect = rA * cA * rB * cB;
+    const bool useFft = cellsDirect > 8192 && cellsOut >= 64;
+
+    if (useFft) {
+        auto Ap = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
+        auto Bf = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
+        double *ad = Ap.doubleDataMut();
+        double *bd = Bf.doubleDataMut();
+        std::fill(ad, ad + cellsOut, 0.0);
+        std::fill(bd, bd + cellsOut, 0.0);
+        // Place A in the top-left.
+        for (size_t j = 0; j < cA; ++j)
+            for (size_t i = 0; i < rA; ++i)
+                ad[i + j * rOut] = Av(i, j);
+        // Place flipped B (both axes) in the top-left.
+        for (size_t j = 0; j < cB; ++j)
+            for (size_t i = 0; i < rB; ++i)
+                bd[i + j * rOut] = Bv(rB - 1 - i, cB - 1 - j);
+
+        Value FA = fft2(Ap, -1, -1, mr);
+        Value FB = fft2(Bf, -1, -1, mr);
+        const Complex *fa = FA.complexData();
+        const Complex *fb = FB.complexData();
+        auto Z = Value::complexMatrix(rOut, cOut, mr);
+        Complex *zd = Z.complexDataMut();
+        for (size_t k = 0; k < cellsOut; ++k) zd[k] = fa[k] * fb[k];
+        Value z = ifft2(Z, -1, -1, mr);
+        if (z.type() == ValueType::COMPLEX) {
+            const Complex *zr = z.complexData();
+            for (size_t k = 0; k < cellsOut; ++k) dst[k] = zr[k].real();
+        } else {
+            std::memcpy(dst, z.doubleData(), cellsOut * sizeof(double));
+        }
+        return out;
+    }
+
+    // Direct path for small inputs.
+    for (size_t i = 0; i < rA; ++i) {
+        for (size_t j = 0; j < cA; ++j) {
+            const double a = Av(i, j);
+            if (a == 0.0) continue;
+            for (size_t p = 0; p < rB; ++p) {
+                const long kRow = static_cast<long>(i) - static_cast<long>(p) + static_cast<long>(rB) - 1;
+                if (kRow < 0 || kRow >= static_cast<long>(rOut)) continue;
+                for (size_t q = 0; q < cB; ++q) {
+                    const long kCol = static_cast<long>(j) - static_cast<long>(q) + static_cast<long>(cB) - 1;
+                    if (kCol < 0 || kCol >= static_cast<long>(cOut)) continue;
+                    dst[kRow + kCol * rOut] += a * Bv(p, q);
+                }
+            }
+        }
+    }
+    return out;
+}
+
+// ── finddelay ─────────────────────────────────────────────────────────
+long finddelay(const Value &x, const Value &y, long max_lag, std::pmr::memory_resource *mr)
+{
+    auto [c, lags] = xcorr(x, y, mr);
+    const size_t n = c.numel();
+    const double *cp = c.doubleData();
+    const double *lp = lags.doubleData();
+    long best_lag = 0;
+    double best_mag = -1.0;
+    for (size_t i = 0; i < n; ++i) {
+        const long lag = static_cast<long>(lp[i]);
+        if (max_lag > 0 && std::abs(lag) > max_lag) continue;
+        const double mag = std::abs(cp[i]);
+        if (mag > best_mag) {
+            best_mag = mag;
+            best_lag = lag;
+        }
+    }
+    // MATLAB convention: positive lag means y is delayed relative to x
+    //   → finddelay returns -lag_of_xcorr_peak.
+    return -best_lag;
+}
+
+// ── alignsignals ──────────────────────────────────────────────────────
+std::tuple<Value, Value>
+alignsignals(const Value &x, const Value &y, long max_lag, std::pmr::memory_resource *mr)
+{
+    const long d = finddelay(x, y, max_lag, mr);
+    const size_t nx = x.numel(), ny = y.numel();
+
+    // Lead-pad whichever signal is "leading" so peaks line up:
+    //   d > 0: y is delayed by d → prepend d zeros to x.
+    //   d < 0: x is delayed by |d| → prepend |d| zeros to y.
+    const size_t pad_x = (d > 0) ? static_cast<size_t>(d) : 0;
+    const size_t pad_y = (d < 0) ? static_cast<size_t>(-d) : 0;
+    // Then trail-pad whichever ends short so both outputs are same length.
+    const size_t finalLen = std::max(nx + pad_x, ny + pad_y);
+
+    auto orient = [&](const Value &src, size_t lead_pad) {
+        const bool isRow = (src.dims().rows() == 1);
+        auto out = isRow
+                    ? Value::matrix(1, finalLen, ValueType::DOUBLE, mr)
+                    : Value::matrix(finalLen, 1, ValueType::DOUBLE, mr);
+        double *dst = out.doubleDataMut();
+        std::fill(dst, dst + finalLen, 0.0);
+        const size_t n = src.numel();
+        for (size_t i = 0; i < n; ++i)
+            dst[lead_pad + i] = src.elemAsDouble(i);
+        return out;
+    };
+    return std::make_tuple(orient(x, pad_x), orient(y, pad_y));
+}
+
+} // namespace nk::signal

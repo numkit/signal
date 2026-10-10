@@ -1,0 +1,118 @@
+// toolboxes/signal/src/filter_analysis/frequency_response_reg.cpp
+//
+// Register half of the signal frequency_response builtins: the CallContext wrappers
+// delegating to the engine-free compute in frequency_response.cpp. library.cpp
+// forward-declares + registers these by name.
+//
+// Phase 2b compute/register split — see project_layering_refactor memory.
+
+#include <nk/signal/filter_analysis/frequency_response.hpp>
+
+#include <nk/core/engine.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <nk/value/value.hpp>
+#include <nk/value/argcheck.hpp>
+#include <nk/value/error.hpp>
+#include <nk/value/scratch.hpp>
+#include <nk/value/span.hpp>
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
+namespace nk::signal {
+
+namespace detail {
+
+void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 5, "freqz");
+    // Parse the trailing args: 'whole' (string, any position) and up to two
+    // numerics after b,a — the first is n (npts), the second is fs (the
+    // freqz(b,a,n,fs) / freqz(b,a,n,'whole',fs) sample-rate form).
+    size_t npts = 512;
+    double fs   = 0.0;
+    bool   whole = false;
+    int    numericSeen = 0;
+    const Value *wvec = nullptr;
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i].isChar() || args[i].isString()) {
+            std::string s = args[i].toString();
+            for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (s == "whole") whole = true;
+        } else if (!args[i].isEmpty()) {
+            if (numericSeen == 0 && args[i].numel() > 1)
+                wvec = &args[i];           // freqz(b,a,W): vector-w form
+            else if (numericSeen == 0)
+                npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+                    argcheck::expectedReal(args[i], int(i) + 1, "n", "freqz"),
+                    int(i) + 1, "n", "freqz"));
+            else if (numericSeen == 1) fs   = args[i].toScalar();
+            ++numericSeen;
+        }
+    }
+
+    if (wvec) {
+        auto [Hv, Wv] = freqz(args[0], args[1], *wvec, ctx.engine->resource());
+        outs[0] = std::move(Hv);
+        if (nargout > 1)
+            outs[1] = std::move(Wv);
+        return;
+    }
+    auto [H, W] = freqz(args[0], args[1], npts, whole, fs, ctx.engine->resource());
+    outs[0] = std::move(H);
+    if (nargout > 1)
+        outs[1] = std::move(W);
+}
+
+void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 6, "phasez");
+    // n (1st numeric after b,a) and optional fs (2nd) — phasez(b,a,n,fs).
+    size_t npts = 512;
+    double fs = 0.0;
+    int numericSeen = 0;
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
+            if (numericSeen == 0)
+                npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+                    argcheck::expectedReal(args[i], int(i) + 1, "n", "phasez"),
+                    int(i) + 1, "n", "phasez"));
+        else if (numericSeen == 1) fs   = args[i].toScalar();
+        ++numericSeen;
+    }
+    auto [phi, W] = phasez(args[0], args[1], npts, fs, ctx.engine->resource());
+    outs[0] = std::move(phi);
+    if (nargout > 1) outs[1] = std::move(W);
+}
+
+void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 6, "grpdelay");
+    // n (1st numeric after b,a) and optional fs (2nd) — grpdelay(b,a,n,fs).
+    size_t npts = 512;
+    double fs = 0.0;
+    int numericSeen = 0;
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
+            if (numericSeen == 0)
+                npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+                    argcheck::expectedReal(args[i], int(i) + 1, "n", "grpdelay"),
+                    int(i) + 1, "n", "grpdelay"));
+        else if (numericSeen == 1) fs   = args[i].toScalar();
+        ++numericSeen;
+    }
+    auto [gd, W] = grpdelay(args[0], args[1], npts, fs, ctx.engine->resource());
+    outs[0] = std::move(gd);
+    if (nargout > 1) outs[1] = std::move(W);
+}
+
+} // namespace detail
+
+} // namespace nk::signal

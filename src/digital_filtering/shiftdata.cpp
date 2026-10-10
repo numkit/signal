@@ -1,0 +1,118 @@
+// toolboxes/signal/src/digital_filtering/shiftdata.cpp
+//
+// shiftdata + unshiftdata (Phase 4.4 of audio sweep). Bit-equal MATLAB
+// R2025b shiftdata.m / unshiftdata.m.
+//
+// shiftdata(x):           shifted = shiftdim(x); perm=[]; nshifts=k
+// shiftdata(x, dim):      perm = [dim, 1..dim-1, dim+1..ndims]
+//                          shifted = permute(x, perm); nshifts=[]
+// unshiftdata(x, perm=[], nshifts=k): y = shiftdim(x, -k)
+// unshiftdata(x, perm, nshifts=[]):    y = ipermute(x, perm)
+
+#include <nk/signal/digital_filtering/shiftdata.hpp>
+
+#include <nk/builtin/elmat.hpp>
+
+#include <nk/value/value.hpp>
+#include <nk/value/scratch.hpp>
+#include <nk/value/error.hpp>
+#include <tuple>
+
+#include <cmath>
+#include <vector>
+
+namespace nk::signal {
+
+namespace {
+
+// Compute MATLAB ndims for a Value. MATLAB: ndims(x) = max(2, ndims_actual).
+size_t mtlNdims(const Value &x)
+{
+    if (x.dims().is3D()) return 3;
+    return 2;
+}
+
+} // anon
+
+std::tuple<Value, Value, Value>
+shiftdata(const Value &x, int dim, std::pmr::memory_resource *mr)
+{
+    if (dim == 0) {
+        // Auto path: shiftdim(x) drops leading singletons.
+        auto res = nk::builtin::shiftdimAuto(x, mr);
+        // perm = []  (return as 1×0 double matrix)
+        Value emptyPerm = Value::matrix(0, 0, ValueType::DOUBLE, mr);
+        Value nsh = Value::scalar(static_cast<double>(res.dropped), mr);
+        return {std::move(res.v), emptyPerm, nsh};
+    }
+    if (dim < 1)
+        throw Error("shiftdata: DIM must be >= 1",
+                    0, 0, "shiftdata", "", "nk:shiftdata:BadDim");
+
+    // perm = [dim, 1..dim-1, dim+1..N]
+    const size_t N = std::max<size_t>(static_cast<size_t>(dim), mtlNdims(x));
+    std::vector<int> perm(N);
+    perm[0] = dim;
+    size_t k = 1;
+    for (int i = 1; i < dim; ++i) perm[k++] = i;
+    for (size_t i = dim + 1; i <= N; ++i) perm[k++] = static_cast<int>(i);
+
+    Value shifted = nk::builtin::permute(x, Span<const int>(perm.data(), N), mr);
+
+    // Build perm Value (1 × N row).
+    Value permV = Value::matrix(1, N, ValueType::DOUBLE, mr);
+    {
+        double *pd = permV.doubleDataMut();
+        for (size_t i = 0; i < N; ++i) pd[i] = static_cast<double>(perm[i]);
+    }
+    Value emptyNsh = Value::matrix(0, 0, ValueType::DOUBLE, mr);
+    return {std::move(shifted), std::move(permV), std::move(emptyNsh)};
+}
+
+// unshiftdata domain checks: perm must be a true permutation vector
+// (the reference lets permute's own validation fire, but the observable
+// rejection should be voiced for THIS entry); nshifts must be scalar —
+// a complex value with nonneg real part is legal (the reference
+// validates with mustBeNonnegative, which compares the real part).
+static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
+{
+    if (!nshifts.isEmpty()
+        && (nshifts.numel() != 1 || nshifts.isChar() || nshifts.isString()
+            || nshifts.isCell() || nshifts.isStruct()))
+        throw Error("unshiftdata: nshifts must be a real scalar",
+                    0, 0, "unshiftdata", "", "nk:unshiftdata:nshifts");
+    if (perm.isEmpty())
+        return;
+    const size_t n = perm.numel();
+    std::vector<char> seen(n + 1, 0);
+    for (size_t i = 0; i < n; ++i) {
+        const double v = perm.elemAsDouble(i);
+        const double vi = std::floor(v);
+        if (v != vi || vi < 1.0 || vi > static_cast<double>(n)
+            || seen[static_cast<size_t>(vi)])
+            throw Error("unshiftdata: perm must be a permutation of 1.."
+                        + std::to_string(n),
+                        0, 0, "unshiftdata", "", "nk:unshiftdata:badPerm");
+        seen[static_cast<size_t>(vi)] = 1;
+    }
+}
+
+Value unshiftdata(const Value &x, const Value &perm, const Value &nshifts, std::pmr::memory_resource *mr)
+{
+    unshiftdata_argcheck(perm, nshifts);
+    if (perm.isEmpty()) {
+        // nshifts real part (complex scalars are legal — see argcheck).
+        const double ns = nshifts.isEmpty() ? 0.0
+            : (nshifts.isComplex() ? nshifts.complexData()[0].real()
+                                   : nshifts.toScalar());
+        return nk::builtin::shiftdim(x, -static_cast<int>(ns), mr);
+    }
+    // ipermute(x, perm)
+    const size_t N = perm.numel();
+    std::vector<int> permVec(N);
+    for (size_t i = 0; i < N; ++i)
+        permVec[i] = static_cast<int>(perm.elemAsDouble(i));
+    return nk::builtin::ipermute(x, Span<const int>(permVec.data(), N), mr);
+}
+
+} // namespace nk::signal
