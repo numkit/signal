@@ -8,7 +8,7 @@
 
 extern "C" NK_PLUGIN_EXPORT bool nk_plugin_init(nk::PluginContext &ctx)
 {
-    if (ctx.abiVersion() != nk::NK_PLUGIN_ABI_VERSION) {
+    if (ctx.abiVersion() != NK_PLUGIN_ABI_VERSION) {
         return false;
     }
     nk::SignalLibrary::install(ctx);
