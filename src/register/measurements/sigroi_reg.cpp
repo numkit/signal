@@ -116,7 +116,7 @@ void sigrangebinmask_reg(Span<const Value> args, size_t /*nargout*/,
                                   bound.elemAsDouble(1), mr);
     else
         throw Error("sigrangebinmask: bound must be scalar or 2-element vector",
-                    0, 0, "sigrangebinmask", "", "nk:sigrangebinmask:BadBound");
+                    0, 0, "sigrangebinmask", "", "numkit:sigrangebinmask:BadBound");
 }
 
 } // namespace detail

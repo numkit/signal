@@ -123,11 +123,11 @@ Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
 {
     if (n == 0)
         throw Error("convmtx: n must be positive",
-                     0, 0, "convmtx", "", "nk:convmtx:badN");
+                     0, 0, "convmtx", "", "numkit:convmtx:badN");
     const size_t nh = h.numel();
     if (nh == 0)
         throw Error("convmtx: h must be non-empty",
-                     0, 0, "convmtx", "", "nk:convmtx:emptyH");
+                     0, 0, "convmtx", "", "numkit:convmtx:emptyH");
     detail::requireVectorInput(h, "convmtx", "h", 1);
     const ValueType ht = h.type();
     const bool isSingle = (ht == ValueType::SINGLE);
@@ -138,7 +138,7 @@ Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
                         "supported yet (got a " + detail::shapeOf(h) + " "
                         + mtypeName(ht) + " array).",
                         0, 0, "convmtx", "",
-                        "nk:convmtx:integerUnsupported");
+                        "numkit:convmtx:integerUnsupported");
         // The reference accepts every numeric class EXCEPT logical.
         detail::throwInputType(h, "convmtx", "h", 1, "numeric");
     }
@@ -223,10 +223,10 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
     detail::requireNumericSignalInput(B, "xcorr2", "B", 2);
     if (A.isComplex() || B.isComplex())
         throw Error("xcorr2: complex inputs are not supported yet",
-                     0, 0, "xcorr2", "", "nk:xcorr2:complexUnsupported");
+                     0, 0, "xcorr2", "", "numkit:xcorr2:complexUnsupported");
     if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
         throw Error("xcorr2: N-D arrays are not supported",
-                     0, 0, "xcorr2", "", "nk:xcorr2:nd");
+                     0, 0, "xcorr2", "", "numkit:xcorr2:nd");
     Value aHold, bHold;
     if (A.isLogical() || isIntegerType(A.type()))
         aHold = [&]() {

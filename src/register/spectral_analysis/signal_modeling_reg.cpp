@@ -188,14 +188,14 @@ void stmcb_reg(Span<const Value> args, size_t nargout,
     // Two-signal form stmcb(y, x, nb, na) â€” x is a vector, not a scalar order.
     if (!args[1].isScalar())
         throw Error("stmcb: the two-signal form stmcb(y, x, ...) is not yet supported",
-                    0, 0, "stmcb", "", "nk:stmcb:twosignal");
+                    0, 0, "stmcb", "", "numkit:stmcb:twosignal");
     const int nb    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "stmcb"), 2, "nb", "stmcb");
     const int na    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "stmcb"), 3, "na", "stmcb");
     const int niter = (args.size() >= 4 && !args[3].isEmpty())
                           ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "niter", "stmcb"), 4, "niter", "stmcb") : 5;
     if (args.size() >= 5)
         throw Error("stmcb: an explicit ai initial estimate is not yet supported",
-                    0, 0, "stmcb", "", "nk:stmcb:ai");
+                    0, 0, "stmcb", "", "numkit:stmcb:ai");
     auto [b, a] = stmcb(args[0], nb, na, niter, ctx.engine->resource());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);

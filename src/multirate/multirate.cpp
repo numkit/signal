@@ -42,14 +42,14 @@ void multirateGatherArgcheck(const Value &x, const char *fn)
         if (x.dims().ndim() > 2)
             throw Error(std::string(fn) + ": N-D inputs are not supported "
                         "yet (got a " + detail::shapeOf(x) + " array)",
-                        0, 0, fn, "", std::string("nk:") + fn + ":ndUnsupported");
+                        0, 0, fn, "", std::string("numkit:") + fn + ":ndUnsupported");
         return;
     }
     if (isIntegerType(t))
         throw Error(std::string(fn) + ": input 1 (x): integer-class inputs "
                     "are not supported yet (got a " + detail::shapeOf(x)
                     + " " + mtypeName(t) + " array).",
-                    0, 0, fn, "", std::string("nk:") + fn + ":integerUnsupported");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":integerUnsupported");
     detail::throwInputType(x, fn, "x", 1, "numeric or logical");
 }
 
@@ -59,7 +59,7 @@ void multiratePhaseArgcheck(size_t n, size_t phase, const char *fn)
         throw Error(std::string(fn) + ": phase must be an integer in "
                     "[0, n-1] (got " + std::to_string(phase) + " with n = "
                     + std::to_string(n) + ")",
-                    0, 0, fn, "", std::string("nk:") + fn + ":badPhase");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":badPhase");
 }
 
 // Column count / orientation helpers shared by the typed gathers.
@@ -269,7 +269,7 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
     detail::requireDoubleNotComplexInput(x, "resample");
     if (p == 0 || q == 0)
         throw Error("resample: P and Q must be positive integers",
-                    0, 0, "resample", "", "nk:resample:pq");
+                    0, 0, "resample", "", "numkit:resample:pq");
 
     // Reduce P/Q by their GCD first (as MATLAB does).
     const size_t g = std::gcd(p, q);

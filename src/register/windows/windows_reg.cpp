@@ -79,7 +79,7 @@ void parseTypeNameOnly(Span<const Value> args, const char *fn)
     if (s != "double" && s != "single")
         throw Error(std::string(fn) + ": Expected TYPENAME to match one of "
                     "these values: 'double', 'single' (got '" + s + "')",
-                    0, 0, fn, "", std::string("nk:") + fn + ":typeName");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":typeName");
 }
 
 } // anonymous

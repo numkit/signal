@@ -37,7 +37,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
 
     if (nargout > 4)
         throw Error("findpeaks: at most 4 outputs (pks, locs, w, p)",
-                     0, 0, "findpeaks", "", "nk:findpeaks:nargout");
+                     0, 0, "findpeaks", "", "numkit:findpeaks:nargout");
 
     PeakOpts opt;
     ScratchArena locScratch(mr);
@@ -55,7 +55,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
             const double fs = second.toScalar();
             if (!(fs > 0.0))
                 throw Error("findpeaks: sample rate Fs must be positive",
-                             0, 0, "findpeaks", "", "nk:findpeaks:badFs");
+                             0, 0, "findpeaks", "", "numkit:findpeaks:badFs");
             locStore.assign(n, 0.0);
             for (std::size_t i = 0; i < n; ++i)
                 locStore[i] = static_cast<double>(i) / fs;
@@ -63,7 +63,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
         } else {
             if (second.numel() != n)
                 throw Error("findpeaks: X must have the same length as Y",
-                             0, 0, "findpeaks", "", "nk:findpeaks:badX");
+                             0, 0, "findpeaks", "", "numkit:findpeaks:badX");
             locArr = second.doubleData();
         }
         argi = 2;
@@ -73,13 +73,13 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     for (; argi < args.size(); argi += 2) {
         if (!args[argi].isChar() && !args[argi].isString())
             throw Error("findpeaks: expected an option name",
-                         0, 0, "findpeaks", "", "nk:findpeaks:badOpt");
+                         0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         std::string name = args[argi].toString();
         for (char &c : name)
             c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (argi + 1 >= args.size())
             throw Error("findpeaks: option '" + args[argi].toString() + "' needs a value",
-                         0, 0, "findpeaks", "", "nk:findpeaks:badOpt");
+                         0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         const Value &v = args[argi + 1];
 
         if (name == "minpeakheight") {
@@ -106,7 +106,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
             else if (s == "descend") opt.sortMode = 2;
             else
                 throw Error("findpeaks: SortStr must be 'none'/'ascend'/'descend'",
-                             0, 0, "findpeaks", "", "nk:findpeaks:badOpt");
+                             0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         } else if (name == "widthreference") {
             opt.widthRef = static_cast<int>(argcheck::expectedChoice(
                 v, {"halfprom", "halfheight"}, static_cast<int>(argi) + 2,
@@ -115,7 +115,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
             // MinPeakWidth / MaxPeakWidth / Annotate / DoubleSided are not
             // yet supported â€” fail loudly rather than silently ignore.
             throw Error("findpeaks: option '" + args[argi].toString() + "' not supported",
-                         0, 0, "findpeaks", "", "nk:findpeaks:unsupportedOpt");
+                         0, 0, "findpeaks", "", "numkit:findpeaks:unsupportedOpt");
         }
     }
 

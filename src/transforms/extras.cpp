@@ -83,7 +83,7 @@ Value dftmtx(size_t N, std::pmr::memory_resource *mr)
 {
     if (N == 0)
         throw Error("dftmtx: N must be positive",
-                     0, 0, "dftmtx", "", "nk:dftmtx:badN");
+                     0, 0, "dftmtx", "", "numkit:dftmtx:badN");
     auto out = Value::complexMatrix(N, N, mr);
     Complex *dst = out.complexDataMut();
     const double base = -2.0 * M_PI / static_cast<double>(N);
@@ -110,11 +110,11 @@ Value bitrevorder(const Value &x, std::pmr::memory_resource *mr)
         throw Error("bitrevorder: input 1 (x): integer-class inputs are "
                     "not supported yet (got a " + detail::shapeOf(x) + " "
                     + mtypeName(t) + " array).",
-                    0, 0, "bitrevorder", "", "nk:bitrevorder:integerUnsupported");
+                    0, 0, "bitrevorder", "", "numkit:bitrevorder:integerUnsupported");
     const size_t n = x.numel();
     if (!isPow2(n))
         throw Error("bitrevorder: input length must be a power of two",
-                     0, 0, "bitrevorder", "", "nk:bitrevorder:badLength");
+                     0, 0, "bitrevorder", "", "numkit:bitrevorder:badLength");
     size_t bits = 0;
     for (size_t v = n; v > 1; v >>= 1) ++bits;
 

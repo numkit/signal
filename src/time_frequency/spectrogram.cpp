@@ -162,11 +162,11 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
     detail::requireFloatInput(x, "stft");
     if (x.dims().ndim() > 2)
         throw Error("stft: X must be two-dimensional",
-                     0, 0, "stft", "", "nk:stft:expected2D");
+                     0, 0, "stft", "", "numkit:stft:expected2D");
     if (x.dims().rows() > 1 && x.dims().cols() > 1)
         throw Error("stft: multi-channel (matrix) input is not supported "
                     "yet — filter each column separately",
-                    0, 0, "stft", "", "nk:stft:matrixUnsupported");
+                    0, 0, "stft", "", "numkit:stft:matrixUnsupported");
     const size_t N = x.numel();
     if (N == 0)
         return Value::complexMatrix(0, 0, mr);
@@ -177,24 +177,24 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
     const size_t M = win.size();
     if (M == 0)
         throw Error("stft: window must be non-empty",
-                     0, 0, "stft", "", "nk:stft:badWindow");
+                     0, 0, "stft", "", "numkit:stft:badWindow");
     if (M > N)
         throw Error("stft: signal shorter than window length",
-                     0, 0, "stft", "", "nk:stft:shortSignal");
+                     0, 0, "stft", "", "numkit:stft:shortSignal");
 
     const size_t OL  = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
     if (OL >= M)
         throw Error("stft: OverlapLength must be < window length",
-                     0, 0, "stft", "", "nk:stft:badOverlap");
+                     0, 0, "stft", "", "numkit:stft:badOverlap");
     const size_t NFFT = (fftLength == 0) ? M : fftLength;
     if (NFFT < M)
         throw Error("stft: FFTLength must be >= window length",
-                     0, 0, "stft", "", "nk:stft:badNfft");
+                     0, 0, "stft", "", "numkit:stft:badNfft");
 
     if (range != "twosided" && range != "onesided" && range != "centered")
         throw Error("stft: FrequencyRange must be 'twosided', 'centered' "
                     "or 'onesided'",
-                     0, 0, "stft", "", "nk:stft:badRange");
+                     0, 0, "stft", "", "numkit:stft:badRange");
 
     const size_t hop = M - OL;
     const size_t K   = (N - M) / hop + 1;
@@ -267,17 +267,17 @@ Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_
     const size_t M = win.size();
     if (M == 0)
         throw Error("istft: window must be non-empty",
-                     0, 0, "istft", "", "nk:istft:badWindow");
+                     0, 0, "istft", "", "numkit:istft:badWindow");
 
     const size_t OL  = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
     if (OL >= M)
         throw Error("istft: OverlapLength must be < window length",
-                     0, 0, "istft", "", "nk:istft:badOverlap");
+                     0, 0, "istft", "", "numkit:istft:badOverlap");
 
     if (range != "twosided" && range != "onesided" && range != "centered")
         throw Error("istft: FrequencyRange must be 'twosided', 'centered' "
                     "or 'onesided'",
-                     0, 0, "istft", "", "nk:istft:badRange");
+                     0, 0, "istft", "", "numkit:istft:badRange");
 
     const bool   isOneSided = (range == "onesided");
     const bool   isCentered = (range == "centered");
@@ -292,14 +292,14 @@ Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_
                                                      : ((NFFT + 1) / 2));
     if (!isOneSided && inRows != NFFT)
         throw Error("istft: STFT row count does not match FFTLength",
-                     0, 0, "istft", "", "nk:istft:badShape");
+                     0, 0, "istft", "", "numkit:istft:badShape");
     if (isOneSided && inRows != NFFT / 2 + 1)
         throw Error("istft: one-sided STFT row count must equal "
                     "FFTLength/2 + 1",
-                     0, 0, "istft", "", "nk:istft:badShape");
+                     0, 0, "istft", "", "numkit:istft:badShape");
     if (NFFT < M)
         throw Error("istft: FFTLength must be >= window length",
-                     0, 0, "istft", "", "nk:istft:badNfft");
+                     0, 0, "istft", "", "numkit:istft:badNfft");
 
     const size_t hop = M - OL;
     const size_t Nout = (K - 1) * hop + M;
@@ -374,13 +374,13 @@ iscola(const Value &window, std::size_t noverlap, const std::string &method,
     const std::size_t M = window.numel();
     if (M == 0)
         throw Error("iscola: window must be non-empty",
-                     0, 0, "iscola", "", "nk:iscola:badWindow");
+                     0, 0, "iscola", "", "numkit:iscola:badWindow");
     if (noverlap >= M)
         throw Error("iscola: noverlap must be < window length",
-                     0, 0, "iscola", "", "nk:iscola:badOverlap");
+                     0, 0, "iscola", "", "numkit:iscola:badOverlap");
     if (method != "ola" && method != "wola")
         throw Error("iscola: method must be 'ola' or 'wola'",
-                     0, 0, "iscola", "", "nk:iscola:badMethod");
+                     0, 0, "iscola", "", "numkit:iscola:badMethod");
 
     const std::size_t hop  = M - noverlap;
     const std::size_t nOvw = (M + hop - 1) / hop;        // ceil(M/hop)

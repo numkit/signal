@@ -71,7 +71,7 @@ void ifft_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
         else
             throw Error("ifft: unknown option '" + args[nargs - 1].toString() +
                             "' (expected 'symmetric' or 'nonsymmetric')",
-                         0, 0, "ifft", "", "nk:ifft:badOption");
+                         0, 0, "ifft", "", "numkit:ifft:badOption");
         --nargs;   // consume the flag
     }
 
@@ -121,7 +121,7 @@ void ifft2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         else
             throw Error("ifft2: unknown option '" + args[nargs - 1].toString() +
                             "' (expected 'symmetric' or 'nonsymmetric')",
-                         0, 0, "ifft2", "", "nk:ifft2:badOption");
+                         0, 0, "ifft2", "", "numkit:ifft2:badOption");
         --nargs;
     }
 
@@ -138,7 +138,7 @@ void ifft2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         if (m > 0 || n > 0)
             throw Error("ifft2: the 'symmetric' option with explicit size args "
                         "(m, n) is not supported in this revision",
-                         0, 0, "ifft2", "", "nk:ifft2:symmetricResize");
+                         0, 0, "ifft2", "", "numkit:ifft2:symmetricResize");
         outs[0] = ifft2Symmetric(args[0], mr);
         return;
     }
@@ -167,7 +167,7 @@ static void extractSizeArg(const Value &v, std::vector<std::size_t> &dst)
         const double d = v.elemAsDouble(i);
         if (d <= 0 || d != std::floor(d))
             throw Error("fftn: size entries must be positive integers",
-                         0, 0, "fftn", "", "nk:fftn:badSize");
+                         0, 0, "fftn", "", "numkit:fftn:badSize");
         dst[i] = static_cast<std::size_t>(d);
     }
 }
@@ -212,14 +212,14 @@ void czt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
             argcheck::expectedReal(args[1], 2, "m", "czt"), 2, "m", "czt");
     if (m <= 0)
         throw Error("czt: m must be a positive integer",
-                     0, 0, "czt", "", "nk:czt:badM");
+                     0, 0, "czt", "", "numkit:czt:badM");
 
     Cd w(std::cos(-2.0 * M_PI / m), std::sin(-2.0 * M_PI / m));
     if (args.size() >= 3 && !args[2].isEmpty()) {
         const Value &wv = args[2];
         if (wv.numel() != 1)
             throw Error("czt: input 3 (W) must be a scalar",
-                         0, 0, "czt", "", "nk:czt:wNotScalar");
+                         0, 0, "czt", "", "numkit:czt:wNotScalar");
         if (wv.isComplex()) w = wv.complexData()[0];
         else                w = Cd(wv.toScalar(), 0.0);
     }
@@ -229,7 +229,7 @@ void czt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         const Value &av = args[3];
         if (av.numel() != 1)
             throw Error("czt: input 4 (A) must be a scalar",
-                         0, 0, "czt", "", "nk:czt:aNotScalar");
+                         0, 0, "czt", "", "numkit:czt:aNotScalar");
         if (av.isComplex()) a = av.complexData()[0];
         else                a = Cd(av.toScalar(), 0.0);
     }

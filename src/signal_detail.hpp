@@ -39,7 +39,7 @@ inline void throwInputType(const Value &v, std::string_view fn,
                     + std::string(expectation) + " (got a " + shapeOf(v)
                     + " " + mtypeName(v.type()) + " array).",
                 0, 0, std::string(fn), "",
-                "nk:" + std::string(fn) + ":inputType");
+                "numkit:" + std::string(fn) + ":inputType");
 }
 
 // Numeric-or-logical family (conv, bitrevorder, ifft 'symmetric'):
@@ -70,7 +70,7 @@ inline void requireNumericSignalInput(const Value &v, std::string_view fn,
                           "with double() (got a " + shapeOf(v)
                         + " single array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":singleUnsupported");
+                    "numkit:" + std::string(fn) + ":singleUnsupported");
     requireNumericOrLogicalInput(v, fn, argName, argNum);
 }
 
@@ -94,7 +94,7 @@ inline void requireFloatInput(const Value &v, std::string_view fn,
                           "with double() (got a " + shapeOf(v)
                         + " single array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":singleUnsupported");
+                    "numkit:" + std::string(fn) + ":singleUnsupported");
     throwInputType(v, fn, argName, argNum, "a double or complex double array");
 }
 
@@ -110,7 +110,7 @@ inline void requireRealFloatInput(const Value &v, std::string_view fn,
                         + ") must be real (got a " + shapeOf(v)
                         + " complex array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":inputReal");
+                    "numkit:" + std::string(fn) + ":inputReal");
     requireFloatInput(v, fn, argName, argNum);
 }
 
@@ -127,7 +127,7 @@ inline void requireDoubleNotComplexInput(const Value &v, std::string_view fn,
                         + "): complex inputs are not supported yet (got a "
                         + shapeOf(v) + " complex array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":complexUnsupported");
+                    "numkit:" + std::string(fn) + ":complexUnsupported");
     requireFloatInput(v, fn, argName, argNum);
 }
 
@@ -143,7 +143,7 @@ inline void requireVectorInput(const Value &v, std::string_view fn,
                           "(got a " + shapeOf(v) + " "
                         + mtypeName(v.type()) + " array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":notVector");
+                    "numkit:" + std::string(fn) + ":notVector");
 }
 
 // Shape option shared by conv / conv2 / convn / filter2.
@@ -154,7 +154,7 @@ inline void validateShapeOption(const std::string &shape, std::string_view fn)
     throw Error(std::string(fn) + ": shape option must be 'full', 'same', "
                     "or 'valid' (got '" + shape + "')",
                 0, 0, std::string(fn), "",
-                "nk:" + std::string(fn) + ":badShape");
+                "numkit:" + std::string(fn) + ":badShape");
 }
 
 } // namespace numkit::signal::detail

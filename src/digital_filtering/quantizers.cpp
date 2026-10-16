@@ -72,10 +72,10 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, std::pmr::memo
 {
     if (N < 2 || N > 32)
         throw Error("uencode: N must be in [2, 32]",
-                    0, 0, "uencode", "", "nk:uencode:BadN");
+                    0, 0, "uencode", "", "numkit:uencode:BadN");
     if (V <= 0.0)
         throw Error("uencode: V must be positive",
-                    0, 0, "uencode", "", "nk:uencode:NeedPosRealScalar");
+                    0, 0, "uencode", "", "numkit:uencode:NeedPosRealScalar");
 
     const double Q = std::pow(2.0, N) - 1.0;
     const double T = (Q + 1.0) / (2.0 * V);
@@ -122,10 +122,10 @@ static void udecode_argcheck(const Value &u, int N, double V)
 {
     if (N < 2 || N > 32)
         throw Error("udecode: N must be in [2, 32]",
-                    0, 0, "udecode", "", "nk:udecode:BadN");
+                    0, 0, "udecode", "", "numkit:udecode:BadN");
     if (V <= 0.0)
         throw Error("udecode: V must be positive",
-                    0, 0, "udecode", "", "nk:udecode:NeedPosRealScalar");
+                    0, 0, "udecode", "", "numkit:udecode:NeedPosRealScalar");
 
     // Detect signed vs unsigned from input type.
     const ValueType ut = u.type();
@@ -135,7 +135,7 @@ static void udecode_argcheck(const Value &u, int N, double V)
                               || ut == ValueType::UINT32);
     if (!isSigned && !isUnsigned)
         throw Error("udecode: input must be int8/16/32 or uint8/16/32",
-                    0, 0, "udecode", "", "nk:udecode:BadInputType");
+                    0, 0, "udecode", "", "numkit:udecode:BadInputType");
 }
 
 Value udecode(const Value &u, int N, double V, bool wrapOnOverflow, std::pmr::memory_resource *mr)

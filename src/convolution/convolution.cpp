@@ -200,7 +200,7 @@ deconv(const Value &bIn, const Value &aIn, std::pmr::memory_resource *mr)
     const double a0 = ad[0];
     if (a0 == 0.0)
         throw Error("deconv: leading coefficient is zero",
-                     0, 0, "deconv", "", "nk:deconv:zeroLead");
+                     0, 0, "deconv", "", "numkit:deconv:zeroLead");
 
     for (size_t i = 0; i < nq; ++i) {
         q[i] = rem[i] / a0;
@@ -310,7 +310,7 @@ xcov(const Value &x, const Value &y, int maxlag,
             for (size_t i = 0; i < nc; ++i) cd[i] /= denom;
     } else if (!(opt.empty() || opt == "none")) {
         throw Error("xcov: scaleopt must be 'none', 'biased', 'unbiased', or 'coeff'",
-                     0, 0, "xcov", "", "nk:xcov:badScaleopt");
+                     0, 0, "xcov", "", "numkit:xcov:badScaleopt");
     }
 
     const int fullMaxLag = (N > 0) ? static_cast<int>(N) - 1 : 0;
@@ -381,7 +381,7 @@ Value cropConv2(const double *full, size_t fullR, size_t fullC, size_t M, size_t
         return out;
     }
     throw Error("conv2: shape must be 'full', 'same', or 'valid'",
-                 0, 0, "conv2", "", "nk:conv2:badShape");
+                 0, 0, "conv2", "", "numkit:conv2:badShape");
 }
 
 // conv2 / filter2 / convn argcheck: the reference accepts every numeric
@@ -403,14 +403,14 @@ static void convMatrixArgcheck(const Value &v, std::string_view fn,
                           "with double() (got a " + detail::shapeOf(v)
                         + " single array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":singleUnsupported");
+                    "numkit:" + std::string(fn) + ":singleUnsupported");
     if (t == ValueType::COMPLEX)
         throw Error(std::string(fn) + ": input " + std::to_string(argNum)
                         + " (" + std::string(argName)
                         + "): complex inputs are not supported yet (got a "
                         + detail::shapeOf(v) + " complex array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":complexUnsupported");
+                    "numkit:" + std::string(fn) + ":complexUnsupported");
     detail::throwInputType(v, fn, argName, argNum, "numeric or logical");
 }
 
@@ -432,7 +432,7 @@ Value conv2(const Value &A, const Value &B, const std::string &shape, std::pmr::
     detail::validateShapeOption(shape, "conv2");
     if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
         throw Error("conv2: N-D arrays are not supported",
-                     0, 0, "conv2", "", "nk:conv2:nd");
+                     0, 0, "conv2", "", "numkit:conv2:nd");
     Value aHold = convPromoteIfNeeded(A, mr);
     Value bHold = convPromoteIfNeeded(B, mr);
     const Value &a = aHold.isEmpty() ? A : aHold;
@@ -461,7 +461,7 @@ Value filter2(const Value &h, const Value &X, const std::string &shape, std::pmr
     detail::validateShapeOption(shape, "filter2");
     if (h.dims().ndim() > 2 || X.dims().ndim() > 2)
         throw Error("filter2: N-D arrays are not supported",
-                     0, 0, "filter2", "", "nk:filter2:nd");
+                     0, 0, "filter2", "", "numkit:filter2:nd");
     Value hHold = convPromoteIfNeeded(h, mr);
     Value xHold = convPromoteIfNeeded(X, mr);
     const Value &hh = hHold.isEmpty() ? h : hHold;
@@ -500,7 +500,7 @@ Value convn(const Value &A, const Value &B, const std::string &shape, std::pmr::
         // The reference supports arbitrary-rank convn; the N-D kernel
         // here stops at 3-D (bugs/opened/signal/nd-and-matrix-gaps.md).
         throw Error("convn: only 1-D, 2-D, 3-D inputs supported",
-                     0, 0, "convn", "", "nk:convn:nd");
+                     0, 0, "convn", "", "numkit:convn:nd");
     }
     // 3-D: direct nested-loop convolution.
     const size_t M = a.dims().rows(), N = a.dims().cols();
@@ -577,7 +577,7 @@ Value convn(const Value &A, const Value &B, const std::string &shape, std::pmr::
         return crop;
     }
     throw Error("convn: shape must be 'full', 'same', or 'valid'",
-                 0, 0, "convn", "", "nk:convn:badShape");
+                 0, 0, "convn", "", "numkit:convn:badShape");
 }
 
 } // namespace numkit::signal

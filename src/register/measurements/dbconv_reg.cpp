@@ -33,7 +33,7 @@ void db_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallCo
     if (args.size() >= 2) {
         if (!args[1].isChar() && !args[1].isString())
             throw Error("db: 2nd argument must be a string",
-                         0, 0, "db", "", "nk:db:badType");
+                         0, 0, "db", "", "numkit:db:badType");
         mode = args[1].toString();
     }
     outs[0] = db(args[0], mode, ctx.engine->resource());

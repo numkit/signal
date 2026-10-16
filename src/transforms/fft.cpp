@@ -244,7 +244,7 @@ static Value fftAlongDim(const Value &x, size_t N_req, int dim, int dir, std::pm
     if (axisLen <= 1 && outAxisLen > 1)
         throw Error("fft: extending dimension beyond ndims is not supported "
                      "when the axis length is 1",
-                     0, 0, "fft", "", "nk:fft:extendDim");
+                     0, 0, "fft", "", "numkit:fft:extendDim");
 
     // fftLen IS the user-visible length: we compute a true N-point DFT.
     // The pow2 path uses Cooley-Tukey radix-2 directly; non-pow2 routes
@@ -697,7 +697,7 @@ Value fft(const Value &x, int n, int dim, std::pmr::memory_resource *mr)
 {
     if (dim < 0 || dim > 3)
         throw Error("fft: dim must be 0 (auto), 1, 2, or 3",
-                     0, 0, "fft", "", "nk:fft:invalidDim");
+                     0, 0, "fft", "", "numkit:fft:invalidDim");
     if (dim == 0) dim = resolveDefaultDim(x);
 
     const size_t N = (n < 0) ? 0u : static_cast<size_t>(n);
@@ -708,7 +708,7 @@ Value ifft(const Value &X, int n, int dim, std::pmr::memory_resource *mr)
 {
     if (dim < 0 || dim > 3)
         throw Error("ifft: dim must be 0 (auto), 1, 2, or 3",
-                     0, 0, "ifft", "", "nk:ifft:invalidDim");
+                     0, 0, "ifft", "", "numkit:ifft:invalidDim");
     if (dim == 0) dim = resolveDefaultDim(X);
 
     const size_t N = (n < 0) ? 0u : static_cast<size_t>(n);
@@ -732,11 +732,11 @@ Value ifftSymmetric(const Value &X, int n, int dim, std::pmr::memory_resource *m
     const auto &d = X.dims();
     if (d.ndim() > 2)
         throw Error("ifft: the 'symmetric' option supports vectors and matrices only",
-                     0, 0, "ifft", "", "nk:ifft:symmetricNdims");
+                     0, 0, "ifft", "", "numkit:ifft:symmetricNdims");
     int useDim = (dim == 0) ? resolveDefaultDim(X) : dim;
     if (useDim != 1 && useDim != 2)
         throw Error("ifft: the 'symmetric' option supports dim 1 or 2",
-                     0, 0, "ifft", "", "nk:ifft:symmetricDim");
+                     0, 0, "ifft", "", "numkit:ifft:symmetricDim");
 
     const std::size_t R = d.rows(), C = d.cols();
     const std::size_t origLen = (useDim == 1) ? R : C;
@@ -792,7 +792,7 @@ Value ifft2Symmetric(const Value &X, std::pmr::memory_resource *mr)
     const auto &d = X.dims();
     if (d.ndim() > 2)
         throw Error("ifft2: the 'symmetric' option supports 2-D inputs only",
-                     0, 0, "ifft2", "", "nk:ifft2:symmetricNdims");
+                     0, 0, "ifft2", "", "numkit:ifft2:symmetricNdims");
     const std::size_t R = d.rows(), C = d.cols();
     Value y = X;
     if (C > 1) y = ifftSymmetric(y, -1, 2, mr);   // each row conj-symmetric
@@ -851,7 +851,7 @@ Value fftnImpl(const Value &X, Span<const std::size_t> sz,
     const int ndim = effectiveNdim(X);
     if (sz.size() > static_cast<std::size_t>(ndim))
         throw Error("fftn: size vector length exceeds ndims(X)",
-                     0, 0, "fftn", "", "nk:fftn:badSize");
+                     0, 0, "fftn", "", "numkit:fftn:badSize");
     Value Y = X;
     for (int d = 1; d <= ndim; ++d) {
         int n = -1;
@@ -1003,7 +1003,7 @@ Value czt(const Value &x, int m, Complex w, Complex a, std::pmr::memory_resource
 
     if (d.is3D())
         throw Error("czt: 3-D input not supported",
-                     0, 0, "czt", "", "nk:czt:unsupportedNd");
+                     0, 0, "czt", "", "numkit:czt:unsupportedNd");
 
     // Matrix: czt each column independently.
     Value out = Value::complexMatrix(static_cast<std::size_t>(m), C, mr);
@@ -1029,10 +1029,10 @@ Value interpft(const Value &x, int n, int dim, std::pmr::memory_resource *mr)
 {
     if (n <= 0)
         throw Error("interpft: output length n must be positive",
-                     0, 0, "interpft", "", "nk:interpft:badN");
+                     0, 0, "interpft", "", "numkit:interpft:badN");
     if (dim < 0 || dim > 3)
         throw Error("interpft: dim must be 0 (auto), 1, 2, or 3",
-                     0, 0, "interpft", "", "nk:interpft:badDim");
+                     0, 0, "interpft", "", "numkit:interpft:badDim");
 
     // Resolve auto-dim same way `fft` does.
     int useDim = dim;
@@ -1152,7 +1152,7 @@ Value interpft(const Value &x, int n, int dim, std::pmr::memory_resource *mr)
     }
 
     throw Error("interpft: dim 3 / N-D inputs not yet supported",
-                 0, 0, "interpft", "", "nk:interpft:dimUnsupported");
+                 0, 0, "interpft", "", "numkit:interpft:dimUnsupported");
 }
 
 } // namespace numkit::signal

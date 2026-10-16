@@ -60,13 +60,13 @@ inline void sigroiRoiArgcheck(const Value &roi, const char *fn)
     if (t == ValueType::SINGLE)
         throw Error(std::string(fn) + ": roi: single inputs are not "
                     "supported yet — convert with double()",
-                    0, 0, fn, "", std::string("nk:") + fn + ":singleUnsupported");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":singleUnsupported");
     if (t != ValueType::DOUBLE && t != ValueType::COMPLEX && !isIntegerType(t))
         detail::throwInputType(roi, fn, "roi", 1, "numeric");
     if (roi.dims().ndim() != 2 || roi.dims().cols() != 2)
         throw Error(std::string(fn) + ": roi must be an N×2 matrix of "
                     "[start, end] pairs",
-                    0, 0, fn, "", std::string("nk:") + fn + ":roiCols");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":roiCols");
 }
 
 } // namespace
@@ -114,7 +114,7 @@ Value sigroi2binmask(const Value &roi, int64_t len_user,
     sigroiRoiArgcheck(roi, "sigroi2binmask");
     if (len_user == 0)
         throw Error("sigroi2binmask: L must be positive",
-                    0, 0, "sigroi2binmask", "", "nk:sigroi2binmask:lenPositive");
+                    0, 0, "sigroi2binmask", "", "numkit:sigroi2binmask:lenPositive");
     const size_t N = roi.dims().rows();
     int64_t len = len_user;
     if (len < 0) {
@@ -144,7 +144,7 @@ Value extendsigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
     sigroiRoiArgcheck(roi, "extendsigroi");
     if (Lpre < 0 || Lpost < 0)
         throw Error("extendsigroi: SL and SR must be nonnegative",
-                    0, 0, "extendsigroi", "", "nk:extendsigroi:nonnegative");
+                    0, 0, "extendsigroi", "", "numkit:extendsigroi:nonnegative");
     const size_t N = roi.dims().rows();
     Value out = Value::matrix(N, N == 0 ? 0 : 2, ValueType::DOUBLE, mr);
     if (N == 0) return out;
@@ -194,7 +194,7 @@ Value mergesigroi(const Value &roi, int64_t sep, std::pmr::memory_resource *mr)
     sigroiRoiArgcheck(roi, "mergesigroi");
     if (sep < 0)
         throw Error("mergesigroi: S must be nonnegative",
-                    0, 0, "mergesigroi", "", "nk:mergesigroi:nonnegative");
+                    0, 0, "mergesigroi", "", "numkit:mergesigroi:nonnegative");
     const size_t N = roi.dims().rows();
     ScratchArena scratch(mr);
     ScratchVec<size_t> idx(N, &scratch);

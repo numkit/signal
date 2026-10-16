@@ -43,7 +43,7 @@ int firOrder(const Value &v, int argNum, const char *name, const char *fn)
         throw Error(std::string(fn) + ": filter order " + name
                         + " must be a positive integer (got "
                         + argcheck::detail::num(n) + ").",
-                    0, 0, fn, "", std::string("nk:") + fn + ":orderNotInteger");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotInteger");
     return static_cast<int>(n);
 }
 
@@ -89,7 +89,7 @@ void fir2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
                 argcheck::expectedReal(a, 0, "lap", "fir2"), 0, "lap", "fir2");
             else
                 throw Error("fir2: too many scalar arguments",
-                            0, 0, "fir2", "", "nk:fir2:nargin");
+                            0, 0, "fir2", "", "numkit:fir2:nargin");
             ++scalarsSeen;
         } else {
             opts.window = a;
@@ -128,7 +128,7 @@ void firpm_reg(Span<const Value> args, std::size_t nargout, Span<Value> outs,
     for (std::size_t i = 3; i < args.size(); ++i) {
         if (args[i].isCell())
             throw Error("firpm: cell-form lgrid argument deferred",
-                        0, 0, "firpm", "", "nk:firpm:unsupportedLgrid");
+                        0, 0, "firpm", "", "numkit:firpm:unsupportedLgrid");
         if (args[i].isChar())
             ftype = args[i].toString();
         else

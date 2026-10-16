@@ -94,17 +94,17 @@ int iirOrder(const Value &v, const char *fn)
         throw Error(std::string(fn) + ": filter order N must be a scalar "
                     "(argument is " + std::to_string(d.dim(0)) + "x"
                         + std::to_string(d.dim(1)) + ").",
-                    0, 0, fn, "", std::string("nk:") + fn + ":orderNotScalar");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotScalar");
     }
     if (v.isComplex())
         throw Error(std::string(fn) + ": filter order N must be real "
                         "(argument is complex).",
-                    0, 0, fn, "", std::string("nk:") + fn + ":orderNotReal");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotReal");
     const double n = v.toScalar();
     if (n != std::floor(n))
         throw Error(std::string(fn) + ": filter order N must be a positive "
                         "integer (got " + argcheck::detail::num(n) + ").",
-                    0, 0, fn, "", std::string("nk:") + fn + ":orderNotInteger");
+                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotInteger");
     return static_cast<int>(n);
 }
 

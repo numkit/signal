@@ -56,7 +56,7 @@ void bandpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     argcheck::checkNargin(args.size(), 2, 9, "bandpass");
     if (args[1].numel() != 2)
         throw Error("bandpass: cutoff must be a 2-element [flo fhi]",
-                     0, 0, "bandpass", "", "nk:bandpass:badCutoff");
+                     0, 0, "bandpass", "", "numkit:bandpass:badCutoff");
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandpass"), 4, "order", "bandpass") : 8;
@@ -68,7 +68,7 @@ void bandstop_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     argcheck::checkNargin(args.size(), 2, 9, "bandstop");
     if (args[1].numel() != 2)
         throw Error("bandstop: cutoff must be a 2-element [flo fhi]",
-                     0, 0, "bandstop", "", "nk:bandstop:badCutoff");
+                     0, 0, "bandstop", "", "numkit:bandstop:badCutoff");
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandstop"), 4, "order", "bandstop") : 8;

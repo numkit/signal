@@ -41,7 +41,7 @@ static std::string shapeArg(const Value &v, std::string_view fn)
     throw Error(std::string(fn) + ": shape option must be 'full', 'same', "
                     "or 'valid' (got a non-string argument)",
                 0, 0, std::string(fn), "",
-                "nk:" + std::string(fn) + ":badShape");
+                "numkit:" + std::string(fn) + ":badShape");
 }
 
 void conv_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
@@ -131,7 +131,7 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
             for (size_t i = 0; i < nc; ++i) cd[i] /= denom;
     } else if (!(opt.empty() || opt == "none")) {
         throw Error("xcorr: scaleopt must be 'none', 'biased', 'unbiased', or 'coeff'",
-                     0, 0, "xcorr", "", "nk:xcorr:badScaleopt");
+                     0, 0, "xcorr", "", "numkit:xcorr:badScaleopt");
     }
 
     // maxlag crop (or zero-pad) about lag 0 at index fullMaxLag.
@@ -213,7 +213,7 @@ void conv2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
             throw Error("conv2: the separable form conv2(u, v, A) is not "
                         "supported yet â€” build the kernel with "
                         "conv2(u, v) and convolve with that",
-                        0, 0, "conv2", "", "nk:conv2:separableUnsupported");
+                        0, 0, "conv2", "", "numkit:conv2:separableUnsupported");
         }
     }
     outs[0] = conv2(args[0], args[1], shape, ctx.engine->resource());

@@ -79,7 +79,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
             const double v = opt.toScalar();
             if (v < 0.0 || v > -p)
                 throw Error("buffer: OPT (offset) for underlap must be in [0, -P]",
-                            0, 0, "buffer", "", "nk:buffer:BadOpt");
+                            0, 0, "buffer", "", "numkit:buffer:BadOpt");
             offset = static_cast<size_t>(v);
         }
         const size_t startN = (offset < N) ? (N - offset) : 0;
@@ -115,7 +115,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     const size_t hopP = static_cast<size_t>(hop);  // = n - p, must be > 0
     if (hopP == 0)
         throw Error("buffer: P must be < N (overlap < frame length)",
-                    0, 0, "buffer", "", "nk:buffer:BadOverlap");
+                    0, 0, "buffer", "", "numkit:buffer:BadOverlap");
 
     // Decide whether to apply initial-condition prepend (p > 0 only).
     bool prependZeros = (p > 0);
@@ -131,7 +131,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
             // Numeric initial-condition vector of length p.
             if (opt.numel() != static_cast<size_t>(p))
                 throw Error("buffer: initial-condition OPT must have length P",
-                            0, 0, "buffer", "", "nk:buffer:BadInitLen");
+                            0, 0, "buffer", "", "numkit:buffer:BadInitLen");
             initVec.resize(p);
             for (size_t i = 0; i < static_cast<size_t>(p); ++i)
                 initVec[i] = opt.elemAsDouble(i);

@@ -44,7 +44,7 @@ static void parseFwhtArgs(Span<const Value> args,
     if (args.size() >= 3 && !args[2].isEmpty()) {
         if (!(args[2].isChar() || args[2].isString()))
             throw Error("fwht: ordering must be a string",
-                         0, 0, "fwht", "", "nk:fwht:badOrdering");
+                         0, 0, "fwht", "", "numkit:fwht:badOrdering");
         ordering = args[2].toString();
     }
 }

@@ -47,7 +47,7 @@ shiftdata(const Value &x, int dim, std::pmr::memory_resource *mr)
     }
     if (dim < 1)
         throw Error("shiftdata: DIM must be >= 1",
-                    0, 0, "shiftdata", "", "nk:shiftdata:BadDim");
+                    0, 0, "shiftdata", "", "numkit:shiftdata:BadDim");
 
     // perm = [dim, 1..dim-1, dim+1..N]
     const size_t N = std::max<size_t>(static_cast<size_t>(dim), mtlNdims(x));
@@ -80,7 +80,7 @@ static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
         && (nshifts.numel() != 1 || nshifts.isChar() || nshifts.isString()
             || nshifts.isCell() || nshifts.isStruct()))
         throw Error("unshiftdata: nshifts must be a real scalar",
-                    0, 0, "unshiftdata", "", "nk:unshiftdata:nshifts");
+                    0, 0, "unshiftdata", "", "numkit:unshiftdata:nshifts");
     if (perm.isEmpty())
         return;
     const size_t n = perm.numel();
@@ -92,7 +92,7 @@ static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
             || seen[static_cast<size_t>(vi)])
             throw Error("unshiftdata: perm must be a permutation of 1.."
                         + std::to_string(n),
-                        0, 0, "unshiftdata", "", "nk:unshiftdata:badPerm");
+                        0, 0, "unshiftdata", "", "numkit:unshiftdata:badPerm");
         seen[static_cast<size_t>(vi)] = 1;
     }
 }

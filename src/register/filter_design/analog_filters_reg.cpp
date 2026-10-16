@@ -155,7 +155,7 @@ NUMKIT_LP2X1_REG(lp2hp, lp2hp)
         }                                                                        \
         if (args.size() < 5)                                                     \
             throw Error(#name ": requires (z, p, k, Wo, Bw) or (b, a, Wo, Bw)", \
-                         0, 0, #name, "", "nk:" #name ":nargin");                 \
+                         0, 0, #name, "", "numkit:" #name ":nargin");                 \
         const double Wo = args[3].toScalar();                                   \
         const double Bw = args[4].toScalar();                                   \
         auto [z, p, k] = fn(args[0], args[1], args[2].toScalar(), Wo, Bw, mr);  \

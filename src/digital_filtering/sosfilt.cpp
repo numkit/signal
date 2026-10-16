@@ -50,7 +50,7 @@ size_t validateSosMatrix(const Value &sos, std::string_view fn)
     if (sos.dims().ndim() != 2 || sos.dims().cols() != 6 || sos.dims().rows() == 0)
         throw Error(std::string(fn) + ": sos matrix must be L×6 with L >= 1",
                      0, 0, std::string(fn), "",
-                     "nk:" + std::string(fn) + ":sosShape");
+                     "numkit:" + std::string(fn) + ":sosShape");
     if (sos.type() == ValueType::DOUBLE)
         return sos.dims().rows();
     if (sos.type() == ValueType::SINGLE)
@@ -59,10 +59,10 @@ size_t validateSosMatrix(const Value &sos, std::string_view fn)
                           "with double() (got a "
                         + std::to_string(sos.dims().rows()) + "x6 single array).",
                     0, 0, std::string(fn), "",
-                    "nk:" + std::string(fn) + ":singleUnsupported");
+                    "numkit:" + std::string(fn) + ":singleUnsupported");
     throw Error(std::string(fn) + ": sos matrix must be DOUBLE",
                  0, 0, std::string(fn), "",
-                 "nk:" + std::string(fn) + ":sosType");
+                 "numkit:" + std::string(fn) + ":sosType");
 }
 
 void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
@@ -74,7 +74,7 @@ void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
         const double a0 = p[3 * L + r];
         if (a0 == 0.0)
             throw Error("sosfilt: section a0 is zero",
-                         0, 0, "sosfilt", "", "nk:sosfilt:zeroLead");
+                         0, 0, "sosfilt", "", "numkit:sosfilt:zeroLead");
         return std::array<double, 5>{
             p[0 * L + r] / a0,  // b0
             p[1 * L + r] / a0,  // b1
@@ -110,16 +110,16 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
         if (x.type() == ValueType::SINGLE)
             throw Error("sosfilt: input 2 (x): single inputs are not "
                         "supported yet — convert with double()",
-                        0, 0, "sosfilt", "", "nk:sosfilt:singleUnsupported");
+                        0, 0, "sosfilt", "", "numkit:sosfilt:singleUnsupported");
         if (x.type() == ValueType::COMPLEX)
             throw Error("sosfilt: input 2 (x): complex inputs are not "
                         "supported yet",
-                        0, 0, "sosfilt", "", "nk:sosfilt:complexUnsupported");
+                        0, 0, "sosfilt", "", "numkit:sosfilt:complexUnsupported");
         throw Error("sosfilt: signal x must have floating point precision "
                     "(got a " + std::to_string(x.dims().rows()) + "x"
                     + std::to_string(x.dims().cols()) + " "
                     + mtypeName(x.type()) + " array)",
-                     0, 0, "sosfilt", "", "nk:sosfilt:xType");
+                     0, 0, "sosfilt", "", "numkit:sosfilt:xType");
     }
     if (x.isEmpty())
         return createLike(x, ValueType::DOUBLE, mr);
@@ -181,7 +181,7 @@ void applyCascadeWithZi(const Value &sos, const double *src, double *dst,
         const double a0 = p[3 * L + r];
         if (a0 == 0.0)
             throw Error("sosfiltfilt: section a0 is zero",
-                         0, 0, "sosfiltfilt", "", "nk:sosfiltfilt:zeroLead");
+                         0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:zeroLead");
         return std::array<double, 5>{
             p[0 * L + r] / a0, p[1 * L + r] / a0, p[2 * L + r] / a0,
             p[4 * L + r] / a0, p[5 * L + r] / a0,
@@ -315,12 +315,12 @@ Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *m
             throw Error("sosfiltfilt: input 2 (x): single inputs are not "
                         "supported yet — convert with double()",
                         0, 0, "sosfiltfilt", "",
-                        "nk:sosfiltfilt:singleUnsupported");
+                        "numkit:sosfiltfilt:singleUnsupported");
         throw Error("sosfiltfilt: signal x must have floating point precision "
                     "(got a " + std::to_string(x.dims().rows()) + "x"
                     + std::to_string(x.dims().cols()) + " "
                     + mtypeName(x.type()) + " array)",
-                     0, 0, "sosfiltfilt", "", "nk:sosfiltfilt:xType");
+                     0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:xType");
     }
     if (x.isEmpty())
         return createLike(x, ValueType::DOUBLE, mr);

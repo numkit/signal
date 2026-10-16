@@ -49,13 +49,13 @@ Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
 {
     if (r < 1)
         throw Error("intfilt: r must be >= 1",
-                     0, 0, "intfilt", "", "nk:intfilt:badR");
+                     0, 0, "intfilt", "", "numkit:intfilt:badR");
     if (n < 1)
         throw Error("intfilt: n must be >= 1",
-                     0, 0, "intfilt", "", "nk:intfilt:badN");
+                     0, 0, "intfilt", "", "numkit:intfilt:badN");
     if (!(alpha > 0.0) || !(alpha <= 1.0))
         throw Error("intfilt: alpha must be in (0, 1]",
-                     0, 0, "intfilt", "", "nk:intfilt:badAlpha");
+                     0, 0, "intfilt", "", "numkit:intfilt:badAlpha");
 
     // MATLAB intfilt(R, L, freqmult): a bandlimited interpolation FIR of
     // length 2*R*L-1, designed by LEAST SQUARES (firls) over a piecewise
@@ -103,7 +103,7 @@ Value upfirdn(const Value &x, const Value &h, size_t p, size_t q, std::pmr::memo
 {
     if (p < 1 || q < 1)
         throw Error("upfirdn: p and q must be >= 1",
-                     0, 0, "upfirdn", "", "nk:upfirdn:badPQ");
+                     0, 0, "upfirdn", "", "numkit:upfirdn:badPQ");
     const size_t Lx = x.numel();
     const size_t Lh = h.numel();
     if (Lx == 0 || Lh == 0) return sameOrientReal(x, 0, mr);

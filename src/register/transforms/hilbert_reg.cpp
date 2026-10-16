@@ -51,7 +51,7 @@ void envelope_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
         else if (m == "peak" || m == "peaks") mode = 3;
         else throw Error("envelope: unknown method '" + m +
                          "' (expected 'analytic', 'rms', or 'peak')",
-                         0, 0, "envelope", "", "nk:envelope:badmethod");
+                         0, 0, "envelope", "", "numkit:envelope:badmethod");
     } else if (args.size() >= 2) {
         // n given but no method â†’ MATLAB defaults to 'analytic'.
         mode = 1;
@@ -59,7 +59,7 @@ void envelope_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
     if ((mode == 1 || mode == 2 || mode == 3) && n == 0)
         throw Error("envelope: n must be a positive integer for "
                     "'analytic'/'rms'/'peak' modes",
-                    0, 0, "envelope", "", "nk:envelope:badn");
+                    0, 0, "envelope", "", "numkit:envelope:badn");
     auto [up, lo] = envelope_full(args[0], mode, n, mr);
     outs[0] = std::move(up);
     if (nargout > 1) outs[1] = std::move(lo);

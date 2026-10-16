@@ -37,11 +37,11 @@ namespace {
 void requireValidArgs(const Value &x, int p, const char *fn) {
     if (p < 1)
         throw Error(std::string(fn) + ": order p must be ≥ 1",
-                    0, 0, fn, "", "nk:ar:order");
+                    0, 0, fn, "", "numkit:ar:order");
     if (static_cast<size_t>(p) >= x.numel())
         throw Error(std::string(fn) +
                     ": order p must be < length(x)",
-                    0, 0, fn, "", "nk:ar:order");
+                    0, 0, fn, "", "numkit:ar:order");
 }
 
 // Evaluate Pxx(f) = σ² / |A(e^{jω})|² on a one-sided grid of nOut bins.

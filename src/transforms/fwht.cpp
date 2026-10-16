@@ -124,7 +124,7 @@ std::size_t resolveLen(std::size_t L, std::size_t n)
     if (n == 0) return nextPow2(L);
     if (!isPowerOfTwo(n))
         throw Error("fwht: transform length must be a power of 2",
-                     0, 0, "fwht", "", "nk:fwht:badLength");
+                     0, 0, "fwht", "", "numkit:fwht:badLength");
     return n;
 }
 
@@ -184,12 +184,12 @@ Value runWalshHadamard(const Value &x, std::size_t n,
 {
     if (ordering != "sequency" && ordering != "hadamard" && ordering != "dyadic")
         throw Error("fwht: ordering must be 'sequency', 'hadamard', or 'dyadic'",
-                     0, 0, "fwht", "", "nk:fwht:badOrdering");
+                     0, 0, "fwht", "", "numkit:fwht:badOrdering");
 
     const auto &d = x.dims();
     if (d.ndim() > 2)
         throw Error("fwht: input must be a vector or matrix",
-                     0, 0, "fwht", "", "nk:fwht:notMatrix");
+                     0, 0, "fwht", "", "numkit:fwht:notMatrix");
     if (x.numel() == 0)
         return Value::matrix(0, 0, ValueType::DOUBLE, mr);
 

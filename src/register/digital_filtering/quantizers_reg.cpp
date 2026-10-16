@@ -49,7 +49,7 @@ void uencode_reg(Span<const Value> args, size_t /*nargout*/,
         if (s == "signed")        signedOut = true;
         else if (s == "unsigned") signedOut = false;
         else throw Error("uencode: 4th arg must be 'signed' or 'unsigned'",
-                          0, 0, "uencode", "", "nk:uencode:Polarity");
+                          0, 0, "uencode", "", "numkit:uencode:Polarity");
     }
     outs[0] = uencode(args[0], N, V, signedOut, ctx.engine->resource());
 }
@@ -73,7 +73,7 @@ void udecode_reg(Span<const Value> args, size_t /*nargout*/,
         if (s == "wrap")          wrap = true;
         else if (s == "saturate") wrap = false;
         else throw Error("udecode: 4th arg must be 'saturate' or 'wrap'",
-                          0, 0, "udecode", "", "nk:udecode:BadOpt");
+                          0, 0, "udecode", "", "numkit:udecode:BadOpt");
     }
     outs[0] = udecode(args[0], N, V, wrap, ctx.engine->resource());
 }

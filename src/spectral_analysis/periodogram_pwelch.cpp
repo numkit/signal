@@ -250,7 +250,7 @@ CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, si
     const size_t ny = y.numel();
     if (nx != ny)
         throw Error("cpsd/mscohere: x and y must have the same length",
-                    0, 0, "cpsd", "", "nk:cpsd:size");
+                    0, 0, "cpsd", "", "numkit:cpsd:size");
     const double *xd = x.doubleData();
     const double *yd = y.doubleData();
 

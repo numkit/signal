@@ -473,7 +473,7 @@ void pulseRiseFall(Span<const Value> args, std::size_t nargout, Span<Value> outs
 {
     if (args.empty())
         throw Error(std::string(fnname) + ": requires at least 1 argument",
-                     0, 0, fnname, "", std::string("nk:") + fnname + ":nargin");
+                     0, 0, fnname, "", std::string("numkit:") + fnname + ":nargin");
     const Value &fsv = (args.size() >= 2) ? args[1] : Value::Empty;
     auto v = readVec(args[0]);
     auto lh = stateLevelsCalc(v.data(), v.size());

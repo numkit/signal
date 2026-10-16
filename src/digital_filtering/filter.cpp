@@ -74,7 +74,7 @@ void requireNumericOrLogical(const Value &v, const char *name)
     if (!v.isNumeric() && !v.isLogical())
         throw Error(std::string("filter: ") + name + " must be numeric or "
                     "logical (type is " + mtypeName(v.type()) + ").",
-                    0, 0, "filter", "", "nk:filter:inputType");
+                    0, 0, "filter", "", "numkit:filter:inputType");
 }
 
 } // namespace
@@ -97,7 +97,7 @@ FilterPlan filter_argcheck(const Value &b, const Value &a, const Value &x,
                     "vectors (") + name + " is "
                     + std::to_string(d.dim(0)) + "x"
                     + std::to_string(d.dim(1)) + ").",
-                    0, 0, "filter", "", "nk:filter:notVector");
+                    0, 0, "filter", "", "numkit:filter:notVector");
     }
 
     // a(1) != 0 — complex inputs report through the complex view.
@@ -105,11 +105,11 @@ FilterPlan filter_argcheck(const Value &b, const Value &a, const Value &x,
         if (a.complexData()[0] == Complex(0.0, 0.0))
             throw Error("filter: first denominator coefficient a(1) must "
                         "be non-zero (got 0).",
-                        0, 0, "filter", "", "nk:filter:zeroLead");
+                        0, 0, "filter", "", "numkit:filter:zeroLead");
     } else if (a.elemAsDouble(0) == 0.0) {
         throw Error("filter: first denominator coefficient a(1) must be "
                     "non-zero (got 0).",
-                    0, 0, "filter", "", "nk:filter:zeroLead");
+                    0, 0, "filter", "", "numkit:filter:zeroLead");
     }
 
     FilterPlan p;
@@ -130,7 +130,7 @@ FilterPlan filter_argcheck(const Value &b, const Value &a, const Value &x,
                 "filter: zi must have max(length(a),length(b))-1 = "
                 + std::to_string(p.stateLen) + " elements per signal (got "
                 + std::to_string(ziLen) + ").",
-                0, 0, "filter", "", "nk:filter:invalidInitialConditions");
+                0, 0, "filter", "", "numkit:filter:invalidInitialConditions");
     }
     return p;
 }
@@ -279,7 +279,7 @@ Value filtfilt(const Value &b, const Value &a, const Value &x, std::pmr::memory_
     const double a0 = ad[0];
     if (a0 == 0.0)
         throw Error("filtfilt: a(1) must be nonzero",
-                     0, 0, "filtfilt", "", "nk:filtfilt:zeroLead");
+                     0, 0, "filtfilt", "", "numkit:filtfilt:zeroLead");
 
     ScratchArena scratch(mr);
     auto bn = ScratchVec<double>(nb, &scratch);

@@ -167,15 +167,15 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pm
     if (freqrange.isEmpty())
         throw Error("bandpower: fs requires freqrange — specify both "
                     "together (bandpower(x, fs, freqrange))",
-                    0, 0, "bandpower", "", "nk:bandpower:freqRangeRequired");
+                    0, 0, "bandpower", "", "numkit:bandpower:freqRangeRequired");
     if (freqrange.numel() != 2)
         throw Error("bandpower: freqrange must be a 2-element vector "
                     "[fmin, fmax] (got " + std::to_string(freqrange.numel())
                     + " elements)",
-                    0, 0, "bandpower", "", "nk:bandpower:freqRange");
+                    0, 0, "bandpower", "", "numkit:bandpower:freqRange");
     if (fs.numel() != 1 || fs.isComplex())
         throw Error("bandpower: fs must be a real scalar",
-                    0, 0, "bandpower", "", "nk:bandpower:fs");
+                    0, 0, "bandpower", "", "numkit:bandpower:fs");
     const double fsv = fs.toScalar();
     auto p = computePsd(x, fsv, mr);
     const double fLo = freqrange.elemAsDouble(0);

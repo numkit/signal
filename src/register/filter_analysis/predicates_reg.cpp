@@ -134,13 +134,13 @@ int firtype(const Value &b)
     auto v = trimTrailingZeros(b);
     if (v.size() < 2)
         throw Error("firtype: filter must have at least 2 coefficients",
-                     0, 0, "firtype", "", "nk:firtype:short");
+                     0, 0, "firtype", "", "numkit:firtype:short");
     const bool sym  = isSymmetric(v, +1.0);
     const bool anti = isSymmetric(v, -1.0);
     if (!sym && !anti)
         throw Error("firtype: filter is not (anti)symmetric â€” not a "
                     "linear-phase FIR",
-                     0, 0, "firtype", "", "nk:firtype:notlinphase");
+                     0, 0, "firtype", "", "numkit:firtype:notlinphase");
     const int order = static_cast<int>(v.size()) - 1;  // L = order + 1
     const bool order_even = (order % 2 == 0);
     if (sym)  return order_even ? 1 : 2;
@@ -165,7 +165,7 @@ double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory
     }
     if (pnorm != 2.0)
         throw Error("filternorm: only pnorm = 2 or inf supported",
-                     0, 0, "filternorm", "", "nk:filternorm:p");
+                     0, 0, "filternorm", "", "numkit:filternorm:p");
     // L2: sqrt((1/Ï€) âˆ«_0^Ï€ |H|Â² dw) via trapezoidal rule on freqz grid.
     // freqz returns npts samples on [0, Ï€] inclusive â€” Î”w = Ï€/(npts-1).
     double sum = 0.0;

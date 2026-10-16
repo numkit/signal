@@ -31,11 +31,11 @@ double normaliseW(double f, double fs, const char *fnName)
 {
     if (!(fs > 0))
         throw Error(std::string(fnName) + ": fs must be positive",
-                     0, 0, fnName, "", std::string("nk:") + fnName + ":badFs");
+                     0, 0, fnName, "", std::string("numkit:") + fnName + ":badFs");
     const double w = 2.0 * f / fs;
     if (!(w > 0.0) || !(w < 1.0))
         throw Error(std::string(fnName) + ": cutoff must be in (0, fs/2)",
-                     0, 0, fnName, "", std::string("nk:") + fnName + ":badCutoff");
+                     0, 0, fnName, "", std::string("numkit:") + fnName + ":badCutoff");
     return w;
 }
 
@@ -43,7 +43,7 @@ void validateOrder(int order, const char *fnName)
 {
     if (order < 1)
         throw Error(std::string(fnName) + ": order must be >= 1",
-                     0, 0, fnName, "", std::string("nk:") + fnName + ":badOrder");
+                     0, 0, fnName, "", std::string("numkit:") + fnName + ":badOrder");
 }
 
 // MATLAB lowpass/highpass/bandpass/bandstop default parameters --
@@ -95,7 +95,7 @@ Value bandpass(const Value &x, double flo, double fhi, double fs, int order, std
     validateOrder(order, "bandpass");
     if (!(flo < fhi))
         throw Error("bandpass: low cutoff must be < high cutoff",
-                     0, 0, "bandpass", "", "nk:bandpass:badRange");
+                     0, 0, "bandpass", "", "numkit:bandpass:badRange");
     const double Wlo = normaliseW(flo, fs, "bandpass");
     const double Whi = normaliseW(fhi, fs, "bandpass");
     const int N = (order == 8) ? kDefaultIirOrder : order;
@@ -109,7 +109,7 @@ Value bandstop(const Value &x, double flo, double fhi, double fs, int order, std
     validateOrder(order, "bandstop");
     if (!(flo < fhi))
         throw Error("bandstop: low cutoff must be < high cutoff",
-                     0, 0, "bandstop", "", "nk:bandstop:badRange");
+                     0, 0, "bandstop", "", "numkit:bandstop:badRange");
     const double Wlo = normaliseW(flo, fs, "bandstop");
     const double Whi = normaliseW(fhi, fs, "bandstop");
     const int N = (order == 8) ? kDefaultIirOrder : order;

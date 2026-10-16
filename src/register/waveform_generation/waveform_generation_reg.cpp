@@ -40,7 +40,7 @@ static double carrierArg(const Value &v, int argNum, const char *name,
                         + " (" + name + ") must be a real scalar "
                           "(argument is not numeric)",
                     0, 0, fn, "",
-                    std::string("nk:") + fn + ":" + name + "NotReal");
+                    std::string("numkit:") + fn + ":" + name + "NotReal");
     return argcheck::expectedReal(v, argNum, name, fn);
 }
 
@@ -51,7 +51,7 @@ void demod_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
     const double Fs = carrierArg(args[2], 3, "Fs", "demod");
     if (!args[3].isChar() && !args[3].isString())
         throw Error("demod: method must be a string",
-                    0, 0, "demod", "", "nk:demod:BadMethodType");
+                    0, 0, "demod", "", "numkit:demod:BadMethodType");
     std::string method = args[3].toString();
     const Value &opt = (args.size() >= 5) ? args[4] : Value::Empty;
     outs[0] = demod(args[0], Fc, Fs, method, opt, ctx.engine->resource());
@@ -64,7 +64,7 @@ void modulate_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     const double Fs = carrierArg(args[2], 3, "Fs", "modulate");
     if (!args[3].isChar() && !args[3].isString())
         throw Error("modulate: method must be a string",
-                    0, 0, "modulate", "", "nk:modulate:BadMethodType");
+                    0, 0, "modulate", "", "numkit:modulate:BadMethodType");
     std::string method = args[3].toString();
     const Value &opt = (args.size() >= 5) ? args[4] : Value::Empty;
     outs[0] = modulate(args[0], Fc, Fs, method, opt, ctx.engine->resource());
@@ -85,7 +85,7 @@ void vco_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallC
                           fs, mr);
         else
             throw Error("vco: range must be scalar Fc or [Fmin Fmax]",
-                        0, 0, "vco", "", "nk:vco:BadRange");
+                        0, 0, "vco", "", "numkit:vco:BadRange");
     } else {
         outs[0] = vco(args[0], fs / 4.0, fs, mr);
     }
@@ -154,7 +154,7 @@ void pulstran_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     }
     if (!args[2].isChar() && !args[2].isString())
         throw Error("pulstran: 3rd argument must be a string name or a function handle",
-                     0, 0, "pulstran", "", "nk:pulstran:fnType");
+                     0, 0, "pulstran", "", "numkit:pulstran:fnType");
     const std::string fnName = args[2].toString();
     const double fcOrW = (args.size() >= 4) ? args[3].toScalar() : 1.0;
     const double bw    = (args.size() >= 5) ? args[4].toScalar() : 0.5;
@@ -204,7 +204,7 @@ void chirp_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
     if (args.size() >= 5) {
         if (!args[4].isChar() && !args[4].isString())
             throw Error("chirp: method must be a string",
-                         0, 0, "chirp", "", "nk:chirp:badMethodType");
+                         0, 0, "chirp", "", "numkit:chirp:badMethodType");
         method = args[4].toString();
     }
     outs[0] = chirp(args[0], f0, t1, f1, method, ctx.engine->resource());

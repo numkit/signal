@@ -63,7 +63,7 @@ Value rectpuls(const Value &t, double w, std::pmr::memory_resource *mr)
 {
     if (w <= 0)
         throw Error("rectpuls: width w must be positive",
-                     0, 0, "rectpuls", "", "nk:rectpuls:badWidth");
+                     0, 0, "rectpuls", "", "numkit:rectpuls:badWidth");
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
     const size_t n = t.numel();
@@ -76,7 +76,7 @@ Value tripuls(const Value &t, double w, std::pmr::memory_resource *mr)
 {
     if (w <= 0)
         throw Error("tripuls: width w must be positive",
-                     0, 0, "tripuls", "", "nk:tripuls:badWidth");
+                     0, 0, "tripuls", "", "numkit:tripuls:badWidth");
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
     const size_t n = t.numel();
@@ -89,7 +89,7 @@ Value gauspuls(const Value &t, double fc, double bw, std::pmr::memory_resource *
 {
     if (fc <= 0 || bw <= 0)
         throw Error("gauspuls: fc and bw must be positive",
-                     0, 0, "gauspuls", "", "nk:gauspuls:badArg");
+                     0, 0, "gauspuls", "", "numkit:gauspuls:badArg");
     const double alpha = gauspulsAlpha(fc, bw);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -125,7 +125,7 @@ Value pulstranHandle(Span<const double> t, Span<const double> d,
         if (r.numel() != n)
             throw Error("pulstran: handle must return a vector of the same "
                          "length as t",
-                         0, 0, "pulstran", "", "nk:pulstran:badHandleOutput");
+                         0, 0, "pulstran", "", "numkit:pulstran:badHandleOutput");
         for (size_t i = 0; i < n; ++i)
             dst[i] += r.elemAsDouble(i);
     }
@@ -169,7 +169,7 @@ Value pulstran(const Value &t, const Value &d, const std::string &fnName,
         throw Error("pulstran: unsupported pulse function '" + fnName
                      + "' (built-ins: 'rectpuls'/'tripuls'/'gauspuls'). "
                      + "Custom handles need the engine callback API (planned).",
-                     0, 0, "pulstran", "", "nk:pulstran:fnUnsupported");
+                     0, 0, "pulstran", "", "numkit:pulstran:fnUnsupported");
     }
     return out;
 }
@@ -178,7 +178,7 @@ Value square(const Value &t, double duty, std::pmr::memory_resource *mr)
 {
     if (duty < 0.0 || duty > 100.0)
         throw Error("square: duty cycle must be in [0, 100]",
-                     0, 0, "square", "", "nk:square:badDuty");
+                     0, 0, "square", "", "numkit:square:badDuty");
     constexpr double kTwoPi = 6.28318530717958647692;
     const double threshold = duty / 100.0;
     auto out = createLike(t, ValueType::DOUBLE, mr);
@@ -198,7 +198,7 @@ Value sawtooth(const Value &t, double width, std::pmr::memory_resource *mr)
 {
     if (width < 0.0 || width > 1.0)
         throw Error("sawtooth: width must be in [0, 1]",
-                     0, 0, "sawtooth", "", "nk:sawtooth:badWidth");
+                     0, 0, "sawtooth", "", "numkit:sawtooth:badWidth");
     constexpr double kTwoPi = 6.28318530717958647692;
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -243,7 +243,7 @@ Value gmonopuls(const Value &t, double fc, std::pmr::memory_resource *mr)
 {
     if (fc <= 0)
         throw Error("gmonopuls: fc must be positive",
-                     0, 0, "gmonopuls", "", "nk:gmonopuls:badFc");
+                     0, 0, "gmonopuls", "", "numkit:gmonopuls:badFc");
     // Standard normalised gmonopuls: y(t) = 2·√e·π·fc·t · exp(-2·(π·fc·t)²)
     // peaks at +1 when t = 1/(2π·fc).
     constexpr double kPi = 3.14159265358979323846;
@@ -264,7 +264,7 @@ Value diric(const Value &x, int n, std::pmr::memory_resource *mr)
 {
     if (n < 1)
         throw Error("diric: n must be a positive integer",
-                     0, 0, "diric", "", "nk:diric:badN");
+                     0, 0, "diric", "", "numkit:diric:badN");
     constexpr double kTwoPi = 6.28318530717958647692;
     auto out = createLike(x, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -290,7 +290,7 @@ Value chirp(const Value &t, double f0, double t1, double f1,
 {
     if (t1 <= 0)
         throw Error("chirp: t1 must be positive",
-                     0, 0, "chirp", "", "nk:chirp:badT1");
+                     0, 0, "chirp", "", "numkit:chirp:badT1");
 
     std::string m = method;
     for (auto &c : m) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -302,15 +302,15 @@ Value chirp(const Value &t, double f0, double t1, double f1,
     else if (m == "logarithmic")           mode = Mode::Logarithmic;
     else
         throw Error("chirp: method must be 'linear', 'quadratic', or 'logarithmic'",
-                     0, 0, "chirp", "", "nk:chirp:badMethod");
+                     0, 0, "chirp", "", "numkit:chirp:badMethod");
 
     if (mode == Mode::Logarithmic) {
         if (f0 <= 0 || f1 <= 0)
             throw Error("chirp: 'logarithmic' requires f0 > 0 and f1 > 0",
-                         0, 0, "chirp", "", "nk:chirp:badFreq");
+                         0, 0, "chirp", "", "numkit:chirp:badFreq");
         if (f0 == f1)
             throw Error("chirp: 'logarithmic' requires f0 != f1",
-                         0, 0, "chirp", "", "nk:chirp:badFreq");
+                         0, 0, "chirp", "", "numkit:chirp:badFreq");
     }
 
     auto out = createLike(t, ValueType::DOUBLE, mr);
@@ -380,14 +380,14 @@ Value demod(const Value &y, double Fc, double Fs,
         if (t == ValueType::SINGLE)
             throw Error("demod: input 1 (y): single inputs are not "
                         "supported yet — convert with double()",
-                        0, 0, "demod", "", "nk:demod:singleUnsupported");
+                        0, 0, "demod", "", "numkit:demod:singleUnsupported");
         if (t != ValueType::DOUBLE && t != ValueType::COMPLEX)
             detail::throwInputType(y, "demod", "y", 1,
                                    "a double or complex double array");
     }
     if (Fs <= 0.0)
         throw Error("demod: Fs must be positive",
-                    0, 0, "demod", "", "nk:demod:BadFs");
+                    0, 0, "demod", "", "numkit:demod:BadFs");
 
     const std::size_t N = y.numel();
     if (N == 0)
@@ -402,7 +402,7 @@ Value demod(const Value &y, double Fc, double Fs,
     if (!isAmFamily && !isFmPm)
         throw Error("demod: only am/amdsb-sc/amdsb-tc/fm/pm supported "
                     "(amssb/pwm/ptm/ppm/qam deferred)",
-                    0, 0, "demod", "", "nk:demod:UnsupportedMethod");
+                    0, 0, "demod", "", "numkit:demod:UnsupportedMethod");
 
     // Convert row vector to column for processing.
     const bool isRowVec = (y.dims().rows() == 1 && y.dims().cols() > 1);
@@ -533,14 +533,14 @@ Value modulate(const Value &x, double Fc, double Fs,
         if (t == ValueType::SINGLE)
             throw Error("modulate: input 1 (x): single inputs are not "
                         "supported yet — convert with double()",
-                        0, 0, "modulate", "", "nk:modulate:singleUnsupported");
+                        0, 0, "modulate", "", "numkit:modulate:singleUnsupported");
         if (t != ValueType::DOUBLE && t != ValueType::COMPLEX)
             detail::throwInputType(x, "modulate", "x", 1,
                                    "a double or complex double array");
     }
     if (Fs <= 0.0)
         throw Error("modulate: Fs must be positive",
-                    0, 0, "modulate", "", "nk:modulate:BadFs");
+                    0, 0, "modulate", "", "numkit:modulate:BadFs");
 
     const std::size_t N = x.numel();
     if (N == 0)
@@ -645,7 +645,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         }
     } else {
         throw Error("modulate: method must be 'am'/'amdsb-sc'/'amdsb-tc'/'amssb'/'fm'/'pm'",
-                    0, 0, "modulate", "", "nk:modulate:UnsupportedMethod");
+                    0, 0, "modulate", "", "numkit:modulate:UnsupportedMethod");
     }
 
     if (isRowVec && len > 0) {
@@ -674,14 +674,14 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
     constexpr double kPi = 3.14159265358979323846;
     if (fs <= 0.0)
         throw Error("vco: fs must be positive",
-                    0, 0, "vco", "", "nk:vco:BadFs");
+                    0, 0, "vco", "", "numkit:vco:BadFs");
     const size_t N = x.numel();
     // Range check: x ∈ [-1, 1].
     for (size_t i = 0; i < N; ++i) {
         const double v = x.elemAsDouble(i);
         if (v > 1.0 || v < -1.0)
             throw Error("vco: x values must be in [-1, 1]",
-                        0, 0, "vco", "", "nk:vco:InvalidRange");
+                        0, 0, "vco", "", "numkit:vco:InvalidRange");
     }
 
     // Allocate output (same shape as x).

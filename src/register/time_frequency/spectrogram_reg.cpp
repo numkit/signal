@@ -45,18 +45,18 @@ void iscola_reg(Span<const Value> args, size_t nargout,
     argcheck::checkNargin(args.size(), 2, 3, "iscola");
     if (args[1].numel() != 1)
         throw Error("iscola: noverlap must be a scalar",
-                     0, 0, "iscola", "", "nk:iscola:badOverlap");
+                     0, 0, "iscola", "", "numkit:iscola:badOverlap");
     const double novS = args[1].toScalar();
     if (!(novS >= 0.0))
         throw Error("iscola: noverlap must be non-negative",
-                     0, 0, "iscola", "", "nk:iscola:badOverlap");
+                     0, 0, "iscola", "", "numkit:iscola:badOverlap");
     const std::size_t noverlap = static_cast<std::size_t>(novS);
 
     std::string method = "wola";  // MATLAB default
     if (args.size() >= 3) {
         if (!(args[2].isChar() || args[2].isString()))
             throw Error("iscola: method must be a string",
-                         0, 0, "iscola", "", "nk:iscola:badMethod");
+                         0, 0, "iscola", "", "numkit:iscola:badMethod");
         method = args[2].toString();
     }
 
@@ -210,7 +210,7 @@ static void parseStftNVPairs(Span<const Value> args, size_t startIdx,
     for (size_t i = startIdx; i + 1 < args.size(); i += 2) {
         if (!args[i].isChar())
             throw Error("stft: name-value pair name must be a string",
-                         0, 0, "stft", "", "nk:stft:badNVName");
+                         0, 0, "stft", "", "numkit:stft:badNVName");
         const std::string key = args[i].toString();
         const Value &val      = args[i + 1];
         if (eqIgnoreCase(key, "Window"))           window    = val;
@@ -225,7 +225,7 @@ static void parseStftNVPairs(Span<const Value> args, size_t startIdx,
         else if (eqIgnoreCase(key, "FrequencyRange")) range  = val.toString();
         else
             throw Error("stft: unknown name-value key '" + key + "'",
-                         0, 0, "stft", "", "nk:stft:badNVKey");
+                         0, 0, "stft", "", "numkit:stft:badNVKey");
     }
 }
 

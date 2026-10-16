@@ -41,7 +41,7 @@ static DctArgs parseDctArgs(Span<const Value> args, const char *fn)
         if (args[pos].isChar() || args[pos].isString()) {
             if (pos + 1 >= args.size())
                 throw Error(std::string(fn) + ": missing value after name",
-                             0, 0, fn, "", "nk:dct:nv");
+                             0, 0, fn, "", "numkit:dct:nv");
             const std::string key = args[pos].toString();
             if (key == "Type" || key == "type") {
                 a.hasType = true;
@@ -59,7 +59,7 @@ static DctArgs parseDctArgs(Span<const Value> args, const char *fn)
             a.dim = argcheck::dimArg(args[pos], fn);
         else
             throw Error(std::string(fn) + ": too many positional arguments",
-                         0, 0, fn, "", "nk:dct:nargin");
+                         0, 0, fn, "", "numkit:dct:nargin");
         ++pos;
     }
     return a;
@@ -83,7 +83,7 @@ void dct_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     const double t = a.hasType ? a.typeVal : 2.0;
     if (t != 1.0 && t != 2.0 && t != 3.0 && t != 4.0)
         throw Error("dct: 'Type' must be 1, 2, 3, or 4",
-                     0, 0, "dct", "", "nk:dct:type");
+                     0, 0, "dct", "", "numkit:dct:type");
     if (t == 2.0) outs[0] = dct(args[0], a.n, a.dim, mr);
     else          outs[0] = dctTyped(args[0], a.n, a.dim, t, /*inverse=*/false, mr);
 }
@@ -106,7 +106,7 @@ void idct_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     const double t = a.hasType ? a.typeVal : 2.0;
     if (t != 1.0 && t != 2.0 && t != 3.0 && t != 4.0)
         throw Error("idct: 'Type' must be 1, 2, 3, or 4",
-                     0, 0, "idct", "", "nk:idct:type");
+                     0, 0, "idct", "", "numkit:idct:type");
     if (t == 2.0) outs[0] = idct(args[0], a.n, a.dim, mr);
     else          outs[0] = dctTyped(args[0], a.n, a.dim, t, /*inverse=*/true, mr);
 }

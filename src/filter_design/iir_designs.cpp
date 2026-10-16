@@ -44,7 +44,7 @@ void iirOrder_argcheck(int N, const char *fn)
         throw Error(std::string(fn) + ": filter order N must be a "
                         "positive integer (got " + std::to_string(N) + ").",
                     0, 0, fn, "",
-                    std::string("nk:") + fn + ":orderNotPositive");
+                    std::string("numkit:") + fn + ":orderNotPositive");
 }
 
 // Convert Wn (Value) → 1 or 2 doubles.
@@ -424,15 +424,15 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
 {
     if (Rp <= 0.0 || Rs <= 0.0)
         throw Error("ellipord: Rp, Rs must be positive",
-                    0, 0, "ellipord", "", "nk:ellipord:BadRpRs");
+                    0, 0, "ellipord", "", "numkit:ellipord:BadRpRs");
     if (Wp_v.numel() != Ws_v.numel())
         throw Error("ellipord: Wp and Ws must have same length",
-                    0, 0, "ellipord", "", "nk:ellipord:DimMismatch");
+                    0, 0, "ellipord", "", "numkit:ellipord:DimMismatch");
 
     const size_t numW = Wp_v.numel();
     if (numW != 1 && numW != 2)
         throw Error("ellipord: Wp must be scalar or 2-vector",
-                    0, 0, "ellipord", "", "nk:ellipord:BadWp");
+                    0, 0, "ellipord", "", "numkit:ellipord:BadWp");
 
     std::vector<double> wp(numW), ws(numW);
     for (size_t i = 0; i < numW; ++i) {
@@ -490,7 +490,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
         }
         default:
             throw Error("ellipord: invalid filter spec",
-                        0, 0, "ellipord", "", "nk:ellipord:BadSpec");
+                        0, 0, "ellipord", "", "numkit:ellipord:BadSpec");
     }
 
     // wn = wp (digital) or WP (analog).
@@ -544,13 +544,13 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
 
     if (nbands != ndevs)
         throw Error("firpmord: A and DEV must have same length",
-                    0, 0, "firpmord", "", "nk:firpmord:MismatchedVectorLength");
+                    0, 0, "firpmord", "", "numkit:firpmord:MismatchedVectorLength");
     if (mf != 2 * (nbands - 1))
         throw Error("firpmord: numel(F) must equal 2*(numel(A)-1)",
-                    0, 0, "firpmord", "", "nk:firpmord:InvalidLength");
+                    0, 0, "firpmord", "", "numkit:firpmord:InvalidLength");
     if (fs <= 0.0)
         throw Error("firpmord: Fs must be positive",
-                    0, 0, "firpmord", "", "nk:firpmord:BadFs");
+                    0, 0, "firpmord", "", "numkit:firpmord:BadFs");
 
     std::vector<double> fcuts(mf), mags(nbands), devs(nbands);
     for (size_t i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
@@ -563,7 +563,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
         for (size_t i = 1; i < mf; ++i) if (fcuts[i] > mx) mx = fcuts[i];
         if (mx > 0.5)
             throw Error("firpmord: F edges must be <= Fs/2",
-                        0, 0, "firpmord", "", "nk:firpmord:InvalidRange");
+                        0, 0, "firpmord", "", "numkit:firpmord:InvalidRange");
     }
 
     // Relative deviation: devs[i] /= (stop + mag) (== 1 either way).
@@ -683,13 +683,13 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
 
     if (nbands != ndevs)
         throw Error("kaiserord: A and DEV must have same length",
-                    0, 0, "kaiserord", "", "nk:kaiserord:InvalidDimensionsADEV");
+                    0, 0, "kaiserord", "", "numkit:kaiserord:InvalidDimensionsADEV");
     if (mf != 2 * (nbands - 1))
         throw Error("kaiserord: numel(F) must equal 2*(numel(A)-1)",
-                    0, 0, "kaiserord", "", "nk:kaiserord:InvalidDimensionsLengthF");
+                    0, 0, "kaiserord", "", "numkit:kaiserord:InvalidDimensionsLengthF");
     if (fs <= 0.0)
         throw Error("kaiserord: Fs must be positive",
-                    0, 0, "kaiserord", "", "nk:kaiserord:BadFs");
+                    0, 0, "kaiserord", "", "numkit:kaiserord:BadFs");
 
     std::vector<double> fcuts(mf), mags(nbands), devs(nbands);
     for (size_t i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
@@ -702,7 +702,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
         for (size_t i = 1; i < mf; ++i) if (fcuts[i] > mx) mx = fcuts[i];
         if (mx >= 0.5)
             throw Error("kaiserord: F edges must be < Fs/2",
-                        0, 0, "kaiserord", "", "nk:kaiserord:InvalidRange");
+                        0, 0, "kaiserord", "", "numkit:kaiserord:InvalidRange");
     }
 
     // Convert dev → relative deviation: dev /= (stop + mag)  (== 1 either way)

@@ -43,7 +43,7 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
             argcheck::expectedReal(args[1], 2, "k", "medfilt1"), 2, "k", "medfilt1");
         if (kv < 0)
             throw Error("medfilt1: window length must be nonnegative",
-                         0, 0, "medfilt1", "", "nk:medfilt1:badK");
+                         0, 0, "medfilt1", "", "numkit:medfilt1:badK");
         k = static_cast<size_t>(kv);
     }
 

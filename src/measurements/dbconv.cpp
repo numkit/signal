@@ -55,7 +55,7 @@ Value db(const Value &x, const std::string &signalType, std::pmr::memory_resourc
         scale = 10.0;
     else
         throw Error("db: signalType must be 'voltage' or 'power'",
-                     0, 0, "db", "", "nk:db:badType");
+                     0, 0, "db", "", "numkit:db:badType");
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
                  [scale](double v) { return scale * std::log10(v); });

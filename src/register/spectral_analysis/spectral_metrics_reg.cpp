@@ -41,10 +41,10 @@ void bandpower_reg(Span<const Value> args, size_t /*nargout*/,
             throw Error("bandpower: the 'psd' one-sided-power-spectrum "
                         "form bandpower(pxx, f, freqrange, 'psd') is not "
                         "supported yet",
-                        0, 0, "bandpower", "", "nk:bandpower:psdUnsupported");
+                        0, 0, "bandpower", "", "numkit:bandpower:psdUnsupported");
         throw Error("bandpower: unrecognized 4th input option ('psd' is "
                     "the only supported option in the reference engine)",
-                    0, 0, "bandpower", "", "nk:bandpower:badOption");
+                    0, 0, "bandpower", "", "numkit:bandpower:badOption");
     }
     const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
     const Value &fr = (args.size() >= 3) ? args[2] : Value::Empty;
@@ -108,7 +108,7 @@ void instfreq_reg(Span<const Value> args, size_t, Span<Value> outs,
             && args[i].toString() == "Method" && i + 1 < args.size()) {
             if (!(args[i + 1].isChar() || args[i + 1].isString()))
                 throw Error("instfreq: 'Method' value must be a string",
-                             0, 0, "instfreq", "", "nk:instfreq:method");
+                             0, 0, "instfreq", "", "numkit:instfreq:method");
             method = args[i + 1].toString();
             ++i;
         }
@@ -117,7 +117,7 @@ void instfreq_reg(Span<const Value> args, size_t, Span<Value> outs,
         throw Error("instfreq: method '" + method + "' is not yet supported "
                     "(the default tfmoment needs a pspectrum port â€” see "
                     "bugs/opened/signal/instfreq-instbw.md)",
-                     0, 0, "instfreq", "", "nk:instfreq:method");
+                     0, 0, "instfreq", "", "numkit:instfreq:method");
     const Value &fs = (args.size() >= 2 && !args[1].isChar() && !args[1].isString())
                           ? args[1] : Value::Empty;
     outs[0] = instfreq(args[0], fs, ctx.engine->resource());

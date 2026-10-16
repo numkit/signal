@@ -39,7 +39,7 @@ void fftshift_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
         const int dim = argcheck::dimArg(args[1], "fftshift");
         if (dim < 1 || dim > 3)
             throw Error("fftshift: dim must be 1, 2, or 3",
-                         0, 0, "fftshift", "", "nk:fftshift:dim");
+                         0, 0, "fftshift", "", "numkit:fftshift:dim");
         outs[0] = fftshift(args[0], dim, ctx.engine->resource());
     } else {
         outs[0] = fftshift(args[0], ctx.engine->resource());
@@ -53,7 +53,7 @@ void ifftshift_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         const int dim = argcheck::dimArg(args[1], "ifftshift");
         if (dim < 1 || dim > 3)
             throw Error("ifftshift: dim must be 1, 2, or 3",
-                         0, 0, "ifftshift", "", "nk:ifftshift:dim");
+                         0, 0, "ifftshift", "", "numkit:ifftshift:dim");
         outs[0] = ifftshift(args[0], dim, ctx.engine->resource());
     } else {
         outs[0] = ifftshift(args[0], ctx.engine->resource());
