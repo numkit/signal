@@ -1,16 +1,16 @@
-// toolboxes/signal/src/filter_analysis/predicates_reg.cpp
+﻿// toolboxes/signal/src/filter_analysis/predicates_reg.cpp
 //
 // Register half of the signal predicates builtins: the CallContext wrappers
 // delegating to the engine-free compute in predicates.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/filter_analysis/predicates.hpp>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 #include "filter_analysis/predicates_detail.hpp"
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/scratch.hpp>
@@ -110,7 +110,7 @@ void filternorm_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs
 
 } // namespace detail
 
-// ── filtord ────────────────────────────────────────────────────────
+// â”€â”€ filtord â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 int filtord(const Value &b)
 {
     auto bv = trimTrailingZeros(b);
@@ -128,7 +128,7 @@ int filtord(const Value &b, const Value &a)
     return (n == 0) ? 0 : static_cast<int>(n) - 1;
 }
 
-// ── firtype ────────────────────────────────────────────────────────
+// â”€â”€ firtype â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 int firtype(const Value &b)
 {
     auto v = trimTrailingZeros(b);
@@ -138,7 +138,7 @@ int firtype(const Value &b)
     const bool sym  = isSymmetric(v, +1.0);
     const bool anti = isSymmetric(v, -1.0);
     if (!sym && !anti)
-        throw Error("firtype: filter is not (anti)symmetric — not a "
+        throw Error("firtype: filter is not (anti)symmetric â€” not a "
                     "linear-phase FIR",
                      0, 0, "firtype", "", "nk:firtype:notlinphase");
     const int order = static_cast<int>(v.size()) - 1;  // L = order + 1
@@ -147,7 +147,7 @@ int firtype(const Value &b)
     /* anti */ return order_even ? 3 : 4;
 }
 
-// ── filternorm ─────────────────────────────────────────────────────
+// â”€â”€ filternorm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory_resource *mr)
 {
     constexpr size_t kNpts = 8192;
@@ -155,7 +155,7 @@ double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory
     const Complex *hd = H.complexData();
 
     if (std::isinf(pnorm)) {
-        // L∞: max |H(e^{jw})| over the freqz grid.
+        // Lâˆž: max |H(e^{jw})| over the freqz grid.
         double mx = 0.0;
         for (size_t k = 0; k < kNpts; ++k) {
             const double m = std::abs(hd[k]);
@@ -166,11 +166,11 @@ double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory
     if (pnorm != 2.0)
         throw Error("filternorm: only pnorm = 2 or inf supported",
                      0, 0, "filternorm", "", "nk:filternorm:p");
-    // L2: sqrt((1/π) ∫_0^π |H|² dw) via trapezoidal rule on freqz grid.
-    // freqz returns npts samples on [0, π] inclusive — Δw = π/(npts-1).
+    // L2: sqrt((1/Ï€) âˆ«_0^Ï€ |H|Â² dw) via trapezoidal rule on freqz grid.
+    // freqz returns npts samples on [0, Ï€] inclusive â€” Î”w = Ï€/(npts-1).
     double sum = 0.0;
     for (size_t k = 0; k < kNpts; ++k) {
-        const double mag2 = std::norm(hd[k]);  // |z|² for complex
+        const double mag2 = std::norm(hd[k]);  // |z|Â² for complex
         const double w = (k == 0 || k == kNpts - 1) ? 0.5 : 1.0;
         sum += w * mag2;
     }

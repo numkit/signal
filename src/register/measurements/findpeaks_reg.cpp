@@ -1,9 +1,9 @@
-// toolboxes/signal/src/measurements/findpeaks_reg.cpp
+﻿// toolboxes/signal/src/measurements/findpeaks_reg.cpp
 //
 // CallContext register half of measurements/findpeaks.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/findpeaks.hpp>
 #include "measurements/findpeaks_detail.hpp"
 #include <numkit/value/argcheck.hpp>
@@ -113,7 +113,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
                 "WidthReference", "findpeaks"));
         } else {
             // MinPeakWidth / MaxPeakWidth / Annotate / DoubleSided are not
-            // yet supported — fail loudly rather than silently ignore.
+            // yet supported â€” fail loudly rather than silently ignore.
             throw Error("findpeaks: option '" + args[argi].toString() + "' not supported",
                          0, 0, "findpeaks", "", "nk:findpeaks:unsupportedOpt");
         }

@@ -1,14 +1,14 @@
-// toolboxes/signal/src/smoothing/medfilt_reg.cpp
+﻿// toolboxes/signal/src/smoothing/medfilt_reg.cpp
 //
 // Register half of the signal medfilt builtins: the CallContext wrappers
 // delegating to the engine-free compute in medfilt.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/smoothing/medfilt.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -37,7 +37,7 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     size_t k = 3;
     if (args.size() >= 2 && !args[1].isEmpty()
         && !args[1].isChar() && !args[1].isString()) {
-        // k = 0 is LEGAL (the reference answers an all-NaN signal —
+        // k = 0 is LEGAL (the reference answers an all-NaN signal â€”
         // probed R2025b); only negative k is rejected.
         const long kv = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "k", "medfilt1"), 2, "k", "medfilt1");
@@ -50,7 +50,7 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     // Padding mode: MATLAB default 'zeropad'; a trailing 'truncate' string
     // (medfilt1(x,n,'truncate') or medfilt1(x,n,[],dim,'truncate')) clips
     // the window at the ends instead. (blksz/dim/nanflag args are accepted
-    // but ignored for now — noted as a gap.)
+    // but ignored for now â€” noted as a gap.)
     bool zeropad = true;
     for (size_t a = args.size(); a-- > 1;) {
         if (args[a].isChar() || args[a].isString()) {

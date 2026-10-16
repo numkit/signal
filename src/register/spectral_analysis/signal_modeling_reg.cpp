@@ -1,9 +1,9 @@
-// toolboxes/signal/src/spectral_analysis/signal_modeling_reg.cpp
+﻿// toolboxes/signal/src/spectral_analysis/signal_modeling_reg.cpp
 //
 // CallContext register half of spectral_analysis/signal_modeling.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>
 #include <numkit/value/argcheck.hpp>
@@ -185,7 +185,7 @@ void stmcb_reg(Span<const Value> args, size_t nargout,
                Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "stmcb");
-    // Two-signal form stmcb(y, x, nb, na) — x is a vector, not a scalar order.
+    // Two-signal form stmcb(y, x, nb, na) â€” x is a vector, not a scalar order.
     if (!args[1].isScalar())
         throw Error("stmcb: the two-signal form stmcb(y, x, ...) is not yet supported",
                     0, 0, "stmcb", "", "nk:stmcb:twosignal");

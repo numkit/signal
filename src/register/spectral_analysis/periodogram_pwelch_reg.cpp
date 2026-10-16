@@ -1,9 +1,9 @@
-// toolboxes/signal/src/spectral_analysis/periodogram_pwelch_reg.cpp
+﻿// toolboxes/signal/src/spectral_analysis/periodogram_pwelch_reg.cpp
 //
 // CallContext register half of spectral_analysis/periodogram_pwelch.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -64,7 +64,7 @@ void periodogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
 
     if (nargout > 2) {
         const bool realInput = !args[0].isComplex();
-        // Default NFFT (max(256, 2^nextpow2(N))) is always even → Nyquist bin present.
+        // Default NFFT (max(256, 2^nextpow2(N))) is always even â†’ Nyquist bin present.
         const bool nfftEven = (nfft != 0) ? (nfft % 2 == 0) : true;
         outs[2] = periodogramConf(Pxx, conf, realInput, nfftEven, ctx.engine->resource());
     }

@@ -1,8 +1,8 @@
-// toolboxes/signal/src/spectral_analysis/pseudospectrum_reg.cpp
+﻿// toolboxes/signal/src/spectral_analysis/pseudospectrum_reg.cpp
 //
 // CallContext register half of spectral_analysis/pseudospectrum.cpp
 // (pmusic / peig). Parses (x, p[, nfft[, fs]]) and threads (P, F) by nargout.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>

@@ -1,14 +1,14 @@
-// toolboxes/signal/src/digital_filtering/quantizers_reg.cpp
+﻿// toolboxes/signal/src/digital_filtering/quantizers_reg.cpp
 //
 // Register half of the signal quantizers builtins: the CallContext wrappers
 // delegating to the engine-free compute in quantizers.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/digital_filtering/quantizers.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -34,7 +34,7 @@ void uencode_reg(Span<const Value> args, size_t /*nargout*/,
                  Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "uencode");
-    // Marshalling only — the [2, 32] range contract lives in the
+    // Marshalling only â€” the [2, 32] range contract lives in the
     // uencode compute (nk:uencode:BadN).
     const int N = static_cast<int>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "uencode"), 2, "N", "uencode"));

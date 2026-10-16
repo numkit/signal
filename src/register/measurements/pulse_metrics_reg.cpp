@@ -1,9 +1,9 @@
-// toolboxes/signal/src/measurements/pulse_metrics_reg.cpp
+﻿// toolboxes/signal/src/measurements/pulse_metrics_reg.cpp
 //
 // CallContext register half of measurements/pulse_metrics.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/pulse_metrics.hpp>
 #include "measurements/pulse_metrics_detail.hpp"
 #include <numkit/value/error.hpp>
@@ -55,7 +55,7 @@ void settlingtime_reg(Span<const Value> args, size_t /*nargout*/,
 
 // risetime / falltime forward to the compute worker pulseRiseFall
 // (declared in pulse_metrics_detail.hpp), which emits up to 5 outputs:
-//   [R, LT, UT, LL, UL] — duration, lower(10%) crossing time, upper(90%)
+//   [R, LT, UT, LL, UL] â€” duration, lower(10%) crossing time, upper(90%)
 //   crossing time, and the lower/upper reference LEVELS (scalars).
 void risetime_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
                   CallContext &ctx)

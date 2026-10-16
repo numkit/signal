@@ -1,9 +1,9 @@
-// toolboxes/signal/src/spectral_analysis/spectral_metrics_reg.cpp
+﻿// toolboxes/signal/src/spectral_analysis/spectral_metrics_reg.cpp
 //
 // CallContext register half of spectral_analysis/spectral_metrics.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
 #include <numkit/signal/transforms/hilbert.hpp>
@@ -34,7 +34,7 @@ void bandpower_reg(Span<const Value> args, size_t /*nargout*/,
 {
     argcheck::checkNargin(args.size(), 1, 4, "bandpower");
     // 4th argument only exists in the power-spectrum forms
-    // bandpower(pxx, f, freqrange, 'psd') — not implemented
+    // bandpower(pxx, f, freqrange, 'psd') â€” not implemented
     // (bugs/opened/signal/bandpower-psd-forms.md).
     if (args.size() >= 4) {
         if (args[3].isChar() || args[3].isString())
@@ -96,7 +96,7 @@ NUMKIT_SPEC1_REG(sinad,            sinad, 1, 4)
 NUMKIT_SPEC1_REG(thd,              thd, 1, 6)
 NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
 // instfreq: x, fs, plus MATLAB's 'Method' name-value ('hilbert' exact;
-// 'tfmoment' — MATLAB's DEFAULT — pending the pspectrum port, honest
+// 'tfmoment' â€” MATLAB's DEFAULT â€” pending the pspectrum port, honest
 // not-supported error; bugs/opened/signal/instfreq-instbw.md).
 void instfreq_reg(Span<const Value> args, size_t, Span<Value> outs,
                   CallContext &ctx)
@@ -115,7 +115,7 @@ void instfreq_reg(Span<const Value> args, size_t, Span<Value> outs,
     }
     if (method != "hilbert")
         throw Error("instfreq: method '" + method + "' is not yet supported "
-                    "(the default tfmoment needs a pspectrum port — see "
+                    "(the default tfmoment needs a pspectrum port â€” see "
                     "bugs/opened/signal/instfreq-instbw.md)",
                      0, 0, "instfreq", "", "nk:instfreq:method");
     const Value &fs = (args.size() >= 2 && !args[1].isChar() && !args[1].isString())

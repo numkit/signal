@@ -1,14 +1,14 @@
-// toolboxes/signal/src/filter_analysis/frequency_response_reg.cpp
+﻿// toolboxes/signal/src/filter_analysis/frequency_response_reg.cpp
 //
 // Register half of the signal frequency_response builtins: the CallContext wrappers
 // delegating to the engine-free compute in frequency_response.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -34,7 +34,7 @@ void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
 {
     argcheck::checkNargin(args.size(), 2, 5, "freqz");
     // Parse the trailing args: 'whole' (string, any position) and up to two
-    // numerics after b,a — the first is n (npts), the second is fs (the
+    // numerics after b,a â€” the first is n (npts), the second is fs (the
     // freqz(b,a,n,fs) / freqz(b,a,n,'whole',fs) sample-rate form).
     size_t npts = 512;
     double fs   = 0.0;
@@ -74,7 +74,7 @@ void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
 void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 6, "phasez");
-    // n (1st numeric after b,a) and optional fs (2nd) — phasez(b,a,n,fs).
+    // n (1st numeric after b,a) and optional fs (2nd) â€” phasez(b,a,n,fs).
     size_t npts = 512;
     double fs = 0.0;
     int numericSeen = 0;
@@ -95,7 +95,7 @@ void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
 void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 6, "grpdelay");
-    // n (1st numeric after b,a) and optional fs (2nd) — grpdelay(b,a,n,fs).
+    // n (1st numeric after b,a) and optional fs (2nd) â€” grpdelay(b,a,n,fs).
     size_t npts = 512;
     double fs = 0.0;
     int numericSeen = 0;

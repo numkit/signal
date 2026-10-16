@@ -1,14 +1,14 @@
-// toolboxes/signal/src/smoothing/sgolay_reg.cpp
+﻿// toolboxes/signal/src/smoothing/sgolay_reg.cpp
 //
 // Register half of the signal sgolay builtins: the CallContext wrappers
 // delegating to the engine-free compute in sgolay.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/smoothing/sgolay.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -37,7 +37,7 @@ void sgolay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
     const int order    = argcheck::expectedInteger(argcheck::expectedReal(args[0], 1, "order", "sgolay"), 1, "order", "sgolay");
     const int framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "framelen", "sgolay"), 2, "framelen", "sgolay");
     outs[0] = sgolay(order, framelen, mr);
-    // [B,G] = sgolay(...): G is the framelen × (order+1) differentiation-
+    // [B,G] = sgolay(...): G is the framelen Ã— (order+1) differentiation-
     // filter matrix (MATLAB's second output).
     if (nargout >= 2)
         outs[1] = sgolayDiff(order, framelen, mr);

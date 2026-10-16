@@ -1,11 +1,11 @@
-// toolboxes/signal/src/time_frequency/spectrogram_reg.cpp
+﻿// toolboxes/signal/src/time_frequency/spectrogram_reg.cpp
 //
 // CallContext register half of time_frequency/spectrogram.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 
 // The reg wrappers build Hamming/Hann windows + the radian frequency axis with
-// M_PI — define it before any <cmath> include (MSVC needs _USE_MATH_DEFINES).
+// M_PI â€” define it before any <cmath> include (MSVC needs _USE_MATH_DEFINES).
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
@@ -14,7 +14,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/time_frequency/spectrogram.hpp>
 #include <numkit/signal/transforms/fft.hpp>
 #include <numkit/value/argcheck.hpp>
@@ -118,15 +118,15 @@ void spectrogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
             td[j] /= fs;
     }
 
-    // 4th output / Auto-plot: ps — one-sided power spectral density per (freq, time),
-    // ps = c[k]·|S|² / (fs·Σwin²), with c = 2 on interior bins and 1 at DC
+    // 4th output / Auto-plot: ps â€” one-sided power spectral density per (freq, time),
+    // ps = c[k]Â·|S|Â² / (fsÂ·Î£winÂ²), with c = 2 on interior bins and 1 at DC
     // and (when present) Nyquist. Reuses the already-computed STFT S.
     Value PS;
     if (nargout == 0 || nargout > 3) {
         const std::size_t R = S.dims().rows();
         const std::size_t C = S.dims().cols();
         const std::size_t nx = args[0].numel();
-        // Window coefficients — replicate the core's default (hamming of
+        // Window coefficients â€” replicate the core's default (hamming of
         // length floor(nx/4.5)) when none was supplied; keep in sync with
         // resolveWindow() in this TU.
         std::pmr::vector<double> win(ctx.engine->resource());
@@ -195,7 +195,7 @@ void spectrogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
 
 // Parse MATLAB-style trailing name-value pairs into the stft/istft
 // argument set. Recognised keys (case-insensitive): Window, OverlapLength,
-// FFTLength, FrequencyRange. Unknown keys throw — better to fail fast
+// FFTLength, FrequencyRange. Unknown keys throw â€” better to fail fast
 // than to silently misuse a guess.
 static void parseStftNVPairs(Span<const Value> args, size_t startIdx,
                              Value &window, std::size_t &overlap,

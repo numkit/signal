@@ -1,14 +1,14 @@
-// toolboxes/signal/src/digital_filtering/spec_driven_reg.cpp
+﻿// toolboxes/signal/src/digital_filtering/spec_driven_reg.cpp
 //
 // Register half of the signal spec_driven builtins: the CallContext wrappers
 // delegating to the engine-free compute in spec_driven.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/digital_filtering/spec_driven.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>

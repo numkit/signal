@@ -1,9 +1,9 @@
-// toolboxes/signal/src/waveform_generation/waveform_generation_reg.cpp
+﻿// toolboxes/signal/src/waveform_generation/waveform_generation_reg.cpp
 //
 // CallContext register half of waveform_generation/waveform_generation.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/digital_filtering/filter.hpp>        // filtfilt
 #include <numkit/signal/filter_design/filter_design.hpp>     // butter
 #include <numkit/signal/transforms/hilbert.hpp>              // hilbert
@@ -30,7 +30,7 @@ namespace numkit::signal {
 namespace detail {
 
 // Fc/Fs marshalling for modulate/demod: real scalars. expectedReal alone
-// would pass a CHAR scalar through as its ASCII code — the reference
+// would pass a CHAR scalar through as its ASCII code â€” the reference
 // rejects non-numeric scalars, so gate the class first.
 static double carrierArg(const Value &v, int argNum, const char *name,
                          const char *fn)

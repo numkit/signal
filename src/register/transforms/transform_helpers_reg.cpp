@@ -1,9 +1,9 @@
-// toolboxes/signal/src/transforms/transform_helpers_reg.cpp
+﻿// toolboxes/signal/src/transforms/transform_helpers_reg.cpp
 //
 // CallContext register half of transforms/transform_helpers.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/transform_helpers.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>

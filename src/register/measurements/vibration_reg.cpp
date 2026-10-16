@@ -1,9 +1,9 @@
-// toolboxes/signal/src/measurements/vibration_reg.cpp
+﻿// toolboxes/signal/src/measurements/vibration_reg.cpp
 //
 // CallContext register half of measurements/vibration.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/vibration.hpp>
 #include <numkit/signal/transforms/fft.hpp>
 #include <numkit/signal/transforms/hilbert.hpp>

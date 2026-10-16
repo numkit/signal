@@ -1,9 +1,9 @@
-// toolboxes/signal/src/transforms/hilbert_reg.cpp
+﻿// toolboxes/signal/src/transforms/hilbert_reg.cpp
 //
 // CallContext register half of transforms/hilbert.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>     // interp1 (spline)
 #include <numkit/signal/transforms/hilbert.hpp>
 #include <numkit/signal/windows/windows.hpp>          // kaiser
@@ -53,7 +53,7 @@ void envelope_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
                          "' (expected 'analytic', 'rms', or 'peak')",
                          0, 0, "envelope", "", "nk:envelope:badmethod");
     } else if (args.size() >= 2) {
-        // n given but no method → MATLAB defaults to 'analytic'.
+        // n given but no method â†’ MATLAB defaults to 'analytic'.
         mode = 1;
     }
     if ((mode == 1 || mode == 2 || mode == 3) && n == 0)

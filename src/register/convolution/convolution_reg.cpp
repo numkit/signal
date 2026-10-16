@@ -1,14 +1,14 @@
-// toolboxes/signal/src/convolution/convolution_reg.cpp
+﻿// toolboxes/signal/src/convolution/convolution_reg.cpp
 //
 // Register half of the signal convolution builtins: the CallContext wrappers
 // delegating to the engine-free compute in convolution.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/convolution/convolution.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -32,7 +32,7 @@ namespace detail {
 
 // Shape options must be strings (the reference rejects a numeric shape
 // argument with unknownShapeParameter). conv2's numeric third argument
-// is instead the SEPARABLE form conv2(u, v, A) — unimplemented, voiced
+// is instead the SEPARABLE form conv2(u, v, A) â€” unimplemented, voiced
 // honestly instead of being silently ignored.
 static std::string shapeArg(const Value &v, std::string_view fn)
 {
@@ -209,9 +209,9 @@ void conv2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
             shape = args[2].toString();
         } else {
             // conv2(u, v, A[, shape]): separable outer-product-kernel
-            // form — not implemented (bugs/opened/signal/conv2-separable-form.md).
+            // form â€” not implemented (bugs/opened/signal/conv2-separable-form.md).
             throw Error("conv2: the separable form conv2(u, v, A) is not "
-                        "supported yet — build the kernel with "
+                        "supported yet â€” build the kernel with "
                         "conv2(u, v) and convolve with that",
                         0, 0, "conv2", "", "nk:conv2:separableUnsupported");
         }

@@ -1,9 +1,9 @@
-// toolboxes/signal/src/filter_design/analog_filters_reg.cpp
+﻿// toolboxes/signal/src/filter_design/analog_filters_reg.cpp
 //
 // CallContext register half of filter_design/analog_filters.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/ops/poly_helpers.hpp>
 #include <numkit/signal/filter_design/analog_filters.hpp>
@@ -83,7 +83,7 @@ void ellipap_reg(Span<const Value> args, size_t nargout,
 // MATLAB's lp2* TF form returns the numerator at its true polynomial degree
 // (length = #zeros + 1), NOT zero-padded to the denominator length the way
 // zp2tf does. e.g. lp2lp of a Butterworth prototype (no zeros) returns
-// bt = [Wo^N] (length 1), while zp2tf would give [0 … 0 Wo^N]. Strip the
+// bt = [Wo^N] (length 1), while zp2tf would give [0 â€¦ 0 Wo^N]. Strip the
 // leading exact-zeros that zp2tf inserted so the TF form matches MATLAB.
 // (No-op for lp2hp/lp2bs, whose numerators are already full length.)
 static Value lp2StripLeadingZeros(const Value &b, std::pmr::memory_resource *mr)
@@ -191,8 +191,8 @@ void impinvar_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
 
 namespace {
 
-// freqs(b, a) auto grid — the classic freqint auto-ranging algorithm
-// (Andy Grace 1990, rev 1996; still live inside MATLAB's freqs — every
+// freqs(b, a) auto grid â€” the classic freqint auto-ranging algorithm
+// (Andy Grace 1990, rev 1996; still live inside MATLAB's freqs â€” every
 // endpoint AND interior point verified against R2025b, see
 // bugs/closed/signal/freqs-two-arg-auto-w.md):
 //
@@ -204,7 +204,7 @@ namespace {
 //   base  = logspace(low, high, 200 + (P - Z) + [10 if any zero has
 //           |Im| < |Re|])                                     // the LONG grid
 //   refine: for each oscillatory root (Im > |Re|, descending |Re|):
-//           window [max(0.8*Im - 3|Re|, 10^low), 1.2*Im + 4*Re|] —
+//           window [max(0.8*Im - 3|Re|, 10^low), 1.2*Im + 4*Re|] â€”
 //           base points inside are REPLACED by a denser logspace
 //           (count + npts2 points, npts2 = 2 + 8/ceil(|P-Z+eps|/10)).
 //   final = the long grid linearly interpolated in log10 at 200
@@ -318,7 +318,7 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         const size_t j = static_cast<size_t>(x) - 1;
         const double t = x - (j + 1);
         // At the last sample (x == f.size(), t == 0) the upper knot j+1
-        // is one past the end — clamp it so the read stays in bounds
+        // is one past the end â€” clamp it so the read stays in bounds
         // (the value is unchanged: t == 0 kills the difference). The
         // unclamped read was benign in Release but tripped the MSVC
         // Debug iterator assert (bugs/closed/signal/freqs-autogrid-debug-oob).

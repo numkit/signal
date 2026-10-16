@@ -1,9 +1,9 @@
-// toolboxes/signal/src/measurements/signal_stats_reg.cpp
+﻿// toolboxes/signal/src/measurements/signal_stats_reg.cpp
 //
 // CallContext register half of measurements/signal_stats.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/signal_stats.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>

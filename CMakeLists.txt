@@ -53,7 +53,7 @@ if(NOT TARGET numkit_ops)
     endif()
 endif()
 
-file(GLOB_RECURSE SIGNAL_SOURCES
+file(GLOB_RECURSE SIGNAL_COMPUTE_SOURCES
     "src/convolution/*.cpp"
     "src/digital_filtering/*.cpp"
     "src/filter_analysis/*.cpp"
@@ -67,19 +67,46 @@ file(GLOB_RECURSE SIGNAL_SOURCES
     "src/transforms/*.cpp"
     "src/waveform_generation/*.cpp"
     "src/windows/*.cpp"
+)
+
+file(GLOB_RECURSE SIGNAL_PLUGIN_SOURCES
     "src/register/*.cpp"
-    "src/shims/*.cpp"
     "src/module.cpp"
 )
 
 if(NOT NUMKIT_WITH_SIMD)
-    list(FILTER SIGNAL_SOURCES EXCLUDE REGEX ".*_highway\\.cpp$")
+    list(FILTER SIGNAL_COMPUTE_SOURCES EXCLUDE REGEX ".*_highway\\.cpp$")
 else()
-    list(FILTER SIGNAL_SOURCES EXCLUDE REGEX ".*_portable\\.cpp$")
+    list(FILTER SIGNAL_COMPUTE_SOURCES EXCLUDE REGEX ".*_portable\\.cpp$")
 endif()
 
-add_library(numkit_signal SHARED ${SIGNAL_SOURCES})
+add_library(numkit_signal_core STATIC ${SIGNAL_COMPUTE_SOURCES})
+add_library(numkit::signal_core ALIAS numkit_signal_core)
+set_target_properties(numkit_signal_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+target_include_directories(numkit_signal_core
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(numkit_signal_core PUBLIC numkit_value numkit_sys numkit_ops)
+
+if(NUMKIT_WITH_SIMD)
+    target_compile_definitions(numkit_signal_core PUBLIC NUMKIT_WITH_SIMD=1)
+    target_link_libraries(numkit_signal_core PRIVATE hwy hwy_contrib)
+endif()
+
+if(MSVC)
+    target_compile_options(numkit_signal_core PRIVATE /W4 /MP /bigobj)
+else()
+    target_compile_options(numkit_signal_core PRIVATE -Wall -Wextra -fPIC)
+endif()
+
+# Shared plugin module
+add_library(numkit_signal SHARED ${SIGNAL_PLUGIN_SOURCES})
 add_library(numkit::signal ALIAS numkit_signal)
 
 target_compile_definitions(numkit_signal PRIVATE NUMKIT_PLUGIN_BUILD=1)
@@ -92,12 +119,7 @@ target_include_directories(numkit_signal
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(numkit_signal PUBLIC numkit_value numkit_sys numkit_ops)
-
-if(NUMKIT_WITH_SIMD)
-    target_compile_definitions(numkit_signal PUBLIC NUMKIT_WITH_SIMD=1)
-    target_link_libraries(numkit_signal PRIVATE hwy hwy_contrib)
-endif()
+target_link_libraries(numkit_signal PUBLIC numkit_signal_core)
 
 if(MSVC)
     target_compile_options(numkit_signal PRIVATE /W4 /MP /bigobj)

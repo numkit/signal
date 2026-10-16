@@ -1,10 +1,10 @@
-// toolboxes/signal/src/library.cpp
+﻿// toolboxes/signal/src/library.cpp
 //
 // Registration hub for the Signal Processing Toolbox builtins.
-// Namespace layout — sub-namespaces mirror toolboxes/signal/src/<sub>/
-// directories (namespace_design.md §5, §9.2).
+// Namespace layout â€” sub-namespaces mirror toolboxes/signal/src/<sub>/
+// directories (namespace_design.md Â§5, Â§9.2).
 //
-// Convention: every signal function gets a *dual* registration —
+// Convention: every signal function gets a *dual* registration â€”
 //   1. signal.<sub>.<name>      (e.g. signal.transforms.fft)
 // 6 functions additionally get a third registration in core (whitelist
 // of cross-domain general-purpose ops): fft, ifft, fftshift, ifftshift,
@@ -12,8 +12,8 @@
 
 #include <numkit/signal/library.hpp>
 
-#include <numkit/plugin.hpp>
-#include <numkit/plugin.hpp>  // ExternalFunc, CallContext, Span, Value
+#include <numkit/sys/plugin.hpp>
+#include <numkit/sys/plugin.hpp>  // ExternalFunc, CallContext, Span, Value
 
 namespace numkit::signal::detail {
 // Forward declarations for adapters implemented in dedicated files
@@ -140,7 +140,7 @@ void sinc_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCont
 void gmonopuls_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void diric_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 
-// Phase 9 — DSP gaps
+// Phase 9 â€” DSP gaps
 void medfilt1_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void goertzel_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
@@ -302,14 +302,14 @@ namespace numkit {
 
 void SignalLibrary::install(PluginContext &engine)
 {
-    // Local helper — signal is MATLAB-mirror, every fn registered in
+    // Local helper â€” signal is MATLAB-mirror, every fn registered in
     // signal.<sub>.<name> AND aliased into compat.<name>.
     auto reg = [&](const char *sub, const char *name, ExternalFunc fn) {
         engine.registerFunction(std::string("signal.") + sub, name, fn);
-        // compat.* registration removed — bare-name resolver replaces it
+        // compat.* registration removed â€” bare-name resolver replaces it
     };
 
-    // ── Transforms (FFT family, DCT, Hilbert, Goertzel, envelope, ...) ──
+    // â”€â”€ Transforms (FFT family, DCT, Hilbert, Goertzel, envelope, ...) â”€â”€
     reg("transforms", "fft",       &signal::detail::fft_reg);
     reg("transforms", "ifft",      &signal::detail::ifft_reg);
     reg("transforms", "fft2",      &signal::detail::fft2_reg);
@@ -337,7 +337,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("transforms", "cceps",       &signal::detail::cceps_reg);
     reg("transforms", "icceps",      &signal::detail::icceps_reg);
 
-    // ── Convolution / correlation ──────────────────────────────────────
+    // â”€â”€ Convolution / correlation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("convolution", "conv",         &signal::detail::conv_reg);
     reg("convolution", "deconv",       &signal::detail::deconv_reg);
     reg("convolution", "xcorr",        &signal::detail::xcorr_reg);
@@ -351,7 +351,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("convolution", "finddelay",    &signal::detail::finddelay_reg);
     reg("convolution", "alignsignals", &signal::detail::alignsignals_reg);
 
-    // ── Digital filtering (filter / filtfilt / SOS family / median + D2) ─
+    // â”€â”€ Digital filtering (filter / filtfilt / SOS family / median + D2) â”€
     reg("digital_filtering", "filter",   &signal::detail::filter_reg);
     reg("digital_filtering", "filtfilt", &signal::detail::filtfilt_reg);
     reg("digital_filtering", "buffer",   &signal::detail::buffer_reg);
@@ -369,7 +369,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("digital_filtering", "bandpass", &signal::detail::bandpass_reg);
     reg("digital_filtering", "bandstop", &signal::detail::bandstop_reg);
 
-    // ── Filter design (FIR/IIR coefficient generators) ─────────────────
+    // â”€â”€ Filter design (FIR/IIR coefficient generators) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("filter_design", "butter",     &signal::detail::butter_reg);
     reg("filter_design", "fir1",       &signal::detail::fir1_reg);
     reg("filter_design", "firls",      &signal::detail::firls_reg);
@@ -381,7 +381,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("filter_design", "sgolay",     &signal::detail::sgolay_reg);
     reg("filter_design", "sgolayfilt", &signal::detail::sgolayfilt_reg);
 
-    // ── Filter analysis (freqz / phasez / grpdelay + responses + preds) ─
+    // â”€â”€ Filter analysis (freqz / phasez / grpdelay + responses + preds) â”€
     reg("filter_analysis", "freqz",      &signal::detail::freqz_reg);
     reg("filter_analysis", "phasez",     &signal::detail::phasez_reg);
     reg("filter_analysis", "grpdelay",   &signal::detail::grpdelay_reg);
@@ -400,7 +400,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("filter_analysis", "firtype",    &signal::detail::firtype_reg);
     reg("filter_analysis", "filternorm", &signal::detail::filternorm_reg);
 
-    // ── Filter implementation (form conversions: TF/SOS/ZPK/SS) ────────
+    // â”€â”€ Filter implementation (form conversions: TF/SOS/ZPK/SS) â”€â”€â”€â”€â”€â”€â”€â”€
     reg("filter_implementation", "tf2sos", &signal::detail::tf2sos_reg);
     reg("filter_implementation", "zp2sos", &signal::detail::zp2sos_reg);
     reg("filter_implementation", "sos2tf", &signal::detail::sos2tf_reg);
@@ -413,7 +413,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("filter_implementation", "sos2ss", &signal::detail::sos2ss_reg);
     reg("filter_implementation", "ss2sos", &signal::detail::ss2sos_reg);
 
-    // ── Multirate (decimate / interp / resample / + F1 extras) ─────────
+    // â”€â”€ Multirate (decimate / interp / resample / + F1 extras) â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("multirate", "downsample", &signal::detail::downsample_reg);
     reg("multirate", "upsample",   &signal::detail::upsample_reg);
     reg("multirate", "decimate",   &signal::detail::decimate_reg);
@@ -423,7 +423,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("multirate", "intfilt",    &signal::detail::intfilt_reg);
     reg("multirate", "fftfilt",    &signal::detail::fftfilt_reg);
 
-    // ── Spectral analysis (pwelch / periodogram) ───────────────────────
+    // â”€â”€ Spectral analysis (pwelch / periodogram) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("spectral_analysis", "periodogram", &signal::detail::periodogram_reg);
     reg("spectral_analysis", "pmusic",      &signal::detail::pmusic_reg);
     reg("spectral_analysis", "peig",        &signal::detail::peig_reg);
@@ -434,13 +434,13 @@ void SignalLibrary::install(PluginContext &engine)
     reg("spectral_analysis", "pyulear",     &signal::detail::pyulear_reg);
     reg("spectral_analysis", "pburg",       &signal::detail::pburg_reg);
 
-    // ── Time-frequency (spectrogram / STFT family) ─────────────────────
+    // â”€â”€ Time-frequency (spectrogram / STFT family) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("time_frequency", "spectrogram", &signal::detail::spectrogram_reg);
     reg("time_frequency", "stft",        &signal::detail::stft_reg);
     reg("time_frequency", "istft",       &signal::detail::istft_reg);
     reg("time_frequency", "iscola",      &signal::detail::iscola_reg);
 
-    // ── Windows (hamming / hann / blackman / kaiser / rectwin / bartlett) ─
+    // â”€â”€ Windows (hamming / hann / blackman / kaiser / rectwin / bartlett) â”€
     reg("windows", "hamming",  &signal::detail::hamming_reg);
     reg("windows", "hann",     &signal::detail::hann_reg);
     reg("windows", "blackman", &signal::detail::blackman_reg);
@@ -458,12 +458,12 @@ void SignalLibrary::install(PluginContext &engine)
     reg("windows", "blackmanharris", &signal::detail::blackmanharris_reg);
     reg("windows", "bohmanwin",      &signal::detail::bohmanwin_reg);
     reg("windows", "barthannwin",    &signal::detail::barthannwin_reg);
-    // MATLAB legacy alias `hanning` → also points at hann_reg. compat
+    // MATLAB legacy alias `hanning` â†’ also points at hann_reg. compat
     // already has 'hann'; this aliases the same impl into compat as
-    // 'hanning' too (separate compat entry — different short-name).
+    // 'hanning' too (separate compat entry â€” different short-name).
     reg("windows", "hanning",  &signal::detail::hann_reg);
 
-    // ── Waveform generation (chirp / pulses) ───────────────────────────
+    // â”€â”€ Waveform generation (chirp / pulses) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("waveform_generation", "chirp",     &signal::detail::chirp_reg);
     reg("waveform_generation", "vco",       &signal::detail::vco_reg);
     reg("waveform_generation", "modulate",  &signal::detail::modulate_reg);
@@ -478,7 +478,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("waveform_generation", "gmonopuls", &signal::detail::gmonopuls_reg);
     reg("waveform_generation", "diric",     &signal::detail::diric_reg);
 
-    // ── Measurements (findpeaks, dB conv, signal stats) ────────────────
+    // â”€â”€ Measurements (findpeaks, dB conv, signal stats) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     reg("measurements", "findpeaks", &signal::detail::findpeaks_reg);
     reg("measurements", "db",        &signal::detail::db_reg);
     reg("measurements", "db2mag",    &signal::detail::db2mag_reg);
@@ -589,7 +589,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("measurements", "peak2peak", &signal::detail::peak2peak_reg);
     reg("measurements", "peak2rms",  &signal::detail::peak2rms_reg);
 
-    // ── Core promotions (namespace_design.md §7, closed whitelist) ─────
+    // â”€â”€ Core promotions (namespace_design.md Â§7, closed whitelist) â”€â”€â”€â”€â”€
     // These 6 functions are general-purpose and reachable by short name
     // even WITHOUT `import compat.*`. They get a third registration in
     // core (namespace = ""). The same ExternalFunc pointer is shared

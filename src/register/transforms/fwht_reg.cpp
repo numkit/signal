@@ -1,9 +1,9 @@
-// toolboxes/signal/src/transforms/fwht_reg.cpp
+﻿// toolboxes/signal/src/transforms/fwht_reg.cpp
 //
 // CallContext register half of transforms/fwht.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/fwht.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -34,7 +34,7 @@ static void parseFwhtArgs(Span<const Value> args,
     ordering = "sequency";
     if (args.size() >= 2 && !args[1].isEmpty()) {
         if (args[1].isChar() || args[1].isString()) {
-            // (x, ordering) — n omitted.
+            // (x, ordering) â€” n omitted.
             ordering = args[1].toString();
             return;
         }

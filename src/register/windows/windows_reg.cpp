@@ -1,14 +1,14 @@
-// toolboxes/signal/src/windows/windows_reg.cpp
+﻿// toolboxes/signal/src/windows/windows_reg.cpp
 //
 // Register half of the signal windows builtins: the CallContext wrappers
 // delegating to the engine-free compute in windows.cpp. library.cpp
 // forward-declares + registers these by name.
 //
-// Phase 2b compute/register split — see project_layering_refactor memory.
+// Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <numkit/signal/windows/windows.hpp>
 
-#include <numkit/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
+#include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -46,7 +46,7 @@ size_t parseSflag(Span<const Value> args, bool &periodic)
                    [](unsigned char c) { return std::tolower(c); });
     if (s == "symmetric") return args.size() - 1;
     if (s == "periodic") { periodic = true; return args.size() - 1; }
-    return args.size();   // not an sflag — leave for caller
+    return args.size();   // not an sflag â€” leave for caller
 }
 
 // Periodic-form trick: for any window function f(N) computing the
@@ -64,7 +64,7 @@ Value applySflag(size_t N, bool periodic, Fn impl, std::pmr::memory_resource *mr
 }
 
 // Some windows (bartlett, triang, parzenwin, bohmanwin, barthannwin,
-// rectwin) accept ONLY a `typeName` flag ('double' / 'single') — they
+// rectwin) accept ONLY a `typeName` flag ('double' / 'single') â€” they
 // reject 'periodic' explicitly with the documented MATLAB error.
 // `single` output cast is currently a no-op: nk emits double
 // regardless of the requested typeName.

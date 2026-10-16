@@ -1,10 +1,10 @@
-// toolboxes/signal/src/filter_design/iir_designs_reg.cpp
+﻿// toolboxes/signal/src/filter_design/iir_designs_reg.cpp
 //
 // CallContext register half of filter_design/iir_designs.cpp (Phase 2b compute/register split).
 // The detail{{}} *_reg fns were interleaved with compute in the original
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
 #include <numkit/signal/filter_design/analog_filters.hpp>
@@ -82,7 +82,7 @@ inline FilterType defaultFtype(const Value &Wn, FilterType picked, bool was_set)
 
 namespace {
 
-// IIR-family order extraction — the Value-boundary half of the order
+// IIR-family order extraction â€” the Value-boundary half of the order
 // contract (positive lives in each compute's first-line
 // iirOrder_argcheck). Note the family's own rejection classes: a
 // complex order is rejected as not-real, a fractional one as
@@ -153,7 +153,7 @@ void besself_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, C
     const Value &Wn = args[1];
     auto t = parseTrailing(args, 2);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
-    // besself is ALWAYS analog — MATLAB has no digital Bessel filter (the
+    // besself is ALWAYS analog â€” MATLAB has no digital Bessel filter (the
     // bilinear transform destroys the maximally-flat group delay). The 's'
     // flag is therefore redundant; ignore the digital path entirely.
     (void)t.analog;
@@ -272,7 +272,7 @@ void kaiserord_reg(Span<const Value> args, size_t nargout,
 
 void butter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
-    // butter(N, Wn[, ftype][, 's']) — routed through the shared analog/
+    // butter(N, Wn[, ftype][, 's']) â€” routed through the shared analog/
     // digital pipeline (bugs/closed/signal/butter-analog-flag-wn-domain.md).
     argcheck::checkNargin(args.size(), 2, 5, "butter");
     const int N = iirOrder(args[0], "butter");

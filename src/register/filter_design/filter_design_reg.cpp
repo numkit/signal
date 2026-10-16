@@ -1,10 +1,10 @@
-// toolboxes/signal/src/filter_design/filter_design_reg.cpp
+﻿// toolboxes/signal/src/filter_design/filter_design_reg.cpp
 //
 // CallContext register half of filter_design/filter_design.cpp (Phase 2b compute/register split).
 // The detail{{}} *_reg fns were interleaved with compute in the original
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
 #include <numkit/signal/filter_design/filter_design.hpp>
@@ -33,7 +33,7 @@ namespace detail {
 
 namespace {
 
-// FIR-family order extraction — the Value-boundary half of the order
+// FIR-family order extraction â€” the Value-boundary half of the order
 // contract (a fractional order is only expressible as a Value; the
 // positive/domain half lives in each compute's fir1_argcheck).
 int firOrder(const Value &v, int argNum, const char *name, const char *fn)

@@ -1,10 +1,10 @@
-// toolboxes/signal/src/transforms/fft_reg.cpp
+﻿// toolboxes/signal/src/transforms/fft_reg.cpp
 //
 // CallContext register half of transforms/fft.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 
-// czt_reg below references M_PI — define it before any <cmath> include (MSVC
+// czt_reg below references M_PI â€” define it before any <cmath> include (MSVC
 // does not expose M_PI without _USE_MATH_DEFINES).
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
@@ -14,7 +14,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <numkit/plugin.hpp>
+#include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/fft.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
@@ -42,7 +42,7 @@ void fft_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallC
     argcheck::checkNargin(args.size(), 1, 3, "fft");
 
     int n = -1;
-    int dim = 0;   // 0 = auto (first non-singleton) — resolved in public fft()
+    int dim = 0;   // 0 = auto (first non-singleton) â€” resolved in public fft()
     if (args.size() >= 2 && !args[1].isEmpty())
         n = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "n", "fft"), 2, "n", "fft");
@@ -76,7 +76,7 @@ void ifft_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
     }
 
     int n = -1;
-    int dim = 0;   // 0 = auto (first non-singleton) — resolved in public fft()
+    int dim = 0;   // 0 = auto (first non-singleton) â€” resolved in public fft()
     if (nargs >= 2 && !args[1].isEmpty())
         n = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "n", "ifft"), 2, "n", "ifft");
@@ -205,7 +205,7 @@ void czt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         return;
     }
 
-    // MATLAB defaults: m = length(x), w = exp(-2π·j/m), a = 1.
+    // MATLAB defaults: m = length(x), w = exp(-2Ï€Â·j/m), a = 1.
     int m = static_cast<int>(x.numel());
     if (args.size() >= 2 && !args[1].isEmpty())
         m = argcheck::expectedPositiveInteger(
