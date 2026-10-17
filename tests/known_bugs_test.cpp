@@ -408,8 +408,8 @@ TEST_F(SignalKnownBug, DISABLED_Conv2SeparableForm)
     EXPECT_DOUBLE_EQ(evalScalar("isequal(y, k)"), 1.0);
 }
 
-// bugs/opened/signal/decimate-algorithm.md
-TEST_F(SignalKnownBug, DISABLED_DecimateChebyDefault)
+// bugs/closed/signal/decimate-algorithm.md
+TEST_F(SignalKnownBug, DecimateChebyDefault)
 {
     eval("d = decimate(1:100, 5);");
     // Reference-probed R2025b (order-8 Chebyshev I + filtfilt).
@@ -426,8 +426,8 @@ TEST_F(SignalKnownBug, DISABLED_BandpowerPsdForm)
     EXPECT_NEAR(evalScalar("bp"), 0.5013320412, 1e-8);
 }
 
-// bugs/opened/signal/bandpower-fs-integration.md
-TEST_F(SignalKnownBug, DISABLED_BandpowerFsIntegration)
+// bugs/closed/signal/bandpower-fs-integration.md
+TEST_F(SignalKnownBug, BandpowerFsIntegration)
 {
     eval("x = sin(2*pi*100*(0:999)/1000); r2 = bandpower(x, 1000, [10 200]);");
     // Reference-probed R2025b: essentially all the signal power.

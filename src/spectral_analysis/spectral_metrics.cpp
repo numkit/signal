@@ -50,51 +50,22 @@ struct PsdPair {
 
 PsdPair computePsd(const Value &x, double fs, std::pmr::memory_resource *mr)
 {
-    // The existing `periodogram` returns Pxx normalised by 1/(N·nfft)
-    // and F on [0, π]. That convention is convenient for plotting but
-    // does NOT obey Parseval: ∫ Pxx df ≠ mean(x²). To produce a
-    // canonical Hz-PSD where ∫ Pxx df = mean(x²) (matching MATLAB's
-    // periodogram(x, [], [], fs)), we renormalise here.
-    //
-    // For a real input of length N with rectangular window:
-    //   Pxx_existing[k] = (2 if inner else 1) * |X[k]|² / (N * nfft)
-    //   F_rad[k]        = π·k / (nOut - 1),   nOut = nfft/2 + 1
-    //
-    // Canonical MATLAB Pxx_Hz with df_Hz = fs / nfft satisfies
-    //   sum(Pxx_Hz) * df_Hz = mean(x²) = sum_one_sided(|X|²) / N²
-    // so Pxx_Hz[k] = (2 if inner else 1) * |X[k]|² / (N · fs).
-    //
-    // Conversion factor: Pxx_Hz = Pxx_existing * (nfft / fs).
-    // (Equivalently, Pxx_rad_canonical = Pxx_existing * nfft / (2π).)
+    // periodogram(x, [], nfft, effFs) returns Pxx already normalised by
+    // 1/(winPower * effFs) with one-sided doubling on interior bins, so
+    // sum(Pxx) * df = mean(x^2) (Parseval). Use nfft = x.numel() (matching
+    // MATLAB's bandpower/obw rectangular-window periodogram at length N).
     Value win;  // empty → rectangular
-    auto [Pxx, F] = periodogram(x, win, /*nfft=*/0, /*fs=*/2.0*3.14159265358979323846, mr);
+    const double effFs = (fs > 0.0) ? fs : (2.0 * M_PI);
+    auto [Pxx, F] = periodogram(x, win, x.numel(), effFs, mr);
     const size_t n = Pxx.numel();
     PsdPair p;
     p.Pxx.resize(n);
     p.F.resize(n);
-
-    // Recover nfft from nOut (= nfft/2 + 1 → nfft = 2*(n-1)).
-    const size_t nfft = (n > 1) ? 2 * (n - 1) : 1;
-
-    if (fs > 0.0) {
-        const double fScale = fs / (2.0 * M_PI);            // F: rad → Hz
-        const double pScale = static_cast<double>(nfft) / fs; // Pxx: → power/Hz
-        const double *fd = F.doubleData();
-        const double *pd = Pxx.doubleData();
-        for (size_t i = 0; i < n; ++i) {
-            p.F[i]   = fd[i] * fScale;
-            p.Pxx[i] = pd[i] * pScale;
-        }
-    } else {
-        // No fs: keep [0, π] but renormalise so ∫ P df_rad = mean(x²).
-        // Pxx_rad = Pxx_existing * nfft / (2π).
-        const double pScale = static_cast<double>(nfft) / (2.0 * M_PI);
-        const double *fd = F.doubleData();
-        const double *pd = Pxx.doubleData();
-        for (size_t i = 0; i < n; ++i) {
-            p.F[i]   = fd[i];
-            p.Pxx[i] = pd[i] * pScale;
-        }
+    const double *fd = F.doubleData();
+    const double *pd = Pxx.doubleData();
+    for (size_t i = 0; i < n; ++i) {
+        p.F[i]   = fd[i];
+        p.Pxx[i] = pd[i];
     }
     return p;
 }

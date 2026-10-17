@@ -3,6 +3,8 @@
 #include <numkit/signal/multirate/multirate.hpp>
 #include <numkit/signal/multirate/extras.hpp>          // upfirdn
 #include <numkit/signal/filter_design/filter_design.hpp> // firls
+#include <numkit/signal/filter_design/iir_designs.hpp>   // cheby1
+#include <numkit/signal/digital_filtering/filter.hpp>    // filtfilt
 #include <numkit/signal/windows/windows.hpp>           // kaiser
 
 #include <numkit/value/value.hpp>
@@ -228,31 +230,34 @@ Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource
 
 // ── decimate ──────────────────────────────────────────────────────────
 // Type contract (probed R2025b): x accepts double/single/complex — the
-// FIR pipeline here is double-buffer only, so single and complex are
+// pipeline here is double-buffer only, so single and complex are
 // honest capability gaps; logical and integer classes are rejected by
 // the reference outright.
 Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 {
     detail::requireDoubleNotComplexInput(x, "decimate");
     const size_t nx = x.numel();
-    const double *xd = x.doubleData();
+    const bool isRow = x.dims().rows() == 1;
+    if (factor <= 1 || nx == 0) {
+        auto r = isRow ? Value::matrix(1, nx, ValueType::DOUBLE, mr)
+                       : Value::matrix(nx, 1, ValueType::DOUBLE, mr);
+        if (nx > 0)
+            std::copy(x.doubleData(), x.doubleData() + nx, r.doubleDataMut());
+        return r;
+    }
 
-    size_t filtOrder = 8 * factor;
-    if (filtOrder >= nx)
-        filtOrder = nx - 1;
-    const size_t filtLen = filtOrder + 1;
-    const double wc = M_PI / factor;
-
-    ScratchArena scratch(mr);
-    auto h = designLowpassFir(filtLen, wc, &scratch);
-    auto filtered = applyFirDf2t(h.data(), h.size(), xd, nx, &scratch);
+    auto [b, a] = cheby1(8, 0.05, Value::scalar(0.8 / static_cast<double>(factor), mr),
+                         FilterType::Lowpass, /*analog=*/false, mr);
+    Value filtered = filtfilt(b, a, x, mr);
+    const double *fd = filtered.doubleData();
 
     const size_t outLen = (nx + factor - 1) / factor;
-    const bool isRow = x.dims().rows() == 1;
+    const size_t nbeg = (nx - 1) % factor;
     auto r = isRow ? Value::matrix(1, outLen, ValueType::DOUBLE, mr)
                    : Value::matrix(outLen, 1, ValueType::DOUBLE, mr);
+    double *rd = r.doubleDataMut();
     for (size_t i = 0; i < outLen; ++i)
-        r.doubleDataMut()[i] = filtered[i * factor];
+        rd[i] = fd[nbeg + i * factor];
     return r;
 }
 
