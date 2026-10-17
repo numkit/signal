@@ -173,8 +173,9 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
     if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
         throw Error("xcorr2: N-D arrays are not supported",
                      0, 0, "xcorr2", "", "numkit:xcorr2:nd");
+    const bool anySingle = (A.type() == ValueType::SINGLE) || (B.type() == ValueType::SINGLE);
     Value aHold, bHold;
-    if (!A.isComplex() && (A.isLogical() || isIntegerType(A.type())))
+    if (!A.isComplex() && (A.isLogical() || isIntegerType(A.type()) || A.type() == ValueType::SINGLE))
         aHold = [&]() {
             const auto &d = A.dims();
             Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
@@ -182,7 +183,7 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
                 r.doubleDataMut()[i] = A.elemAsDouble(i);
             return r;
         }();
-    if (!B.isComplex() && (B.isLogical() || isIntegerType(B.type())))
+    if (!B.isComplex() && (B.isLogical() || isIntegerType(B.type()) || B.type() == ValueType::SINGLE))
         bHold = [&]() {
             const auto &d = B.dims();
             Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
@@ -197,7 +198,7 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
     const size_t rB = Bv.dims().rows(), cB = Bv.dims().cols();
     const bool anyCplx = Av.isComplex() || Bv.isComplex();
     if (rA == 0 || cA == 0 || rB == 0 || cB == 0)
-        return Value::matrix(0, 0, anyCplx ? ValueType::COMPLEX : ValueType::DOUBLE, mr);
+        return Value::matrix(0, 0, anyCplx ? ValueType::COMPLEX : (anySingle ? ValueType::SINGLE : ValueType::DOUBLE), mr);
     const size_t rOut = rA + rB - 1;
     const size_t cOut = cA + cB - 1;
     if (anyCplx) {
@@ -267,7 +268,7 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
         } else {
             std::memcpy(dst, z.doubleData(), cellsOut * sizeof(double));
         }
-        return out;
+        return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
 
     // Direct path for small inputs.
@@ -286,7 +287,7 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
             }
         }
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
 }
 
 // ── finddelay ─────────────────────────────────────────────────────────

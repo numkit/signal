@@ -272,7 +272,8 @@ TEST_F(ArgcheckSignalTest, ConvFamilyTypeContract)
     EXPECT_EQ(evalScalar("y(3)"), 6.0);                    // 1+2+3
     expectError("conv('ab', [1 1]);", "numkit:conv:inputType");
     expectError("conv({1 2}, [1 1]);", "numkit:conv:inputType");
-    expectError("conv(single([1 2]), [1 1]);", "numkit:conv:singleUnsupported");
+    eval("ys = conv(single([1 2]), [1 1]);");
+    EXPECT_EQ(evalScalar("strcmp(class(ys), 'single')"), 1.0);
     expectError("conv(ones(2), [1 1]);", "numkit:conv:notVector");
     expectError("conv([], [1 1]);", "numkit:conv:notVector");
     expectError("conv([1 2], [1], 'zzz');", "numkit:conv:badShape");
@@ -280,8 +281,8 @@ TEST_F(ArgcheckSignalTest, ConvFamilyTypeContract)
 }
 
 // conv2 / filter2 / convn: logical+integer inputs coerce to double
-// (reference-verified result class double); single/complex are voiced
-// capability gaps; N-D rejected.
+// (reference-verified result class double); single preserves single;
+// N-D rejected for filter2.
 TEST_F(ArgcheckSignalTest, Conv2FamilyCoercionAndGaps)
 {
     eval("y = conv2(true(2), ones(2));");
@@ -291,7 +292,8 @@ TEST_F(ArgcheckSignalTest, Conv2FamilyCoercionAndGaps)
     EXPECT_EQ(evalScalar("numel(y)"), 16.0);
     eval("y = convn(logical(ones(2)), ones(2));");
     EXPECT_EQ(evalScalar("numel(y)"), 9.0);
-    expectError("conv2(single(ones(2)), ones(2));", "numkit:conv2:singleUnsupported");
+    eval("ys2 = conv2(single(ones(2)), ones(2));");
+    EXPECT_EQ(evalScalar("strcmp(class(ys2), 'single')"), 1.0);
     eval("yc2 = conv2(ones(2)+1i, ones(2));");
     EXPECT_NEAR(evalScalar("imag(yc2(2,2))"), 4.0, 1e-12);
     expectError("filter2(ones(3), ones(2,2,2));", "numkit:filter2:nd");
@@ -317,30 +319,33 @@ TEST_F(ArgcheckSignalTest, ConvmtxClassPreserving)
     expectError("convmtx('aa', 3);", "numkit:convmtx:inputType");
 }
 
-// xcorr2: numeric-or-logical coerced; complex computes; single/N-D voiced.
+// xcorr2: numeric-or-logical coerced; complex computes; single preserves single; N-D voiced.
 TEST_F(ArgcheckSignalTest, Xcorr2TypeContract)
 {
     eval("y = xcorr2(logical(ones(3)));");
     EXPECT_EQ(evalScalar("numel(y)"), 25.0);
     eval("y = xcorr2(int8(ones(3)));");
     EXPECT_EQ(evalScalar("y(13)"), 9.0);                   // center of the 5×5 peak
-    expectError("xcorr2(single(ones(3)));", "numkit:xcorr2:singleUnsupported");
+    eval("ys = xcorr2(single(ones(3)));");
+    EXPECT_EQ(evalScalar("strcmp(class(ys), 'single')"), 1.0);
     eval("yc = xcorr2(ones(3)+1i);");
     EXPECT_NEAR(evalScalar("real(yc(3,3))"), 18.0, 1e-12);
     expectError("xcorr2('abc');", "numkit:xcorr2:inputType");
     expectError("xcorr2(ones(2,2,2));", "numkit:xcorr2:nd");
 }
 
-// polyscale / polystab: double/complex pass; logical/integer rejected
+// polyscale / polystab: double/single/complex pass; logical/integer rejected
 // (reference sigcheckfloattype / eig inputType classes).
 TEST_F(ArgcheckSignalTest, PolyUtilsTypeContract)
 {
     expectError("polyscale([true true true], 2);", "numkit:polyscale:inputType");
     expectError("polyscale(int8([1 2 3]), 2);", "numkit:polyscale:inputType");
-    expectError("polyscale(single([1 2 3]), 2);", "numkit:polyscale:singleUnsupported");
+    eval("yps = polyscale(single([1 2 3]), 2);");
+    EXPECT_EQ(evalScalar("strcmp(class(yps), 'single')"), 1.0);
     expectError("polystab(logical([1 1 1]));", "numkit:polystab:inputType");
     expectError("polystab(int8([1 2 3]));", "numkit:polystab:inputType");
-    expectError("polystab(single([1 2 3]));", "numkit:polystab:singleUnsupported");
+    eval("ypst = polystab(single([1 2 3]));");
+    EXPECT_EQ(evalScalar("strcmp(class(ypst), 'single')"), 1.0);
     expectError("polystab(ones(2));", "numkit:polystab:notVector");
     eval("ys = polystab(complex([1 2], [0 1]));");
     EXPECT_NEAR(evalScalar("real(ys(1))"), 1.0, 1e-12);
@@ -357,14 +362,15 @@ TEST_F(ArgcheckSignalTest, UnshiftdataPermContract)
 }
 
 // sosfilt / sosfiltfilt: floating-point x only (reference VectMustBeFloat
-// class); single voiced gap; SOS shape voiced per entry.
+// class); single preserves single; SOS shape voiced per entry.
 TEST_F(ArgcheckSignalTest, SosfiltTypeContract)
 {
     eval("sos = [1 1 1 1 0.5 0.25];");
     expectError("sosfilt(sos, logical(1:8));", "numkit:sosfilt:xType");
     expectError("sosfilt(sos, int8(1:8));", "numkit:sosfilt:xType");
     expectError("sosfilt(sos, 'abcdefgh');", "numkit:sosfilt:xType");
-    expectError("sosfilt(sos, single(1:8));", "numkit:sosfilt:singleUnsupported");
+    eval("ysosf = sosfilt(sos, single(1:8));");
+    EXPECT_EQ(evalScalar("strcmp(class(ysosf), 'single')"), 1.0);
     eval("ysos = sosfilt(sos, (1:8)+1i);");
     EXPECT_NEAR(evalScalar("real(ysos(2))"), 2.5, 1e-12);
     expectError("sosfilt([1 1 1 1 0.5], 1:8);", "numkit:sosfilt:sosShape");
@@ -374,15 +380,17 @@ TEST_F(ArgcheckSignalTest, SosfiltTypeContract)
 }
 
 // zp2sos / tf2sos: coefficient type contracts (logical rejected by the
-// reference; single voiced gap).
+// reference; single preserves single).
 TEST_F(ArgcheckSignalTest, Zp2sosTf2sosTypeContract)
 {
     expectError("zp2sos(logical([0; 0]), [0.2; 0.3], 1);", "numkit:zp2sos:inputType");
     expectError("zp2sos(int8([1; 2]), [0.2; 0.3], 1);", "numkit:zp2sos:inputType");
-    expectError("zp2sos(single([0.5; 0.6]), [0.2; 0.3], 1);", "numkit:zp2sos:singleUnsupported");
+    eval("s1 = zp2sos(single([0.5; 0.6]), [0.2; 0.3], 1);");
+    EXPECT_EQ(evalScalar("strcmp(class(s1), 'single')"), 1.0);
     expectError("tf2sos(logical([1 1]), [1 -0.5]);", "numkit:tf2sos:type");
     expectError("tf2sos(int8([1 1]), [1 -0.5]);", "numkit:tf2sos:type");
-    expectError("tf2sos(single([1 1]), [1 -0.5]);", "numkit:tf2sos:singleUnsupported");
+    eval("s2 = tf2sos(single([1 1]), [1 -0.5]);");
+    EXPECT_EQ(evalScalar("strcmp(class(s2), 'single')"), 1.0);
     expectError("tf2sos([1 1i], [1 -0.5]);", "numkit:zp2sos:noConj");
 }
 
@@ -403,7 +411,8 @@ TEST_F(ArgcheckSignalTest, SigroiContracts)
     expectError("extractsigroi(1:10, [1 3 5 7]);", "numkit:extractsigroi:roiCols");
     expectError("extractsigroi(logical(1:10), [1 3; 5 7]);", "numkit:extractsigroi:inputType");
     expectError("extractsigroi(reshape(1:12, 3, 4), [1 3; 5 7]);", "numkit:extractsigroi:notVector");
-    expectError("extractsigroi(single(1:10), [1 3; 5 7]);", "numkit:extractsigroi:singleUnsupported");
+    eval("cs = extractsigroi(single(1:10), [1 3; 5 7]);");
+    EXPECT_EQ(evalScalar("strcmp(class(cs{1}), 'single')"), 1.0);
     // Complex x keeps its imaginary part through both output forms.
     eval("c = extractsigroi((1:10)+1i, [1 3; 5 7]);");
     EXPECT_NEAR(evalScalar("imag(c{1}(1))"), 1.0, 1e-12);
@@ -433,26 +442,29 @@ TEST_F(ArgcheckSignalTest, MultirateTypedGathers)
     expectError("downsample({1 2}, 2);", "numkit:downsample:inputType");
     expectError("decimate(logical(1:12), 3);", "numkit:decimate:inputType");
     expectError("decimate(int8(1:12), 3);", "numkit:decimate:inputType");
-    expectError("decimate(single(1:12), 3);", "numkit:decimate:singleUnsupported");
+    eval("yd = decimate(single(1:12), 3);");
+    EXPECT_EQ(evalScalar("strcmp(class(yd), 'single')"), 1.0);
     expectError("resample(logical(1:10), 3, 2);", "numkit:resample:inputType");
-    expectError("resample(single(1:10), 3, 2);", "numkit:resample:singleUnsupported");
+    eval("yr = resample(single(1:10), 3, 2);");
+    EXPECT_EQ(evalScalar("strcmp(class(yr), 'single')"), 1.0);
 }
 
-// medfilt1: real-double contract; complex rejected (reference
+// medfilt1: real-float contract; complex rejected (reference
 // expectedReal class); k = 0 answers all-NaN (reference-probed).
 TEST_F(ArgcheckSignalTest, Medfilt1Contract)
 {
     expectError("medfilt1(logical(1:8), 3);", "numkit:medfilt1:inputType");
     expectError("medfilt1(int8(1:8), 3);", "numkit:medfilt1:inputType");
     expectError("medfilt1((1:8)+1i, 3);", "numkit:medfilt1:inputReal");
-    expectError("medfilt1(single(1:8), 3);", "numkit:medfilt1:singleUnsupported");
+    eval("ym = medfilt1(single(1:8), 3);");
+    EXPECT_EQ(evalScalar("strcmp(class(ym), 'single')"), 1.0);
     eval("y = medfilt1(1:8, 0);");
     EXPECT_TRUE(std::isnan(evalScalar("y(4)")));
 }
 
 // bandpower: fs requires freqrange (reference FreqRangeMissing class);
 // freqrange exactly 2 elements; complex 1-arg power = mean(|x|^2);
-// 'psd' forms voiced as unimplemented.
+// 'psd' forms supported.
 TEST_F(ArgcheckSignalTest, BandpowerContract)
 {
     eval("x = cos(1:100);");
@@ -461,21 +473,23 @@ TEST_F(ArgcheckSignalTest, BandpowerContract)
     expectError("bandpower(x, 'a');", "numkit:bandpower:freqRangeRequired");
     expectError("bandpower(logical(1:100));", "numkit:bandpower:inputType");
     expectError("bandpower(int8(1:100));", "numkit:bandpower:inputType");
-    expectError("bandpower(single(1:100));", "numkit:bandpower:singleUnsupported");
+    eval("bp = bandpower(single(1:100));");
+    EXPECT_EQ(evalScalar("strcmp(class(bp), 'single')"), 1.0);
     expectError("bandpower(x, 10, [1 5], 'psd');", "numkit:bandpower:freqVecLength");
     // Complex 1-arg: mean(|x|^2) — reference-exact (probed 26.5 for
     // x = (1:8)+1i).
     EXPECT_NEAR(evalScalar("bandpower((1:8)+1i)"), 26.5, 1e-12);
 }
 
-// stft: double/complex pass; single/logical/integer rejected
+// stft: double/single/complex pass; logical/integer rejected
 // (reference InvalidInputDataType); 3-D rejected (expected2D); matrix
 // input frames each column as a channel.
 TEST_F(ArgcheckSignalTest, StftTypeContract)
 {
     eval("s = stft(sin(1:128));");                          // double OK
     eval("s = stft((1:128)+1i);");                          // complex OK
-    expectError("stft(single(sin(1:128)));", "numkit:stft:singleUnsupported");
+    eval("[s, f, t] = stft(single(sin(1:128)));");          // single OK
+    EXPECT_EQ(evalScalar("strcmp(class(f), 'single')"), 1.0);
     expectError("stft(logical(1:128));", "numkit:stft:inputType");
     expectError("stft(int8(1:128));", "numkit:stft:inputType");
     expectError("stft(ones(16, 4, 2));", "numkit:stft:expected2D");
@@ -487,7 +501,8 @@ TEST_F(ArgcheckSignalTest, TransformsTypeContract)
 {
     expectError("czt(logical(1:8));", "numkit:czt:inputType");
     expectError("czt(int8(1:8));", "numkit:czt:inputType");
-    expectError("czt(single(1:8));", "numkit:czt:singleUnsupported");
+    eval("ys = czt(single(1:8));");
+    EXPECT_EQ(evalScalar("numel(ys)"), 8.0);
     expectError("czt(1:8, 8, [1 1], 1);", "numkit:czt:wNotScalar");
     eval("y = czt(1:8);");                                  // double passes
     eval("y = czt((1:8)+1i);");                             // complex passes
@@ -495,7 +510,8 @@ TEST_F(ArgcheckSignalTest, TransformsTypeContract)
     eval("y = ifft(logical([1 0 1 0]), 'symmetric');");     // logical coerces
     expectError("goertzel(logical(1:8), [2 5]);", "numkit:goertzel:inputType");
     expectError("goertzel(int8(1:8), [2 5]);", "numkit:goertzel:inputType");
-    expectError("goertzel(single(1:8), [2 5]);", "numkit:goertzel:singleUnsupported");
+    eval("gs = goertzel(single(1:8), [2 5]);");
+    EXPECT_EQ(evalScalar("numel(gs)"), 2.0);
     expectError("goertzel({1 2}, [2 5]);", "numkit:goertzel:inputType");
     // Complex goertzel: reference-exact values (probed R2025b).
     eval("g = goertzel((1:8)+1i, [2 5]);");
@@ -518,7 +534,8 @@ TEST_F(ArgcheckSignalTest, ModulateDemodContract)
     expectError("modulate(1:10, 10i, 100, 'am');", "numkit:modulate:FcNotReal");
     expectError("modulate(logical(1:10), 10, 100, 'am');", "numkit:modulate:inputType");
     expectError("modulate(int8(1:10), 10, 100, 'am');", "numkit:modulate:inputType");
-    expectError("modulate(single(1:10), 10, 100, 'am');", "numkit:modulate:singleUnsupported");
+    eval("ymod = modulate(single(0:0.1:0.9), 10, 100, 'am');");
+    EXPECT_EQ(evalScalar("strcmp(class(ymod), 'single')"), 1.0);
     expectError("demod(1:10, 'a', 100, 'am');", "numkit:demod:FcNotReal");
     expectError("demod(1:10, 10, 100, 'zz');", "numkit:demod:UnsupportedMethod");
 }

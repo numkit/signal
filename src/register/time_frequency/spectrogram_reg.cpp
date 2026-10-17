@@ -35,6 +35,8 @@
 #include <utility>
 #include <vector>
 
+#include "../../signal_detail.hpp"
+
 namespace numkit::signal {
 
 namespace detail {
@@ -420,11 +422,12 @@ void stft_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     const std::size_t N    = isMatrix ? args[0].dims().rows() : args[0].numel();
     const std::size_t K    = (N >= M) ? ((N - M) / hop + 1) : 0;
 
+    const bool anySingle = (args[0].type() == ValueType::SINGLE) || (window.type() == ValueType::SINGLE);
     outs[0] = stft(args[0], window, overlap, fftLength, range, mr);
     if (nargout > 1)
-        outs[1] = buildFreqAxis(NFFT, range, fsGiven, fs, mr);
+        outs[1] = narrowDoubleToSingleIf(buildFreqAxis(NFFT, range, fsGiven, fs, mr), anySingle, mr);
     if (nargout > 2)
-        outs[2] = buildTimeAxisStft(M, hop, K, fsGiven, fs, mr);
+        outs[2] = narrowDoubleToSingleIf(buildTimeAxisStft(M, hop, K, fsGiven, fs, mr), anySingle, mr);
 }
 
 void istft_reg(Span<const Value> args, size_t nargout, Span<Value> outs,

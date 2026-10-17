@@ -76,10 +76,11 @@ Value polyscale(const Value &p, const Value &scale,
     // (logical and integer classes are rejected with sigcheckfloattype).
     detail::requireFloatInput(p, "polyscale", "p", 1);
     detail::requireFloatInput(scale, "polyscale", "scale", 2);
+    const bool pSingle = (p.type() == ValueType::SINGLE);
 
     // Edge case: empty polynomial → empty result (0×0).
     if (p.isEmpty())
-        return Value::matrix(0, 0, ValueType::DOUBLE, mr);
+        return Value::matrix(0, 0, pSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
     // Determine the per-row layout of `a`.
     //   * vector input  → one polynomial of length n (output is 1×n row)
@@ -154,7 +155,7 @@ Value polyscale(const Value &p, const Value &scale,
             }
         }
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), pSingle && !wantComplex, mr);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -176,6 +177,7 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
     // Reference (R2025b): double/single/complex vectors only — logical
     // and integer classes are rejected (the eig step voices inputType).
     detail::requireFloatInput(a, "polystab");
+    const bool aSingle = (a.type() == ValueType::SINGLE);
 
     // Matrix input is not allowed.
     if (!isVectorShape(a)) {
@@ -185,7 +187,7 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
 
     // Empty input → empty result (0×0).
     if (a.isEmpty())
-        return Value::matrix(0, 0, ValueType::DOUBLE, mr);
+        return Value::matrix(0, 0, aSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
     const bool aComplex = isComplex(a);
     const size_t n = a.numel();
@@ -200,7 +202,7 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
             out.complexDataMut()[0] = elemAsComplex(a, 0);
         else
             out.doubleDataMut()[0] = a.elemAsDouble(0);
-        return out;
+        return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 4 (gain): first non-zero coefficient of a ───────────────
@@ -233,12 +235,13 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
             for (size_t k = 0; k < n; ++k)
                 dst[k] = a.elemAsDouble(k);
         }
-        return out;
+        return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 1: roots of a ───────────────────────────────────────────
     ScratchArena arena(mr);
-    Value rv = numkit::builtin::roots(a, &arena);
+    Value aWork = detail::widenSingleToDouble(a, &arena);
+    Value rv = numkit::builtin::roots(aWork, &arena);
     const size_t nr = rv.numel();
 
     // No finite roots (e.g. a degree-0 leftover after stripping) — the
@@ -252,7 +255,7 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
             out.complexDataMut()[0] = gain;
         else
             out.doubleDataMut()[0] = gain.real();
-        return out;
+        return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 2: reflect roots with |r| > 1 to 1/conj(r) ──────────────
@@ -310,7 +313,7 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
         for (size_t k = 0; k < mlen; ++k)
             dst[k] = elemAsComplex(monic, k).real() * g;
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
 }
 
 } // namespace numkit::signal

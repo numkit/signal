@@ -57,11 +57,7 @@ inline int64_t roiEnd(const Value &roi, size_t i)
 inline void sigroiRoiArgcheck(const Value &roi, const char *fn)
 {
     const ValueType t = roi.type();
-    if (t == ValueType::SINGLE)
-        throw Error(std::string(fn) + ": roi: single inputs are not "
-                    "supported yet — convert with double()",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":singleUnsupported");
-    if (t != ValueType::DOUBLE && t != ValueType::COMPLEX && !isIntegerType(t))
+    if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX && !isIntegerType(t))
         detail::throwInputType(roi, fn, "roi", 1, "numeric");
     if (roi.dims().ndim() != 2 || roi.dims().cols() != 2)
         throw Error(std::string(fn) + ": roi must be an N×2 matrix of "
@@ -145,9 +141,10 @@ Value extendsigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
     if (Lpre < 0 || Lpost < 0)
         throw Error("extendsigroi: SL and SR must be nonnegative",
                     0, 0, "extendsigroi", "", "numkit:extendsigroi:nonnegative");
+    const bool roiSingle = (roi.type() == ValueType::SINGLE);
     const size_t N = roi.dims().rows();
     Value out = Value::matrix(N, N == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (N == 0) return out;
+    if (N == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
     double *od = out.doubleDataMut();
     for (size_t i = 0; i < N; ++i) {
         int64_t s = roiStart(roi, i) - Lpre;
@@ -156,7 +153,7 @@ Value extendsigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
         od[i + 0 * N] = static_cast<double>(s);
         od[i + 1 * N] = static_cast<double>(e);
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
 
 // ── shortensigroi ─────────────────────────────────────────────────────
@@ -166,6 +163,7 @@ Value shortensigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
                     std::pmr::memory_resource *mr)
 {
     sigroiRoiArgcheck(roi, "shortensigroi");
+    const bool roiSingle = (roi.type() == ValueType::SINGLE);
     const size_t N = roi.dims().rows();
     ScratchArena scratch(mr);
     ScratchVec<int64_t> starts(0, &scratch), ends(0, &scratch);
@@ -176,13 +174,13 @@ Value shortensigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
     }
     const size_t M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (M == 0) return out;
+    if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
     double *od = out.doubleDataMut();
     for (size_t i = 0; i < M; ++i) {
         od[i + 0 * M] = static_cast<double>(starts[i]);
         od[i + 1 * M] = static_cast<double>(ends[i]);
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
 
 // ── mergesigroi ───────────────────────────────────────────────────────
@@ -195,6 +193,7 @@ Value mergesigroi(const Value &roi, int64_t sep, std::pmr::memory_resource *mr)
     if (sep < 0)
         throw Error("mergesigroi: S must be nonnegative",
                     0, 0, "mergesigroi", "", "numkit:mergesigroi:nonnegative");
+    const bool roiSingle = (roi.type() == ValueType::SINGLE);
     const size_t N = roi.dims().rows();
     ScratchArena scratch(mr);
     ScratchVec<size_t> idx(N, &scratch);
@@ -216,13 +215,13 @@ Value mergesigroi(const Value &roi, int64_t sep, std::pmr::memory_resource *mr)
     }
     const size_t M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (M == 0) return out;
+    if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
     double *od = out.doubleDataMut();
     for (size_t i = 0; i < M; ++i) {
         od[i + 0 * M] = static_cast<double>(starts[i]);
         od[i + 1 * M] = static_cast<double>(ends[i]);
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
 
 // ── removesigroi ──────────────────────────────────────────────────────
@@ -233,6 +232,7 @@ Value removesigroi(const Value &roi, int64_t maxLen,
                    std::pmr::memory_resource *mr)
 {
     sigroiRoiArgcheck(roi, "removesigroi");
+    const bool roiSingle = (roi.type() == ValueType::SINGLE);
     const size_t N = roi.dims().rows();
     ScratchArena scratch(mr);
     ScratchVec<int64_t> starts(0, &scratch), ends(0, &scratch);
@@ -247,13 +247,13 @@ Value removesigroi(const Value &roi, int64_t maxLen,
     }
     const size_t M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (M == 0) return out;
+    if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
     double *od = out.doubleDataMut();
     for (size_t i = 0; i < M; ++i) {
         od[i + 0 * M] = static_cast<double>(starts[i]);
         od[i + 1 * M] = static_cast<double>(ends[i]);
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
 
 // ── extractsigroi ─────────────────────────────────────────────────────
@@ -269,6 +269,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
     detail::requireFloatInput(x, "extractsigroi", "x", 1);
     detail::requireVectorInput(x, "extractsigroi", "x", 1);
     const bool xComplex = x.isComplex();
+    const bool xSingle = (x.type() == ValueType::SINGLE);
     const size_t N = roi.dims().rows();
     const int64_t L = static_cast<int64_t>(x.numel());
     if (concat) {
@@ -281,7 +282,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
         }
         if (totalLen == 0)
             return xComplex ? Value::complexMatrix(0, 1, mr)
-                            : Value::matrix(0, 1, ValueType::DOUBLE, mr);
+                            : Value::matrix(0, 1, xSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
         if (xComplex) {
             auto out = Value::complexMatrix(static_cast<size_t>(totalLen), 1, mr);
             Complex *od = out.complexDataMut();
@@ -298,7 +299,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
         Value out = Value::matrix(static_cast<size_t>(totalLen),
                                   totalLen == 0 ? 0 : 1,
                                   ValueType::DOUBLE, mr);
-        if (totalLen == 0) return out;
+        if (totalLen == 0) return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
         double *od = out.doubleDataMut();
         size_t pos = 0;
         for (size_t i = 0; i < N; ++i) {
@@ -307,7 +308,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
             for (int64_t k = s; k <= e; ++k)
                 od[pos++] = x.elemAsDouble(static_cast<size_t>(k - 1));
         }
-        return out;
+        return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
     }
     // Cell-array form.
     Value out = Value::cell(N, N == 0 ? 0 : 1, mr);
@@ -335,7 +336,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
                 for (int64_t k = 0; k < segLen; ++k)
                     sd[k] = x.elemAsDouble(static_cast<size_t>(s - 1 + k));
             }
-            out.cellAt(i) = std::move(seg);
+            out.cellAt(i) = detail::narrowDoubleToSingleIf(std::move(seg), xSingle, mr);
         }
     }
     return out;

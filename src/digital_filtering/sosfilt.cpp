@@ -18,6 +18,8 @@
 #include <cmath>
 #include <cstring>
 
+#include "../signal_detail.hpp"
+
 namespace numkit::signal {
 
 namespace {
@@ -51,16 +53,9 @@ size_t validateSosMatrix(const Value &sos, std::string_view fn)
         throw Error(std::string(fn) + ": sos matrix must be L×6 with L >= 1",
                      0, 0, std::string(fn), "",
                      "numkit:" + std::string(fn) + ":sosShape");
-    if (sos.type() == ValueType::DOUBLE)
+    if (sos.type() == ValueType::DOUBLE || sos.type() == ValueType::SINGLE)
         return sos.dims().rows();
-    if (sos.type() == ValueType::SINGLE)
-        throw Error(std::string(fn)
-                        + ": single inputs are not supported yet — convert "
-                          "with double() (got a "
-                        + std::to_string(sos.dims().rows()) + "x6 single array).",
-                    0, 0, std::string(fn), "",
-                    "numkit:" + std::string(fn) + ":singleUnsupported");
-    throw Error(std::string(fn) + ": sos matrix must be DOUBLE",
+    throw Error(std::string(fn) + ": sos matrix must be DOUBLE or SINGLE",
                  0, 0, std::string(fn), "",
                  "numkit:" + std::string(fn) + ":sosType");
 }
@@ -102,6 +97,8 @@ void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
 Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
 {
     validateSosMatrix(sos, "sosfilt");
+    const bool anySingle = (sos.type() == ValueType::SINGLE) || (x.type() == ValueType::SINGLE);
+    Value sosD = detail::widenSingleToDouble(sos, mr);
     if (x.type() == ValueType::COMPLEX) {
         if (x.isEmpty())
             return createLike(x, ValueType::COMPLEX, mr);
@@ -115,8 +112,8 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
             xrd[i] = xcd[i].real();
             xid[i] = xcd[i].imag();
         }
-        Value yr = sosfilt(sos, xr, mr);
-        Value yi = sosfilt(sos, xi, mr);
+        Value yr = sosfilt(sosD, xr, mr);
+        Value yi = sosfilt(sosD, xi, mr);
         Value out = createLike(x, ValueType::COMPLEX, mr);
         Complex *od = out.complexDataMut();
         const double *yrd = yr.doubleData();
@@ -125,11 +122,7 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
             od[i] = Complex(yrd[i], yid[i]);
         return out;
     }
-    if (x.type() != ValueType::DOUBLE) {
-        if (x.type() == ValueType::SINGLE)
-            throw Error("sosfilt: input 2 (x): single inputs are not "
-                        "supported yet — convert with double()",
-                        0, 0, "sosfilt", "", "numkit:sosfilt:singleUnsupported");
+    if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE) {
         throw Error("sosfilt: signal x must have floating point precision "
                     "(got a " + std::to_string(x.dims().rows()) + "x"
                     + std::to_string(x.dims().cols()) + " "
@@ -137,24 +130,25 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
                      0, 0, "sosfilt", "", "numkit:sosfilt:xType");
     }
     if (x.isEmpty())
-        return createLike(x, ValueType::DOUBLE, mr);
+        return createLike(x, anySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
+    Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     ScratchArena scratch(mr);
-    if (x.dims().isVector() || x.isScalar()) {
-        const size_t n = x.numel();
+    if (xD.dims().isVector() || xD.isScalar()) {
+        const size_t n = xD.numel();
         auto buf = ScratchVec<double>(n, &scratch);
-        applyCascade(sos, x.doubleData(), out.doubleDataMut(), n, buf);
-        return out;
+        applyCascade(sosD, xD.doubleData(), out.doubleDataMut(), n, buf);
+        return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
-    const size_t rows = x.dims().rows();
-    const size_t cols = x.dims().cols();
+    const size_t rows = xD.dims().rows();
+    const size_t cols = xD.dims().cols();
     auto buf = ScratchVec<double>(rows, &scratch);
-    const double *src = x.doubleData();
+    const double *src = xD.doubleData();
     double *dst = out.doubleDataMut();
     for (size_t c = 0; c < cols; ++c)
-        applyCascade(sos, src + c * rows, dst + c * rows, rows, buf);
-    return out;
+        applyCascade(sosD, src + c * rows, dst + c * rows, rows, buf);
+    return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
 }
 
 // ── sosfiltfilt ──────────────────────────────────────────────────────
@@ -325,12 +319,8 @@ void sosfiltfiltColumn(const Value &sos, const double *xs, double *out,
 Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
 {
     validateSosMatrix(sos, "sosfiltfilt");
-    if (x.type() != ValueType::DOUBLE) {
-        if (x.type() == ValueType::SINGLE)
-            throw Error("sosfiltfilt: input 2 (x): single inputs are not "
-                        "supported yet — convert with double()",
-                        0, 0, "sosfiltfilt", "",
-                        "numkit:sosfiltfilt:singleUnsupported");
+    const bool anySingle = (sos.type() == ValueType::SINGLE) || (x.type() == ValueType::SINGLE);
+    if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE) {
         throw Error("sosfiltfilt: signal x must have floating point precision "
                     "(got a " + std::to_string(x.dims().rows()) + "x"
                     + std::to_string(x.dims().cols()) + " "
@@ -338,21 +328,23 @@ Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *m
                      0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:xType");
     }
     if (x.isEmpty())
-        return createLike(x, ValueType::DOUBLE, mr);
+        return createLike(x, anySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
+    Value sosD = detail::widenSingleToDouble(sos, mr);
+    Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
-    if (x.dims().isVector() || x.isScalar()) {
-        sosfiltfiltColumn(sos, x.doubleData(), out.doubleDataMut(),
-                          x.numel(), mr);
-        return out;
+    if (xD.dims().isVector() || xD.isScalar()) {
+        sosfiltfiltColumn(sosD, xD.doubleData(), out.doubleDataMut(),
+                          xD.numel(), mr);
+        return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
-    const size_t rows = x.dims().rows();
-    const size_t cols = x.dims().cols();
-    const double *src = x.doubleData();
+    const size_t rows = xD.dims().rows();
+    const size_t cols = xD.dims().cols();
+    const double *src = xD.doubleData();
     double *dst = out.doubleDataMut();
     for (size_t c = 0; c < cols; ++c)
-        sosfiltfiltColumn(sos, src + c * rows, dst + c * rows, rows, mr);
-    return out;
+        sosfiltfiltColumn(sosD, src + c * rows, dst + c * rows, rows, mr);
+    return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
 }
 
 } // namespace numkit::signal

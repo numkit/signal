@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_implementation/conversions_reg.cpp
+// toolboxes/signal/src/filter_implementation/conversions_reg.cpp
 //
 // Register half of the signal conversions builtins: the CallContext wrappers
 // delegating to the engine-free compute in conversions.cpp. library.cpp
@@ -26,6 +26,8 @@
 #include <vector>
 #include <numkit/value/argcheck.hpp>
 
+#include "../../signal_detail.hpp"
+
 namespace numkit::signal {
 
 namespace detail {
@@ -37,13 +39,16 @@ void zp2sos_reg(Span<const Value> args, size_t nargout,
     const double gain = (args.size() >= 3 && !args[2].isEmpty())
                             ? args[2].toScalar()
                             : 1.0;
+    const bool anySingle = (args[0].type() == ValueType::SINGLE)
+                        || (args[1].type() == ValueType::SINGLE)
+                        || (args.size() >= 3 && !args[2].isEmpty() && args[2].type() == ValueType::SINGLE);
     auto *mr = ctx.engine->resource();
     if (nargout >= 2) {
         auto [sos, g] = zp2sosWithGain(args[0], args[1], gain, /*surplusAtOrigin=*/true, mr);
-        outs[0] = std::move(sos);
-        outs[1] = Value::scalar(g, mr);
+        outs[0] = narrowDoubleToSingleIf(std::move(sos), anySingle, mr);
+        outs[1] = narrowDoubleToSingleIf(Value::scalar(g, mr), anySingle, mr);
     } else {
-        outs[0] = zp2sos(args[0], args[1], gain, mr);
+        outs[0] = narrowDoubleToSingleIf(zp2sos(args[0], args[1], gain, mr), anySingle, mr);
     }
 }
 
@@ -51,13 +56,15 @@ void tf2sos_reg(Span<const Value> args, size_t nargout,
                 Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "tf2sos");
+    const bool anySingle = (args[0].type() == ValueType::SINGLE)
+                        || (args[1].type() == ValueType::SINGLE);
     auto *mr = ctx.engine->resource();
     if (nargout >= 2) {
         auto [sos, g] = tf2sosWithGain(args[0], args[1], mr);
-        outs[0] = std::move(sos);
-        outs[1] = Value::scalar(g, mr);
+        outs[0] = narrowDoubleToSingleIf(std::move(sos), anySingle, mr);
+        outs[1] = narrowDoubleToSingleIf(Value::scalar(g, mr), anySingle, mr);
     } else {
-        outs[0] = tf2sos(args[0], args[1], mr);
+        outs[0] = narrowDoubleToSingleIf(tf2sos(args[0], args[1], mr), anySingle, mr);
     }
 }
 

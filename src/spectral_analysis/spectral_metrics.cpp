@@ -56,7 +56,8 @@ PsdPair computePsd(const Value &x, double fs, std::pmr::memory_resource *mr)
     // MATLAB's bandpower/obw rectangular-window periodogram at length N).
     Value win;  // empty → rectangular
     const double effFs = (fs > 0.0) ? fs : (2.0 * M_PI);
-    auto [Pxx, F] = periodogram(x, win, x.numel(), effFs, mr);
+    Value xD = detail::widenSingleToDouble(x, mr);
+    auto [Pxx, F] = periodogram(xD, win, xD.numel(), effFs, mr);
     const size_t n = Pxx.numel();
     PsdPair p;
     p.Pxx.resize(n);
@@ -107,20 +108,13 @@ double integrate(const std::vector<double> &P, const std::vector<double> &F,
 
 Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pmr::memory_resource *mr)
 {
-    // Contract (probed R2025b):
-    //   * x: double/complex for the 1-arg form (single → capability gap);
-    //     the fs form drives the periodogram kernel which is double-only,
-    //     so complex there is a gap too. logical/integer/char rejected.
-    //   * the fs form REQUIRES freqrange ("You must specify both FS and
-    //     FREQRANGE together") — bandpower(x, fs) alone is not a legal
-    //     reference call.
-    //   * freqrange, when given, must have exactly 2 elements.
+    const bool xSingle = (x.type() == ValueType::SINGLE);
     if (fs.isEmpty()) {
         detail::requireFloatInput(x, "bandpower");
         // 1-arg: total signal power = mean(|x|^2). Cheaper than going
         // through PSD (Parseval's theorem makes them equal anyway).
         const size_t n = x.numel();
-        if (n == 0) return Value::scalar(0.0, mr);
+        if (n == 0) return detail::narrowDoubleToSingleIf(Value::scalar(0.0, mr), xSingle, mr);
         double s = 0.0;
         if (x.isComplex()) {
             const Complex *xd = x.complexData();
@@ -132,7 +126,7 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pm
                 s += v * v;
             }
         }
-        return Value::scalar(s / n, mr);
+        return detail::narrowDoubleToSingleIf(Value::scalar(s / n, mr), xSingle, mr);
     }
     detail::requireFloatInput(x, "bandpower");
     if (freqrange.isEmpty())
@@ -151,13 +145,14 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pm
     auto p = computePsd(x, fsv, mr);
     const double fLo = freqrange.elemAsDouble(0);
     const double fHi = freqrange.elemAsDouble(1);
-    return Value::scalar(integrate(p.Pxx, p.F, fLo, fHi), mr);
+    return detail::narrowDoubleToSingleIf(Value::scalar(integrate(p.Pxx, p.F, fLo, fHi), mr), xSingle, mr);
 }
 
 Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std::pmr::memory_resource *mr)
 {
-    detail::requireDoubleNotComplexInput(pxx, "bandpower");
-    detail::requireDoubleNotComplexInput(f, "bandpower");
+    detail::requireRealFloatInput(pxx, "bandpower", "pxx", 1);
+    detail::requireRealFloatInput(f, "bandpower", "f", 2);
+    const bool anySingle = (pxx.type() == ValueType::SINGLE) || (f.type() == ValueType::SINGLE);
     const size_t n = pxx.numel();
     if (f.numel() != n || n < 2)
         throw Error("bandpower: frequency vector f must have the same length as pxx (>= 2)",
@@ -179,7 +174,7 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std
             else w = 0.5 * (F[i + 1] - F[i - 1]);
             total += P[i] * w;
         }
-        return Value::scalar(total, mr);
+        return detail::narrowDoubleToSingleIf(Value::scalar(total, mr), anySingle, mr);
     }
     if (freqrange.numel() != 2)
         throw Error("bandpower: freqrange must be a 2-element vector [fmin, fmax] (got " +
@@ -196,9 +191,9 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std
             else w = 0.5 * (F[i + 1] - F[i - 1]);
             total += P[i] * w;
         }
-        return Value::scalar(total, mr);
+        return detail::narrowDoubleToSingleIf(Value::scalar(total, mr), anySingle, mr);
     }
-    return Value::scalar(integrate(P, F, fLo, fHi), mr);
+    return detail::narrowDoubleToSingleIf(Value::scalar(integrate(P, F, fLo, fHi), mr), anySingle, mr);
 }
 
 // ── meanfreq / medfreq ────────────────────────────────────────────

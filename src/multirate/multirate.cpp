@@ -185,6 +185,7 @@ Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource
 Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 {
     detail::requireFloatInput(x, "decimate");
+    const bool xSingle = (x.type() == ValueType::SINGLE);
     if (x.isComplex()) {
         const size_t nx = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
@@ -206,19 +207,20 @@ Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
             od[i] = Complex(yrd[i], yid[i]);
         return out;
     }
-    const size_t nx = x.numel();
-    const bool isRow = x.dims().rows() == 1;
+    Value xD = detail::widenSingleToDouble(x, mr);
+    const size_t nx = xD.numel();
+    const bool isRow = xD.dims().rows() == 1;
     if (factor <= 1 || nx == 0) {
         auto r = isRow ? Value::matrix(1, nx, ValueType::DOUBLE, mr)
                        : Value::matrix(nx, 1, ValueType::DOUBLE, mr);
         if (nx > 0)
-            std::copy(x.doubleData(), x.doubleData() + nx, r.doubleDataMut());
-        return r;
+            std::copy(xD.doubleData(), xD.doubleData() + nx, r.doubleDataMut());
+        return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
     }
 
     auto [b, a] = cheby1(8, 0.05, Value::scalar(0.8 / static_cast<double>(factor), mr),
                          FilterType::Lowpass, /*analog=*/false, mr);
-    Value filtered = filtfilt(b, a, x, mr);
+    Value filtered = filtfilt(b, a, xD, mr);
     const double *fd = filtered.doubleData();
 
     const size_t outLen = (nx + factor - 1) / factor;
@@ -228,7 +230,7 @@ Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
     double *rd = r.doubleDataMut();
     for (size_t i = 0; i < outLen; ++i)
         rd[i] = fd[nbeg + i * factor];
-    return r;
+    return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
 }
 
 // ── resample ──────────────────────────────────────────────────────────
@@ -238,6 +240,7 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
     if (p == 0 || q == 0)
         throw Error("resample: P and Q must be positive integers",
                     0, 0, "resample", "", "numkit:resample:pq");
+    const bool xSingle = (x.type() == ValueType::SINGLE);
     if (x.isComplex()) {
         const size_t nx = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
@@ -260,13 +263,15 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
         return out;
     }
 
+    Value xD = detail::widenSingleToDouble(x, mr);
+
     // Reduce P/Q by their GCD first (as MATLAB does).
     const size_t g = std::gcd(p, q);
     p /= g;
     q /= g;
 
-    const size_t nx = x.numel();
-    const bool isRow = x.dims().rows() == 1;
+    const size_t nx = xD.numel();
+    const bool isRow = xD.dims().rows() == 1;
 
     // Anti-alias filter: fc = 1/(2·max(p,q)); L = 2·N·max(p,q)+1.
     //   h = p · firls(L-1,[0 2fc 2fc 1],[1 1 0 0]) · kaiser(L,beta) / sum(·)
@@ -306,7 +311,7 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
         for (int i = 0; i < L; ++i) hd[nz + i] = scale * fk[i];
     }
 
-    Value yfull = upfirdn(x, hh, p, q, mr);
+    Value yfull = upfirdn(xD, hh, p, q, mr);
     const size_t  yfn = yfull.numel();
     const double *yfd = yfull.doubleData();
 
@@ -321,7 +326,7 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
         const long long idx = delay + static_cast<long long>(i);
         rd[i] = (idx >= 0 && static_cast<size_t>(idx) < yfn) ? yfd[idx] : 0.0;
     }
-    return r;
+    return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
 }
 
 } // namespace numkit::signal

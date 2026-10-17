@@ -341,12 +341,47 @@ TEST_F(SignalKnownBug, FewerArgForms)
 // integerUnsupported / complexUnsupported / a shape stub. Flip the guard
 // live when the kernel lands.
 
-// bugs/opened/signal/single-float-inputs.md
-TEST_F(SignalKnownBug, DISABLED_ConvSingleResultClass)
+// bugs/closed/signal/single-float-inputs.md (FIXED)
+TEST_F(SignalKnownBug, ConvSingleResultClass)
 {
     eval("y = conv(single([1 2]), [1 1]);");
     EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(y), 'single')"), 1.0);
     EXPECT_NEAR(evalScalar("y(2)"), 3.0, 1e-6);
+    eval("c2 = conv2(single(ones(2)), ones(2));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(c2), 'single')"), 1.0);
+    eval("f2 = filter2(single(ones(2)), ones(3));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(f2), 'single')"), 1.0);
+    eval("cn = convn(single(ones(2,2,2)), ones(2));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(cn), 'single')"), 1.0);
+    eval("xc2 = xcorr2(single(ones(2)));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(xc2), 'single')"), 1.0);
+    eval("ps = polyscale(single([1 2 3]), 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(ps), 'single')"), 1.0);
+    eval("pst = polystab(single([1 2 3]));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(pst), 'single')"), 1.0);
+    eval("sf = sosfilt(single([1 1 1 1 0.5 0.25]), 1:8);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(sf), 'single')"), 1.0);
+    eval("[sos1, g1] = zp2sos(single([0.5; 0.6]), [0.2; 0.3], 1);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(sos1), 'single')"), 1.0);
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(g1), 'single')"), 1.0);
+    eval("[sos2, g2] = tf2sos(single([1 1]), [1 -0.5]);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(sos2), 'single')"), 1.0);
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(g2), 'single')"), 1.0);
+    eval("yd = decimate(single(1:20), 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(yd), 'single')"), 1.0);
+    eval("yr = resample(single(1:20), 3, 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(yr), 'single')"), 1.0);
+    eval("ym = medfilt1(single(1:8), 3);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(ym), 'single')"), 1.0);
+    eval("bp = bandpower(single(1:100));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(bp), 'single')"), 1.0);
+    eval("[s, f, t] = stft(single(sin(1:128)));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(f), 'single')"), 1.0);
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(t), 'single')"), 1.0);
+    eval("ymod = modulate(single(0:0.1:0.9), 10, 100, 'am');");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(ymod), 'single')"), 1.0);
+    eval("ydem = demod(ymod, 10, 100, 'am');");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(ydem), 'single')"), 1.0);
 }
 
 // bugs/closed/signal/integer-class-outputs.md (FIXED)

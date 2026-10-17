@@ -371,27 +371,18 @@ Value demod(const Value &y, double Fc, double Fs,
             std::pmr::memory_resource *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
-    // Reference (R2025b): x must be double/single (logical, integer and
-    // char are rejected with an invalidType class; single is a
-    // capability gap here). Complex x was not probed — it flows through
-    // the real-part reads as before rather than being rejected.
-    {
-        const ValueType t = y.type();
-        if (t == ValueType::SINGLE)
-            throw Error("demod: input 1 (y): single inputs are not "
-                        "supported yet — convert with double()",
-                        0, 0, "demod", "", "numkit:demod:singleUnsupported");
-        if (t != ValueType::DOUBLE && t != ValueType::COMPLEX)
-            detail::throwInputType(y, "demod", "y", 1,
-                                   "a double or complex double array");
-    }
+    const ValueType t = y.type();
+    if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX)
+        detail::throwInputType(y, "demod", "y", 1,
+                               "a double, single, or complex double array");
+    const bool ySingle = (t == ValueType::SINGLE);
     if (Fs <= 0.0)
         throw Error("demod: Fs must be positive",
                     0, 0, "demod", "", "numkit:demod:BadFs");
 
     const std::size_t N = y.numel();
     if (N == 0)
-        return Value::matrix(0, 0, ValueType::DOUBLE, mr);
+        return Value::matrix(0, 0, ySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
     std::string m = method;
     std::transform(m.begin(), m.end(), m.begin(),
@@ -467,9 +458,9 @@ Value demod(const Value &y, double Fc, double Fs,
         if (isRowVec && cols == 1) {
             Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
             std::copy(od, od + len, rowOut.doubleDataMut());
-            return rowOut;
+            return detail::narrowDoubleToSingleIf(std::move(rowOut), ySingle, mr);
         }
-        return out;
+        return detail::narrowDoubleToSingleIf(std::move(out), ySingle, mr);
     }
 
     // Step 1: x = y .* cos(2π Fc t)
@@ -510,9 +501,9 @@ Value demod(const Value &y, double Fc, double Fs,
     if (isRowVec && cols == 1) {
         Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
         std::copy(out.doubleData(), out.doubleData() + len, rowOut.doubleDataMut());
-        return rowOut;
+        return detail::narrowDoubleToSingleIf(std::move(rowOut), ySingle, mr);
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), ySingle, mr);
 }
 
 // ── modulate (Phase 4.12) ───────────────────────────────────────────
@@ -525,26 +516,18 @@ Value modulate(const Value &x, double Fc, double Fs,
                std::pmr::memory_resource *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
-    // Reference (R2025b): x must be double/single (logical, integer and
-    // char rejected; single a capability gap). Complex unprobed — flows
-    // through the real-part reads as before.
-    {
-        const ValueType t = x.type();
-        if (t == ValueType::SINGLE)
-            throw Error("modulate: input 1 (x): single inputs are not "
-                        "supported yet — convert with double()",
-                        0, 0, "modulate", "", "numkit:modulate:singleUnsupported");
-        if (t != ValueType::DOUBLE && t != ValueType::COMPLEX)
-            detail::throwInputType(x, "modulate", "x", 1,
-                                   "a double or complex double array");
-    }
+    const ValueType t = x.type();
+    if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX)
+        detail::throwInputType(x, "modulate", "x", 1,
+                               "a double, single, or complex double array");
+    const bool xSingle = (t == ValueType::SINGLE);
     if (Fs <= 0.0)
         throw Error("modulate: Fs must be positive",
                     0, 0, "modulate", "", "numkit:modulate:BadFs");
 
     const std::size_t N = x.numel();
     if (N == 0)
-        return Value::matrix(0, 0, ValueType::DOUBLE, mr);
+        return Value::matrix(0, 0, xSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
     std::string m = method;
     std::transform(m.begin(), m.end(), m.begin(),
@@ -651,9 +634,9 @@ Value modulate(const Value &x, double Fc, double Fs,
     if (isRowVec && len > 0) {
         Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
         std::copy(od, od + len, rowOut.doubleDataMut());
-        return rowOut;
+        return detail::narrowDoubleToSingleIf(std::move(rowOut), xSingle, mr);
     }
-    return out;
+    return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
 }
 
 // ── vco (Phase 4.8) ─────────────────────────────────────────────────

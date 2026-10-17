@@ -77,10 +77,9 @@ Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
             const double psw = std::sin(w * static_cast<double>(N - 1));
             od[m] = y * Complex(pcw, -psw);
         } else {
-            const double *xd = x.doubleData();
             double s_prev = 0.0, s_prev2 = 0.0;
             for (size_t n = 0; n < N; ++n) {
-                const double s = xd[n] + coeff * s_prev - s_prev2;
+                const double s = x.elemAsDouble(n) + coeff * s_prev - s_prev2;
                 s_prev2 = s_prev;
                 s_prev  = s;
             }

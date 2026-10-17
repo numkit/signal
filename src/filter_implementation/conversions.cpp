@@ -11,6 +11,7 @@
 #include <tuple>
 
 #include "../dsp_helpers.hpp"
+#include "../signal_detail.hpp"
 #include <numkit/ops/poly_helpers.hpp>
 
 #include <algorithm>
@@ -171,16 +172,8 @@ bool popClosestZeroPair(ScratchVec<Complex> &zeros, Complex target,
 ScratchVec<Complex> readComplexVec(const Value &v, const char *fn, std::pmr::memory_resource *mr)
 {
     if (v.isEmpty()) return ScratchVec<Complex>(mr);
-    // Reference (R2025b): zeros/poles accept double/single/complex;
-    // single would flow into a single-classed SOS result which the
-    // double kernels cannot produce (single-float-inputs.md), logical
-    // and integer classes are rejected outright.
-    if (v.type() == ValueType::SINGLE)
-        throw Error(std::string(fn) + ": input zeros/poles: single inputs "
-                    "are not supported yet — convert with double()",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":singleUnsupported");
-    if (v.type() != ValueType::COMPLEX && v.type() != ValueType::DOUBLE)
-        throw Error(std::string(fn) + ": zeros/poles must be double or "
+    if (v.type() != ValueType::COMPLEX && v.type() != ValueType::DOUBLE && v.type() != ValueType::SINGLE)
+        throw Error(std::string(fn) + ": zeros/poles must be double, single, or "
                     "complex vectors",
                     0, 0, fn, "", std::string("numkit:") + fn + ":inputType");
     ScratchVec<Complex> out(mr);
@@ -189,8 +182,7 @@ ScratchVec<Complex> readComplexVec(const Value &v, const char *fn, std::pmr::mem
         const Complex *p = v.complexData();
         for (size_t i = 0; i < v.numel(); ++i) out.push_back(p[i]);
     } else {
-        const double *p = v.doubleData();
-        for (size_t i = 0; i < v.numel(); ++i) out.push_back(Complex(p[i], 0.0));
+        for (size_t i = 0; i < v.numel(); ++i) out.push_back(Complex(v.elemAsDouble(i), 0.0));
     }
     return out;
 }
@@ -227,12 +219,8 @@ Value buildSosMatrix(const double *b1s, const double *b2s, const double *a1s, co
 
 inline ScratchVec<Complex> coeffsAsVector(const Value &v, std::pmr::memory_resource *mr)
 {
-    if (v.type() == ValueType::SINGLE)
-        throw Error("tf2sos: b/a: single inputs are not supported yet — "
-                    "convert with double()",
-                    0, 0, "tf2sos", "", "numkit:tf2sos:singleUnsupported");
-    if ((v.type() != ValueType::DOUBLE && v.type() != ValueType::COMPLEX) || !v.dims().isVector())
-        throw Error("tf2sos: b/a must be DOUBLE or COMPLEX row/column vectors",
+    if ((v.type() != ValueType::DOUBLE && v.type() != ValueType::SINGLE && v.type() != ValueType::COMPLEX) || !v.dims().isVector())
+        throw Error("tf2sos: b/a must be DOUBLE, SINGLE, or COMPLEX row/column vectors",
                     0, 0, "tf2sos", "", "numkit:tf2sos:type");
     const size_t n = v.numel();
     ScratchVec<Complex> out(n, mr);
@@ -240,8 +228,7 @@ inline ScratchVec<Complex> coeffsAsVector(const Value &v, std::pmr::memory_resou
         const Complex *p = v.complexData();
         for (size_t i = 0; i < n; ++i) out[i] = p[i];
     } else {
-        const double *p = v.doubleData();
-        for (size_t i = 0; i < n; ++i) out[i] = Complex(p[i], 0.0);
+        for (size_t i = 0; i < n; ++i) out[i] = Complex(v.elemAsDouble(i), 0.0);
     }
     return out;
 }
@@ -255,6 +242,7 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surpl
         throw Error("zp2sos: at least one pole is required",
                      0, 0, "zp2sos", "", "numkit:zp2sos:noPoles");
 
+    const bool anySingle = (zerosV.type() == ValueType::SINGLE) || (polesV.type() == ValueType::SINGLE);
     ScratchArena scratch(mr);
     auto zeros = readComplexVec(zerosV, "zp2sos", &scratch);
     auto poles = readComplexVec(polesV, "zp2sos", &scratch);
@@ -292,7 +280,8 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surpl
         throw Error("zp2sos: more zeros than poles is not supported",
                      0, 0, "zp2sos", "", "numkit:zp2sos:moreZeros");
 
-    return std::make_tuple(buildSosMatrix(b1s.data(), b2s.data(), a1s.data(), a2s.data(), noZeros.data(), surplusAtOrigin, L, /*leadingGain=*/1.0, mr),
+    Value sos = buildSosMatrix(b1s.data(), b2s.data(), a1s.data(), a2s.data(), noZeros.data(), surplusAtOrigin, L, /*leadingGain=*/1.0, mr);
+    return std::make_tuple(detail::narrowDoubleToSingleIf(std::move(sos), anySingle, mr),
                            gain);
 }
 
@@ -300,16 +289,25 @@ Value zp2sos(const Value &zerosV, const Value &polesV, double gain, std::pmr::me
 {
     auto [sos, g] = zp2sosWithGain(zerosV, polesV, gain, /*surplusAtOrigin=*/true, mr);
     const size_t L = sos.dims().rows();
-    double *p = sos.doubleDataMut();
-    p[0 * L + 0] *= g;
-    p[1 * L + 0] *= g;
-    p[2 * L + 0] *= g;
+    if (sos.type() == ValueType::SINGLE) {
+        float *p = sos.singleDataMut();
+        const float gf = static_cast<float>(g);
+        p[0 * L + 0] *= gf;
+        p[1 * L + 0] *= gf;
+        p[2 * L + 0] *= gf;
+    } else {
+        double *p = sos.doubleDataMut();
+        p[0 * L + 0] *= g;
+        p[1 * L + 0] *= g;
+        p[2 * L + 0] *= g;
+    }
     return sos;
 }
 
 std::tuple<Value, double>
 tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
 {
+    const bool anySingle = (b.type() == ValueType::SINGLE) || (a.type() == ValueType::SINGLE);
     ScratchArena scratch(mr);
     auto bv = coeffsAsVector(b, &scratch);
     auto av = coeffsAsVector(a, &scratch);
@@ -334,17 +332,26 @@ tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
     };
     // tf2sos must reproduce the ORIGINAL b polynomial: surplus zeros stay
     // left-aligned at infinity ([g 0 0]), not pushed to the origin.
-    return zp2sosWithGain(toCplxVec(zeros), toCplxVec(poles), gain, /*surplusAtOrigin=*/false, mr);
+    auto [sos, g] = zp2sosWithGain(toCplxVec(zeros), toCplxVec(poles), gain, /*surplusAtOrigin=*/false, mr);
+    return std::make_tuple(detail::narrowDoubleToSingleIf(std::move(sos), anySingle, mr), g);
 }
 
 Value tf2sos(const Value &b, const Value &a, std::pmr::memory_resource *mr)
 {
     auto [sos, g] = tf2sosWithGain(b, a, mr);
     const size_t L = sos.dims().rows();
-    double *p = sos.doubleDataMut();
-    p[0 * L + 0] *= g;
-    p[1 * L + 0] *= g;
-    p[2 * L + 0] *= g;
+    if (sos.type() == ValueType::SINGLE) {
+        float *p = sos.singleDataMut();
+        const float gf = static_cast<float>(g);
+        p[0 * L + 0] *= gf;
+        p[1 * L + 0] *= gf;
+        p[2 * L + 0] *= gf;
+    } else {
+        double *p = sos.doubleDataMut();
+        p[0 * L + 0] *= g;
+        p[1 * L + 0] *= g;
+        p[2 * L + 0] *= g;
+    }
     return sos;
 }
 

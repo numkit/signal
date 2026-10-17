@@ -94,41 +94,40 @@ void medfilt1Column(const double *src, double *dst, size_t n, size_t k,
 
 Value medfilt1(const Value &x, size_t k, bool zeropad, std::pmr::memory_resource *mr)
 {
-    // Reference (R2025b): x must be real single/double (complex is
-    // rejected with expectedReal; single is a capability gap here, the
-    // median kernel is double-only) — logical/integer/char rejected.
     detail::requireRealFloatInput(x, "medfilt1");
+    const bool xSingle = (x.type() == ValueType::SINGLE);
 
     const size_t total = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
-    if (total == 0) return r;
+    if (total == 0) return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
     // k == 0: the reference answers an all-NaN signal (median of an
     // empty window per sample) instead of rejecting — probed R2025b.
     if (k == 0) {
         double *dst = r.doubleDataMut();
         const double nan = std::numeric_limits<double>::quiet_NaN();
         for (size_t i = 0; i < total; ++i) dst[i] = nan;
-        return r;
+        return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
     }
 
     const size_t leftHalf  = k / 2;            // MATLAB even-k window leans left
     const size_t rightHalf = k - 1 - leftHalf;
 
-    const double *src = x.doubleData();
+    Value xD = detail::widenSingleToDouble(x, mr);
+    const double *src = xD.doubleData();
     double *dst = r.doubleDataMut();
 
-    const size_t R = static_cast<size_t>(x.dims().dim(0));
+    const size_t R = static_cast<size_t>(xD.dims().dim(0));
     // Vector / scalar → one signal over every element. True 2-D (or N-D)
     // matrix → median-filter each column (length R) independently, matching
     // MATLAB's operate-along-dim-1 default.
-    if (R <= 1 || x.dims().isVector()) {
+    if (R <= 1 || xD.dims().isVector()) {
         medfilt1Column(src, dst, total, k, leftHalf, rightHalf, zeropad, mr);
     } else {
         const size_t ncols = total / R;
         for (size_t c = 0; c < ncols; ++c)
             medfilt1Column(src + c * R, dst + c * R, R, k, leftHalf, rightHalf, zeropad, mr);
     }
-    return r;
+    return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
 }
 
 } // namespace numkit::signal

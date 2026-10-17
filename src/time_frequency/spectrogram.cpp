@@ -52,8 +52,9 @@ void fillHannPeriodic(double *w, size_t N)
 std::tuple<Value, Value, Value>
 spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, std::pmr::memory_resource *mr)
 {
-    const size_t nx = x.numel();
-    const double *xd = x.doubleData();
+    Value xD = detail::widenSingleToDouble(x, mr);
+    const size_t nx = xD.numel();
+    const double *xd = xD.doubleData();
 
     ScratchArena scratch(mr);
 
@@ -62,9 +63,8 @@ spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, s
     if (window.numel() > 0) {
         winLen = window.numel();
         win.resize(winLen);
-        const double *w = window.doubleData();
         for (size_t i = 0; i < winLen; ++i)
-            win[i] = w[i];
+            win[i] = window.elemAsDouble(i);
     } else {
         // MATLAB spectrogram default: 8 Hamming-windowed segments with
         // 50% overlap (winLen = floor(nx / 4.5)).
@@ -207,7 +207,8 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
 
     // x as doubles. Complex input also supported via fft(complex frame).
     const bool xCplx = x.isComplex();
-    const double *xr = xCplx ? nullptr : x.doubleData();
+    Value xD = xCplx ? Value() : detail::widenSingleToDouble(x, mr);
+    const double *xr = xCplx ? nullptr : xD.doubleData();
     const Cd     *xc = xCplx ? x.complexData() : nullptr;
 
     Value S = (nCh > 1)
