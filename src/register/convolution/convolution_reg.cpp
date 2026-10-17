@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/convolution/convolution_reg.cpp
+// toolboxes/signal/src/convolution/convolution_reg.cpp
 //
 // Register half of the signal convolution builtins: the CallContext wrappers
 // delegating to the engine-free compute in convolution.cpp. library.cpp
@@ -83,9 +83,9 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
         if (args[1].isChar() || args[1].isString())
             scaleopt = args[1].toString();
         else if (args[1].numel() == 1)
-            maxlag = argcheck::expectedInteger(
+            maxlag = std::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[1], 2, "maxlag", "xcorr"),
-                2, "maxlag", "xcorr");
+                2, "maxlag", "xcorr"));
         else { y = args[1]; haveY = true; }
         idx = 2;
     }
@@ -94,9 +94,9 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
         if (args[idx].isChar() || args[idx].isString())
             scaleopt = args[idx].toString();
         else
-            maxlag = argcheck::expectedInteger(
+            maxlag = std::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[idx], int(idx) + 1, "maxlag", "xcorr"),
-                int(idx) + 1, "maxlag", "xcorr");
+                int(idx) + 1, "maxlag", "xcorr"));
     }
 
     auto [cfull, lagsfull] = haveY ? xcorr(x, y, mr) : xcorr(x, mr);
@@ -175,9 +175,9 @@ void xcov_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
         if (args[1].isChar() || args[1].isString()) {
             scaleopt = args[1].toString();
         } else if (args[1].numel() == 1) {
-            maxlag = argcheck::expectedInteger(
+            maxlag = std::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[1], 2, "maxlag", "xcov"),
-                2, "maxlag", "xcov");
+                2, "maxlag", "xcov"));
         } else {
             y = args[1];
         }
@@ -189,9 +189,9 @@ void xcov_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
         if (args[idx].isChar() || args[idx].isString())
             scaleopt = args[idx].toString();
         else
-            maxlag = argcheck::expectedInteger(
+            maxlag = std::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[idx], int(idx) + 1, "maxlag", "xcov"),
-                int(idx) + 1, "maxlag", "xcov");
+                int(idx) + 1, "maxlag", "xcov"));
     }
 
     auto result = xcov(x, y, maxlag, scaleopt, mr);

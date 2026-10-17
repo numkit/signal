@@ -276,28 +276,28 @@ TEST_F(SignalKnownBug, Zp2sosSectionOrderButtap)
     EXPECT_NEAR(evalScalar("s6(3,5)"), 1.931852, 1e-5);
 }
 
-// bugs/opened/signal/xcorr-negative-maxlag.md — a negative maxlag windows
+// bugs/closed/signal/xcorr-negative-maxlag.md — a negative maxlag windows
 // the lags symmetrically (±|maxlag|), not the full length.
-TEST_F(SignalKnownBug, DISABLED_XcorrNegativeMaxlagWindow)
+TEST_F(SignalKnownBug, XcorrNegativeMaxlagWindow)
 {
     eval("n = numel(xcorr(1:8, -3));");
     EXPECT_NEAR(evalScalar("n"), 7.0, 1e-9);
 }
 
-// bugs/opened/signal/interp-min-length.md — reference rejects data
+// bugs/closed/signal/interp-min-length.md — reference rejects data
 // shorter than the filter (2n+1 with default n=4).
-TEST_F(SignalKnownBug, DISABLED_InterpMinLength)
+TEST_F(SignalKnownBug, InterpMinLength)
 {
     eval("try, interp(1:8, 2); caught = false; catch, caught = true; end");
     eval("ok = caught;");
     EXPECT_NEAR(evalScalar("ok"), 1.0, 1e-9);
 }
 
-// bugs/opened/signal/fft2-two-arg.md — the reference accepts fft2(X) or
+// bugs/closed/signal/fft2-two-arg.md — the reference accepts fft2(X) or
 // fft2(X,m,n) but NEVER exactly 2 arguments (MATLAB:minrhs, probed
 // R2025b); nk computes the 2-arg form. Assert the reference-correct
 // rejection.
-TEST_F(SignalKnownBug, DISABLED_Fft2TwoArgRejected)
+TEST_F(SignalKnownBug, Fft2TwoArgRejected)
 {
     eval("try, fft2(ones(4), 3); t1 = false; catch, t1 = true; end");
     eval("try, ifft2(ones(4), 3); t2 = false; catch, t2 = true; end");

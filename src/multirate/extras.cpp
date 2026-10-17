@@ -142,6 +142,10 @@ Value upfirdn(const Value &x, const Value &h, size_t p, size_t q, std::pmr::memo
 // ── interp ────────────────────────────────────────────────────────────
 Value interp(const Value &x, size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
 {
+    if (x.numel() < 2 * n + 1)
+        throw Error("interp: input 1 (x) length (" + std::to_string(x.numel()) +
+                        ") must be at least 2*n+1 (" + std::to_string(2 * n + 1) + ")",
+                    0, 0, "interp", "", "numkit:interp:inputTooShort");
     if (r == 1) {
         // Pass-through: copy x.
         auto out = sameOrientReal(x, x.numel(), mr);

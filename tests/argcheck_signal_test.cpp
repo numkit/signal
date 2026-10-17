@@ -249,10 +249,10 @@ TEST_F(ArgcheckSignalTest, SignalSweepHappyPaths)
 {
     EXPECT_DOUBLE_EQ(evalScalar("numel(hamming(2.5))"), 3.0);   // rounds, not truncates
     EXPECT_DOUBLE_EQ(evalScalar("numel(kaiser(4.7))"), 5.0);
-    eval("xcorr(1:8, -3);");  // accepted; shape bug filed separately
+    EXPECT_DOUBLE_EQ(evalScalar("numel(xcorr(1:8, -3))"), 7.0); // windows to ±|maxlag|
     EXPECT_DOUBLE_EQ(evalScalar("numel(cconv(1:4, 1:4, 6))"), 6.0);
     EXPECT_DOUBLE_EQ(evalScalar("numel(decimate(1:16, 2))"), 8.0);
-    EXPECT_DOUBLE_EQ(evalScalar("numel(interp(1:8, 2))"), 16.0);  // n*r (reference-probed)
+    EXPECT_DOUBLE_EQ(evalScalar("numel(interp(1:9, 2))"), 18.0);  // n*r (reference-probed, min length 2*4+1=9)
 }
 
 // ── 2026-09-18 structural portion: type contracts for the 33 ──────────

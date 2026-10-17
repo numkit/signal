@@ -88,8 +88,8 @@ TEST_F(SignalBatch3Test, Multirate)
     eval("y = decimate(sin(2*pi*0.01*(0:99)), 4);");
     EXPECT_GT(evalScalar("numel(y)"), 0.0);
 
-    eval("y = interp([1 2 3 4], 2);");
-    EXPECT_GT(evalScalar("numel(y)"), 4.0);
+    eval("y = interp(1:9, 2);");
+    EXPECT_GT(evalScalar("numel(y)"), 9.0);
 
     eval("y = downsample([1 2 3 4 5 6], 2);");
     EXPECT_DOUBLE_EQ(evalScalar("numel(y)"), 3.0);
