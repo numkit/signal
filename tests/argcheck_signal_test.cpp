@@ -309,8 +309,9 @@ TEST_F(ArgcheckSignalTest, ConvmtxClassPreserving)
     eval("y = convmtx([1 1i], 3);");
     EXPECT_EQ(evalScalar("y(1,1)"), 1.0);                  // h(1) = 1 lands on the diagonal
     EXPECT_EQ(evalScalar("imag(y(1,2))"), 1.0);            // h(2) = 1i shifted right
+    eval("yi = convmtx(int8([1 1]), 3);");
+    EXPECT_EQ(evalScalar("strcmp(class(yi), 'int8')"), 1.0);
     expectError("convmtx([true true], 3);", "numkit:convmtx:inputType");
-    expectError("convmtx(int8([1 1]), 3);", "numkit:convmtx:integerUnsupported");
     expectError("convmtx(ones(2), 3);", "numkit:convmtx:notVector");
     expectError("convmtx('aa', 3);", "numkit:convmtx:inputType");
 }
@@ -407,8 +408,7 @@ TEST_F(ArgcheckSignalTest, SigroiContracts)
 }
 
 // multirate: typed gathers preserve class and handle matrices
-// column-wise (reference-verified); integer classes and N-D are voiced
-// gaps; phase contract now lives in the compute.
+// column-wise (reference-verified); phase contract now lives in the compute.
 TEST_F(ArgcheckSignalTest, MultirateTypedGathers)
 {
     eval("y = downsample(single(1:8), 2);");
@@ -422,8 +422,10 @@ TEST_F(ArgcheckSignalTest, MultirateTypedGathers)
     EXPECT_EQ(evalScalar("y(1,2)"), 5.0);                   // column 2 starts at 5
     eval("m = reshape(1:6, 3, 2); y = upsample(m, 2);");
     EXPECT_EQ(evalScalar("size(y, 1)"), 6.0);
-    expectError("downsample(int8(1:8), 2);", "numkit:downsample:integerUnsupported");
-    expectError("upsample(int8(1:3), 2);", "numkit:upsample:integerUnsupported");
+    eval("yi = downsample(int8(1:8), 2);");
+    EXPECT_EQ(evalScalar("strcmp(class(yi), 'int8')"), 1.0);
+    eval("yu = upsample(int8(1:3), 2);");
+    EXPECT_EQ(evalScalar("strcmp(class(yu), 'int8')"), 1.0);
     expectError("downsample({1 2}, 2);", "numkit:downsample:inputType");
     expectError("decimate(logical(1:12), 3);", "numkit:decimate:inputType");
     expectError("decimate(int8(1:12), 3);", "numkit:decimate:inputType");
@@ -464,7 +466,7 @@ TEST_F(ArgcheckSignalTest, BandpowerContract)
 
 // stft: double/complex pass; single/logical/integer rejected
 // (reference InvalidInputDataType); 3-D rejected (expected2D); matrix
-// input is a voiced gap (the reference treats columns as channels).
+// input frames each column as a channel.
 TEST_F(ArgcheckSignalTest, StftTypeContract)
 {
     eval("s = stft(sin(1:128));");                          // double OK
@@ -473,7 +475,7 @@ TEST_F(ArgcheckSignalTest, StftTypeContract)
     expectError("stft(logical(1:128));", "numkit:stft:inputType");
     expectError("stft(int8(1:128));", "numkit:stft:inputType");
     expectError("stft(ones(16, 4, 2));", "numkit:stft:expected2D");
-    expectError("stft(ones(64, 2));", "numkit:stft:matrixUnsupported");
+    expectError("stft(ones(64, 2));", "numkit:stft:shortSignal");
 }
 
 // czt / ifft('symmetric') / goertzel / bitrevorder.
@@ -496,7 +498,8 @@ TEST_F(ArgcheckSignalTest, TransformsTypeContract)
     EXPECT_NEAR(evalScalar("real(g(1))"), -4.0, 1e-9);
     EXPECT_NEAR(evalScalar("imag(g(1))"), 9.65685424949238, 1e-9);
     expectError("bitrevorder('abcdefgh');", "numkit:bitrevorder:inputType");
-    expectError("bitrevorder(int8(1:8));", "numkit:bitrevorder:integerUnsupported");
+    eval("yb = bitrevorder(int8(1:8));");
+    EXPECT_EQ(evalScalar("strcmp(class(yb), 'int8')"), 1.0);
     eval("y = bitrevorder(single(1:8));");                  // single preserved
     EXPECT_EQ(evalScalar("y(2)"), 5.0);
     eval("y = bitrevorder(logical([1 0 0 0]));");           // logical preserved

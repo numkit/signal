@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_analysis/frequency_response_reg.cpp
+// toolboxes/signal/src/filter_analysis/frequency_response_reg.cpp
 //
 // Register half of the signal frequency_response builtins: the CallContext wrappers
 // delegating to the engine-free compute in frequency_response.cpp. library.cpp
@@ -32,9 +32,11 @@ namespace detail {
 
 void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 5, "freqz");
+    argcheck::checkNargin(args.size(), 1, 5, "freqz");
+    auto *mr = ctx.engine->resource();
+    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
     // Parse the trailing args: 'whole' (string, any position) and up to two
-    // numerics after b,a â€” the first is n (npts), the second is fs (the
+    // numerics after b,a — the first is n (npts), the second is fs (the
     // freqz(b,a,n,fs) / freqz(b,a,n,'whole',fs) sample-rate form).
     size_t npts = 512;
     double fs   = 0.0;
@@ -59,13 +61,13 @@ void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
     }
 
     if (wvec) {
-        auto [Hv, Wv] = freqz(args[0], args[1], *wvec, ctx.engine->resource());
+        auto [Hv, Wv] = freqz(args[0], a, *wvec, mr);
         outs[0] = std::move(Hv);
         if (nargout > 1)
             outs[1] = std::move(Wv);
         return;
     }
-    auto [H, W] = freqz(args[0], args[1], npts, whole, fs, ctx.engine->resource());
+    auto [H, W] = freqz(args[0], a, npts, whole, fs, mr);
     outs[0] = std::move(H);
     if (nargout > 1)
         outs[1] = std::move(W);
@@ -73,8 +75,10 @@ void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
 
 void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 6, "phasez");
-    // n (1st numeric after b,a) and optional fs (2nd) â€” phasez(b,a,n,fs).
+    argcheck::checkNargin(args.size(), 1, 6, "phasez");
+    auto *mr = ctx.engine->resource();
+    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
+    // n (1st numeric after b,a) and optional fs (2nd) — phasez(b,a,n,fs).
     size_t npts = 512;
     double fs = 0.0;
     int numericSeen = 0;
@@ -87,15 +91,17 @@ void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
         else if (numericSeen == 1) fs   = args[i].toScalar();
         ++numericSeen;
     }
-    auto [phi, W] = phasez(args[0], args[1], npts, fs, ctx.engine->resource());
+    auto [phi, W] = phasez(args[0], a, npts, fs, mr);
     outs[0] = std::move(phi);
     if (nargout > 1) outs[1] = std::move(W);
 }
 
 void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 6, "grpdelay");
-    // n (1st numeric after b,a) and optional fs (2nd) â€” grpdelay(b,a,n,fs).
+    argcheck::checkNargin(args.size(), 1, 6, "grpdelay");
+    auto *mr = ctx.engine->resource();
+    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
+    // n (1st numeric after b,a) and optional fs (2nd) — grpdelay(b,a,n,fs).
     size_t npts = 512;
     double fs = 0.0;
     int numericSeen = 0;
@@ -108,7 +114,7 @@ void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
         else if (numericSeen == 1) fs   = args[i].toScalar();
         ++numericSeen;
     }
-    auto [gd, W] = grpdelay(args[0], args[1], npts, fs, ctx.engine->resource());
+    auto [gd, W] = grpdelay(args[0], a, npts, fs, mr);
     outs[0] = std::move(gd);
     if (nargout > 1) outs[1] = std::move(W);
 }

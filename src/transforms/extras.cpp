@@ -106,11 +106,6 @@ Value bitrevorder(const Value &x, std::pmr::memory_resource *mr)
 {
     detail::requireNumericOrLogicalInput(x, "bitrevorder");
     const ValueType t = x.type();
-    if (isIntegerType(t))
-        throw Error("bitrevorder: input 1 (x): integer-class inputs are "
-                    "not supported yet (got a " + detail::shapeOf(x) + " "
-                    + mtypeName(t) + " array).",
-                    0, 0, "bitrevorder", "", "numkit:bitrevorder:integerUnsupported");
     const size_t n = x.numel();
     if (!isPow2(n))
         throw Error("bitrevorder: input length must be a power of two",
@@ -119,35 +114,12 @@ Value bitrevorder(const Value &x, std::pmr::memory_resource *mr)
     for (size_t v = n; v > 1; v >>= 1) ++bits;
 
     const bool isRow = (x.dims().rows() == 1);
-    const bool isComplex = (t == ValueType::COMPLEX);
-    const bool isSingle = (t == ValueType::SINGLE);
-    const bool isLogical = (t == ValueType::LOGICAL);
-    const auto outType = isComplex ? ValueType::COMPLEX
-                        : isSingle ? ValueType::SINGLE
-                        : isLogical ? ValueType::LOGICAL
-                                    : ValueType::DOUBLE;
-    auto out = Value::matrix(isRow ? 1 : n, isRow ? n : 1, outType, mr);
-    if (isComplex) {
-        const Complex *src = x.complexData();
-        Complex *dst = out.complexDataMut();
-        for (size_t i = 0; i < n; ++i)
-            dst[bitReverse(i, bits)] = src[i];
-    } else if (isSingle) {
-        const float *src = x.singleData();
-        float *dst = out.singleDataMut();
-        for (size_t i = 0; i < n; ++i)
-            dst[bitReverse(i, bits)] = src[i];
-    } else if (isLogical) {
-        const uint8_t *src = x.logicalData();
-        uint8_t *dst = out.logicalDataMut();
-        for (size_t i = 0; i < n; ++i)
-            dst[bitReverse(i, bits)] = src[i];
-    } else {
-        const double *src = x.doubleData();
-        double *dst = out.doubleDataMut();
-        for (size_t i = 0; i < n; ++i)
-            dst[bitReverse(i, bits)] = src[i];
-    }
+    auto out = Value::matrix(isRow ? 1 : n, isRow ? n : 1, t, mr);
+    const size_t es = x.rawBytes() / n;
+    const char *src = static_cast<const char *>(x.rawData());
+    char *dst = static_cast<char *>(out.rawDataMut());
+    for (size_t i = 0; i < n; ++i)
+        std::memcpy(dst + bitReverse(i, bits) * es, src + i * es, es);
     return out;
 }
 

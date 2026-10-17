@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_analysis/predicates_reg.cpp
+// toolboxes/signal/src/filter_analysis/predicates_reg.cpp
 //
 // Register half of the signal predicates builtins: the CallContext wrappers
 // delegating to the engine-free compute in predicates.cpp. library.cpp
@@ -80,8 +80,9 @@ void islinphase_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs
 
 void isallpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 3, "isallpass");
-    outs[0] = boolVal(isallpass(args[0], args[1]), ctx.engine->resource());
+    argcheck::checkNargin(args.size(), 1, 3, "isallpass");
+    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, ctx.engine->resource());
+    outs[0] = boolVal(isallpass(args[0], a), ctx.engine->resource());
 }
 
 void filtord_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)

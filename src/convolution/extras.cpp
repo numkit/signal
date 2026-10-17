@@ -132,81 +132,30 @@ Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
     const ValueType ht = h.type();
     const bool isSingle = (ht == ValueType::SINGLE);
     const bool isComplex = (ht == ValueType::COMPLEX);
-    if (ht != ValueType::DOUBLE && !isSingle && !isComplex) {
-        if (isIntegerType(ht))
-            throw Error("convmtx: input 1 (h): integer-class inputs are not "
-                        "supported yet (got a " + detail::shapeOf(h) + " "
-                        + mtypeName(ht) + " array).",
-                        0, 0, "convmtx", "",
-                        "numkit:convmtx:integerUnsupported");
+    const bool isInt = isIntegerType(ht);
+    if (ht != ValueType::DOUBLE && !isSingle && !isComplex && !isInt) {
         // The reference accepts every numeric class EXCEPT logical.
         detail::throwInputType(h, "convmtx", "h", 1, "numeric");
     }
-
-    // Element reader dispatching to the matching storage.
-    auto elem = [&](size_t i) -> double {
-        if (isSingle)   return static_cast<double>(h.singleData()[i]);
-        return h.elemAsDouble(i);
-    };
 
     // Default to row-form when h is a vector with rows() == 1 OR is
     // 1-D / scalar. Column form only when h is explicitly Nx1 (rows>1).
     const bool hIsColumn = (h.dims().rows() > 1 && h.dims().cols() == 1);
 
-    const auto outType = isComplex ? ValueType::COMPLEX
-                        : isSingle ? ValueType::SINGLE
-                                   : ValueType::DOUBLE;
-
+    const size_t outRows = hIsColumn ? (n + nh - 1) : n;
+    const size_t outCols = hIsColumn ? n : (n + nh - 1);
+    auto out = Value::matrix(outRows, outCols, ht, mr);
+    const size_t es = h.rawBytes() / nh;
+    const char *src = static_cast<const char *>(h.rawData());
+    char *dst = static_cast<char *>(out.rawDataMut());
     if (hIsColumn) {
-        const size_t rows = n + nh - 1;
-        auto out = Value::matrix(rows, n, outType, mr);
-        if (isComplex) {
-            Complex *dst = out.complexDataMut();
-            std::fill(dst, dst + rows * n, Complex(0.0, 0.0));
-            const Complex *src = h.complexData();
-            for (size_t col = 0; col < n; ++col)
-                for (size_t i = 0; i < nh; ++i)
-                    dst[(col + i) + col * rows] = src[i];
-        } else if (isSingle) {
-            float *dst = out.singleDataMut();
-            std::fill(dst, dst + rows * n, 0.0f);
-            for (size_t col = 0; col < n; ++col)
-                for (size_t i = 0; i < nh; ++i)
-                    dst[(col + i) + col * rows] =
-                        static_cast<float>(elem(i));
-        } else {
-            double *dst = out.doubleDataMut();
-            std::fill(dst, dst + rows * n, 0.0);
-            for (size_t col = 0; col < n; ++col)
-                for (size_t i = 0; i < nh; ++i)
-                    dst[(col + i) + col * rows] = elem(i);
-        }
-        return out;
-    }
-
-    // Row form: out(row, row+i) = h(i), for row in [0, n) and i in [0, nh).
-    // Output is n × (n + nh - 1).
-    const size_t cols = n + nh - 1;
-    auto out = Value::matrix(n, cols, outType, mr);
-    if (isComplex) {
-        Complex *dst = out.complexDataMut();
-        std::fill(dst, dst + n * cols, Complex(0.0, 0.0));
-        const Complex *src = h.complexData();
-        for (size_t row = 0; row < n; ++row)
+        for (size_t col = 0; col < n; ++col)
             for (size_t i = 0; i < nh; ++i)
-                dst[row + (row + i) * n] = src[i];
-    } else if (isSingle) {
-        float *dst = out.singleDataMut();
-        std::fill(dst, dst + n * cols, 0.0f);
-        for (size_t row = 0; row < n; ++row)
-            for (size_t i = 0; i < nh; ++i)
-                dst[row + (row + i) * n] = static_cast<float>(elem(i));
+                std::memcpy(dst + ((col + i) + col * outRows) * es, src + i * es, es);
     } else {
-        double *dst = out.doubleDataMut();
-        std::fill(dst, dst + n * cols, 0.0);
         for (size_t row = 0; row < n; ++row)
             for (size_t i = 0; i < nh; ++i)
-                dst[row + (row + i) * n] = elem(i);
+                std::memcpy(dst + (row + (row + i) * outRows) * es, src + i * es, es);
     }
     return out;
 }

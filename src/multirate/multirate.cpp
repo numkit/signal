@@ -40,18 +40,10 @@ void multirateGatherArgcheck(const Value &x, const char *fn)
 {
     const ValueType t = x.type();
     if (t == ValueType::DOUBLE || t == ValueType::COMPLEX
-        || t == ValueType::SINGLE || t == ValueType::LOGICAL) {
-        if (x.dims().ndim() > 2)
-            throw Error(std::string(fn) + ": N-D inputs are not supported "
-                        "yet (got a " + detail::shapeOf(x) + " array)",
-                        0, 0, fn, "", std::string("numkit:") + fn + ":ndUnsupported");
+        || t == ValueType::SINGLE || t == ValueType::LOGICAL
+        || isIntegerType(t)) {
         return;
     }
-    if (isIntegerType(t))
-        throw Error(std::string(fn) + ": input 1 (x): integer-class inputs "
-                    "are not supported yet (got a " + detail::shapeOf(x)
-                    + " " + mtypeName(t) + " array).",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":integerUnsupported");
     detail::throwInputType(x, fn, "x", 1, "numeric or logical");
 }
 
@@ -67,8 +59,8 @@ void multiratePhaseArgcheck(size_t n, size_t phase, const char *fn)
 // Column count / orientation helpers shared by the typed gathers.
 struct GatherShape {
     size_t rows;      // per-column length
-    size_t cols;
-    bool   isRow;     // input was a row vector → row output
+    size_t cols;      // product of trailing dimensions
+    bool   isRow;     // input was a 2-D row vector → row output
 };
 GatherShape gatherShape(const Value &x)
 {
@@ -76,7 +68,25 @@ GatherShape gatherShape(const Value &x)
         return {x.numel(), 1, true};  // row vector (incl. 1×1): row output
     if (x.dims().isVector() || x.isScalar())
         return {x.numel(), 1, false}; // column vector / scalar
-    return {x.dims().rows(), x.dims().cols(), false};
+    const size_t r = x.dims().rows();
+    const size_t c = (r > 0) ? (x.numel() / r) : x.dims().cols();
+    return {r, c, false};
+}
+
+Value allocMultirateOut(const Value &x, const GatherShape &gs, size_t outRows,
+                        std::pmr::memory_resource *mr)
+{
+    const ValueType t = x.type();
+    if (gs.isRow)
+        return Value::matrix(1, outRows * gs.cols, t, mr);
+    const int nd = x.dims().ndim();
+    if (nd <= 2)
+        return Value::matrix(outRows, gs.cols, t, mr);
+    std::vector<size_t> od(static_cast<size_t>(nd));
+    od[0] = outRows;
+    for (int d = 1; d < nd; ++d)
+        od[static_cast<size_t>(d)] = x.dims().dim(d);
+    return Value::matrixND(od.data(), nd, t, mr);
 }
 
 } // anonymous namespace
@@ -131,46 +141,17 @@ Value downsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resour
     const size_t outRows = (phase < gs.rows)
                                ? (gs.rows - phase + n - 1) / n
                                : 0;
-    const ValueType t = x.type();
-
-    if (t == ValueType::COMPLEX) {
-        auto r = gs.isRow ? Value::complexMatrix(1, outRows * gs.cols, mr)
-                          : Value::complexMatrix(outRows, gs.cols, mr);
-        const Complex *xd = x.complexData();
-        Complex *od = r.complexDataMut();
-        for (size_t c = 0; c < gs.cols; ++c)
-            for (size_t i = 0; i < outRows; ++i)
-                od[c * outRows + i] = xd[c * gs.rows + phase + i * n];
+    Value r = allocMultirateOut(x, gs, outRows, mr);
+    if (outRows == 0 || gs.cols == 0 || x.numel() == 0)
         return r;
-    }
-    if (t == ValueType::SINGLE) {
-        auto r = gs.isRow ? Value::matrix(1, outRows * gs.cols, ValueType::SINGLE, mr)
-                          : Value::matrix(outRows, gs.cols, ValueType::SINGLE, mr);
-        const float *xd = x.singleData();
-        float *od = r.singleDataMut();
-        for (size_t c = 0; c < gs.cols; ++c)
-            for (size_t i = 0; i < outRows; ++i)
-                od[c * outRows + i] = xd[c * gs.rows + phase + i * n];
-        return r;
-    }
-    if (t == ValueType::LOGICAL) {
-        auto r = gs.isRow ? Value::matrix(1, outRows * gs.cols, ValueType::LOGICAL, mr)
-                          : Value::matrix(outRows, gs.cols, ValueType::LOGICAL, mr);
-        const uint8_t *xd = x.logicalData();
-        uint8_t *od = r.logicalDataMut();
-        for (size_t c = 0; c < gs.cols; ++c)
-            for (size_t i = 0; i < outRows; ++i)
-                od[c * outRows + i] = xd[c * gs.rows + phase + i * n];
-        return r;
-    }
-    // DOUBLE
-    auto r = gs.isRow ? Value::matrix(1, outRows * gs.cols, ValueType::DOUBLE, mr)
-                      : Value::matrix(outRows, gs.cols, ValueType::DOUBLE, mr);
-    const double *xd = x.doubleData();
-    double *od = r.doubleDataMut();
+    const size_t es = x.rawBytes() / x.numel();
+    const char *xd = static_cast<const char *>(x.rawData());
+    char *od = static_cast<char *>(r.rawDataMut());
     for (size_t c = 0; c < gs.cols; ++c)
         for (size_t i = 0; i < outRows; ++i)
-            od[c * outRows + i] = xd[c * gs.rows + phase + i * n];
+            std::memcpy(od + (c * outRows + i) * es,
+                        xd + (c * gs.rows + phase + i * n) * es,
+                        es);
     return r;
 }
 
@@ -181,50 +162,17 @@ Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource
     multiratePhaseArgcheck(n, phase, "upsample");
     const GatherShape gs = gatherShape(x);
     const size_t outRows = gs.rows * n;
-    const ValueType t = x.type();
-
-    if (t == ValueType::COMPLEX) {
-        auto r = gs.isRow ? Value::complexMatrix(1, outRows * gs.cols, mr)
-                          : Value::complexMatrix(outRows, gs.cols, mr);
-        const Complex *xd = x.complexData();
-        Complex *od = r.complexDataMut();
-        std::fill(od, od + outRows * gs.cols, Complex(0.0, 0.0));
-        for (size_t c = 0; c < gs.cols; ++c)
-            for (size_t i = 0; i < gs.rows; ++i)
-                od[c * outRows + phase + i * n] = xd[c * gs.rows + i];
+    Value r = allocMultirateOut(x, gs, outRows, mr);
+    if (outRows == 0 || gs.cols == 0 || x.numel() == 0)
         return r;
-    }
-    if (t == ValueType::SINGLE) {
-        auto r = gs.isRow ? Value::matrix(1, outRows * gs.cols, ValueType::SINGLE, mr)
-                          : Value::matrix(outRows, gs.cols, ValueType::SINGLE, mr);
-        const float *xd = x.singleData();
-        float *od = r.singleDataMut();
-        std::fill(od, od + outRows * gs.cols, 0.0f);
-        for (size_t c = 0; c < gs.cols; ++c)
-            for (size_t i = 0; i < gs.rows; ++i)
-                od[c * outRows + phase + i * n] = xd[c * gs.rows + i];
-        return r;
-    }
-    if (t == ValueType::LOGICAL) {
-        auto r = gs.isRow ? Value::matrix(1, outRows * gs.cols, ValueType::LOGICAL, mr)
-                          : Value::matrix(outRows, gs.cols, ValueType::LOGICAL, mr);
-        const uint8_t *xd = x.logicalData();
-        uint8_t *od = r.logicalDataMut();
-        std::fill(od, od + outRows * gs.cols, uint8_t(0));
-        for (size_t c = 0; c < gs.cols; ++c)
-            for (size_t i = 0; i < gs.rows; ++i)
-                od[c * outRows + phase + i * n] = xd[c * gs.rows + i];
-        return r;
-    }
-    // DOUBLE
-    auto r = gs.isRow ? Value::matrix(1, outRows * gs.cols, ValueType::DOUBLE, mr)
-                      : Value::matrix(outRows, gs.cols, ValueType::DOUBLE, mr);
-    const double *xd = x.doubleData();
-    double *od = r.doubleDataMut();
-    std::fill(od, od + outRows * gs.cols, 0.0);
+    const size_t es = x.rawBytes() / x.numel();
+    const char *xd = static_cast<const char *>(x.rawData());
+    char *od = static_cast<char *>(r.rawDataMut());
     for (size_t c = 0; c < gs.cols; ++c)
         for (size_t i = 0; i < gs.rows; ++i)
-            od[c * outRows + phase + i * n] = xd[c * gs.rows + i];
+            std::memcpy(od + (c * outRows + phase + i * n) * es,
+                        xd + (c * gs.rows + i) * es,
+                        es);
     return r;
 }
 

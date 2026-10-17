@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/digital_filtering/spec_driven_reg.cpp
+// toolboxes/signal/src/digital_filtering/spec_driven_reg.cpp
 //
 // Register half of the signal spec_driven builtins: the CallContext wrappers
 // delegating to the engine-free compute in spec_driven.cpp. library.cpp
@@ -36,6 +36,11 @@ namespace detail {
 void lowpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "lowpass");
+    if ((args[1].isChar() || args[1].isString()) && args.size() >= 3) {
+        const double fc = args[2].toScalar();
+        outs[0] = lowpass(args[0], fc, 2.0, 8, ctx.engine->resource());
+        return;
+    }
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "lowpass"), 4, "order", "lowpass") : 8;
@@ -45,6 +50,11 @@ void lowpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, C
 void highpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "highpass");
+    if ((args[1].isChar() || args[1].isString()) && args.size() >= 3) {
+        const double fc = args[2].toScalar();
+        outs[0] = highpass(args[0], fc, 2.0, 8, ctx.engine->resource());
+        return;
+    }
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "highpass"), 4, "order", "highpass") : 8;

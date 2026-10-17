@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/time_frequency/spectrogram_reg.cpp
+// toolboxes/signal/src/time_frequency/spectrogram_reg.cpp
 //
 // CallContext register half of time_frequency/spectrogram.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -118,18 +118,22 @@ void spectrogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
             td[j] /= fs;
     }
 
-    // 4th output / Auto-plot: ps â€” one-sided power spectral density per (freq, time),
-    // ps = c[k]Â·|S|Â² / (fsÂ·Î£winÂ²), with c = 2 on interior bins and 1 at DC
+    // 4th output / Auto-plot: ps — one-sided power spectral density per (freq, time),
+    // ps = c[k]·|S|² / (fs·Σwin²), with c = 2 on interior bins and 1 at DC
     // and (when present) Nyquist. Reuses the already-computed STFT S.
-    Value PS;
+    // 5th & 6th outputs: fc (center of gravity frequency) and tc (center of
+    // gravity time) via time-reassignment using the time-ramped window wt and
+    // not-a-knot cubic-spline derivative window wd.
+    Value PS, FC, TC;
     if (nargout == 0 || nargout > 3) {
         const std::size_t R = S.dims().rows();
         const std::size_t C = S.dims().cols();
         const std::size_t nx = args[0].numel();
-        // Window coefficients â€” replicate the core's default (hamming of
+        auto *mr = ctx.engine->resource();
+        // Window coefficients — replicate the core's default (hamming of
         // length floor(nx/4.5)) when none was supplied; keep in sync with
         // resolveWindow() in this TU.
-        std::pmr::vector<double> win(ctx.engine->resource());
+        std::pmr::vector<double> win(mr);
         if (!window.isEmpty() && window.numel() > 0) {
             const std::size_t L = window.numel();
             win.resize(L);
@@ -148,7 +152,7 @@ void spectrogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
         const std::size_t nfftEff = (R > 1) ? (R - 1) * 2 : 1;
         const bool nyquist = (nfftEff % 2 == 0);   // last bin is Nyquist
         const double denom = fs * U;
-        PS = Value::matrix(R, C, ValueType::DOUBLE, ctx.engine->resource());
+        PS = Value::matrix(R, C, ValueType::DOUBLE, mr);
         const std::complex<double> *sd = S.complexData();
         double *pd = PS.doubleDataMut();
         for (std::size_t k = 0; k < R; ++k) {
@@ -156,6 +160,90 @@ void spectrogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
             for (std::size_t m = 0; m < C; ++m) {
                 const std::complex<double> v = sd[m * R + k];
                 pd[m * R + k] = c * std::norm(v) / denom;
+            }
+        }
+
+        if (nargout > 4) {
+            const std::size_t L = win.size();
+            std::pmr::vector<double> wt(L, mr);
+            std::pmr::vector<double> wd(L, mr);
+            const double halfL = 0.5 * static_cast<double>(L > 0 ? L - 1 : 0);
+            for (std::size_t i = 0; i < L; ++i)
+                wt[i] = (static_cast<double>(i) - halfL) * win[i];
+
+            if (L <= 1) {
+                if (L == 1) wd[0] = 0.0;
+            } else if (L == 2) {
+                wd[0] = wd[1] = win[1] - win[0];
+            } else {
+                // Not-a-knot cubic spline nodal first derivatives on 0..L-1.
+                std::pmr::vector<double> sub(L, 1.0, mr);
+                std::pmr::vector<double> diag(L, 4.0, mr);
+                std::pmr::vector<double> sup(L, 1.0, mr);
+                std::pmr::vector<double> rhs(L, 0.0, mr);
+                diag[0] = 1.0;
+                sup[0]  = 2.0;
+                rhs[0]  = -2.5 * win[0] + 2.0 * win[1] + 0.5 * win[2];
+                for (std::size_t i = 1; i + 1 < L; ++i)
+                    rhs[i] = 3.0 * (win[i + 1] - win[i - 1]);
+                sub[L - 1]  = 2.0;
+                diag[L - 1] = 1.0;
+                rhs[L - 1]  = 2.5 * win[L - 1] - 2.0 * win[L - 2] - 0.5 * win[L - 3];
+
+                for (std::size_t i = 1; i < L; ++i) {
+                    const double factor = sub[i] / diag[i - 1];
+                    diag[i] -= factor * sup[i - 1];
+                    rhs[i]  -= factor * rhs[i - 1];
+                }
+                wd[L - 1] = rhs[L - 1] / diag[L - 1];
+                for (std::size_t i = L - 1; i-- > 0;)
+                    wd[i] = (rhs[i] - sup[i] * wd[i + 1]) / diag[i];
+            }
+
+            FC = Value::matrix(R, C, ValueType::DOUBLE, mr);
+            TC = Value::matrix(R, C, ValueType::DOUBLE, mr);
+            double *fcd = FC.doubleDataMut();
+            double *tcd = TC.doubleDataMut();
+            const double *fd = F.doubleData();
+            const double *td = T.doubleData();
+            const double *xd = args[0].doubleData();
+            const std::size_t novEff = (noverlap == 0) ? (L / 2) : noverlap;
+            const std::size_t step   = (L > novEff) ? (L - novEff) : 1;
+
+            Value frameT = Value::matrix(nfftEff, 1, ValueType::DOUBLE, mr);
+            Value frameD = Value::matrix(nfftEff, 1, ValueType::DOUBLE, mr);
+            double *fTd = frameT.doubleDataMut();
+            double *fDd = frameD.doubleDataMut();
+
+            for (std::size_t m = 0; m < C; ++m) {
+                const std::size_t start = m * step;
+                for (std::size_t i = 0; i < L; ++i) {
+                    const double xv = xd[start + i];
+                    fTd[i] = xv * wt[i];
+                    fDd[i] = xv * wd[i];
+                }
+                for (std::size_t i = L; i < nfftEff; ++i) {
+                    fTd[i] = 0.0;
+                    fDd[i] = 0.0;
+                }
+                Value St = fft(frameT, static_cast<int>(nfftEff), 1, mr);
+                Value Sd = fft(frameD, static_cast<int>(nfftEff), 1, mr);
+                const std::complex<double> *std_ptr = St.complexData();
+                const std::complex<double> *sdd_ptr = Sd.complexData();
+                for (std::size_t k = 0; k < R; ++k) {
+                    const std::complex<double> s_val = sd[m * R + k];
+                    const double mag2 = std::norm(s_val);
+                    if (mag2 > 0.0) {
+                        const std::complex<double> st_cs = std_ptr[k] * std::conj(s_val);
+                        const std::complex<double> sd_cs = sdd_ptr[k] * std::conj(s_val);
+                        tcd[m * R + k] = td[m] + st_cs.real() / (mag2 * fs);
+                        const double f_raw = fd[k] - (sd_cs.imag() / (2.0 * M_PI * mag2)) * fs;
+                        fcd[m * R + k] = std::fmod(std::fmod(f_raw, fs) + fs, fs);
+                    } else {
+                        tcd[m * R + k] = td[m];
+                        fcd[m * R + k] = fd[k];
+                    }
+                }
             }
         }
     }
@@ -191,11 +279,15 @@ void spectrogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
         outs[2] = std::move(T);
     if (nargout > 3)
         outs[3] = std::move(PS);
+    if (nargout > 4)
+        outs[4] = std::move(FC);
+    if (nargout > 5)
+        outs[5] = std::move(TC);
 }
 
 // Parse MATLAB-style trailing name-value pairs into the stft/istft
 // argument set. Recognised keys (case-insensitive): Window, OverlapLength,
-// FFTLength, FrequencyRange. Unknown keys throw â€” better to fail fast
+// FFTLength, FrequencyRange. Unknown keys throw — better to fail fast
 // than to silently misuse a guess.
 static void parseStftNVPairs(Span<const Value> args, size_t startIdx,
                              Value &window, std::size_t &overlap,
@@ -324,7 +416,8 @@ void stft_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     const std::size_t OL   = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
     const std::size_t hop  = (OL < M) ? (M - OL) : 1;
     const std::size_t NFFT = (fftLength == 0) ? M : fftLength;
-    const std::size_t N    = args[0].numel();
+    const bool isMatrix    = (args[0].dims().rows() > 1 && args[0].dims().cols() > 1);
+    const std::size_t N    = isMatrix ? args[0].dims().rows() : args[0].numel();
     const std::size_t K    = (N >= M) ? ((N - M) / hop + 1) : 0;
 
     outs[0] = stft(args[0], window, overlap, fftLength, range, mr);

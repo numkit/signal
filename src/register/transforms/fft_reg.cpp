@@ -212,8 +212,10 @@ void czt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         return;
     }
 
-    // MATLAB defaults: m = length(x), w = exp(-2Ï€Â·j/m), a = 1.
-    int m = static_cast<int>(x.numel());
+    // Reference defaults: m = length(x) for vectors, size(x, 1) for matrices/N-D,
+    // w = exp(-2*pi*j/m), a = 1.
+    const bool isRowVec = (x.dims().ndim() == 2 && x.dims().rows() == 1 && x.dims().cols() > 1);
+    int m = static_cast<int>(isRowVec ? x.dims().cols() : x.dims().rows());
     if (args.size() >= 2 && !args[1].isEmpty())
         m = argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[1], 2, "m", "czt"), 2, "m", "czt");

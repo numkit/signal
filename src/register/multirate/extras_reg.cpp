@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/multirate/extras_reg.cpp
+// toolboxes/signal/src/multirate/extras_reg.cpp
 //
 // Register half of the signal extras builtins: the CallContext wrappers
 // delegating to the engine-free compute in extras.cpp. library.cpp
@@ -32,10 +32,12 @@ namespace detail {
 
 void upfirdn_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 3, 4, "upfirdn");
-    const size_t p = static_cast<size_t>(argcheck::expectedPositiveInteger(
-        argcheck::expectedReal(args[2], 3, "p", "upfirdn"), 3, "p", "upfirdn"));
-    const size_t q = (args.size() >= 4)
+    argcheck::checkNargin(args.size(), 2, 4, "upfirdn");
+    const size_t p = (args.size() >= 3 && !args[2].isEmpty())
+        ? static_cast<size_t>(argcheck::expectedPositiveInteger(
+              argcheck::expectedReal(args[2], 3, "p", "upfirdn"), 3, "p", "upfirdn"))
+        : 1;
+    const size_t q = (args.size() >= 4 && !args[3].isEmpty())
         ? static_cast<size_t>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[3], 4, "q", "upfirdn"), 4, "q", "upfirdn"))
         : 1;

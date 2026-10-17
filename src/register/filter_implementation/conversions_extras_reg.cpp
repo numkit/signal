@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_implementation/conversions_extras_reg.cpp
+// toolboxes/signal/src/filter_implementation/conversions_extras_reg.cpp
 //
 // Register half of the signal conversions_extras builtins: the CallContext wrappers
 // delegating to the engine-free compute in conversions_extras.cpp. library.cpp
@@ -51,11 +51,13 @@ void sos2zp_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
 
 void tf2zpk_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 2, "tf2zpk");
-    auto [z, p, gain] = tf2zpk(args[0], args[1], ctx.engine->resource());
+    argcheck::checkNargin(args.size(), 1, 2, "tf2zpk");
+    auto *mr = ctx.engine->resource();
+    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
+    auto [z, p, gain] = tf2zpk(args[0], a, mr);
     outs[0] = std::move(z);
     if (nargout > 1) outs[1] = std::move(p);
-    if (nargout > 2) outs[2] = Value::scalar(gain, ctx.engine->resource());
+    if (nargout > 2) outs[2] = Value::scalar(gain, mr);
 }
 
 void tf2ss_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)

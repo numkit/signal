@@ -235,14 +235,16 @@ TEST_F(SignalKnownBug, ConvFilterComplex)
     EXPECT_NEAR(evalScalar("imag(z(2))"), 2.0, 1e-12);
 }
 
-// bugs/signal/spectrogram-fc-tc.md — 5th/6th outputs fc, tc.
-TEST_F(SignalKnownBug, DISABLED_SpectrogramFcTc)
+// bugs/closed/signal/spectrogram-fc-tc.md — 5th/6th outputs fc, tc (FIXED).
+TEST_F(SignalKnownBug, SpectrogramFcTc)
 {
     eval("x = sin(2*pi*0.1*(0:99));");
     eval("[s,f,t,ps,fc,tc] = spectrogram(x,16,8,16,1);");   // MATLAB tc(1)=8
     EXPECT_EQ(static_cast<int>(evalScalar("numel(fc)")),
-              static_cast<int>(evalScalar("numel(t)")));
+              static_cast<int>(evalScalar("numel(s)")));
     EXPECT_NEAR(evalScalar("tc(1)"), 8.0, 1e-6);
+    EXPECT_NEAR(evalScalar("fc(2,1)"), 0.100924585342006, 1e-12);
+    EXPECT_NEAR(evalScalar("tc(2,2)"), 16.014974819493229, 1e-12);
 }
 
 // bugs/signal/butter-bandpass-vector-wn.md — butter accepts 2-element [W1 W2] for bandpass/stop.
@@ -305,10 +307,9 @@ TEST_F(SignalKnownBug, Fft2TwoArgRejected)
     EXPECT_NEAR(evalScalar("t2"), 1.0, 1e-9);
 }
 
-// bugs/opened/signal/arity-min-forms.md — documented short forms the
-// reference accepts but nk rejects (regs protect unconditional args[i]
-// reads). Each call must eventually compute without a nargin error.
-TEST_F(SignalKnownBug, DISABLED_FewerArgForms)
+// bugs/closed/signal/arity-min-forms.md — documented short forms the
+// reference accepts (FIXED).
+TEST_F(SignalKnownBug, FewerArgForms)
 {
     const char *calls[] = {
         "h = freqz([1 1 1]);",          // FIR form
@@ -320,7 +321,7 @@ TEST_F(SignalKnownBug, DISABLED_FewerArgForms)
         "a = lpc(ones(1, 100));",
         "b = prony(ones(1, 100), 4);",
         "a = rc2ac([0.5 0.3]);",
-        "y = impinvar([1 1], 1000);",
+        "y = impinvar(1, [1 1]);",
         "y = upfirdn(1:10, [0.5 0.5]);",
         "y = gauspuls(0:0.01:1);",
         "y = gmonopuls(-1:0.01:1);",
@@ -348,18 +349,22 @@ TEST_F(SignalKnownBug, DISABLED_ConvSingleResultClass)
     EXPECT_NEAR(evalScalar("y(2)"), 3.0, 1e-6);
 }
 
-// bugs/opened/signal/integer-class-outputs.md
-TEST_F(SignalKnownBug, DISABLED_ConvmtxIntResultClass)
+// bugs/closed/signal/integer-class-outputs.md (FIXED)
+TEST_F(SignalKnownBug, ConvmtxIntResultClass)
 {
     eval("y = convmtx(int8([1 1]), 3);");
     EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(y), 'int8')"), 1.0);
 }
 
-TEST_F(SignalKnownBug, DISABLED_DownsampleIntResultClass)
+TEST_F(SignalKnownBug, DownsampleIntResultClass)
 {
     eval("y = downsample(int8(1:8), 2);");
     EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(y), 'int8')"), 1.0);
     EXPECT_DOUBLE_EQ(evalScalar("y(2)"), 3.0);
+    eval("yu = upsample(uint16(1:4), 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(yu), 'uint16')"), 1.0);
+    eval("yb = bitrevorder(int32(1:8));");
+    EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(yb), 'int32')"), 1.0);
 }
 
 // bugs/opened/signal/complex-kernel-gaps.md
@@ -385,19 +390,25 @@ TEST_F(SignalKnownBug, DISABLED_PolystabComplex)
     EXPECT_NEAR(evalScalar("real(y(1))"), 1.0, 1e-12);   // leading coeff preserved
 }
 
-// bugs/opened/signal/nd-and-matrix-gaps.md
-TEST_F(SignalKnownBug, DISABLED_ConvnRank4)
+// bugs/closed/signal/nd-and-matrix-gaps.md (FIXED)
+TEST_F(SignalKnownBug, ConvnRank4)
 {
     eval("y = convn(ones(2,2,2,2), ones(2));");
     EXPECT_DOUBLE_EQ(evalScalar("ndims(y)"), 4.0);
     EXPECT_DOUBLE_EQ(evalScalar("size(y, 1)"), 3.0);
+    eval("yd = downsample(ones(4, 3, 2), 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("ndims(yd)"), 3.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(yd, 1)"), 2.0);
+    eval("yc = czt(ones(4, 3, 2));");
+    EXPECT_DOUBLE_EQ(evalScalar("ndims(yc)"), 3.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(yc, 1)"), 4.0);
 }
 
-TEST_F(SignalKnownBug, DISABLED_StftMatrixChannels)
+TEST_F(SignalKnownBug, StftMatrixChannels)
 {
-    eval("s = stft(ones(64, 2));");
+    eval("s = stft(ones(128, 2));");
     EXPECT_DOUBLE_EQ(evalScalar("ndims(s)"), 3.0);
-    EXPECT_DOUBLE_EQ(evalScalar("size(s, 2)"), 2.0);       // two channels
+    EXPECT_DOUBLE_EQ(evalScalar("size(s, 3)"), 2.0);       // two channels
 }
 
 // bugs/closed/signal/conv2-separable-form.md

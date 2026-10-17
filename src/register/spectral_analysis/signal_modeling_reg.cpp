@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/spectral_analysis/signal_modeling_reg.cpp
+// toolboxes/signal/src/spectral_analysis/signal_modeling_reg.cpp
 //
 // CallContext register half of spectral_analysis/signal_modeling.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -70,8 +70,10 @@ NUMKIT_AR_REG(arburg, arburg)
 void lpc_reg(Span<const Value> args, size_t nargout,
              Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 2, "lpc");
-    const int p = static_cast<int>(argcheck::roundLength(args[1], 2, "p", "lpc"));
+    argcheck::checkNargin(args.size(), 1, 2, "lpc");
+    const int p = (args.size() >= 2 && !args[1].isEmpty())
+        ? static_cast<int>(argcheck::roundLength(args[1], 2, "p", "lpc"))
+        : static_cast<int>(args[0].numel() > 0 ? args[0].numel() - 1 : 0);
     auto [a, g] = lpc(args[0], p, ctx.engine->resource());
     outs[0] = std::move(a);
     if (nargout > 1) outs[1] = std::move(g);
@@ -108,8 +110,9 @@ void schurrc_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, C
 
 void rc2ac_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 2, "rc2ac");
-    outs[0] = rc2ac(args[0], args[1].toScalar(), ctx.engine->resource());
+    argcheck::checkNargin(args.size(), 1, 2, "rc2ac");
+    const double r0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1.0;
+    outs[0] = rc2ac(args[0], r0, ctx.engine->resource());
 }
 
 void poly2rc_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
@@ -173,9 +176,11 @@ NUMKIT_AR2_REG(armcov, armcov)
 void prony_reg(Span<const Value> args, size_t nargout,
                Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 3, 3, "prony");
+    argcheck::checkNargin(args.size(), 2, 3, "prony");
     const int nb = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "prony"), 2, "nb", "prony");
-    const int na = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "prony"), 3, "na", "prony");
+    const int na = (args.size() >= 3 && !args[2].isEmpty())
+        ? argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "prony"), 3, "na", "prony")
+        : nb;
     auto [b, a] = prony(args[0], nb, na, ctx.engine->resource());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);

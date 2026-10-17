@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_design/analog_filters_reg.cpp
+// toolboxes/signal/src/filter_design/analog_filters_reg.cpp
 //
 // CallContext register half of filter_design/analog_filters.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -181,8 +181,8 @@ void bilinear_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
 
 void impinvar_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 3, 4, "impinvar");
-    const double fs  = args[2].toScalar();
+    argcheck::checkNargin(args.size(), 2, 4, "impinvar");
+    const double fs  = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
     const double tol = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 1e-3;
     auto [bd, ad] = impinvar(args[0], args[1], fs, tol, ctx.engine->resource());
     outs[0] = std::move(bd);

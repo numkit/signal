@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/waveform_generation/waveform_generation_reg.cpp
+// toolboxes/signal/src/waveform_generation/waveform_generation_reg.cpp
 //
 // CallContext register half of waveform_generation/waveform_generation.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -107,9 +107,9 @@ void tripuls_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, C
 
 void gauspuls_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 5, "gauspuls");
-    const double fc = args[1].toScalar();
-    const double bw = (args.size() >= 3) ? args[2].toScalar() : 0.5;
+    argcheck::checkNargin(args.size(), 1, 5, "gauspuls");
+    const double fc = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1000.0;
+    const double bw = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 0.5;
     outs[0] = gauspuls(args[0], fc, bw, ctx.engine->resource());
 }
 
@@ -183,8 +183,9 @@ void sinc_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
 
 void gmonopuls_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 2, 2, "gmonopuls");
-    outs[0] = gmonopuls(args[0], args[1].toScalar(), ctx.engine->resource());
+    argcheck::checkNargin(args.size(), 1, 2, "gmonopuls");
+    const double fc = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1000.0;
+    outs[0] = gmonopuls(args[0], fc, ctx.engine->resource());
 }
 
 void diric_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
@@ -196,10 +197,10 @@ void diric_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
 
 void chirp_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 4, 8, "chirp");
-    const double f0 = args[1].toScalar();
-    const double t1 = args[2].toScalar();
-    const double f1 = args[3].toScalar();
+    argcheck::checkNargin(args.size(), 1, 8, "chirp");
+    const double f0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 0.0;
+    const double t1 = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
+    const double f1 = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 100.0;
     std::string method = "linear";
     if (args.size() >= 5) {
         if (!args[4].isChar() && !args[4].isString())

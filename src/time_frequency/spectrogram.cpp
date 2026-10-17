@@ -106,7 +106,7 @@ spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, s
         for (size_t i = winLen; i < nfft; ++i)
             buf[i] = Complex(0.0, 0.0);
 
-        fftRadix2(&scratch, buf, 1);
+        fftRadix2(&scratch, buf, -1);
 
         for (size_t i = 0; i < nFreqs; ++i)
             S.complexDataMut()[i + seg * nFreqs] = buf[i];
@@ -152,23 +152,17 @@ void resolveWindow(const Value &win, ScratchVec<double> &out, std::pmr::memory_r
 Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t fftLength, const std::string &range, std::pmr::memory_resource *mr)
 {
     using Cd = std::complex<double>;
-    // Contract (probed R2025b): x accepts double/single/complex; the
-    // framing kernel here reads double/complex buffers (single is a
-    // capability gap), logical/integer are rejected. The reference also
-    // accepts matrices as independent channels — this implementation
-    // frames the flat buffer, so matrices are rejected honestly
-    // (bugs/opened/signal/nd-and-matrix-gaps.md); 3-D is rejected by
-    // the reference outright.
+    // Contract (probed R2025b): x accepts double/single/complex; logical/integer
+    // and 3-D+ arrays are rejected. Multi-channel 2-D matrices (N x C) frame
+    // each column independently into a 3-D [outRows x K x C] complex array.
     detail::requireFloatInput(x, "stft");
     if (x.dims().ndim() > 2)
         throw Error("stft: X must be two-dimensional",
                      0, 0, "stft", "", "numkit:stft:expected2D");
-    if (x.dims().rows() > 1 && x.dims().cols() > 1)
-        throw Error("stft: multi-channel (matrix) input is not supported "
-                    "yet — filter each column separately",
-                    0, 0, "stft", "", "numkit:stft:matrixUnsupported");
-    const size_t N = x.numel();
-    if (N == 0)
+    const bool isMatrix = (x.dims().rows() > 1 && x.dims().cols() > 1);
+    const size_t N   = isMatrix ? x.dims().rows() : x.numel();
+    const size_t nCh = isMatrix ? x.dims().cols() : 1;
+    if (N == 0 || x.numel() == 0)
         return Value::complexMatrix(0, 0, mr);
 
     ScratchArena scratch(mr);
@@ -216,7 +210,9 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
     const double *xr = xCplx ? nullptr : x.doubleData();
     const Cd     *xc = xCplx ? x.complexData() : nullptr;
 
-    Value S = Value::complexMatrix(outRows, K, mr);
+    Value S = (nCh > 1)
+        ? Value::matrix3d(outRows, K, nCh, ValueType::COMPLEX, mr)
+        : Value::complexMatrix(outRows, K, mr);
     Cd *Sd = S.complexDataMut();
 
     // Per-frame buffer reused across iterations.
@@ -226,26 +222,30 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
     Cd     *frameCd = xCplx ? frameV.complexDataMut() : nullptr;
     double *frameRd = xCplx ? nullptr               : frameV.doubleDataMut();
 
-    for (size_t k = 0; k < K; ++k) {
-        const size_t start = k * hop;
-        if (xCplx) {
-            for (size_t i = 0; i < M; ++i)
-                frameCd[i] = xc[start + i] * win[i];
-            for (size_t i = M; i < NFFT; ++i) frameCd[i] = Cd(0, 0);
-        } else {
-            for (size_t i = 0; i < M; ++i)
-                frameRd[i] = xr[start + i] * win[i];
-            for (size_t i = M; i < NFFT; ++i) frameRd[i] = 0.0;
-        }
-        Value F = fft(frameV, static_cast<int>(NFFT), 1, mr);
-        const Cd *Fd = F.complexData();
-        if (isCentered) {
-            for (size_t r = 0; r < outRows; ++r)
-                Sd[k * outRows + r] = Fd[(r + cShift) % NFFT];
-        } else {
-            // twosided / onesided: copy the first outRows bins as-is.
-            for (size_t r = 0; r < outRows; ++r)
-                Sd[k * outRows + r] = Fd[r];
+    for (size_t ch = 0; ch < nCh; ++ch) {
+        const size_t chOff = ch * N;
+        Cd *SdCh = Sd + ch * (outRows * K);
+        for (size_t k = 0; k < K; ++k) {
+            const size_t start = chOff + k * hop;
+            if (xCplx) {
+                for (size_t i = 0; i < M; ++i)
+                    frameCd[i] = xc[start + i] * win[i];
+                for (size_t i = M; i < NFFT; ++i) frameCd[i] = Cd(0, 0);
+            } else {
+                for (size_t i = 0; i < M; ++i)
+                    frameRd[i] = xr[start + i] * win[i];
+                for (size_t i = M; i < NFFT; ++i) frameRd[i] = 0.0;
+            }
+            Value F = fft(frameV, static_cast<int>(NFFT), 1, mr);
+            const Cd *Fd = F.complexData();
+            if (isCentered) {
+                for (size_t r = 0; r < outRows; ++r)
+                    SdCh[k * outRows + r] = Fd[(r + cShift) % NFFT];
+            } else {
+                // twosided / onesided: copy the first outRows bins as-is.
+                for (size_t r = 0; r < outRows; ++r)
+                    SdCh[k * outRows + r] = Fd[r];
+            }
         }
     }
     return S;
