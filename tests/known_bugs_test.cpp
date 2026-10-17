@@ -52,18 +52,40 @@ TEST_F(SignalKnownBug, DeconvIntegerInput)
     EXPECT_TRUE(eval("isa(deconv([1 3 5 3], int8([1 1])), 'double')").toBool());
 }
 
-// bugs/opened/signal/instfreq-instbw.md — the DEFAULT (tfmoment) method
-// needs a pspectrum port; this guard pins MATLAB's DEFAULT-method values
-// until then (nk's default is the hilbert method, guarded live below).
-TEST_F(SignalKnownBug, DISABLED_InstfreqTfmomentDefault)
+// bugs/closed/signal/instfreq-instbw.md & bugs/closed/signal/pspectrum.md —
+// default (tfmoment) method for instfreq/instbw and pspectrum ('power' and 'spectrogram').
+TEST_F(SignalKnownBug, InstfreqTfmomentDefault)
 {
-    eval("fs=1000; t=(0:1/fs:1-1/fs)'; x=chirp(t,10,1,40); ifr=instfreq(x,fs);");
-    EXPECT_NEAR(evalScalar("ifr(1)"),   13.96, 0.5);
-    EXPECT_NEAR(evalScalar("ifr(end)"), 38.46, 0.5);
+    eval("fs=1000; t=(0:1/fs:1-1/fs)'; x=chirp(t,10,1,40); [ifr, ti]=instfreq(x,fs);");
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(ifr)")), 30);
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(ti)")), 30);
+    EXPECT_NEAR(evalScalar("ifr(1)"),   13.9633161563864, 1e-9);
+    EXPECT_NEAR(evalScalar("ifr(end)"), 38.4588738370341, 1e-9);
+    EXPECT_NEAR(evalScalar("ti(1)"),    0.0625,             1e-12);
+    EXPECT_NEAR(evalScalar("ti(2)-ti(1)"), 0.031,           1e-12);
+
+    // instbw on two-tone signal
+    eval("fs2=100; tt=(0:1/fs2:1-1/fs2)'; y=cos(2*pi*10*tt)+0.5*cos(2*pi*25*tt); [ibw, tb]=instbw(y,fs2);");
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(ibw)")), 23);
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(tb)")),  23);
+    EXPECT_NEAR(evalScalar("mean(ibw)"), 31.4126, 1e-3);
+
+    // pspectrum power and spectrogram modes
+    eval("[P, F] = pspectrum(x, fs);");
+    EXPECT_EQ(static_cast<int>(evalScalar("size(P, 1)")), 4096);
+    EXPECT_EQ(static_cast<int>(evalScalar("size(P, 2)")), 1);
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(F)")), 4096);
+    EXPECT_DOUBLE_EQ(evalScalar("F(1)"), 0.0);
+    EXPECT_DOUBLE_EQ(evalScalar("F(end)"), 500.0);
+
+    eval("[Ps, Fs_grid, Ts_grid] = pspectrum(x, fs, 'spectrogram');");
+    EXPECT_EQ(static_cast<int>(evalScalar("size(Ps, 1)")), 1024);
+    EXPECT_EQ(static_cast<int>(evalScalar("size(Ps, 2)")), 30);
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(Fs_grid)")), 1024);
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(Ts_grid)")), 30);
 }
 
-// instfreq 'hilbert' method — MATLAB-verbatim IF = fs/(2pi)*diff(unwrap(
-// angle(hilbert(x)))); values MATLAB-probed (2026-09-06) to 6 decimals.
+// instfreq 'hilbert' method — IF = fs/(2pi)*diff(unwrap(angle(hilbert(x)))).
 TEST_F(SignalKnownBug, InstfreqHilbertMethodExact)
 {
     eval("fs=1000; t=(0:1/fs:1-1/fs)'; x=chirp(t,10,1,40);");
@@ -104,11 +126,19 @@ TEST_F(SignalKnownBug, FindpeaksHalfHeightWidth)
     EXPECT_NEAR(evalScalar("w(1)"), 6.0, 1e-6);
 }
 
-// bugs/signal/fillgaps.md — AR interpolation of a NaN gap.
-TEST_F(SignalKnownBug, DISABLED_Fillgaps)
+// bugs/closed/signal/fillgaps.md — AR interpolation of NaN gaps.
+TEST_F(SignalKnownBug, Fillgaps)
 {
     eval("y = fillgaps([1 2 NaN 4 5]);");
     EXPECT_NEAR(evalScalar("y(3)"), 3.0, 1e-6);
+
+    // Sinusoid gap reconstruction with AIC order selection
+    eval("n = (0:63)'; s = sin(2*pi*0.05*n); s_gap = s; s_gap(25:30) = NaN; s_rec = fillgaps(s_gap);");
+    EXPECT_LT(evalScalar("max(abs(s_rec - s))"), 1e-3);
+
+    // Leading and trailing gaps + explicit maxlen and order
+    eval("s_edge = [NaN; NaN; s(3:60); NaN; NaN]; s_edge_rec = fillgaps(s_edge, 20, 4);");
+    EXPECT_DOUBLE_EQ(evalScalar("all(isfinite(s_edge_rec))"), 1.0);
 }
 
 // bugs/closed/signal/findpeaks-width-options.md — Min/MaxPeakWidth filter

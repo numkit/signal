@@ -607,7 +607,7 @@ Value sfdr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Instantaneous frequency / bandwidth (analytic-signal-based)
+// Power spectrum / spectrogram (pspectrum) & instantaneous metrics
 // ════════════════════════════════════════════════════════════════════
 
 namespace {
@@ -628,26 +628,397 @@ void readComplex(const Value &z, std::vector<double> &re, std::vector<double> &i
     }
 }
 
+void pspectrum_argcheck(const Value &x, const Value &fsOrT,
+                        const PspectrumOptions &opts, const char *caller)
+{
+    detail::requireFloatInput(x, caller);
+    if (x.isEmpty() || x.numel() < 2)
+        throw Error(std::string(caller) + ": input signal X must have at least 2 samples",
+                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidSignal");
+    if (x.dims().ndims() > 2)
+        throw Error(std::string(caller) + ": input signal X must be a vector or 2-D matrix",
+                    0, 0, caller, "", std::string("numkit:") + caller + ":expected2D");
+    if (opts.type != "power" && opts.type != "spectrogram")
+        throw Error(std::string(caller) + ": spectrum type must be 'power' or 'spectrogram'",
+                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidType");
+    if (!std::isfinite(opts.leakage) || opts.leakage < 0.0 || opts.leakage > 1.0)
+        throw Error(std::string(caller) + ": 'Leakage' must be in [0, 1]",
+                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidLeakage");
+    if (opts.overlapPercent >= 100.0 || (opts.overlapPercent < 0.0 && opts.overlapPercent != -1.0))
+        throw Error(std::string(caller) + ": 'OverlapPercent' must be in [0, 100)",
+                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidOverlap");
+    if (opts.timeResolution <= 0.0 && opts.timeResolution != -1.0)
+        throw Error(std::string(caller) + ": 'TimeResolution' must be positive",
+                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeResolution");
+    if (!fsOrT.isEmpty()) {
+        detail::requireRealFloatInput(fsOrT, caller);
+        if (fsOrT.numel() == 1) {
+            const double fsv = fsOrT.toScalar();
+            if (!std::isfinite(fsv) || fsv <= 0.0)
+                throw Error(std::string(caller) + ": sample rate Fs must be finite and positive",
+                            0, 0, caller, "", std::string("numkit:") + caller + ":invalidFs");
+        } else {
+            const size_t N = x.dims().isVector() ? x.numel() : x.dims().rows();
+            if (!fsOrT.dims().isVector() || fsOrT.numel() != N)
+                throw Error(std::string(caller) + ": time vector T must match signal length",
+                            0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeVector");
+            for (size_t i = 0; i < N; ++i) {
+                const double ti = fsOrT.elemAsDouble(i);
+                if (!std::isfinite(ti) || (i > 0 && ti <= fsOrT.elemAsDouble(i - 1)))
+                    throw Error(std::string(caller) + ": time vector T must be finite and strictly increasing",
+                                0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeVector");
+            }
+        }
+    }
+}
+
+double leakageToOverlapRatio(double leakage)
+{
+    static constexpr double kTable[21] = {
+        0.83872,  0.83390, 0.82868, 0.82290, 0.81662,
+        0.80962,  0.80178, 0.79290, 0.78298, 0.77140,
+        0.758072, 0.74220, 0.72306, 0.69930, 0.66912,
+        0.62876,  0.57164, 0.48362, 0.33120, 0.08660,
+        0.0
+    };
+    const double clamped = std::max(0.0, std::min(1.0, leakage));
+    const double pos = clamped * 20.0;
+    const size_t idx = std::min<size_t>(19, static_cast<size_t>( std::floor(pos) ));
+    const double frac = pos - static_cast<double>(idx);
+    return kTable[idx] * (1.0 - frac) + kTable[idx + 1] * frac;
+}
+
+double kaiserEnbwFactor(double beta, std::pmr::memory_resource *mr)
+{
+    if (beta <= 0.0) return 1.0;
+    constexpr size_t kRefLen = 1000;
+    Value w = kaiser(kRefLen, beta, mr);
+    const double *wd = w.doubleData();
+    double sumW = 0.0, sumW2 = 0.0;
+    for (size_t i = 0; i < kRefLen; ++i) {
+        sumW += wd[i];
+        sumW2 += wd[i] * wd[i];
+    }
+    return (sumW > 0.0) ? (static_cast<double>(kRefLen) * sumW2 / (sumW * sumW)) : 1.0;
+}
+
+std::vector<double> normalizedKaiser(size_t len, double beta, std::pmr::memory_resource *mr)
+{
+    if (len == 0) return {};
+    if (len == 1) return {1.0};
+    Value w = kaiser(len, beta, mr);
+    const double *wd = w.doubleData();
+    double sumW = 0.0;
+    for (size_t i = 0; i < len; ++i) sumW += wd[i];
+    std::vector<double> out(len);
+    const double inv = (sumW > 0.0) ? (1.0 / sumW) : (1.0 / static_cast<double>(len));
+    for (size_t i = 0; i < len; ++i) out[i] = wd[i] * inv;
+    return out;
+}
+
+// Evaluate zoom CZT on a matrix of column segments `segMat` (len x nSegs),
+// writing `scale * |X(k, s)|^2` into `powerOut` (nF x nSegs).
+void evalSegmentsCztPower(const Value &segMat, size_t len, size_t nSegs,
+                          size_t nF, Complex W, Complex A, double scale,
+                          double *powerOut, std::pmr::memory_resource *mr)
+{
+    if (nSegs == 0 || len == 0) return;
+    if (len == 1) {
+        for (size_t s = 0; s < nSegs; ++s) {
+            double p0 = 0.0;
+            if (segMat.isComplex()) {
+                p0 = scale * std::norm(segMat.complexData()[s]);
+            } else {
+                const double v = segMat.doubleData()[s];
+                p0 = scale * v * v;
+            }
+            for (size_t k = 0; k < nF; ++k)
+                powerOut[s * nF + k] = p0;
+        }
+        return;
+    }
+    Value X = czt(segMat, static_cast<int>(nF), W, A, mr);
+    const Complex *xd = X.complexData();
+    for (size_t s = 0; s < nSegs; ++s) {
+        for (size_t k = 0; k < nF; ++k) {
+            powerOut[s * nF + k] = scale * std::norm(xd[s * nF + k]);
+        }
+    }
+}
+
+PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
+                              const PspectrumOptions &opts, const char *caller,
+                              std::pmr::memory_resource *mr)
+{
+    pspectrum_argcheck(x, fsOrT, opts, caller);
+    const bool isVec = x.dims().isVector();
+    const size_t N = isVec ? x.numel() : x.dims().rows();
+    const size_t nCh = isVec ? 1 : x.dims().cols();
+    const bool isComplex = x.isComplex();
+
+    double fs = 2.0 * M_PI;
+    double t0 = 0.0;
+    const bool isNormFreq = fsOrT.isEmpty();
+    if (!isNormFreq) {
+        if (fsOrT.numel() == 1) {
+            fs = fsOrT.toScalar();
+            t0 = 0.0;
+        } else {
+            const double tStart = fsOrT.elemAsDouble(0);
+            const double tEnd   = fsOrT.elemAsDouble(N - 1);
+            const double dt     = (tEnd - tStart) / static_cast<double>(N - 1);
+            fs = 1.0 / dt;
+            t0 = tStart - 0.5 * dt;
+        }
+    }
+
+    const double beta = 40.0 * (1.0 - opts.leakage);
+    const double r = (opts.overlapPercent >= 0.0)
+        ? (opts.overlapPercent / 100.0)
+        : leakageToOverlapRatio(opts.leakage);
+
+    bool twoSided = opts.hasTwoSided ? opts.twoSided : isComplex;
+    double fmin = twoSided ? (-0.5 * fs) : 0.0;
+    double fmax = 0.5 * fs;
+    if (!std::isnan(opts.fmin) && !std::isnan(opts.fmax)) {
+        if (opts.fmin >= opts.fmax || opts.fmin < -0.5 * fs - 1e-12 || opts.fmax > 0.5 * fs + 1e-12)
+            throw Error(std::string(caller) + ": 'FrequencyLimits' must satisfy [fmin, fmax] within Nyquist interval",
+                        0, 0, caller, "", std::string("numkit:") + caller + ":invalidFrequencyLimits");
+        fmin = opts.fmin;
+        fmax = opts.fmax;
+        if (fmin < 0.0) twoSided = true;
+    }
+
+    const bool isSpectrogram = (opts.type == "spectrogram");
+    const size_t nF = isSpectrogram ? 1024 : 4096;
+    const double scale = twoSided ? 1.0 : 2.0;
+
+    Value F = Value::matrix(nF, 1, ValueType::DOUBLE, mr);
+    double *fd = F.doubleDataMut();
+    for (size_t k = 0; k < nF; ++k) {
+        fd[k] = fmin + (fmax - fmin) * static_cast<double>(k) / static_cast<double>(nF - 1);
+    }
+
+    const Complex A = std::polar(1.0, 2.0 * M_PI * fmin / fs);
+    const Complex W = std::polar(1.0, -2.0 * M_PI * (fmax - fmin) / (static_cast<double>(nF - 1) * fs));
+
+    if (isSpectrogram) {
+        if (nCh > 1)
+            throw Error(std::string(caller) + ": 'spectrogram' mode requires a 1-D vector input",
+                        0, 0, caller, "", std::string("numkit:") + caller + ":expectedVector");
+        size_t wlen = 0;
+        if (opts.timeResolution > 0.0) {
+            wlen = std::min(N, static_cast<size_t>(std::max(1.0, std::round(opts.timeResolution * fs))));
+        } else {
+            size_t D = 2;
+            if (N >= 64) {
+                const int exp2 = static_cast<int>(std::floor(std::log2(static_cast<double>(N)))) - 7;
+                if (exp2 <= 3)      D = 8;
+                else if (exp2 >= 7) D = 128;
+                else                D = size_t(1) << exp2;
+            }
+            wlen = (N + D - 1) / D;
+        }
+        wlen = std::max<size_t>(1, std::min(N, wlen));
+        size_t nov = static_cast<size_t>(std::floor(r * static_cast<double>(wlen)));
+        if (nov >= wlen) nov = wlen - 1;
+        const size_t hop = std::max<size_t>(1, wlen - nov);
+        const size_t nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
+
+        Value P = Value::matrix(nF, nT, ValueType::DOUBLE, mr);
+        Value T = Value::matrix(nT, 1, ValueType::DOUBLE, mr);
+        double *pd = P.doubleDataMut();
+        double *td = T.doubleDataMut();
+
+        const double timeStepScale = isNormFreq ? 1.0 : (1.0 / fs);
+        for (size_t m = 0; m < nT; ++m) {
+            td[m] = t0 + (0.5 * static_cast<double>(wlen) + static_cast<double>(m * hop)) * timeStepScale;
+        }
+
+        const size_t lastStart = (nT - 1) * hop;
+        const size_t lastLen   = N - lastStart;
+        const size_t nFull     = (lastLen == wlen) ? nT : (nT - 1);
+
+        if (nFull > 0) {
+            const auto wFull = normalizedKaiser(wlen, beta, mr);
+            if (isComplex) {
+                const Complex *xc = x.complexData();
+                Value segMat = Value::complexMatrix(wlen, nFull, mr);
+                Complex *sd = segMat.complexDataMut();
+                for (size_t m = 0; m < nFull; ++m) {
+                    const size_t s = m * hop;
+                    for (size_t i = 0; i < wlen; ++i)
+                        sd[m * wlen + i] = xc[s + i] * wFull[i];
+                }
+                evalSegmentsCztPower(segMat, wlen, nFull, nF, W, A, scale, pd, mr);
+            } else {
+                Value xD = detail::widenSingleToDouble(x, mr);
+                const double *xd = xD.doubleData();
+                Value segMat = Value::matrix(wlen, nFull, ValueType::DOUBLE, mr);
+                double *sd = segMat.doubleDataMut();
+                for (size_t m = 0; m < nFull; ++m) {
+                    const size_t s = m * hop;
+                    for (size_t i = 0; i < wlen; ++i)
+                        sd[m * wlen + i] = xd[s + i] * wFull[i];
+                }
+                evalSegmentsCztPower(segMat, wlen, nFull, nF, W, A, scale, pd, mr);
+            }
+        }
+
+        if (nFull < nT) {
+            const auto wLast = normalizedKaiser(lastLen, beta, mr);
+            if (isComplex) {
+                const Complex *xc = x.complexData();
+                Value segLast = Value::complexMatrix(lastLen, 1, mr);
+                Complex *sd = segLast.complexDataMut();
+                for (size_t i = 0; i < lastLen; ++i)
+                    sd[i] = xc[lastStart + i] * wLast[i];
+                evalSegmentsCztPower(segLast, lastLen, 1, nF, W, A, scale, pd + nFull * nF, mr);
+            } else {
+                Value xD = detail::widenSingleToDouble(x, mr);
+                const double *xd = xD.doubleData();
+                Value segLast = Value::matrix(lastLen, 1, ValueType::DOUBLE, mr);
+                double *sd = segLast.doubleDataMut();
+                for (size_t i = 0; i < lastLen; ++i)
+                    sd[i] = xd[lastStart + i] * wLast[i];
+                evalSegmentsCztPower(segLast, lastLen, 1, nF, W, A, scale, pd + nFull * nF, mr);
+            }
+        }
+
+        return {std::move(P), std::move(F), std::move(T)};
+    }
+
+    // 'power' mode
+    size_t wlen = 0;
+    if (opts.timeResolution > 0.0) {
+        wlen = std::min(N, static_cast<size_t>(std::max(1.0, std::round(opts.timeResolution * fs))));
+    } else {
+        const size_t target = static_cast<size_t>(std::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
+        wlen = std::min(N, std::max<size_t>(2, target));
+    }
+    wlen = std::max<size_t>(1, std::min(N, wlen));
+    size_t nov = static_cast<size_t>(std::floor(r * static_cast<double>(wlen)));
+    if (nov >= wlen) nov = wlen - 1;
+    const size_t hop = std::max<size_t>(1, wlen - nov);
+    const size_t nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
+
+    const auto wFull = normalizedKaiser(wlen, beta, mr);
+    std::vector<size_t> starts(nT, 0);
+    if (nT > 1) {
+        for (size_t m = 0; m < nT; ++m) {
+            starts[m] = static_cast<size_t>(std::llround(
+                static_cast<double>(m) * static_cast<double>(N - wlen) / static_cast<double>(nT - 1)));
+        }
+    }
+
+    Value P = Value::matrix(nF, nCh, ValueType::DOUBLE, mr);
+    double *pd = P.doubleDataMut();
+    std::vector<double> segPow(nF * nT, 0.0);
+
+    if (isComplex) {
+        const Complex *xc = x.complexData();
+        for (size_t ch = 0; ch < nCh; ++ch) {
+            const Complex *col = xc + ch * N;
+            Value segMat = Value::complexMatrix(wlen, nT, mr);
+            Complex *sd = segMat.complexDataMut();
+            for (size_t m = 0; m < nT; ++m) {
+                const size_t s = starts[m];
+                for (size_t i = 0; i < wlen; ++i)
+                    sd[m * wlen + i] = col[s + i] * wFull[i];
+            }
+            evalSegmentsCztPower(segMat, wlen, nT, nF, W, A, scale, segPow.data(), mr);
+            for (size_t k = 0; k < nF; ++k) {
+                double acc = 0.0;
+                for (size_t m = 0; m < nT; ++m) acc += segPow[m * nF + k];
+                pd[ch * nF + k] = acc / static_cast<double>(nT);
+            }
+        }
+    } else {
+        Value xD = detail::widenSingleToDouble(x, mr);
+        const double *xd = xD.doubleData();
+        for (size_t ch = 0; ch < nCh; ++ch) {
+            const double *col = xd + ch * N;
+            Value segMat = Value::matrix(wlen, nT, ValueType::DOUBLE, mr);
+            double *sd = segMat.doubleDataMut();
+            for (size_t m = 0; m < nT; ++m) {
+                const size_t s = starts[m];
+                for (size_t i = 0; i < wlen; ++i)
+                    sd[m * wlen + i] = col[s + i] * wFull[i];
+            }
+            evalSegmentsCztPower(segMat, wlen, nT, nF, W, A, scale, segPow.data(), mr);
+            for (size_t k = 0; k < nF; ++k) {
+                double acc = 0.0;
+                for (size_t m = 0; m < nT; ++m) acc += segPow[m * nF + k];
+                pd[ch * nF + k] = acc / static_cast<double>(nT);
+            }
+        }
+    }
+
+    return {std::move(P), std::move(F), Value::Empty};
+}
+
+Value extractColumnValue(const Value &mat, size_t colIdx, std::pmr::memory_resource *mr)
+{
+    const size_t R = mat.dims().rows();
+    if (mat.isComplex()) {
+        Value out = Value::complexMatrix(R, 1, mr);
+        std::memcpy(out.complexDataMut(), mat.complexData() + colIdx * R, R * sizeof(Complex));
+        return out;
+    }
+    Value xD = detail::widenSingleToDouble(mat, mr);
+    Value out = Value::matrix(R, 1, ValueType::DOUBLE, mr);
+    std::memcpy(out.doubleDataMut(), xD.doubleData() + colIdx * R, R * sizeof(double));
+    return out;
+}
+
 } // anonymous
 
-Value instfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+PspectrumResult pspectrum(const Value &x, const Value &fsOrT,
+                          const PspectrumOptions &opts,
+                          std::pmr::memory_resource *mr)
 {
-    const double fsv = scalarOr(fs, 1.0);
+    return pspectrumImpl(x, fsOrT, opts, "pspectrum", mr);
+}
+
+std::tuple<Value, Value>
+instfreqHilbert(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+{
+    detail::requireFloatInput(x, "instfreq");
+    double fsv = 1.0;
+    double t0 = 0.0;
+    if (!fs.isEmpty()) {
+        detail::requireRealFloatInput(fs, "instfreq");
+        if (fs.numel() == 1) {
+            fsv = fs.toScalar();
+            if (!std::isfinite(fsv) || fsv <= 0.0)
+                throw Error("instfreq: sample rate Fs must be finite and positive",
+                            0, 0, "instfreq", "", "numkit:instfreq:invalidFs");
+        } else {
+            const size_t N = x.dims().isVector() ? x.numel() : x.dims().rows();
+            if (!fs.dims().isVector() || fs.numel() != N)
+                throw Error("instfreq: time vector T must match signal length",
+                            0, 0, "instfreq", "", "numkit:instfreq:invalidTimeVector");
+            const double tStart = fs.elemAsDouble(0);
+            const double tEnd   = fs.elemAsDouble(N - 1);
+            const double dt     = (tEnd - tStart) / static_cast<double>(N - 1);
+            fsv = 1.0 / dt;
+            t0 = tStart;
+        }
+    }
+
     Value z = hilbert(x, mr);
     std::vector<double> re, im;
     readComplex(z, re, im);
     const size_t n = re.size();
-    if (n < 2) return Value::matrix(0, 1, ValueType::DOUBLE, mr);
+    if (n < 2) {
+        return {Value::matrix(0, 1, ValueType::DOUBLE, mr),
+                Value::matrix(0, 1, ValueType::DOUBLE, mr)};
+    }
 
-    // MATLAB's hilbert method, verbatim (instfreq.m):
-    //   IF = fs/(2*pi) * diff(unwrap(angle(hilbert(x))))
-    // Wrapping each consecutive phase delta into (-pi, pi] is exactly
-    // what unwrap does on the local difference. (An old comment claimed
-    // nk's hilbert returns the CONJUGATE analytic signal and
-    // negated the delta — stale: hilbert matches MATLAB now, and the
-    // negation turned correct positive frequencies negative.)
     auto out = Value::matrix(n - 1, 1, ValueType::DOUBLE, mr);
+    auto tOut = Value::matrix(n - 1, 1, ValueType::DOUBLE, mr);
     double *d = out.doubleDataMut();
+    double *td = tOut.doubleDataMut();
     constexpr double kPi = 3.14159265358979323846;
     for (size_t i = 0; i + 1 < n; ++i) {
         const double p1 = std::atan2(im[i + 1], re[i + 1]);
@@ -656,32 +1027,164 @@ Value instfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
         while (dp >  kPi) dp -= 2.0 * kPi;
         while (dp <= -kPi) dp += 2.0 * kPi;
         d[i] = dp * fsv / (2.0 * kPi);
+        td[i] = t0 + (static_cast<double>(i) + 0.5) / fsv;
     }
-    return out;
+    return {std::move(out), std::move(tOut)};
+}
+
+std::tuple<Value, Value>
+instfreqWithTime(const Value &x, const Value &fs,
+                 const PspectrumOptions &inOpts,
+                 std::pmr::memory_resource *mr)
+{
+    PspectrumOptions opts = inOpts;
+    opts.type = "spectrogram";
+    const Value effFs = fs.isEmpty() ? Value::scalar(1.0, mr) : fs;
+
+    const bool isVec = x.dims().isVector();
+    const size_t nCh = isVec ? 1 : x.dims().cols();
+
+    if (nCh == 1) {
+        auto spec = pspectrumImpl(x, effFs, opts, "instfreq", mr);
+        const size_t nF = spec.p.dims().rows();
+        const size_t nT = spec.p.dims().cols();
+        const double *pd = spec.p.doubleData();
+        const double *fd = spec.f.doubleData();
+
+        Value ifr = Value::matrix(nT, 1, ValueType::DOUBLE, mr);
+        double *ifd = ifr.doubleDataMut();
+        for (size_t m = 0; m < nT; ++m) {
+            const double *col = pd + m * nF;
+            double num = 0.0, den = 0.0;
+            for (size_t k = 0; k < nF; ++k) {
+                num += fd[k] * col[k];
+                den += col[k];
+            }
+            ifd[m] = (den > 0.0) ? (num / den) : 0.0;
+        }
+        return {std::move(ifr), std::move(spec.t)};
+    }
+
+    Value ifrMat;
+    Value tVec;
+    for (size_t ch = 0; ch < nCh; ++ch) {
+        Value colVal = extractColumnValue(x, ch, mr);
+        auto spec = pspectrumImpl(colVal, effFs, opts, "instfreq", mr);
+        const size_t nF = spec.p.dims().rows();
+        const size_t nT = spec.p.dims().cols();
+        if (ch == 0) {
+            ifrMat = Value::matrix(nT, nCh, ValueType::DOUBLE, mr);
+            tVec = std::move(spec.t);
+        }
+        const double *pd = spec.p.doubleData();
+        const double *fd = spec.f.doubleData();
+        double *ifd = ifrMat.doubleDataMut() + ch * nT;
+        for (size_t m = 0; m < nT; ++m) {
+            const double *col = pd + m * nF;
+            double num = 0.0, den = 0.0;
+            for (size_t k = 0; k < nF; ++k) {
+                num += fd[k] * col[k];
+                den += col[k];
+            }
+            ifd[m] = (den > 0.0) ? (num / den) : 0.0;
+        }
+    }
+    return {std::move(ifrMat), std::move(tVec)};
+}
+
+Value instfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+{
+    auto [ifr, t] = instfreqWithTime(x, fs, PspectrumOptions{}, mr);
+    (void)t;
+    return ifr;
+}
+
+std::tuple<Value, Value>
+instbwWithTime(const Value &x, const Value &fs,
+               const PspectrumOptions &inOpts,
+               std::pmr::memory_resource *mr)
+{
+    PspectrumOptions opts = inOpts;
+    opts.type = "spectrogram";
+    const Value effFs = fs.isEmpty() ? Value::scalar(1.0, mr) : fs;
+
+    const bool isVec = x.dims().isVector();
+    const size_t nCh = isVec ? 1 : x.dims().cols();
+    const double scale = 2.0 * std::sqrt(M_PI);
+
+    if (nCh == 1) {
+        auto spec = pspectrumImpl(x, effFs, opts, "instbw", mr);
+        const size_t nF = spec.p.dims().rows();
+        const size_t nT = spec.p.dims().cols();
+        const double *pd = spec.p.doubleData();
+        const double *fd = spec.f.doubleData();
+
+        Value ibw = Value::matrix(nT, 1, ValueType::DOUBLE, mr);
+        double *ibd = ibw.doubleDataMut();
+        for (size_t m = 0; m < nT; ++m) {
+            const double *col = pd + m * nF;
+            double num = 0.0, den = 0.0;
+            for (size_t k = 0; k < nF; ++k) {
+                num += fd[k] * col[k];
+                den += col[k];
+            }
+            if (!(den > 0.0)) {
+                ibd[m] = 0.0;
+                continue;
+            }
+            const double mu = num / den;
+            double varNum = 0.0;
+            for (size_t k = 0; k < nF; ++k) {
+                const double df = fd[k] - mu;
+                varNum += col[k] * df * df;
+            }
+            ibd[m] = scale * std::sqrt(std::max(0.0, varNum / den));
+        }
+        return {std::move(ibw), std::move(spec.t)};
+    }
+
+    Value ibwMat;
+    Value tVec;
+    for (size_t ch = 0; ch < nCh; ++ch) {
+        Value colVal = extractColumnValue(x, ch, mr);
+        auto spec = pspectrumImpl(colVal, effFs, opts, "instbw", mr);
+        const size_t nF = spec.p.dims().rows();
+        const size_t nT = spec.p.dims().cols();
+        if (ch == 0) {
+            ibwMat = Value::matrix(nT, nCh, ValueType::DOUBLE, mr);
+            tVec = std::move(spec.t);
+        }
+        const double *pd = spec.p.doubleData();
+        const double *fd = spec.f.doubleData();
+        double *ibd = ibwMat.doubleDataMut() + ch * nT;
+        for (size_t m = 0; m < nT; ++m) {
+            const double *col = pd + m * nF;
+            double num = 0.0, den = 0.0;
+            for (size_t k = 0; k < nF; ++k) {
+                num += fd[k] * col[k];
+                den += col[k];
+            }
+            if (!(den > 0.0)) {
+                ibd[m] = 0.0;
+                continue;
+            }
+            const double mu = num / den;
+            double varNum = 0.0;
+            for (size_t k = 0; k < nF; ++k) {
+                const double df = fd[k] - mu;
+                varNum += col[k] * df * df;
+            }
+            ibd[m] = scale * std::sqrt(std::max(0.0, varNum / den));
+        }
+    }
+    return {std::move(ibwMat), std::move(tVec)};
 }
 
 Value instbw(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 {
-    const double fsv = scalarOr(fs, 1.0);
-    Value z = hilbert(x, mr);
-    std::vector<double> re, im;
-    readComplex(z, re, im);
-    const size_t n = re.size();
-    if (n < 2) return Value::matrix(0, 1, ValueType::DOUBLE, mr);
-
-    // Envelope A[i] = sqrt(re² + im²); inst-BW per MATLAB:
-    //   B(t) = (1 / (2π)) * |dA/dt| / A(t)
-    auto out = Value::matrix(n - 1, 1, ValueType::DOUBLE, mr);
-    double *d = out.doubleDataMut();
-    constexpr double kPi = 3.14159265358979323846;
-    std::vector<double> A(n);
-    for (size_t i = 0; i < n; ++i) A[i] = std::hypot(re[i], im[i]);
-    for (size_t i = 0; i + 1 < n; ++i) {
-        const double dA = (A[i + 1] - A[i]) * fsv;  // per-second
-        const double Aavg = 0.5 * (A[i + 1] + A[i]);
-        d[i] = (Aavg > 0.0) ? std::abs(dA) / (2.0 * kPi * Aavg) : 0.0;
-    }
-    return out;
+    auto [ibw, t] = instbwWithTime(x, fs, PspectrumOptions{}, mr);
+    (void)t;
+    return ibw;
 }
 
 } // namespace numkit::signal

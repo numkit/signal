@@ -26,7 +26,7 @@ namespace {
 double besseli0(double x)
 {
     double sum = 1.0, term = 1.0;
-    for (int k = 1; k <= 25; ++k) {
+    for (int k = 1; k <= 100; ++k) {
         term *= (x / (2.0 * k)) * (x / (2.0 * k));
         sum += term;
         if (term < 1e-16 * sum)

@@ -43,6 +43,23 @@ Value medfilt1(const Value &                x,
                bool                         zeropad  = true,
                std::pmr::memory_resource *  mr       = nullptr);
 
+/// Fill missing samples (NaNs) using autoregressive modeling.
+///
+/// Replaces contiguous runs of NaN values in `x` by extrapolating
+/// forward and backward Burg AR models fit to the adjacent non-NaN
+/// samples (up to `maxlen` samples on each side) and blending them
+/// with a linear ramp across interior gaps.
+///
+/// @param x       1-D or 2-D float/complex array (vector or column-wise matrix).
+/// @param maxlen  Maximum context length on each side (`0` = unlimited).
+/// @param order   AR model order (`0` = automatic AIC selection).
+/// @param mr      Memory resource (nullptr -> process default).
+/// @return        Gap-filled array with same shape and type as `x`.
+Value fillgaps(const Value &                x,
+               size_t                       maxlen = 0,
+               size_t                       order  = 0,
+               std::pmr::memory_resource *  mr     = nullptr);
+
 
 /// @}
 } // namespace numkit::signal

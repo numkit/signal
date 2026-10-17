@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/smoothing/medfilt_reg.cpp
+// toolboxes/signal/src/smoothing/medfilt_reg.cpp
 //
 // Register half of the signal medfilt builtins: the CallContext wrappers
 // delegating to the engine-free compute in medfilt.cpp. library.cpp
@@ -62,6 +62,44 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         }
     }
     outs[0] = medfilt1(args[0], k, zeropad, ctx.engine->resource());
+}
+
+void fillgaps_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+                  CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 3, "fillgaps");
+    size_t maxlen = 0;
+    if (args.size() >= 2 && !args[1].isEmpty()) {
+        const double ml = argcheck::expectedReal(args[1], 2, "MAXLEN", "fillgaps");
+        if (std::isinf(ml) && ml > 0.0) {
+            maxlen = 0;
+        } else {
+            maxlen = static_cast<size_t>(
+                argcheck::expectedPositiveInteger(ml, 2, "MAXLEN", "fillgaps"));
+        }
+    }
+
+    size_t order = 0;
+    if (args.size() >= 3 && !args[2].isEmpty()) {
+        if (args[2].isChar() || args[2].isString()) {
+            std::string s = args[2].toString();
+            for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (s != "aic")
+                throw Error("fillgaps: ORDER string must be 'aic' (got '" + args[2].toString() + "')",
+                            0, 0, "fillgaps", "", "numkit:fillgaps:invalidOrder");
+            order = 0;
+        } else {
+            const double ord = argcheck::expectedReal(args[2], 3, "ORDER", "fillgaps");
+            if (std::isinf(ord) && ord > 0.0) {
+                order = 0;
+            } else {
+                order = static_cast<size_t>(
+                    argcheck::expectedPositiveInteger(ord, 3, "ORDER", "fillgaps"));
+            }
+        }
+    }
+
+    outs[0] = fillgaps(args[0], maxlen, order, ctx.engine->resource());
 }
 
 } // namespace detail

@@ -99,34 +99,125 @@ NUMKIT_SPEC1_REG(snr,              snr, 1, 6)
 NUMKIT_SPEC1_REG(sinad,            sinad, 1, 4)
 NUMKIT_SPEC1_REG(thd,              thd, 1, 6)
 NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
-// instfreq: x, fs, plus MATLAB's 'Method' name-value ('hilbert' exact;
-// 'tfmoment' â€” MATLAB's DEFAULT â€” pending the pspectrum port, honest
-// not-supported error; bugs/opened/signal/instfreq-instbw.md).
-void instfreq_reg(Span<const Value> args, size_t, Span<Value> outs,
-                  CallContext &ctx)
+static std::string toLowerCopy(std::string s)
 {
-    argcheck::checkNargin(args.size(), 1, 7, "instfreq");
-    std::string method = "hilbert";
-    for (size_t i = 1; i < args.size(); ++i) {
-        if ((args[i].isChar() || args[i].isString())
-            && args[i].toString() == "Method" && i + 1 < args.size()) {
-            if (!(args[i + 1].isChar() || args[i + 1].isString()))
-                throw Error("instfreq: 'Method' value must be a string",
-                             0, 0, "instfreq", "", "numkit:instfreq:method");
-            method = args[i + 1].toString();
+    for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
+static void parsePspectrumTail(Span<const Value> args, size_t startIdx,
+                               PspectrumOptions &opts, std::string *methodOut,
+                               bool allowTypeFlag, const char *caller)
+{
+    size_t i = startIdx;
+    if (allowTypeFlag && i < args.size() && (args[i].isChar() || args[i].isString())) {
+        const std::string low = toLowerCopy(args[i].toString());
+        if (low == "power" || low == "spectrogram") {
+            opts.type = low;
             ++i;
         }
     }
-    if (method != "hilbert")
-        throw Error("instfreq: method '" + method + "' is not yet supported "
-                    "(the default tfmoment needs a pspectrum port â€” see "
-                    "bugs/opened/signal/instfreq-instbw.md)",
-                     0, 0, "instfreq", "", "numkit:instfreq:method");
-    const Value &fs = (args.size() >= 2 && !args[1].isChar() && !args[1].isString())
-                          ? args[1] : Value::Empty;
-    outs[0] = instfreq(args[0], fs, ctx.engine->resource());
+    while (i < args.size()) {
+        if (!args[i].isChar() && !args[i].isString())
+            throw Error(std::string(caller) + ": expected option name string at argument " +
+                        std::to_string(i + 1),
+                        0, 0, caller, "", std::string("numkit:") + caller + ":invalidOption");
+        const std::string key = toLowerCopy(args[i].toString());
+        if (i + 1 >= args.size())
+            throw Error(std::string(caller) + ": missing value for option '" + args[i].toString() + "'",
+                        0, 0, caller, "", std::string("numkit:") + caller + ":missingOptionValue");
+        const Value &val = args[i + 1];
+        if (key == "leakage") {
+            opts.leakage = argcheck::expectedReal(val, static_cast<int>(i + 2), "Leakage", caller);
+        } else if (key == "overlappercent") {
+            opts.overlapPercent = argcheck::expectedReal(val, static_cast<int>(i + 2), "OverlapPercent", caller);
+        } else if (key == "timeresolution") {
+            opts.timeResolution = argcheck::expectedReal(val, static_cast<int>(i + 2), "TimeResolution", caller);
+        } else if (key == "frequencylimits") {
+            if (val.numel() != 2 || val.isComplex() || val.isChar() || val.isString())
+                throw Error(std::string(caller) + ": 'FrequencyLimits' must be a 2-element real vector",
+                            0, 0, caller, "", std::string("numkit:") + caller + ":invalidFrequencyLimits");
+            opts.fmin = val.elemAsDouble(0);
+            opts.fmax = val.elemAsDouble(1);
+        } else if (key == "twosided") {
+            opts.hasTwoSided = true;
+            opts.twoSided = val.toBool();
+        } else if (key == "method" && methodOut != nullptr) {
+            if (!val.isChar() && !val.isString())
+                throw Error(std::string(caller) + ": 'Method' value must be a string",
+                            0, 0, caller, "", std::string("numkit:") + caller + ":method");
+            *methodOut = toLowerCopy(val.toString());
+        } else {
+            throw Error(std::string(caller) + ": unrecognized option '" + args[i].toString() + "'",
+                        0, 0, caller, "", std::string("numkit:") + caller + ":invalidOption");
+        }
+        i += 2;
+    }
 }
-NUMKIT_SPEC1_REG(instbw,           instbw, 1, 7)
+
+void pspectrum_reg(Span<const Value> args, size_t nargout,
+                   Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 11, "pspectrum");
+    PspectrumOptions opts;
+    size_t idx = 1;
+    Value fsOrT = Value::Empty;
+    if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
+        fsOrT = args[idx];
+        ++idx;
+    }
+    parsePspectrumTail(args, idx, opts, nullptr, true, "pspectrum");
+    auto res = pspectrum(args[0], fsOrT, opts, ctx.engine->resource());
+    outs[0] = std::move(res.p);
+    if (nargout > 1) outs[1] = std::move(res.f);
+    if (nargout > 2) outs[2] = std::move(res.t);
+}
+
+void instfreq_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+                  CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 7, "instfreq");
+    PspectrumOptions opts;
+    opts.type = "spectrogram";
+    std::string method = "tfmoment";
+    size_t idx = 1;
+    Value fsOrT = Value::Empty;
+    if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
+        fsOrT = args[idx];
+        ++idx;
+    }
+    parsePspectrumTail(args, idx, opts, &method, false, "instfreq");
+    if (method == "hilbert") {
+        auto [ifr, t] = instfreqHilbert(args[0], fsOrT, ctx.engine->resource());
+        outs[0] = std::move(ifr);
+        if (nargout > 1) outs[1] = std::move(t);
+        return;
+    }
+    if (method != "tfmoment")
+        throw Error("instfreq: 'Method' must be 'tfmoment' or 'hilbert' (got '" + method + "')",
+                    0, 0, "instfreq", "", "numkit:instfreq:method");
+    auto [ifr, t] = instfreqWithTime(args[0], fsOrT, opts, ctx.engine->resource());
+    outs[0] = std::move(ifr);
+    if (nargout > 1) outs[1] = std::move(t);
+}
+
+void instbw_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+                CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 7, "instbw");
+    PspectrumOptions opts;
+    opts.type = "spectrogram";
+    size_t idx = 1;
+    Value fsOrT = Value::Empty;
+    if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
+        fsOrT = args[idx];
+        ++idx;
+    }
+    parsePspectrumTail(args, idx, opts, nullptr, false, "instbw");
+    auto [ibw, t] = instbwWithTime(args[0], fsOrT, opts, ctx.engine->resource());
+    outs[0] = std::move(ibw);
+    if (nargout > 1) outs[1] = std::move(t);
+}
 
 #undef NUMKIT_SPEC1_REG
 

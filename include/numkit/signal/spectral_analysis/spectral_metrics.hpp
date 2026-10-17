@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include <limits>
 #include <memory_resource>
+#include <string>
 #include <tuple>
 #include <numkit/value/value.hpp>
 
@@ -228,35 +230,59 @@ Value sfdr(const Value &x, const Value &fs = Value::Empty,
            std::pmr::memory_resource *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
-// Analytic-signal-based instantaneous metrics
+// Power spectrum / spectrogram and time-frequency moment metrics
 // ─────────────────────────────────────────────────────────────────────
 
-/// @brief Instantaneous frequency via Hilbert transform.
-///
-/// @f$ f_i[n] = \dfrac{1}{2\pi}\,\dfrac{d\,\mathrm{unwrap}(\angle z[n])}{dt} @f$
-/// where `z = hilbert(x)`. Implemented as centered differences of the
-/// unwrapped analytic-signal phase.
-///
-/// @param x   Real 1-D signal.
-/// @param fs  Sample rate (Hz) or `Value::Empty` (output in rad/sample).
-/// @param mr  Memory resource (nullptr → process default).
-/// @return    Column vector of length `numel(x) - 1`.
-/// @see instbw, hilbert
+struct PspectrumOptions {
+    std::string type = "power";   // "power" or "spectrogram"
+    double leakage = 0.5;         // in [0, 1]
+    double overlapPercent = -1.0; // -1 = automatic from leakage; else in [0, 100)
+    double timeResolution = -1.0; // -1 = automatic; else > 0 in seconds
+    double fmin = std::numeric_limits<double>::quiet_NaN();
+    double fmax = std::numeric_limits<double>::quiet_NaN();
+    bool twoSided = false;
+    bool hasTwoSided = false;
+};
+
+struct PspectrumResult {
+    Value p;
+    Value f;
+    Value t;
+};
+
+/// @brief Power spectrum or spectrogram via Kaiser-windowed zoom CZT.
+PspectrumResult pspectrum(const Value &x,
+                          const Value &fsOrT = Value::Empty,
+                          const PspectrumOptions &opts = {},
+                          std::pmr::memory_resource *mr = nullptr);
+
+/// @brief Instantaneous frequency via first conditional spectral moment
+/// over the `pspectrum` spectrogram.
 Value instfreq(const Value &x, const Value &fs = Value::Empty,
                std::pmr::memory_resource *mr = nullptr);
 
-/// @brief Instantaneous bandwidth.
-///
-/// @f$ b_i = |dA/dt| \big/ (2\pi A) @f$
-/// where `A` is the analytic-signal envelope.
-///
-/// @param x   Real 1-D signal.
-/// @param fs  Sample rate (Hz) or `Value::Empty`.
-/// @param mr  Memory resource (nullptr → process default).
-/// @return    Column vector of length `numel(x) - 1`.
-/// @see instfreq, hilbert
+/// @brief Instantaneous frequency and time vector (`[ifreq, t] = instfreq(...)`).
+std::tuple<Value, Value>
+instfreqWithTime(const Value &x, const Value &fs = Value::Empty,
+                 const PspectrumOptions &opts = {},
+                 std::pmr::memory_resource *mr = nullptr);
+
+/// @brief Instantaneous frequency via Hilbert analytic-signal phase derivative
+/// (`instfreq(..., 'Method', 'hilbert')`).
+std::tuple<Value, Value>
+instfreqHilbert(const Value &x, const Value &fs = Value::Empty,
+                std::pmr::memory_resource *mr = nullptr);
+
+/// @brief Instantaneous bandwidth via second central conditional spectral moment
+/// over the `pspectrum` spectrogram.
 Value instbw(const Value &x, const Value &fs = Value::Empty,
              std::pmr::memory_resource *mr = nullptr);
+
+/// @brief Instantaneous bandwidth and time vector (`[ibw, t] = instbw(...)`).
+std::tuple<Value, Value>
+instbwWithTime(const Value &x, const Value &fs = Value::Empty,
+               const PspectrumOptions &opts = {},
+               std::pmr::memory_resource *mr = nullptr);
 
 
 /// @}

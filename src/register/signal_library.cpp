@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/library.cpp
+// toolboxes/signal/src/library.cpp
 //
 // Registration hub for the Signal Processing Toolbox builtins.
 // Namespace layout â€” sub-namespaces mirror toolboxes/signal/src/<sub>/
@@ -142,6 +142,7 @@ void diric_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
 
 // Phase 9 â€” DSP gaps
 void medfilt1_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
+void fillgaps_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void goertzel_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void dct_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
@@ -191,6 +192,7 @@ void peak2peak_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Cal
 void peak2rms_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 
 // Spectral metrics (toolboxes/signal/src/spectral_analysis/spectral_metrics.cpp)
+void pspectrum_reg       (Span<const Value>, size_t, Span<Value>, CallContext &);
 void bandpower_reg       (Span<const Value>, size_t, Span<Value>, CallContext &);
 void meanfreq_reg        (Span<const Value>, size_t, Span<Value>, CallContext &);
 void medfreq_reg         (Span<const Value>, size_t, Span<Value>, CallContext &);
@@ -364,6 +366,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("digital_filtering", "sosfilt",     &signal::detail::sosfilt_reg);
     reg("digital_filtering", "sosfiltfilt", &signal::detail::sosfiltfilt_reg);
     reg("digital_filtering", "medfilt1", &signal::detail::medfilt1_reg);
+    reg("digital_filtering", "fillgaps", &signal::detail::fillgaps_reg);
     reg("digital_filtering", "lowpass",  &signal::detail::lowpass_reg);
     reg("digital_filtering", "highpass", &signal::detail::highpass_reg);
     reg("digital_filtering", "bandpass", &signal::detail::bandpass_reg);
@@ -424,6 +427,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("multirate", "fftfilt",    &signal::detail::fftfilt_reg);
 
     // â”€â”€ Spectral analysis (pwelch / periodogram) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    reg("spectral_analysis", "pspectrum",   &signal::detail::pspectrum_reg);
     reg("spectral_analysis", "periodogram", &signal::detail::periodogram_reg);
     reg("spectral_analysis", "pmusic",      &signal::detail::pmusic_reg);
     reg("spectral_analysis", "peig",        &signal::detail::peig_reg);
