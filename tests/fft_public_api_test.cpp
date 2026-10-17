@@ -2,7 +2,7 @@
 //
 // Direct-call tests for the public C++ API of numkit::signal::fft / ifft.
 // These exercise the algorithm without going through Engine, Parser, VM, or
-// the registration adapter â€” so any breakage here is in the math, not the
+// the registration adapter Ã¢â‚¬â€ so any breakage here is in the math, not the
 // MATLAB calling glue. The Engine-routed tests live alongside in
 // toolboxes/signal/tests/signal_core_test.cpp and remain in place.
 
@@ -16,7 +16,7 @@
 // path. Used by the DspFftStockham parity tests below to call the
 // radix-2 + Stockham kernels directly (without going through the public
 // signal::fft wrapper).
-#include <numkit/ops/fft/fft_kernels.hpp>
+#include "signal/transforms/backends/fft_kernels.hpp"
 #include "src/dsp_helpers.hpp"
 
 #include <numkit/core/standard_engine.hpp>
@@ -58,7 +58,7 @@ Value makeComplexRow(std::pmr::memory_resource *mr, std::initializer_list<Comple
 
 } // namespace
 
-// â”€â”€ Basic round-trip: x -> fft -> ifft â‰ˆ x â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Basic round-trip: x -> fft -> ifft Ã¢â€°Ë† x Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, RoundTripRealVector)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -81,7 +81,7 @@ TEST(DspFftPublicApi, RoundTripRealVector)
     }
 }
 
-// â”€â”€ ifft(...,'symmetric'): conjugate-symmetric input â†’ exactly-real output â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ ifft(...,'symmetric'): conjugate-symmetric input Ã¢â€ â€™ exactly-real output Ã¢â€â‚¬
 // Previously the 'symmetric' string flag threw "Cannot convert char to
 // scalar" (parsed as the FFT length N). MATLAB keeps the lower half of the
 // spectrum authoritative and mirrors conj to the upper half, then returns
@@ -132,7 +132,7 @@ TEST(DspFftPublicApi, IfftSymmetricMatrixPerColumn)
     EXPECT_NEAR(yd[3], -1.0, 1e-12);  // (2,2)
 }
 
-// â”€â”€ ifft2(X,'symmetric'): real 2-D inverse via per-dim symmetric reconstruction
+// Ã¢â€â‚¬Ã¢â€â‚¬ ifft2(X,'symmetric'): real 2-D inverse via per-dim symmetric reconstruction
 // Previously threw (the flag was parsed as a size arg). Matches MATLAB across
 // shapes (NOT real(ifft2), which differs for genuine 2-D). DEEP-PROBE 2026-05-31.
 TEST(DspFftPublicApi, Ifft2Symmetric)
@@ -169,7 +169,7 @@ TEST(DspFftPublicApi, Ifft2Symmetric)
     EXPECT_NEAR(bd[3], -1.5, 1e-9);
 }
 
-// â”€â”€ DC of a constant vector is N, everything else is ~0 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ DC of a constant vector is N, everything else is ~0 Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, DcBinOfConstant)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -185,7 +185,7 @@ TEST(DspFftPublicApi, DcBinOfConstant)
     }
 }
 
-// â”€â”€ Forward FFT bin signs match MATLAB exactly â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Forward FFT bin signs match MATLAB exactly Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // fft([1 2 3 4]) = [10, -2+2i, -2, -2-2i] in MATLAB. Magnitude-only
 // tests below would also pass for the conjugate output (the bug that
 // shipped through several parity sweeps), so check imaginary signs
@@ -207,8 +207,8 @@ TEST(DspFftPublicApi, ForwardSignsMatchMatlab)
     EXPECT_NEAR(Xd[3].imag(), -2.0, 1e-12);
 }
 
-// â”€â”€ ifft of a complex-only impulse spectrum lands at the right bin â”€â”€â”€â”€â”€â”€
-// X = [1, i, -1, -i] â†’ MATLAB ifft = [0, 0, 0, 1]. The pre-fix bug put
+// Ã¢â€â‚¬Ã¢â€â‚¬ ifft of a complex-only impulse spectrum lands at the right bin Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// X = [1, i, -1, -i] Ã¢â€ â€™ MATLAB ifft = [0, 0, 0, 1]. The pre-fix bug put
 // the impulse at bin 2 (the conjugate of MATLAB's spatial position).
 TEST(DspFftPublicApi, IfftComplexImpulseSpectrumPosition)
 {
@@ -235,9 +235,9 @@ TEST(DspFftPublicApi, IfftComplexImpulseSpectrumPosition)
             EXPECT_NEAR(y.complexData()[i].imag(), 0.0, 1e-12) << "at i=" << i;
 }
 
-// â”€â”€ ifft of a phase-ramp produces a peak at the encoded delay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// H[k] = exp(-2Ï€iÂ·kÂ·d/N) is the spectrum of a unit impulse at sample d
-// (MATLAB convention: delay â†’ negative frequency slope). Peak should
+// Ã¢â€â‚¬Ã¢â€â‚¬ ifft of a phase-ramp produces a peak at the encoded delay Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// H[k] = exp(-2Ãâ‚¬iÃ‚Â·kÃ‚Â·d/N) is the spectrum of a unit impulse at sample d
+// (MATLAB convention: delay Ã¢â€ â€™ negative frequency slope). Peak should
 // land at idx d+1 (1-based), not at -d (the pre-fix bug's symptom).
 TEST(DspFftPublicApi, IfftPhaseRampLocatesImpulse)
 {
@@ -262,11 +262,11 @@ TEST(DspFftPublicApi, IfftPhaseRampLocatesImpulse)
     EXPECT_EQ(peakIdx, static_cast<size_t>(d))
         << "Peak should be at delay sample d=" << d
         << ", got idx=" << peakIdx
-        << " (sign-convention regression â€” see commit history)";
+        << " (sign-convention regression Ã¢â‚¬â€ see commit history)";
     EXPECT_NEAR(peakVal, 1.0, 1e-10);
 }
 
-// â”€â”€ Single-frequency cosine: peak at known bin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Single-frequency cosine: peak at known bin Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, CosinePeakBin)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -284,7 +284,7 @@ TEST(DspFftPublicApi, CosinePeakBin)
     EXPECT_NEAR(std::abs(Xd[N - k]), N / 2.0, 1e-9);
 }
 
-// â”€â”€ n argument: zero-pad extends output length â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ n argument: zero-pad extends output length Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, ZeroPadExtendsOutput)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -294,7 +294,7 @@ TEST(DspFftPublicApi, ZeroPadExtendsOutput)
     EXPECT_EQ(X.numel(), 8u);
 }
 
-// â”€â”€ n argument: truncate shortens output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ n argument: truncate shortens output Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, TruncateShortensOutput)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -304,7 +304,7 @@ TEST(DspFftPublicApi, TruncateShortensOutput)
     EXPECT_EQ(X.numel(), 4u);
 }
 
-// â”€â”€ Invalid dim throws Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Invalid dim throws Error Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // 0 now means "first non-singleton" (valid); 4+ and negative are invalid.
 TEST(DspFftPublicApi, InvalidDimThrows)
 {
@@ -319,7 +319,7 @@ TEST(DspFftPublicApi, InvalidDimThrows)
                  numkit::Error);
 }
 
-// â”€â”€ fft(x, [], dim) on a singleton axis is identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ fft(x, [], dim) on a singleton axis is identity Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Dim3OnVectorIsIdentity)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -339,20 +339,20 @@ TEST(DspFftPublicApi, Dim3OnVectorIsIdentity)
     }
 }
 
-// â”€â”€ dim=0 explicitly picks first non-singleton (auto) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ dim=0 explicitly picks first non-singleton (auto) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Dim0AutoOnRowVector)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
     Value x = makeRealRow(mr, {1.0, 1.0, 1.0, 1.0});
     Value X = numkit::signal::fft(x, /*n=*/-1, /*dim=*/0, mr);
-    // Row vector: non-singleton is cols â€” FFT along the row â†’ DC = 4.
+    // Row vector: non-singleton is cols Ã¢â‚¬â€ FFT along the row Ã¢â€ â€™ DC = 4.
     ASSERT_TRUE(X.isComplex());
     EXPECT_NEAR(X.complexData()[0].real(), 4.0, 1e-10);
     for (size_t i = 1; i < 4; ++i)
         EXPECT_NEAR(std::abs(X.complexData()[i]), 0.0, 1e-10);
 }
 
-// â”€â”€ 3-D input, dim=1: FFT along rows for every (col, page) slice â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ 3-D input, dim=1: FFT along rows for every (col, page) slice Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Fft3DDim1PreservesShape)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -369,7 +369,7 @@ TEST(DspFftPublicApi, Fft3DDim1PreservesShape)
     EXPECT_EQ(X.numel(), R * C * P);
 
     // Spot-check: the DC bin of each column-per-page is the sum of that
-    // column's input values (since FFT bin 0 = Î£ x[k]).
+    // column's input values (since FFT bin 0 = ÃŽÂ£ x[k]).
     ASSERT_TRUE(X.isComplex());
     const Complex *Xd = X.complexData();
     for (size_t p = 0; p < P; ++p)
@@ -383,7 +383,7 @@ TEST(DspFftPublicApi, Fft3DDim1PreservesShape)
         }
 }
 
-// â”€â”€ 3-D input, dim=2: FFT along cols for every (row, page) slice â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ 3-D input, dim=2: FFT along cols for every (row, page) slice Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Fft3DDim2PreservesShape)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -412,7 +412,7 @@ TEST(DspFftPublicApi, Fft3DDim2PreservesShape)
         }
 }
 
-// â”€â”€ 3-D input, dim=3: FFT along pages for every (row, col) slice â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ 3-D input, dim=3: FFT along pages for every (row, col) slice Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Fft3DDim3PreservesShape)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -441,14 +441,14 @@ TEST(DspFftPublicApi, Fft3DDim3PreservesShape)
         }
 }
 
-// â”€â”€ Non-pow2 N: Bluestein path correctness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Non-pow2 N: Bluestein path correctness Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 //
 // Regression test for the bug fixed by the chirp-z (Bluestein) dispatch:
 // fftAlongDim used to round outAxisLen up to nextPow2 and run a
-// zero-padded pow2 FFT, then return the first outAxisLen samples â€” which
+// zero-padded pow2 FFT, then return the first outAxisLen samples Ã¢â‚¬â€ which
 // is NOT an N-point DFT. Symptoms on real input: wrong magnitudes
 // (|Y[2]| at N=480 was 41661.22 vs MATLAB's 36669.56) and broken
-// conjugate symmetry (|Y[end]| â‰  |Y[2]|). The Bluestein path computes
+// conjugate symmetry (|Y[end]| Ã¢â€°Â  |Y[2]|). The Bluestein path computes
 // a true N-point DFT bit-equal to MATLAB.
 //
 // Sizes cover the audio-toolbox typical winLen = round(0.03*fs):
@@ -459,7 +459,7 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
     const std::vector<size_t> sizes = {15u, 97u, 240u, 480u, 662u, 1323u};
     for (size_t N : sizes) {
-        // Deterministic test signal â€” two sinusoids + DC offset.
+        // Deterministic test signal Ã¢â‚¬â€ two sinusoids + DC offset.
         auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         double *xd = x.doubleDataMut();
         for (size_t n = 0; n < N; ++n)
@@ -471,7 +471,7 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
         ASSERT_EQ(X.numel(), N) << "N=" << N;
         const Complex *Xd = X.complexData();
 
-        // Conjugate symmetry: real input â†’ X[k] = conj(X[N-k]).
+        // Conjugate symmetry: real input Ã¢â€ â€™ X[k] = conj(X[N-k]).
         for (size_t k = 1; k < N / 2; ++k) {
             EXPECT_NEAR(Xd[k].real(),  Xd[N - k].real(), 1e-9)
                 << "N=" << N << " k=" << k;
@@ -479,7 +479,7 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
                 << "N=" << N << " k=" << k;
         }
 
-        // Reference: naive O(NÂ²) DFT, value-for-value.
+        // Reference: naive O(NÃ‚Â²) DFT, value-for-value.
         for (size_t k : {size_t{0}, size_t{1}, size_t{2}, N - 1, N / 3}) {
             double re = 0.0, im = 0.0;
             const double w = -2.0 * M_PI * static_cast<double>(k)
@@ -519,12 +519,12 @@ TEST(DspFftPublicApi, NonPow2RoundTrip)
     }
 }
 
-// â”€â”€ Radix-4 path correctness at large pow-of-4 sizes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Radix-4 path correctness at large pow-of-4 sizes Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 //
 // kRadix4Threshold inside fft_highway.cpp is currently 1<<15 (32768);
-// pow-of-4 sizes â‰¥ that route to fftRadix4Pow4Dispatch. Other tests use
-// small N (â‰¤ 16) and never trigger r4. This test guards r4 against
-// bitrot â€” if its threshold is later raised to disable r4, the test
+// pow-of-4 sizes Ã¢â€°Â¥ that route to fftRadix4Pow4Dispatch. Other tests use
+// small N (Ã¢â€°Â¤ 16) and never trigger r4. This test guards r4 against
+// bitrot Ã¢â‚¬â€ if its threshold is later raised to disable r4, the test
 // stops exercising the kernel but doesn't fail (it goes through r2),
 // so the assertion is structural (DC bin, energy-preservation), not
 // algorithm-specific.
@@ -570,7 +570,7 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
     }
 }
 
-// â”€â”€ Stockham kernel parity vs the in-place radix-2 reference â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Stockham kernel parity vs the in-place radix-2 reference Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 //
 // The Stockham auto-sort kernel must produce bit-identical results to
 // the in-place r2 dispatcher (same butterfly, same twiddles, same
@@ -578,7 +578,7 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
 // algorithms against a known input set and require their outputs
 // match within FP noise.
 //
-// Direct kernel calls â€” fftStockhamDispatch and fftRadix2Impl are
+// Direct kernel calls Ã¢â‚¬â€ fftStockhamDispatch and fftRadix2Impl are
 // declared in toolboxes/signal/src/transforms/backends/fft_kernels.hpp; we
 // link against the signal library which exports them.
 //
@@ -609,11 +609,11 @@ TEST(DspFftStockham, MatchesRadix2_SmallSizes)
         std::vector<Complex> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
-        // Forward direction (dir=-1 â†’ exp(-2Ï€iÂ·k/N)) â€” matches the
+        // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
         // cached twiddles used by the public fft() / ifft(). Radix-4
         // SoA hardcodes its 4-point butterfly for forward direction,
         // so dir=+1 here would silently disagree with r2 only on
-        // pow-of-4 sizes â‰¥ kRadix4SoaThreshold.
+        // pow-of-4 sizes Ã¢â€°Â¥ kRadix4SoaThreshold.
         numkit::fillFftTwiddles(W.data(), N, /*dir=*/-1);
 
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
@@ -636,11 +636,11 @@ TEST(DspFftStockham, MatchesRadix2_LargeSizes)
         std::vector<Complex> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
-        // Forward direction (dir=-1 â†’ exp(-2Ï€iÂ·k/N)) â€” matches the
+        // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
         // cached twiddles used by the public fft() / ifft(). Radix-4
         // SoA hardcodes its 4-point butterfly for forward direction,
         // so dir=+1 here would silently disagree with r2 only on
-        // pow-of-4 sizes â‰¥ kRadix4SoaThreshold.
+        // pow-of-4 sizes Ã¢â€°Â¥ kRadix4SoaThreshold.
         numkit::fillFftTwiddles(W.data(), N, /*dir=*/-1);
 
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
@@ -658,8 +658,8 @@ TEST(DspFftStockham, MatchesRadix2_LargeSizes)
 TEST(DspFftR2SoA, MatchesRadix2_AllSizes)
 {
     // Parity vs the AoS in-place reference across small + large sizes.
-    // SoA path goes through AoSâ†”SoA conversion, bit-reverse on SoA,
-    // and butterflies on split re/im arrays â€” any error in any of
+    // SoA path goes through AoSÃ¢â€ â€SoA conversion, bit-reverse on SoA,
+    // and butterflies on split re/im arrays Ã¢â‚¬â€ any error in any of
     // those phases shows up here.
     for (size_t N : {size_t{4},   size_t{8},   size_t{16},   size_t{64},
                      size_t{256}, size_t{1024}, size_t{8192}, size_t{16384},
@@ -667,11 +667,11 @@ TEST(DspFftR2SoA, MatchesRadix2_AllSizes)
         std::vector<Complex> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
-        // Forward direction (dir=-1 â†’ exp(-2Ï€iÂ·k/N)) â€” matches the
+        // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
         // cached twiddles used by the public fft() / ifft(). Radix-4
         // SoA hardcodes its 4-point butterfly for forward direction,
         // so dir=+1 here would silently disagree with r2 only on
-        // pow-of-4 sizes â‰¥ kRadix4SoaThreshold.
+        // pow-of-4 sizes Ã¢â€°Â¥ kRadix4SoaThreshold.
         numkit::fillFftTwiddles(W.data(), N, /*dir=*/-1);
 
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
@@ -705,11 +705,11 @@ TEST(DspFftR4SoA, MatchesRadix2_PowerOfFourSizes)
         std::vector<Complex> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
-        // Forward direction (dir=-1 â†’ exp(-2Ï€iÂ·k/N)) â€” matches the
+        // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
         // cached twiddles used by the public fft() / ifft(). Radix-4
         // SoA hardcodes its 4-point butterfly for forward direction,
         // so dir=+1 here would silently disagree with r2 only on
-        // pow-of-4 sizes â‰¥ kRadix4SoaThreshold.
+        // pow-of-4 sizes Ã¢â€°Â¥ kRadix4SoaThreshold.
         numkit::fillFftTwiddles(W.data(), N, /*dir=*/-1);
 
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
@@ -726,7 +726,7 @@ TEST(DspFftR4SoA, MatchesRadix2_PowerOfFourSizes)
 
 TEST(DspFftStockham, EdgeCase_N1)
 {
-    // N=1 is identity â€” should leave the input unchanged.
+    // N=1 is identity Ã¢â‚¬â€ should leave the input unchanged.
     std::vector<Complex> x = {Complex(3.14, 2.71)};
     std::vector<Complex> W;  // empty, not used at N<=1
     numkit::signal::detail::fftStockhamDispatch(x.data(), 1, W.data());
@@ -736,7 +736,7 @@ TEST(DspFftStockham, EdgeCase_N1)
 
 #endif // NUMKIT_WITH_SIMD
 
-// â”€â”€ Round-trip: x â†’ fft â†’ ifft â‰ˆ x for 3-D input on each dim â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Round-trip: x Ã¢â€ â€™ fft Ã¢â€ â€™ ifft Ã¢â€°Ë† x for 3-D input on each dim Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, RoundTrip3DOnEachDim)
 {
     std::pmr::memory_resource *mr = std::pmr::get_default_resource();
@@ -761,7 +761,7 @@ TEST(DspFftPublicApi, RoundTrip3DOnEachDim)
     }
 }
 
-// â”€â”€ Pack 36: fft2 / ifft2 / interpft â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Pack 36: fft2 / ifft2 / interpft Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(SignalFftPublicApi, Fft2RoundTripIsIdentity)
 {
     auto *mr = std::pmr::get_default_resource();
@@ -785,7 +785,7 @@ TEST(SignalFftPublicApi, Fft2WithExplicitSizes)
     auto *mr = std::pmr::get_default_resource();
     auto x = numkit::Value::matrix(2, 3, numkit::ValueType::DOUBLE, mr);
     for (int i = 0; i < 6; ++i) x.doubleDataMut()[i] = i + 1;
-    // Pad to 4Ã—5 in frequency.
+    // Pad to 4Ãƒâ€”5 in frequency.
     numkit::Value Y = numkit::signal::fft2(x, 4, 5, mr);
     EXPECT_EQ(Y.dims().rows(), 4u);
     EXPECT_EQ(Y.dims().cols(), 5u);
@@ -824,7 +824,7 @@ TEST(SignalFftPublicApi, InterpftPureSinusoidExact)
     }
 }
 
-// â”€â”€ interpft script-level tests (matrix + dim arg) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ interpft script-level tests (matrix + dim arg) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 class InterpftScriptTest : public ::testing::Test
 {
 public:
