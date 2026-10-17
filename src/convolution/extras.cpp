@@ -170,14 +170,11 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
 {
     detail::requireNumericSignalInput(A, "xcorr2", "A", 1);
     detail::requireNumericSignalInput(B, "xcorr2", "B", 2);
-    if (A.isComplex() || B.isComplex())
-        throw Error("xcorr2: complex inputs are not supported yet",
-                     0, 0, "xcorr2", "", "numkit:xcorr2:complexUnsupported");
     if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
         throw Error("xcorr2: N-D arrays are not supported",
                      0, 0, "xcorr2", "", "numkit:xcorr2:nd");
     Value aHold, bHold;
-    if (A.isLogical() || isIntegerType(A.type()))
+    if (!A.isComplex() && (A.isLogical() || isIntegerType(A.type())))
         aHold = [&]() {
             const auto &d = A.dims();
             Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
@@ -185,7 +182,7 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
                 r.doubleDataMut()[i] = A.elemAsDouble(i);
             return r;
         }();
-    if (B.isLogical() || isIntegerType(B.type()))
+    if (!B.isComplex() && (B.isLogical() || isIntegerType(B.type())))
         bHold = [&]() {
             const auto &d = B.dims();
             Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
@@ -198,10 +195,36 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
 
     const size_t rA = Av.dims().rows(), cA = Av.dims().cols();
     const size_t rB = Bv.dims().rows(), cB = Bv.dims().cols();
+    const bool anyCplx = Av.isComplex() || Bv.isComplex();
     if (rA == 0 || cA == 0 || rB == 0 || cB == 0)
-        return Value::matrix(0, 0, ValueType::DOUBLE, mr);
+        return Value::matrix(0, 0, anyCplx ? ValueType::COMPLEX : ValueType::DOUBLE, mr);
     const size_t rOut = rA + rB - 1;
     const size_t cOut = cA + cB - 1;
+    if (anyCplx) {
+        auto outC = Value::matrix(rOut, cOut, ValueType::COMPLEX, mr);
+        Complex *dstC = outC.complexDataMut();
+        std::fill(dstC, dstC + rOut * cOut, Complex(0.0, 0.0));
+        auto getC = [](const Value &v, size_t r, size_t c, size_t rows) -> Complex {
+            const size_t idx = r + c * rows;
+            return v.isComplex() ? v.complexData()[idx] : Complex(v.elemAsDouble(idx), 0.0);
+        };
+        for (size_t i = 0; i < rA; ++i) {
+            for (size_t j = 0; j < cA; ++j) {
+                const Complex a = getC(Av, i, j, rA);
+                if (a == Complex(0.0, 0.0)) continue;
+                for (size_t p = 0; p < rB; ++p) {
+                    const long kRow = static_cast<long>(i) - static_cast<long>(p) + static_cast<long>(rB) - 1;
+                    if (kRow < 0 || kRow >= static_cast<long>(rOut)) continue;
+                    for (size_t q = 0; q < cB; ++q) {
+                        const long kCol = static_cast<long>(j) - static_cast<long>(q) + static_cast<long>(cB) - 1;
+                        if (kCol < 0 || kCol >= static_cast<long>(cOut)) continue;
+                        dstC[kRow + kCol * rOut] += a * std::conj(getC(Bv, p, q, rB));
+                    }
+                }
+            }
+        }
+        return outC;
+    }
     auto out = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
     std::fill(dst, dst + rOut * cOut, 0.0);

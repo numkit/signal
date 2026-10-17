@@ -292,7 +292,8 @@ TEST_F(ArgcheckSignalTest, Conv2FamilyCoercionAndGaps)
     eval("y = convn(logical(ones(2)), ones(2));");
     EXPECT_EQ(evalScalar("numel(y)"), 9.0);
     expectError("conv2(single(ones(2)), ones(2));", "numkit:conv2:singleUnsupported");
-    expectError("conv2(ones(2)+1i, ones(2));", "numkit:conv2:complexUnsupported");
+    eval("yc2 = conv2(ones(2)+1i, ones(2));");
+    EXPECT_NEAR(evalScalar("imag(yc2(2,2))"), 4.0, 1e-12);
     expectError("filter2(ones(3), ones(2,2,2));", "numkit:filter2:nd");
     expectError("conv2(ones(2), ones(2), 0);", "numkit:conv2:firstTwoInputsNotVectors");
     expectError("conv2(ones(2), ones(2), 'zzz');", "numkit:conv2:badShape");
@@ -316,7 +317,7 @@ TEST_F(ArgcheckSignalTest, ConvmtxClassPreserving)
     expectError("convmtx('aa', 3);", "numkit:convmtx:inputType");
 }
 
-// xcorr2: numeric-or-logical coerced; complex/single/N-D voiced.
+// xcorr2: numeric-or-logical coerced; complex computes; single/N-D voiced.
 TEST_F(ArgcheckSignalTest, Xcorr2TypeContract)
 {
     eval("y = xcorr2(logical(ones(3)));");
@@ -324,7 +325,8 @@ TEST_F(ArgcheckSignalTest, Xcorr2TypeContract)
     eval("y = xcorr2(int8(ones(3)));");
     EXPECT_EQ(evalScalar("y(13)"), 9.0);                   // center of the 5×5 peak
     expectError("xcorr2(single(ones(3)));", "numkit:xcorr2:singleUnsupported");
-    expectError("xcorr2(ones(3)+1i);", "numkit:xcorr2:complexUnsupported");
+    eval("yc = xcorr2(ones(3)+1i);");
+    EXPECT_NEAR(evalScalar("real(yc(3,3))"), 18.0, 1e-12);
     expectError("xcorr2('abc');", "numkit:xcorr2:inputType");
     expectError("xcorr2(ones(2,2,2));", "numkit:xcorr2:nd");
 }
@@ -340,7 +342,8 @@ TEST_F(ArgcheckSignalTest, PolyUtilsTypeContract)
     expectError("polystab(int8([1 2 3]));", "numkit:polystab:inputType");
     expectError("polystab(single([1 2 3]));", "numkit:polystab:singleUnsupported");
     expectError("polystab(ones(2));", "numkit:polystab:notVector");
-    expectError("polystab(complex([1 2], [0 1]));", "numkit:polystab:complexUnsupported");
+    eval("ys = polystab(complex([1 2], [0 1]));");
+    EXPECT_NEAR(evalScalar("real(ys(1))"), 1.0, 1e-12);
     eval("y = polyscale(complex([1 2], [0 1]), 2);");      // complex p passes
 }
 
@@ -354,7 +357,7 @@ TEST_F(ArgcheckSignalTest, UnshiftdataPermContract)
 }
 
 // sosfilt / sosfiltfilt: floating-point x only (reference VectMustBeFloat
-// class); single/complex voiced gaps; SOS shape voiced per entry.
+// class); single voiced gap; SOS shape voiced per entry.
 TEST_F(ArgcheckSignalTest, SosfiltTypeContract)
 {
     eval("sos = [1 1 1 1 0.5 0.25];");
@@ -362,7 +365,8 @@ TEST_F(ArgcheckSignalTest, SosfiltTypeContract)
     expectError("sosfilt(sos, int8(1:8));", "numkit:sosfilt:xType");
     expectError("sosfilt(sos, 'abcdefgh');", "numkit:sosfilt:xType");
     expectError("sosfilt(sos, single(1:8));", "numkit:sosfilt:singleUnsupported");
-    expectError("sosfilt(sos, (1:8)+1i);", "numkit:sosfilt:complexUnsupported");
+    eval("ysos = sosfilt(sos, (1:8)+1i);");
+    EXPECT_NEAR(evalScalar("real(ysos(2))"), 2.5, 1e-12);
     expectError("sosfilt([1 1 1 1 0.5], 1:8);", "numkit:sosfilt:sosShape");
     expectError("sosfiltfilt(sos, logical(1:8));", "numkit:sosfiltfilt:xType");
     expectError("sosfiltfilt([1 1 1 1 0.5], 1:8);", "numkit:sosfiltfilt:sosShape");
@@ -370,7 +374,7 @@ TEST_F(ArgcheckSignalTest, SosfiltTypeContract)
 }
 
 // zp2sos / tf2sos: coefficient type contracts (logical rejected by the
-// reference; single/complex voiced gaps).
+// reference; single voiced gap).
 TEST_F(ArgcheckSignalTest, Zp2sosTf2sosTypeContract)
 {
     expectError("zp2sos(logical([0; 0]), [0.2; 0.3], 1);", "numkit:zp2sos:inputType");
@@ -379,7 +383,7 @@ TEST_F(ArgcheckSignalTest, Zp2sosTf2sosTypeContract)
     expectError("tf2sos(logical([1 1]), [1 -0.5]);", "numkit:tf2sos:type");
     expectError("tf2sos(int8([1 1]), [1 -0.5]);", "numkit:tf2sos:type");
     expectError("tf2sos(single([1 1]), [1 -0.5]);", "numkit:tf2sos:singleUnsupported");
-    expectError("tf2sos([1 1i], [1 -0.5]);", "numkit:tf2sos:complexUnsupported");
+    expectError("tf2sos([1 1i], [1 -0.5]);", "numkit:zp2sos:noConj");
 }
 
 // sigroi family: N×2 roi contract (reference incorrectNumcols class);

@@ -102,19 +102,34 @@ void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
 Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
 {
     validateSosMatrix(sos, "sosfilt");
-    // Reference (R2025b): x must be floating-point — single and double
-    // pass (single is a capability gap here), complex is accepted by the
-    // reference but the double-buffer cascade cannot filter it yet, and
-    // logical / integer / char classes are rejected (VectMustBeFloat).
+    if (x.type() == ValueType::COMPLEX) {
+        if (x.isEmpty())
+            return createLike(x, ValueType::COMPLEX, mr);
+        const size_t N = x.numel();
+        Value xr = createLike(x, ValueType::DOUBLE, mr);
+        Value xi = createLike(x, ValueType::DOUBLE, mr);
+        double *xrd = xr.doubleDataMut();
+        double *xid = xi.doubleDataMut();
+        const Complex *xcd = x.complexData();
+        for (size_t i = 0; i < N; ++i) {
+            xrd[i] = xcd[i].real();
+            xid[i] = xcd[i].imag();
+        }
+        Value yr = sosfilt(sos, xr, mr);
+        Value yi = sosfilt(sos, xi, mr);
+        Value out = createLike(x, ValueType::COMPLEX, mr);
+        Complex *od = out.complexDataMut();
+        const double *yrd = yr.doubleData();
+        const double *yid = yi.doubleData();
+        for (size_t i = 0; i < N; ++i)
+            od[i] = Complex(yrd[i], yid[i]);
+        return out;
+    }
     if (x.type() != ValueType::DOUBLE) {
         if (x.type() == ValueType::SINGLE)
             throw Error("sosfilt: input 2 (x): single inputs are not "
                         "supported yet — convert with double()",
                         0, 0, "sosfilt", "", "numkit:sosfilt:singleUnsupported");
-        if (x.type() == ValueType::COMPLEX)
-            throw Error("sosfilt: input 2 (x): complex inputs are not "
-                        "supported yet",
-                        0, 0, "sosfilt", "", "numkit:sosfilt:complexUnsupported");
         throw Error("sosfilt: signal x must have floating point precision "
                     "(got a " + std::to_string(x.dims().rows()) + "x"
                     + std::to_string(x.dims().cols()) + " "

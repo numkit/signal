@@ -176,11 +176,6 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
     // Reference (R2025b): double/single/complex vectors only — logical
     // and integer classes are rejected (the eig step voices inputType).
     detail::requireFloatInput(a, "polystab");
-    if (a.isComplex())
-        throw Error("polystab: complex coefficients are not supported yet "
-                    "(the underlying polynomial root finder is "
-                    "real-coefficient only)",
-                    0, 0, "polystab", "", "numkit:polystab:complexUnsupported");
 
     // Matrix input is not allowed.
     if (!isVectorShape(a)) {

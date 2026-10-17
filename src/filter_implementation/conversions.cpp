@@ -225,26 +225,24 @@ Value buildSosMatrix(const double *b1s, const double *b2s, const double *a1s, co
     return sos;
 }
 
-inline ScratchVec<double> coeffsAsVector(const Value &v, std::pmr::memory_resource *mr)
+inline ScratchVec<Complex> coeffsAsVector(const Value &v, std::pmr::memory_resource *mr)
 {
-    // Reference (R2025b): b/a accept double and single (single →
-    // single-classed SOS result, a capability gap here) and complex
-    // (paired-conjugate coefficients; the root finder below is
-    // real-coefficient only — complex-kernel-gaps.md).
     if (v.type() == ValueType::SINGLE)
         throw Error("tf2sos: b/a: single inputs are not supported yet — "
                     "convert with double()",
                     0, 0, "tf2sos", "", "numkit:tf2sos:singleUnsupported");
-    if (v.type() == ValueType::COMPLEX)
-        throw Error("tf2sos: b/a: complex coefficients are not supported yet",
-                    0, 0, "tf2sos", "", "numkit:tf2sos:complexUnsupported");
-    if (v.type() != ValueType::DOUBLE || !v.dims().isVector())
-        throw Error("tf2sos: b/a must be DOUBLE row/column vectors",
+    if ((v.type() != ValueType::DOUBLE && v.type() != ValueType::COMPLEX) || !v.dims().isVector())
+        throw Error("tf2sos: b/a must be DOUBLE or COMPLEX row/column vectors",
                     0, 0, "tf2sos", "", "numkit:tf2sos:type");
     const size_t n = v.numel();
-    ScratchVec<double> out(n, mr);
-    const double *p = v.doubleData();
-    for (size_t i = 0; i < n; ++i) out[i] = p[i];
+    ScratchVec<Complex> out(n, mr);
+    if (v.type() == ValueType::COMPLEX) {
+        const Complex *p = v.complexData();
+        for (size_t i = 0; i < n; ++i) out[i] = p[i];
+    } else {
+        const double *p = v.doubleData();
+        for (size_t i = 0; i < n; ++i) out[i] = Complex(p[i], 0.0);
+    }
     return out;
 }
 
@@ -294,16 +292,6 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surpl
         throw Error("zp2sos: more zeros than poles is not supported",
                      0, 0, "zp2sos", "", "numkit:zp2sos:moreZeros");
 
-    // MATLAB's default 'up' section ordering: sections sorted by ASCENDING
-    // pole radius — poles nearest the ORIGIN first, nearest the unit circle
-    // last. popPair already selects by ascending (|p|, |Re(p)|), so the
-    // section arrays come out in MATLAB order directly (the old pipeline
-    // paired largest-first and reversed here, which inverted the
-    // equal-radius tie order — bugs/closed/signal/zp2sos-section-order).
-    // Row 0 is the origin-nearest section — exactly where the caller folds
-    // the overall gain in. ('down' ordering is a non-default option:
-    // deferred.)
-
     return std::make_tuple(buildSosMatrix(b1s.data(), b2s.data(), a1s.data(), a2s.data(), noZeros.data(), surplusAtOrigin, L, /*leadingGain=*/1.0, mr),
                            gain);
 }
@@ -325,14 +313,14 @@ tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
     ScratchArena scratch(mr);
     auto bv = coeffsAsVector(b, &scratch);
     auto av = coeffsAsVector(a, &scratch);
-    if (av.empty() || av[0] == 0.0)
+    if (av.empty() || av[0] == Complex(0.0, 0.0))
         throw Error("tf2sos: a(1) must be nonzero",
                      0, 0, "tf2sos", "", "numkit:tf2sos:zeroLead");
     if (bv.empty())
         throw Error("tf2sos: b is empty",
                      0, 0, "tf2sos", "", "numkit:tf2sos:emptyB");
 
-    const double gain = bv[0] / av[0];
+    const double gain = (bv[0] / av[0]).real();
     auto zeros = polyRootsDurandKerner(&scratch, bv.data(), bv.size());
     auto poles = polyRootsDurandKerner(&scratch, av.data(), av.size());
 

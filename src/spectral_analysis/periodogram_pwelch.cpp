@@ -41,7 +41,7 @@ std::tuple<Value, Value>
 periodogram(const Value &x, const Value &window, size_t nfft, double fs, std::pmr::memory_resource *mr)
 {
     const size_t N = x.numel();
-    const double *xd = x.doubleData();
+    const bool isCplx = x.isComplex();
 
     ScratchArena scratch(mr);
     auto win = ScratchVec<double>(N, &scratch);
@@ -53,50 +53,65 @@ periodogram(const Value &x, const Value &window, size_t nfft, double fs, std::pm
         std::fill(win.begin(), win.end(), 1.0);
     }
 
-    // MATLAB default NFFT is max(256, 2^nextpow2(N)) — not just 2^nextpow2(N).
-    // (pwelch already uses this rule.)
     if (nfft == 0)
         nfft = std::max<size_t>(256, nextPow2(N));
 
     auto buf = ScratchVec<Complex>(nfft, &scratch);
     double winPower = 0.0;
-    for (size_t i = 0; i < N; ++i) {
-        buf[i] = Complex(xd[i] * win[i], 0.0);
-        winPower += win[i] * win[i];
+    if (isCplx) {
+        const Complex *xd = x.complexData();
+        for (size_t i = 0; i < N; ++i) {
+            buf[i] = xd[i] * win[i];
+            winPower += win[i] * win[i];
+        }
+    } else {
+        const double *xd = x.doubleData();
+        for (size_t i = 0; i < N; ++i) {
+            buf[i] = Complex(xd[i] * win[i], 0.0);
+            winPower += win[i] * win[i];
+        }
     }
 
-    // fftRadix2 is power-of-two only. For a non-pow2 nfft, route the windowed,
-    // zero-padded signal through the general fft (Bluestein) — MATLAB uses a
-    // mixed-radix transform, so nfft = N (no padding) is a common, valid call.
-    // bugs/signal/periodogram-nonpow2-nfft. The pow2 path is unchanged.
     const Complex *spec;
-    Value          Xv;  // owns the non-pow2 spectrum; must outlive the loop below
-    if ((nfft & (nfft - 1)) == 0) {              // power of two
+    Value          Xv;
+    if ((nfft & (nfft - 1)) == 0) {
         fftRadix2(&scratch, buf, 1);
         spec = buf.data();
     } else {
-        Value   xwin = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-        double *xw   = xwin.doubleDataMut();
-        for (size_t i = 0; i < N; ++i)
-            xw[i] = xd[i] * win[i];
+        Value xwin = Value::matrix(N, 1, isCplx ? ValueType::COMPLEX : ValueType::DOUBLE, mr);
+        if (isCplx) {
+            Complex *xw = xwin.complexDataMut();
+            const Complex *xd = x.complexData();
+            for (size_t i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
+        } else {
+            double *xw = xwin.doubleDataMut();
+            const double *xd = x.doubleData();
+            for (size_t i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
+        }
         Xv   = fft(xwin, static_cast<int>(nfft), /*dim=*/0, mr);
         spec = Xv.complexData();
+    }
+
+    const double scale = 1.0 / (winPower * fs);
+    if (isCplx) {
+        auto Pxx = Value::matrix(nfft, 1, ValueType::DOUBLE, mr);
+        auto F   = Value::matrix(nfft, 1, ValueType::DOUBLE, mr);
+        for (size_t i = 0; i < nfft; ++i) {
+            Pxx.doubleDataMut()[i] = std::norm(spec[i]) * scale;
+            F.doubleDataMut()[i]   = fs * static_cast<double>(i) / static_cast<double>(nfft);
+        }
+        return std::make_tuple(std::move(Pxx), std::move(F));
     }
 
     const size_t nOut = nfft / 2 + 1;
     auto Pxx = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     auto F = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
-    // MATLAB PSD scaling: Pxx[k] = |X[k]|^2 / (winPower * fs), with
-    // one-sided doubling for interior bins. With default fs = 2*pi
-    // this matches MATLAB periodogram(x) without explicit fs.
-    const double scale = 1.0 / (winPower * fs);
 
     for (size_t i = 0; i < nOut; ++i) {
         double mag2 = std::norm(spec[i]);
         if (i > 0 && i < nfft / 2)
             mag2 *= 2.0;
         Pxx.doubleDataMut()[i] = mag2 * scale;
-        // Frequency vector spans [0, fs/2] inclusive on a one-sided grid.
         F.doubleDataMut()[i] = (fs / 2.0) * static_cast<double>(i)
                                / static_cast<double>(nOut - 1);
     }

@@ -11,6 +11,7 @@
 #include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value_type.hpp>   // mtypeName / isIntegerType
+#include <numkit/ops/helpers.hpp>
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 #include "../dsp_helpers.hpp"       // Complex typedef
@@ -183,7 +184,28 @@ Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource
 // the reference outright.
 Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 {
-    detail::requireDoubleNotComplexInput(x, "decimate");
+    detail::requireFloatInput(x, "decimate");
+    if (x.isComplex()) {
+        const size_t nx = x.numel();
+        Value xr = createLike(x, ValueType::DOUBLE, mr);
+        Value xi = createLike(x, ValueType::DOUBLE, mr);
+        double *xrd = xr.doubleDataMut();
+        double *xid = xi.doubleDataMut();
+        const Complex *xcd = x.complexData();
+        for (size_t i = 0; i < nx; ++i) {
+            xrd[i] = xcd[i].real();
+            xid[i] = xcd[i].imag();
+        }
+        Value yr = decimate(xr, factor, mr);
+        Value yi = decimate(xi, factor, mr);
+        Value out = createLike(yr, ValueType::COMPLEX, mr);
+        Complex *od = out.complexDataMut();
+        const double *yrd = yr.doubleData();
+        const double *yid = yi.doubleData();
+        for (size_t i = 0; i < yr.numel(); ++i)
+            od[i] = Complex(yrd[i], yid[i]);
+        return out;
+    }
     const size_t nx = x.numel();
     const bool isRow = x.dims().rows() == 1;
     if (factor <= 1 || nx == 0) {
@@ -210,19 +232,33 @@ Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 }
 
 // ── resample ──────────────────────────────────────────────────────────
-// MATLAB resample.m algorithm (default N = 10, beta = 5): design a
-// Kaiser-windowed least-squares anti-alias FIR, apply it via the polyphase
-// upfirdn, then compensate the filter group delay and trim to ceil(Lx·p/q)
-// samples. Reuses the shipped firls / kaiser / upfirdn — all bit-exact with
-// MATLAB, so the assembled output matches MATLAB R2025b exactly.
-// Type contract: like decimate — double passes, single and complex are
-// capability gaps (the reference accepts both), logical/int rejected.
 Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr)
 {
-    detail::requireDoubleNotComplexInput(x, "resample");
+    detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
         throw Error("resample: P and Q must be positive integers",
                     0, 0, "resample", "", "numkit:resample:pq");
+    if (x.isComplex()) {
+        const size_t nx = x.numel();
+        Value xr = createLike(x, ValueType::DOUBLE, mr);
+        Value xi = createLike(x, ValueType::DOUBLE, mr);
+        double *xrd = xr.doubleDataMut();
+        double *xid = xi.doubleDataMut();
+        const Complex *xcd = x.complexData();
+        for (size_t i = 0; i < nx; ++i) {
+            xrd[i] = xcd[i].real();
+            xid[i] = xcd[i].imag();
+        }
+        Value yr = resample(xr, p, q, mr);
+        Value yi = resample(xi, p, q, mr);
+        Value out = createLike(yr, ValueType::COMPLEX, mr);
+        Complex *od = out.complexDataMut();
+        const double *yrd = yr.doubleData();
+        const double *yid = yi.doubleData();
+        for (size_t i = 0; i < yr.numel(); ++i)
+            od[i] = Complex(yrd[i], yid[i]);
+        return out;
+    }
 
     // Reduce P/Q by their GCD first (as MATLAB does).
     const size_t g = std::gcd(p, q);

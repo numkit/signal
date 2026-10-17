@@ -367,27 +367,43 @@ TEST_F(SignalKnownBug, DownsampleIntResultClass)
     EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(yb), 'int32')"), 1.0);
 }
 
-// bugs/opened/signal/complex-kernel-gaps.md
-TEST_F(SignalKnownBug, DISABLED_Xcorr2Complex)
+// bugs/closed/signal/complex-kernel-gaps.md (FIXED)
+TEST_F(SignalKnownBug, Xcorr2Complex)
 {
     eval("y = xcorr2(ones(2) + 1i);");
-    EXPECT_NEAR(evalScalar("real(y(2,2))"), 0.0, 1e-12);   // 1·conj(1) summed
+    EXPECT_NEAR(evalScalar("real(y(2,2))"), 8.0, 1e-12);   // 4 * (1+1i)*conj(1+1i) = 8
+    EXPECT_NEAR(evalScalar("imag(y(2,2))"), 0.0, 1e-12);
     EXPECT_DOUBLE_EQ(evalScalar("strcmp(class(y), 'double') && ~isreal(y)"), 1.0);
+    eval("c2 = conv2(ones(2) + 1i, ones(2));");
+    EXPECT_NEAR(evalScalar("real(c2(2,2))"), 4.0, 1e-12);
+    EXPECT_NEAR(evalScalar("imag(c2(2,2))"), 4.0, 1e-12);
+    eval("f2 = filter2(ones(2), ones(2) + 1i);");
+    EXPECT_NEAR(evalScalar("imag(f2(1,1))"), 4.0, 1e-12);
+    eval("cn = convn(ones(2,2,2) + 1i, ones(2,2,2));");
+    EXPECT_NEAR(evalScalar("imag(cn(2,2,2))"), 8.0, 1e-12);
 }
 
-TEST_F(SignalKnownBug, DISABLED_SosfiltComplexX)
+TEST_F(SignalKnownBug, SosfiltComplexX)
 {
     eval("sos = [1 1 1 1 0.5 0.25]; y = sosfilt(sos, (1:8)+1i);");
     // Reference-probed R2025b values.
     EXPECT_NEAR(evalScalar("real(y(2))"), 2.5, 1e-12);
     EXPECT_NEAR(evalScalar("imag(y(2))"), 1.5, 1e-12);
     EXPECT_NEAR(evalScalar("real(y(8))"), 12.9765625, 1e-12);
+    eval("yd = decimate((1:20) + 1i, 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("~isreal(yd)"), 1.0);
+    eval("yr = resample((1:20) + 1i, 3, 2);");
+    EXPECT_DOUBLE_EQ(evalScalar("~isreal(yr)"), 1.0);
+    eval("bp = bandpower(exp(1i*2*pi*100*(0:999)/1000), 1000, [50 150]);");
+    EXPECT_NEAR(evalScalar("bp"), 1.0, 1e-2);
 }
 
-TEST_F(SignalKnownBug, DISABLED_PolystabComplex)
+TEST_F(SignalKnownBug, PolystabComplex)
 {
     eval("y = polystab(complex([1 2], [0 1]));");
     EXPECT_NEAR(evalScalar("real(y(1))"), 1.0, 1e-12);   // leading coeff preserved
+    eval("s = tf2sos(complex([1 0 1], [0 0 0]), [1 -0.5]);");
+    EXPECT_EQ(evalScalar("size(s, 2)"), 6.0);
 }
 
 // bugs/closed/signal/nd-and-matrix-gaps.md (FIXED)

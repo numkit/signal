@@ -134,7 +134,7 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pm
         }
         return Value::scalar(s / n, mr);
     }
-    detail::requireDoubleNotComplexInput(x, "bandpower");
+    detail::requireFloatInput(x, "bandpower");
     if (freqrange.isEmpty())
         throw Error("bandpower: fs requires freqrange — specify both "
                     "together (bandpower(x, fs, freqrange))",
