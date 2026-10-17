@@ -29,6 +29,9 @@ struct PeakOpts {
     long   nPeaks     = -1;      // -1 => unlimited
     int    sortMode   = 0;       // 0 none(location), 1 ascend(height), 2 descend(height)
     int    widthRef   = 0;       // WidthReference: 0 'halfprom' (default), 1 'halfheight'
+    double minWidth   = 0.0;     // MinPeakWidth: keep if width >= minWidth
+    double maxWidth   = std::numeric_limits<double>::infinity(); // MaxPeakWidth: keep if width <= maxWidth
+    bool   useWidthFilter = false;
 };
 
 // Core detection + filtering. locArr == nullptr => locations are 1-based

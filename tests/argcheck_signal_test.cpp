@@ -294,7 +294,7 @@ TEST_F(ArgcheckSignalTest, Conv2FamilyCoercionAndGaps)
     expectError("conv2(single(ones(2)), ones(2));", "numkit:conv2:singleUnsupported");
     expectError("conv2(ones(2)+1i, ones(2));", "numkit:conv2:complexUnsupported");
     expectError("filter2(ones(3), ones(2,2,2));", "numkit:filter2:nd");
-    expectError("conv2(ones(2), ones(2), 0);", "numkit:conv2:separableUnsupported");
+    expectError("conv2(ones(2), ones(2), 0);", "numkit:conv2:firstTwoInputsNotVectors");
     expectError("conv2(ones(2), ones(2), 'zzz');", "numkit:conv2:badShape");
     expectError("filter2(ones(3), ones(4), 'zzz');", "numkit:filter2:badShape");
 }
@@ -456,7 +456,7 @@ TEST_F(ArgcheckSignalTest, BandpowerContract)
     expectError("bandpower(logical(1:100));", "numkit:bandpower:inputType");
     expectError("bandpower(int8(1:100));", "numkit:bandpower:inputType");
     expectError("bandpower(single(1:100));", "numkit:bandpower:singleUnsupported");
-    expectError("bandpower(x, 10, [1 5], 'psd');", "numkit:bandpower:psdUnsupported");
+    expectError("bandpower(x, 10, [1 5], 'psd');", "numkit:bandpower:freqVecLength");
     // Complex 1-arg: mean(|x|^2) — reference-exact (probed 26.5 for
     // x = (1:8)+1i).
     EXPECT_NEAR(evalScalar("bandpower((1:8)+1i)"), 26.5, 1e-12);

@@ -195,7 +195,7 @@ TEST_P(DspGapsTest, FindpeaksLocationForm)
     EXPECT_DOUBLE_EQ(l->doubleData()[0], 0.5);
     EXPECT_DOUBLE_EQ(l->doubleData()[2], 2.5);
     // A genuinely unsupported option still fails loudly (no silent ignore).
-    EXPECT_THROW(eval("findpeaks([0 1 0 2 0], 'MinPeakWidth', 1);"), std::exception);
+    EXPECT_THROW(eval("findpeaks([0 1 0 2 0], 'UnknownOption', 1);"), std::exception);
 }
 
 // ── MinPeakProminence + width / prominence outputs ─────────────

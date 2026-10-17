@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/measurements/findpeaks_reg.cpp
+// toolboxes/signal/src/measurements/findpeaks_reg.cpp
 //
 // CallContext register half of measurements/findpeaks.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -111,9 +111,17 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
             opt.widthRef = static_cast<int>(argcheck::expectedChoice(
                 v, {"halfprom", "halfheight"}, static_cast<int>(argi) + 2,
                 "WidthReference", "findpeaks"));
+        } else if (name == "minpeakwidth") {
+            opt.minWidth = v.toScalar();
+            opt.useWidthFilter = true;
+        } else if (name == "maxpeakwidth") {
+            opt.maxWidth = v.toScalar();
+            opt.useWidthFilter = true;
+        } else if (name == "annotate") {
+            (void)argcheck::expectedChoice(
+                v, {"peaks", "extents"}, static_cast<int>(argi) + 2,
+                "Annotate", "findpeaks");
         } else {
-            // MinPeakWidth / MaxPeakWidth / Annotate / DoubleSided are not
-            // yet supported â€” fail loudly rather than silently ignore.
             throw Error("findpeaks: option '" + args[argi].toString() + "' not supported",
                          0, 0, "findpeaks", "", "numkit:findpeaks:unsupportedOpt");
         }

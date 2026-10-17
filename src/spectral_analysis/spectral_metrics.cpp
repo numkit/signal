@@ -154,6 +154,53 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pm
     return Value::scalar(integrate(p.Pxx, p.F, fLo, fHi), mr);
 }
 
+Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std::pmr::memory_resource *mr)
+{
+    detail::requireDoubleNotComplexInput(pxx, "bandpower");
+    detail::requireDoubleNotComplexInput(f, "bandpower");
+    const size_t n = pxx.numel();
+    if (f.numel() != n || n < 2)
+        throw Error("bandpower: frequency vector f must have the same length as pxx (>= 2)",
+                    0, 0, "bandpower", "", "numkit:bandpower:freqVecLength");
+    std::vector<double> P(n), F(n);
+    for (size_t i = 0; i < n; ++i) {
+        P[i] = pxx.elemAsDouble(i);
+        F[i] = f.elemAsDouble(i);
+    }
+    if (freqrange.isEmpty()) {
+        // Full-range rectangular integration matching MATLAB's psdbandpower:
+        // each bin has width w_i = (F[1]-F[0]) at i=0, (F[i+1]-F[i-1])/2 interior,
+        // and (F[n-1]-F[n-2]) at i=n-1 (on a uniform grid every bin has width df).
+        double total = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            double w = 0.0;
+            if (i == 0) w = F[1] - F[0];
+            else if (i + 1 == n) w = F[n - 1] - F[n - 2];
+            else w = 0.5 * (F[i + 1] - F[i - 1]);
+            total += P[i] * w;
+        }
+        return Value::scalar(total, mr);
+    }
+    if (freqrange.numel() != 2)
+        throw Error("bandpower: freqrange must be a 2-element vector [fmin, fmax] (got " +
+                    std::to_string(freqrange.numel()) + " elements)",
+                    0, 0, "bandpower", "", "numkit:bandpower:freqRange");
+    const double fLo = freqrange.elemAsDouble(0);
+    const double fHi = freqrange.elemAsDouble(1);
+    if (fLo <= F.front() && fHi >= F.back()) {
+        double total = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            double w = 0.0;
+            if (i == 0) w = F[1] - F[0];
+            else if (i + 1 == n) w = F[n - 1] - F[n - 2];
+            else w = 0.5 * (F[i + 1] - F[i - 1]);
+            total += P[i] * w;
+        }
+        return Value::scalar(total, mr);
+    }
+    return Value::scalar(integrate(P, F, fLo, fHi), mr);
+}
+
 // ── meanfreq / medfreq ────────────────────────────────────────────
 
 Value meanfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)

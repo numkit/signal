@@ -111,10 +111,10 @@ TEST_F(SignalKnownBug, DISABLED_Fillgaps)
     EXPECT_NEAR(evalScalar("y(3)"), 3.0, 1e-6);
 }
 
-// bugs/opened/signal/findpeaks-width-options.md — Min/MaxPeakWidth filter
+// bugs/closed/signal/findpeaks-width-options.md — Min/MaxPeakWidth filter
 // on the chosen reference's widths (R2025b-probed 2026-09-17; the
 // halfheight widths of this signal are [1.75 1.45833 1.2]).
-TEST_F(SignalKnownBug, DISABLED_FindpeaksWidthOptions)
+TEST_F(SignalKnownBug, FindpeaksWidthOptions)
 {
     eval("p1 = findpeaks([1 3 2 5 1 6 1], 'MinPeakWidth', 1.4, 'WidthReference', 'halfheight');");
     EXPECT_NEAR(evalScalar("numel(p1)"), 2.0, 1e-9);
@@ -400,8 +400,8 @@ TEST_F(SignalKnownBug, DISABLED_StftMatrixChannels)
     EXPECT_DOUBLE_EQ(evalScalar("size(s, 2)"), 2.0);       // two channels
 }
 
-// bugs/opened/signal/conv2-separable-form.md
-TEST_F(SignalKnownBug, DISABLED_Conv2SeparableForm)
+// bugs/closed/signal/conv2-separable-form.md
+TEST_F(SignalKnownBug, Conv2SeparableForm)
 {
     eval("y = conv2([1 2], [3 4], ones(2));");
     eval("k = conv2([3 4; 6 8], ones(2));");
@@ -418,8 +418,8 @@ TEST_F(SignalKnownBug, DecimateChebyDefault)
     EXPECT_NEAR(evalScalar("d(10)"), 49.41857222, 1e-6);
 }
 
-// bugs/opened/signal/bandpower-psd-forms.md
-TEST_F(SignalKnownBug, DISABLED_BandpowerPsdForm)
+// bugs/closed/signal/bandpower-psd-forms.md
+TEST_F(SignalKnownBug, BandpowerPsdForm)
 {
     eval("[p, f] = periodogram(cos(0:0.1:2*pi), [], [], 100);");
     eval("bp = bandpower(p, f, 'psd');");

@@ -176,8 +176,9 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
 
     std::size_t m = val.size();
 
-    // Prominence (and the interval bounds used for width) per raw peak.
+    // Prominence and width per raw peak.
     auto prom = ScratchVec<double>(&scratch);      prom.assign(m, 0.0);
+    auto wid  = ScratchVec<double>(&scratch);      wid.assign(m, 0.0);
     auto lbnd = ScratchVec<std::size_t>(&scratch); lbnd.assign(m, 0);
     auto rbnd = ScratchVec<std::size_t>(&scratch); rbnd.assign(m, 0);
     for (std::size_t k = 0; k < m; ++k) {
@@ -185,6 +186,8 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
         prom[k] = peakProminence(p, n, sidx[k], val[k], lb, rb);
         lbnd[k] = lb;
         rbnd[k] = rb;
+        wid[k] = peakWidth(p, n, sidx[k], val[k], prom[k], lb, rb,
+                           locArr, opt.widthRef);
     }
 
     auto keep = ScratchVec<unsigned char>(&scratch);
@@ -194,6 +197,11 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
     if (opt.useMinProm)
         for (std::size_t k = 0; k < m; ++k)
             if (!(prom[k] >= opt.minProm)) keep[k] = 0u;
+
+    // MinPeakWidth / MaxPeakWidth: filter on the selected WidthReference width.
+    if (opt.useWidthFilter)
+        for (std::size_t k = 0; k < m; ++k)
+            if (!(wid[k] >= opt.minWidth && wid[k] <= opt.maxWidth)) keep[k] = 0u;
 
     // MinPeakDistance: greedy, tallest-first, remove peaks within the distance.
     if (opt.useMinDist && opt.minDist > 0.0 && m > 1) {
@@ -259,8 +267,7 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
         vp[k] = val[s];
         lp[k] = loc[s];
         pp[k] = prom[s];
-        wp[k] = peakWidth(p, n, sidx[s], val[s], prom[s], lbnd[s], rbnd[s],
-                          locArr, opt.widthRef);
+        wp[k] = wid[s];
     }
     return std::make_tuple(std::move(vals), std::move(locs),
                            std::move(wids), std::move(proms));

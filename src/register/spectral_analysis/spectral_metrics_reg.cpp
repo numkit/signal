@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/spectral_analysis/spectral_metrics_reg.cpp
+// toolboxes/signal/src/spectral_analysis/spectral_metrics_reg.cpp
 //
 // CallContext register half of spectral_analysis/spectral_metrics.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -33,22 +33,26 @@ void bandpower_reg(Span<const Value> args, size_t /*nargout*/,
                    Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "bandpower");
-    // 4th argument only exists in the power-spectrum forms
-    // bandpower(pxx, f, freqrange, 'psd') â€” not implemented
-    // (bugs/opened/signal/bandpower-psd-forms.md).
+    auto *mr = ctx.engine->resource();
+    if (args.size() >= 3 && (args[args.size() - 1].isChar() || args[args.size() - 1].isString())) {
+        std::string opt = args[args.size() - 1].toString();
+        for (char &c : opt) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (opt != "psd")
+            throw Error("bandpower: unrecognized option '" + args[args.size() - 1].toString() +
+                        "' ('psd' is the only supported option)",
+                        0, 0, "bandpower", "", "numkit:bandpower:badOption");
+        const Value &fr = (args.size() == 4) ? args[2] : Value::Empty;
+        outs[0] = bandpowerPsd(args[0], args[1], fr, mr);
+        return;
+    }
     if (args.size() >= 4) {
-        if (args[3].isChar() || args[3].isString())
-            throw Error("bandpower: the 'psd' one-sided-power-spectrum "
-                        "form bandpower(pxx, f, freqrange, 'psd') is not "
-                        "supported yet",
-                        0, 0, "bandpower", "", "numkit:bandpower:psdUnsupported");
         throw Error("bandpower: unrecognized 4th input option ('psd' is "
                     "the only supported option in the reference engine)",
                     0, 0, "bandpower", "", "numkit:bandpower:badOption");
     }
     const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
     const Value &fr = (args.size() >= 3) ? args[2] : Value::Empty;
-    outs[0] = bandpower(args[0], fs, fr, ctx.engine->resource());
+    outs[0] = bandpower(args[0], fs, fr, mr);
 }
 
 void obw_reg(Span<const Value> args, size_t nargout,

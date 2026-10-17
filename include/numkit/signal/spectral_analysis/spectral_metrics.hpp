@@ -42,6 +42,11 @@ Value bandpower(const Value &x,
                 const Value &freqrange = Value::Empty,
                 std::pmr::memory_resource *mr = nullptr);
 
+Value bandpowerPsd(const Value &pxx,
+                   const Value &f,
+                   const Value &freqrange = Value::Empty,
+                   std::pmr::memory_resource *mr = nullptr);
+
 /// @brief Power-weighted mean frequency.
 ///
 /// @f$ \dfrac{\sum f \cdot P}{\sum P} @f$.
