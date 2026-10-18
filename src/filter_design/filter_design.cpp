@@ -214,14 +214,54 @@ inline double Iclin(int k, double w, double w0)
     return (w - w0) * std::sin(k * w) / k + std::cos(k * w) / (double(k) * k);
 }
 
+// Antiderivative of cos(alpha·ω) for real alpha >= 0:
+inline double IcReal(double alpha, double w)
+{
+    return (std::abs(alpha) < 1e-15) ? w : std::sin(alpha * w) / alpha;
+}
+
+// Antiderivative of (ω - ω0)·cos(alpha·ω) for real alpha >= 0:
+inline double IclinReal(double alpha, double w, double w0)
+{
+    if (std::abs(alpha) < 1e-15) {
+        const double d = w - w0;
+        return 0.5 * d * d;
+    }
+    return (w - w0) * std::sin(alpha * w) / alpha + std::cos(alpha * w) / (alpha * alpha);
+}
+
+// Antiderivative of sin(alpha·ω) for real alpha > 0:
+inline double IsReal(double alpha, double w)
+{
+    return -std::cos(alpha * w) / alpha;
+}
+
+// Antiderivative of (ω - ω0)·sin(alpha·ω) for real alpha > 0:
+inline double IslinReal(double alpha, double w, double w0)
+{
+    return -(w - w0) * std::cos(alpha * w) / alpha + std::sin(alpha * w) / (alpha * alpha);
+}
+
 } // anonymous namespace
 
 Value firls(int N, const Value &Farg, const Value &Aarg,
+            const Value &Warg, const std::string &ftype,
             std::pmr::memory_resource *mr)
 {
-    if (N < 2 || (N % 2) != 0)
-        throw Error("firls: filter order must be even (Type-I) and >= 2",
+    if (N < 1)
+        throw Error("firls: filter order must be a positive integer",
                     0, 0, "firls", "", "numkit:firls:badOrder");
+
+    bool antiSym = false;
+    if (!ftype.empty()) {
+        std::string fl;
+        for (char c : ftype) fl += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (fl == "hilbert" || fl == "h" || fl == "differentiator" || fl == "d")
+            antiSym = true;
+        else
+            throw Error("firls: ftype must be 'hilbert' or 'differentiator'",
+                        0, 0, "firls", "", "numkit:firls:badFtype");
+    }
 
     ScratchArena scratch(mr);
     auto Fv = valueToDoubleRow(Farg, scratch);
@@ -246,61 +286,124 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
             throw Error("firls: F must be non-decreasing",
                         0, 0, "firls", "", "numkit:firls:badF");
 
-    const std::size_t M = static_cast<std::size_t>(N / 2);
-    const std::size_t M1 = M + 1;
     const std::size_t numBands = Fn / 2;
+    ScratchVec<double> Wv(numBands, 1.0, &scratch);
+    if (!Warg.isEmpty()) {
+        if (Warg.numel() != numBands)
+            throw Error("firls: W must have one weight per frequency band",
+                        0, 0, "firls", "", "numkit:firls:badWLen");
+        for (std::size_t k = 0; k < numBands; ++k) {
+            const double wk = Warg.elemAsDouble(k);
+            if (!(wk > 0.0) || !std::isfinite(wk))
+                throw Error("firls: weights W must be positive and finite",
+                            0, 0, "firls", "", "numkit:firls:badW");
+            Wv[k] = wk;
+        }
+    }
 
-    ScratchVec<double> Q(M1 * M1, 0.0, &scratch);
-    ScratchVec<double> bvec(M1, 0.0, &scratch);
+    const bool oddN = (N % 2) != 0;
+    // Number of basis functions K and frequency multipliers alpha[i]:
+    //   Type I   (!oddN && !antiSym): K = N/2 + 1,  alpha[i] = i           (cos)
+    //   Type II  ( oddN && !antiSym): K = (N+1)/2,  alpha[i] = i + 0.5     (cos)
+    //   Type III (!oddN &&  antiSym): K = N/2,      alpha[i] = i + 1.0     (sin)
+    //   Type IV  ( oddN &&  antiSym): K = (N+1)/2,  alpha[i] = i + 0.5     (sin)
+    const std::size_t K = (!oddN && !antiSym) ? static_cast<std::size_t>(N / 2 + 1)
+                        : (!oddN &&  antiSym) ? static_cast<std::size_t>(N / 2)
+                                              : static_cast<std::size_t>((N + 1) / 2);
+    ScratchVec<double> alpha(K, 0.0, &scratch);
+    for (std::size_t i = 0; i < K; ++i) {
+        if (!oddN && !antiSym)      alpha[i] = static_cast<double>(i);
+        else if (!oddN && antiSym)  alpha[i] = static_cast<double>(i + 1);
+        else                        alpha[i] = static_cast<double>(i) + 0.5;
+    }
 
-    // For each band [w1, w2] = pi*[F[2k], F[2k+1]] with desired amp
-    // linearly interpolated from D1=A[2k] to D2=A[2k+1]:
-    //   Q[i,j] += (1/pi) * int_{w1}^{w2} cos(i*w)*cos(j*w) dw
-    //          =  (1/(2*pi)) * [Ic(i+j, w2)-Ic(i+j, w1)
-    //                           + Ic(|i-j|, w2)-Ic(|i-j|, w1)]
-    //   bvec[i] += (1/pi) * int D(w)*cos(i*w) dw
-    //   D(w) = D1 + slope*(w - w1), slope = (D2-D1)/(w2-w1)
+    ScratchVec<double> Q(K * K, 0.0, &scratch);
+    ScratchVec<double> bvec(K, 0.0, &scratch);
+
     for (std::size_t k = 0; k < numBands; ++k) {
         const double w1 = M_PI * F[2 * k];
         const double w2 = M_PI * F[2 * k + 1];
         if (w2 <= w1) continue;
+        const double wk = Wv[k];
         const double D1 = A[2 * k];
         const double D2 = A[2 * k + 1];
         const double slope = (D2 - D1) / (w2 - w1);
 
-        for (std::size_t i = 0; i < M1; ++i) {
-            for (std::size_t j = 0; j < M1; ++j) {
-                const int sij = static_cast<int>(i + j);
-                const int dij = static_cast<int>(i > j ? i - j : j - i);
-                const double Iplus  = Ic(sij, w2) - Ic(sij, w1);
-                const double Iminus = Ic(dij, w2) - Ic(dij, w1);
-                Q[i * M1 + j] += (Iplus + Iminus) / (2.0 * M_PI);
+        for (std::size_t i = 0; i < K; ++i) {
+            const double ai = alpha[i];
+            for (std::size_t j = 0; j < K; ++j) {
+                const double aj = alpha[j];
+                const double sij = ai + aj;
+                const double dij = std::abs(ai - aj);
+                const double Iplus  = IcReal(sij, w2) - IcReal(sij, w1);
+                const double Iminus = IcReal(dij, w2) - IcReal(dij, w1);
+                if (!antiSym)
+                    Q[i * K + j] += wk * (Iminus + Iplus) / (2.0 * M_PI);
+                else
+                    Q[i * K + j] += wk * (Iminus - Iplus) / (2.0 * M_PI);
             }
-            const int ii = static_cast<int>(i);
-            // const-amp contribution: D1 * (sin(i*w)/i)|w1^w2  (i!=0)  or D1*(w2-w1) (i==0)
-            const double Iconst = D1 * (Ic(ii, w2) - Ic(ii, w1)) / M_PI;
-            // linear-amp contribution: slope * (∫(w - w1)·cos(i·ω) dω)|w1^w2
-            const double Ilin = slope * (Iclin(ii, w2, w1) - Iclin(ii, w1, w1)) / M_PI;
-            bvec[i] += Iconst + Ilin;
+            if (!antiSym) {
+                const double Iconst = D1 * (IcReal(ai, w2) - IcReal(ai, w1)) / M_PI;
+                const double Ilin   = slope * (IclinReal(ai, w2, w1) - IclinReal(ai, w1, w1)) / M_PI;
+                bvec[i] += wk * (Iconst + Ilin);
+            } else {
+                const double Iconst = D1 * (IsReal(ai, w2) - IsReal(ai, w1)) / M_PI;
+                const double Ilin   = slope * (IslinReal(ai, w2, w1) - IslinReal(ai, w1, w1)) / M_PI;
+                bvec[i] += wk * (Iconst + Ilin);
+            }
         }
     }
 
-    ScratchVec<double> c(M1, 0.0, &scratch);
-    if (!solveSPD(Q.data(), M1, bvec.data(), c.data(), &scratch))
+    ScratchVec<double> c(K, 0.0, &scratch);
+    if (!solveSPD(Q.data(), K, bvec.data(), c.data(), &scratch))
         throw Error("firls: Q matrix is not positive-definite",
                     0, 0, "firls", "", "numkit:firls:singular");
 
-    // Reconstruct symmetric impulse response of length N+1.
-    // c[0] is the center coefficient h[M]; c[k] for k>=1 is 2·h[M-k].
-    auto bv = Value::matrix(1, M1 + M, ValueType::DOUBLE, mr);
+    const std::size_t len = static_cast<std::size_t>(N + 1);
+    auto bv = Value::matrix(1, len, ValueType::DOUBLE, mr);
     auto *bd = bv.doubleDataMut();
-    bd[M] = c[0];
-    for (std::size_t k = 1; k <= M; ++k) {
-        const double v = 0.5 * c[k];
-        bd[M - k] = v;
-        bd[M + k] = v;
+    if (!oddN && !antiSym) {
+        // Type I
+        const std::size_t M = static_cast<std::size_t>(N / 2);
+        bd[M] = c[0];
+        for (std::size_t k = 1; k <= M; ++k) {
+            const double v = 0.5 * c[k];
+            bd[M - k] = v;
+            bd[M + k] = v;
+        }
+    } else if (oddN && !antiSym) {
+        // Type II
+        const std::size_t M = static_cast<std::size_t>((N - 1) / 2);
+        for (std::size_t k = 0; k <= M; ++k) {
+            const double v = 0.5 * c[k];
+            bd[M - k] = v;
+            bd[M + 1 + k] = v;
+        }
+    } else if (!oddN && antiSym) {
+        // Type III
+        const std::size_t M = static_cast<std::size_t>(N / 2);
+        bd[M] = 0.0;
+        for (std::size_t k = 0; k < M; ++k) {
+            const double v = 0.5 * c[k];
+            bd[M - (k + 1)] =  v;
+            bd[M + (k + 1)] = -v;
+        }
+    } else {
+        // Type IV
+        const std::size_t M = static_cast<std::size_t>((N - 1) / 2);
+        for (std::size_t k = 0; k <= M; ++k) {
+            const double v = 0.5 * c[k];
+            bd[M - k]     =  v;
+            bd[M + 1 + k] = -v;
+        }
     }
     return bv;
+}
+
+Value firls(int N, const Value &Farg, const Value &Aarg,
+            std::pmr::memory_resource *mr)
+{
+    return firls(N, Farg, Aarg, Value::Empty, "", mr);
 }
 
 namespace {

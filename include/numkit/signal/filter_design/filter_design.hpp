@@ -64,6 +64,13 @@ Value firls(int                          N,
             const Value &                A,
             std::pmr::memory_resource *  mr = nullptr);
 
+Value firls(int                          N,
+            const Value &                F,
+            const Value &                A,
+            const Value &                W,
+            const std::string &          ftype,
+            std::pmr::memory_resource *  mr = nullptr);
+
 /// cell2sos(C) — convert cell array of {Bi, Ai} pairs to L×6 SOS matrix.
 /// 2-output form [S, G] = cell2sos(C) extracts the leading scalar gain
 /// section if present (when C{1} = {scalar_b, scalar_a}).

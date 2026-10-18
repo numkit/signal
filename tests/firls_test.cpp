@@ -50,10 +50,24 @@ TEST_F(FirlsTest, LinearRampInBand)
     EXPECT_NEAR(evalScalar("max(abs(b3 - fliplr(b3)))"), 0.0, 1e-12);
 }
 
-// Even-N rejection (Type-III/IV not implemented).
-TEST_F(FirlsTest, OddOrderRejected)
+// Type-II (odd N), Type-III/IV ('hilbert' / 'differentiator'), and weights W.
+TEST_F(FirlsTest, TypeIIOddOrderAndHilbertDifferentiatorWeights)
 {
-    EXPECT_THROW(eval("firls(21, [0 0.4 0.5 1], [1 1 0 0]);"), std::exception);
+    eval("b2 = firls(21, [0 0.4 0.5 1], [1 1 0 0]);");
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(b2)")), 22);
+    EXPECT_NEAR(evalScalar("max(abs(b2 - fliplr(b2)))"), 0.0, 1e-12);
+
+    eval("bh = firls(20, [0.1 0.9], [1 1], 'hilbert');");
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(bh)")), 21);
+    EXPECT_NEAR(evalScalar("max(abs(bh + fliplr(bh)))"), 0.0, 1e-12);
+
+    eval("bd = firls(19, [0 0.8], [0 0.8], 'differentiator');");
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(bd)")), 20);
+    EXPECT_NEAR(evalScalar("max(abs(bd + fliplr(bd)))"), 0.0, 1e-12);
+
+    eval("bw = firls(20, [0 0.4 0.5 1], [1 1 0 0], [1 10]);");
+    EXPECT_EQ(static_cast<int>(evalScalar("numel(bw)")), 21);
+    EXPECT_NEAR(evalScalar("max(abs(bw - fliplr(bw)))"), 0.0, 1e-12);
 }
 
 // Length mismatch rejection.

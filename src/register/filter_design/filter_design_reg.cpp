@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_design/filter_design_reg.cpp
+// toolboxes/signal/src/filter_design/filter_design_reg.cpp
 //
 // CallContext register half of filter_design/filter_design.cpp (Phase 2b compute/register split).
 // The detail{{}} *_reg fns were interleaved with compute in the original
@@ -65,7 +65,15 @@ void firls_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
 {
     argcheck::checkNargin(args.size(), 3, 5, "firls");
     const int N = firOrder(args[0], 1, "N", "firls");
-    outs[0] = firls(N, args[1], args[2], ctx.engine->resource());
+    Value W = Value::Empty;
+    std::string ftype;
+    for (std::size_t i = 3; i < args.size(); ++i) {
+        if (args[i].isChar() || args[i].isString())
+            ftype = args[i].toString();
+        else
+            W = args[i];
+    }
+    outs[0] = firls(N, args[1], args[2], W, ftype, ctx.engine->resource());
 }
 
 void fir2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
