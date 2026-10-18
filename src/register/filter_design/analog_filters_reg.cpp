@@ -229,7 +229,7 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     auto rootsOf = [&](const Value &p) -> std::vector<FreqsRoot> {
         std::vector<FreqsRoot> out;
         if (!p.isComplex() && p.numel() >= 1) {
-            auto r = polyRootsDurandKerner(&scratch, p.doubleData(), p.numel());
+            auto r = polyRootsDurandKerner(p.doubleData(), p.numel(), &scratch);
             for (const auto &z : r)
                 out.push_back({z.real(), z.imag()});
         }

@@ -319,8 +319,8 @@ tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
                      0, 0, "tf2sos", "", "numkit:tf2sos:emptyB");
 
     const double gain = (bv[0] / av[0]).real();
-    auto zeros = polyRootsDurandKerner(&scratch, bv.data(), bv.size());
-    auto poles = polyRootsDurandKerner(&scratch, av.data(), av.size());
+    auto zeros = polyRootsDurandKerner(bv.data(), bv.size(), &scratch);
+    auto poles = polyRootsDurandKerner(av.data(), av.size(), &scratch);
 
     auto toCplxVec = [&](const ScratchVec<Complex> &v) -> Value {
         if (v.empty())

@@ -65,7 +65,7 @@ void bilinearTransformPZ(const Complex *sPoles, std::size_t pN, const Complex *s
         const Complex sp = sPoles[i];
         zPoles[i] = (2.0 + sp) / (2.0 - sp);
     }
-    aOut = polyExpandFromRoots(mr, zPoles.data(), zPoles.size());
+    aOut = polyExpandFromRoots(zPoles.data(), zPoles.size(), mr);
 
     // Map each finite s-plane zero. Any "zero at infinity" in the analog
     // domain (count = pN - zN, classic for an N-pole all-pole prototype
@@ -79,7 +79,7 @@ void bilinearTransformPZ(const Complex *sPoles, std::size_t pN, const Complex *s
     for (std::size_t i = zN; i < totalZ; ++i)
         zZeros[i] = Complex(-1.0, 0.0);
 
-    bOut = polyExpandFromRoots(mr, zZeros.data(), zZeros.size());
+    bOut = polyExpandFromRoots(zZeros.data(), zZeros.size(), mr);
 }
 
 // Normalise b so that |H(z0)| == 1 at the reference frequency z0 (== 1
