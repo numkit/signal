@@ -876,11 +876,13 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         throw Error("firpm: all bands have zero width",
                     0, 0, "firpm", "", "numkit:firpm:badF");
 
-    const std::size_t gridTarget =
-        static_cast<std::size_t>(lgrid) * (L + 2);
+    double df = 1.0 / (static_cast<double>(lgrid) * static_cast<double>(r));
+    if (totalWidth / df < static_cast<double>(nExtr + 4 * numBands)) {
+        df = totalWidth / static_cast<double>(lgrid * r);
+    }
 
     ScratchVec<PMGridPoint> grid(&arena);
-    grid.reserve(gridTarget + 4 * numBands);
+    grid.reserve(static_cast<std::size_t>(totalWidth / df) + 4 * numBands);
 
     for (std::size_t k = 0; k < numBands; ++k) {
         const double f1 = F[2 * k], f2 = F[2 * k + 1];
@@ -891,23 +893,35 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         if (wt <= 0.0)
             throw Error("firpm: weights must be positive",
                         0, 0, "firpm", "", "numkit:firpm:badW");
-        std::size_t nb = static_cast<std::size_t>(
-            std::ceil(double(gridTarget) * bw / totalWidth));
-        if (nb < 4) nb = 4;
+
+        ScratchVec<double> fBand(&arena);
+        double fCur = ((filterType == TYPE_III || filterType == TYPE_IV) && k == 0 && f1 == 0.0)
+                      ? df
+                      : f1;
+        while (fCur <= f2 + 1e-15) {
+            fBand.push_back(fCur);
+            fCur += df;
+        }
+        if (!fBand.empty()) {
+            fBand.back() = f2;
+        } else {
+            fBand.push_back(f2);
+        }
+        if ((filterType == TYPE_II || filterType == TYPE_III) && !fBand.empty()
+            && fBand.back() > 1.0 - df + 1e-15) {
+            fBand.pop_back();
+        }
+
         // Differentiator: apply the 1/f weighting only in NON-ZERO
         // amplitude bands (where A(l+1) >= 0.0001). Stopbands keep the
         // user weight.
         const bool diffActive = isDiff && std::fabs(a2) >= 1e-4;
-        for (std::size_t i = 0; i < nb; ++i) {
-            const double t = double(i) / double(nb - 1);
+        for (std::size_t i = 0; i < fBand.size(); ++i) {
+            const double f_norm = fBand[i];
+            const double t = (bw > 0.0) ? ((f_norm - f1) / bw) : 0.0;
             PMGridPoint p;
-            p.w = M_PI * (f1 + t * bw);
-            // Desired amplitude — straight linear-interp between band
-            // edges. MATLAB DOES NOT pre-scale by f for differentiator;
-            // the linear-in-frequency desired comes from the user passing
-            // A = [0 slope*Fmax] (e.g. A=[0 0.9] → D rises 0 → 0.9 across).
+            p.w = M_PI * f_norm;
             const double D_raw = a1 + t * (a2 - a1);
-            // Q-factor + endpoint skips per filter type.
             double Q = 1.0;
             switch (filterType) {
                 case TYPE_I:
@@ -926,12 +940,8 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
                     Q = std::sin(0.5 * p.w);
                     break;
             }
-            // Apply user weight + 1/f scaling for differentiator
-            // passbands (matching firpmfrf): W_eff = wt / (f_norm/2)
-            // where f_norm = ω/π ∈ [0, 1].
             double W_eff = wt;
             if (diffActive) {
-                const double f_norm = p.w / M_PI;
                 if (f_norm < 1e-12) continue;
                 W_eff = wt / (0.5 * f_norm);
             }

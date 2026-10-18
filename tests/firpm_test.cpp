@@ -165,3 +165,17 @@ TEST_F(FirpmTest, OutputIsSymmetric)
     engine.eval("d = max(abs(b - b(end:-1:1)));");
     EXPECT_LT(eval_scalar("d"), 1e-15);
 }
+
+// Regression guard for McClellan-Parks-Rabiner uniform-step frequency grid
+// (df = 1 / (lgrid * r) with band-edge snapping): order-63 Type-II bandpass
+// firpm(63, [0 0.40 0.45 0.55 .60 1], [0 0 1 1 0 0]) matches the reference
+// engine to 12+ digits.
+TEST_F(FirpmTest, BandpassOddOrderN63UniformGrid)
+{
+    engine.eval("[a, b] = firpm(63, [0 0.40 0.45 0.55 .60 1], [0 0 1 1 0 0]);");
+    EXPECT_DOUBLE_EQ(eval_scalar("length(a)"), 64.0);
+    EXPECT_NEAR(eval_scalar("b"), 2.581428798645168e-02, 1e-12);
+    EXPECT_NEAR(eval_scalar("a(1)"), 6.403976032074466e-03, 1e-12);
+    EXPECT_NEAR(eval_scalar("a(32)"), 1.063813192030559e-01, 1e-12);
+}
+
