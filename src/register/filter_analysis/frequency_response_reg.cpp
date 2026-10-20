@@ -105,14 +105,54 @@ void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
     size_t npts = 512;
     double fs = 0.0;
     int numericSeen = 0;
+    const Value *fvec = nullptr;
     for (size_t i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
-            if (numericSeen == 0)
-                npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
-                    argcheck::expectedReal(args[i], int(i) + 1, "n", "grpdelay"),
-                    int(i) + 1, "n", "grpdelay"));
-        else if (numericSeen == 1) fs   = args[i].toScalar();
+        if (numericSeen == 0 && args[i].numel() > 1)
+            fvec = &args[i];
+        else if (numericSeen == 0)
+            npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+                argcheck::expectedReal(args[i], int(i) + 1, "n", "grpdelay"),
+                int(i) + 1, "n", "grpdelay"));
+        else if (numericSeen == 1) fs = args[i].toScalar();
         ++numericSeen;
+    }
+    if (fvec) {
+        const size_t nf = fvec->numel();
+        const size_t nb = args[0].numel(), na = a.numel();
+        auto gd = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
+        if (nf > 0 && nb > 0 && na > 0) {
+            ScratchArena scratch(mr);
+            const size_t nc = nb + na - 1;
+            auto c = ScratchVec<double>(nc, &scratch);
+            for (size_t i = 0; i < nc; ++i) c[i] = 0.0;
+            for (size_t i = 0; i < nb; ++i)
+                for (size_t j = 0; j < na; ++j)
+                    c[i + j] += args[0].elemAsDouble(i) * a.elemAsDouble(na - 1 - j);
+            double *g = gd.doubleDataMut();
+            const double offset = static_cast<double>(na) - 1.0;
+            constexpr double kPi = 3.14159265358979323846;
+            for (size_t k = 0; k < nf; ++k) {
+                const double fk = fvec->elemAsDouble(k);
+                const double w = (fs > 0.0) ? (2.0 * kPi * fk / fs) : fk;
+                const Complex ejw(std::cos(w), -std::sin(w));
+                Complex C(0, 0), CR(0, 0), ejwk(1, 0);
+                for (size_t n = 0; n < nc; ++n) {
+                    C  += c[n] * ejwk;
+                    CR += (static_cast<double>(n) * c[n]) * ejwk;
+                    ejwk *= ejw;
+                }
+                const double cmag2 = C.real() * C.real() + C.imag() * C.imag();
+                g[k] = (cmag2 < 1e-300) ? 0.0 : ((CR / C).real() - offset);
+            }
+        }
+        outs[0] = std::move(gd);
+        if (nargout > 1) {
+            auto fv = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
+            for (size_t k = 0; k < nf; ++k) fv.doubleDataMut()[k] = fvec->elemAsDouble(k);
+            outs[1] = std::move(fv);
+        }
+        return;
     }
     auto [gd, W] = grpdelay(args[0], a, npts, fs, mr);
     outs[0] = std::move(gd);

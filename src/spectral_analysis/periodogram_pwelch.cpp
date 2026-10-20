@@ -158,7 +158,9 @@ std::tuple<Value, Value>
 pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double fs, std::pmr::memory_resource *mr)
 {
     const size_t nx = x.numel();
-    const double *xd = x.doubleData();
+    const bool isCplx = x.isComplex();
+    const double *xd = isCplx ? nullptr : x.doubleData();
+    const Complex *xcd = isCplx ? x.complexData() : nullptr;
 
     ScratchArena scratch(mr);
 
@@ -202,17 +204,24 @@ pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double
     // O(nSegments × nfft). Reusing one buffer keeps it at O(nfft).
     auto buf = ScratchVec<Complex>(nfft, &scratch);
 
+    const size_t nOutReal = isCplx ? nfft : nOut;
+    if (isCplx) psd.resize(nOutReal);
     for (size_t start = 0; start + winLen <= nx; start += step) {
-        for (size_t i = 0; i < winLen; ++i)
-            buf[i] = Complex(xd[start + i] * win[i], 0.0);
+        if (isCplx) {
+            for (size_t i = 0; i < winLen; ++i)
+                buf[i] = xcd[start + i] * win[i];
+        } else {
+            for (size_t i = 0; i < winLen; ++i)
+                buf[i] = Complex(xd[start + i] * win[i], 0.0);
+        }
         for (size_t i = winLen; i < nfft; ++i)
             buf[i] = Complex(0.0, 0.0);
 
         fftRadix2(&scratch, buf, 1);
 
-        for (size_t i = 0; i < nOut; ++i) {
+        for (size_t i = 0; i < nOutReal; ++i) {
             double mag2 = std::norm(buf[i]);
-            if (i > 0 && i < nfft / 2)
+            if (!isCplx && i > 0 && i < nfft / 2)
                 mag2 *= 2.0;
             psd[i] += mag2;
         }
@@ -223,12 +232,13 @@ pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double
     // (winPower * fs). With default fs = 2*pi this matches MATLAB's
     // pwelch(x) without explicit fs.
     const double scale = 1.0 / (winPower * fs * nSegments);
-    auto Pxx = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
-    auto F = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < nOut; ++i) {
+    auto Pxx = Value::matrix(nOutReal, 1, ValueType::DOUBLE, mr);
+    auto F = Value::matrix(nOutReal, 1, ValueType::DOUBLE, mr);
+    for (size_t i = 0; i < nOutReal; ++i) {
         Pxx.doubleDataMut()[i] = psd[i] * scale;
-        F.doubleDataMut()[i] = (fs / 2.0) * static_cast<double>(i)
-                               / static_cast<double>(nOut - 1);
+        F.doubleDataMut()[i] = isCplx
+            ? (fs * static_cast<double>(i) / static_cast<double>(nfft))
+            : ((fs / 2.0) * static_cast<double>(i) / static_cast<double>(nOutReal - 1));
     }
 
     return std::make_tuple(std::move(Pxx), std::move(F));

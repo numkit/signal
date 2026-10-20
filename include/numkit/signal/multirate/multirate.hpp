@@ -91,6 +91,13 @@ Value resample(const Value &                x,
                size_t                       q,
                std::pmr::memory_resource *  mr = nullptr);
 
+Value resample(const Value &                x,
+               size_t                       p,
+               size_t                       q,
+               int                          n,
+               double                       beta = 5.0,
+               std::pmr::memory_resource *  mr = nullptr);
+
 
 /// @}
 } // namespace numkit::signal

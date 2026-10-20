@@ -91,7 +91,38 @@ void pwelch_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
             4, "nfft", "pwelch")) : 0;
     const double fs   = (args.size() >= 5 && !args[4].isEmpty()) ? args[4].toScalar() : kDefaultFs;
 
-    auto [Pxx, F] = pwelch(args[0], window, noverlap, nfft, fs, ctx.engine->resource());
+    bool twoSided = args[0].isComplex();
+    for (size_t i = 1; i < args.size(); ++i) {
+        if (args[i].isChar() || args[i].isString()) {
+            std::string s = args[i].toString();
+            for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (s == "twosided" || s == "centered") twoSided = true;
+        }
+    }
+    auto *mr = ctx.engine->resource();
+    auto [Pxx, F] = pwelch(args[0], window, noverlap, nfft, fs, mr);
+    if (twoSided && !args[0].isComplex() && Pxx.numel() > 1) {
+        const size_t nOne = Pxx.numel();
+        const size_t fullN = (nfft > 0) ? nfft : ((nOne - 1) * 2);
+        auto P2 = Value::matrix(fullN, 1, ValueType::DOUBLE, mr);
+        auto F2 = Value::matrix(fullN, 1, ValueType::DOUBLE, mr);
+        const double *p1 = Pxx.doubleData();
+        double *p2 = P2.doubleDataMut();
+        double *f2 = F2.doubleDataMut();
+        p2[0] = p1[0];
+        for (size_t k = 1; k < nOne; ++k) {
+            if (fullN % 2 == 0 && k == fullN / 2) {
+                p2[k] = p1[k];
+            } else {
+                p2[k] = 0.5 * p1[k];
+                if (fullN - k < fullN) p2[fullN - k] = 0.5 * p1[k];
+            }
+        }
+        for (size_t k = 0; k < fullN; ++k)
+            f2[k] = fs * static_cast<double>(k) / static_cast<double>(fullN);
+        Pxx = std::move(P2);
+        F = std::move(F2);
+    }
     outs[0] = std::move(Pxx);
     if (nargout > 1)
         outs[1] = std::move(F);

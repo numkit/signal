@@ -297,9 +297,9 @@ Value chirp(const Value &t, double f0, double t1, double f1,
 
     enum class Mode { Linear, Quadratic, Logarithmic };
     Mode mode;
-    if      (m == "linear" || m.empty())   mode = Mode::Linear;
-    else if (m == "quadratic")             mode = Mode::Quadratic;
-    else if (m == "logarithmic")           mode = Mode::Logarithmic;
+    if      (m.empty() || std::string("linear").rfind(m, 0) == 0 || m == "li")        mode = Mode::Linear;
+    else if (std::string("quadratic").rfind(m, 0) == 0 || m == "q")                   mode = Mode::Quadratic;
+    else if (std::string("logarithmic").rfind(m, 0) == 0 || m == "lo")                mode = Mode::Logarithmic;
     else
         throw Error("chirp: method must be 'linear', 'quadratic', or 'logarithmic'",
                      0, 0, "chirp", "", "numkit:chirp:badMethod");

@@ -66,13 +66,18 @@ void decimate_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
 
 void resample_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
 {
-    argcheck::checkNargin(args.size(), 3, 3, "resample");  // reference also accepts n/beta/method + name-value (unimplemented)
-    outs[0] = resample(args[0],
-        static_cast<size_t>(argcheck::expectedPositiveInteger(
-            argcheck::expectedReal(args[1], 2, "p", "resample"), 2, "p", "resample")),
-        static_cast<size_t>(argcheck::expectedPositiveInteger(
-            argcheck::expectedReal(args[2], 3, "q", "resample"), 3, "q", "resample")),
-        ctx.engine->resource());
+    argcheck::checkNargin(args.size(), 3, 5, "resample");
+    const size_t p = static_cast<size_t>(argcheck::expectedPositiveInteger(
+        argcheck::expectedReal(args[1], 2, "p", "resample"), 2, "p", "resample"));
+    const size_t q = static_cast<size_t>(argcheck::expectedPositiveInteger(
+        argcheck::expectedReal(args[2], 3, "q", "resample"), 3, "q", "resample"));
+    int n_order = 10;
+    double beta = 5.0;
+    if (args.size() >= 4 && args[3].isNumeric() && args[3].numel() == 1)
+        n_order = static_cast<int>(args[3].toScalar());
+    if (args.size() >= 5 && args[4].isNumeric() && args[4].numel() == 1)
+        beta = args[4].toScalar();
+    outs[0] = resample(args[0], p, q, n_order, beta, ctx.engine->resource());
 }
 
 } // namespace detail

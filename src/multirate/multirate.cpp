@@ -236,6 +236,11 @@ Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 // ── resample ──────────────────────────────────────────────────────────
 Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr)
 {
+    return resample(x, p, q, 10, 5.0, mr);
+}
+
+Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, std::pmr::memory_resource *mr)
+{
     detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
         throw Error("resample: P and Q must be positive integers",
@@ -252,8 +257,8 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
             xrd[i] = xcd[i].real();
             xid[i] = xcd[i].imag();
         }
-        Value yr = resample(xr, p, q, mr);
-        Value yi = resample(xi, p, q, mr);
+        Value yr = resample(xr, p, q, n_order, beta_in, mr);
+        Value yi = resample(xi, p, q, n_order, beta_in, mr);
         Value out = createLike(yr, ValueType::COMPLEX, mr);
         Complex *od = out.complexDataMut();
         const double *yrd = yr.doubleData();
@@ -276,8 +281,8 @@ Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr
     // Anti-alias filter: fc = 1/(2·max(p,q)); L = 2·N·max(p,q)+1.
     //   h = p · firls(L-1,[0 2fc 2fc 1],[1 1 0 0]) · kaiser(L,beta) / sum(·)
     // (normalised so sum(h) = p — the interpolation gain).
-    const int    N    = 10;
-    const double beta = 5.0;
+    const int    N    = (n_order > 0) ? n_order : 10;
+    const double beta = beta_in;
     const size_t pqmax = std::max(p, q);
     const double fc = 1.0 / (2.0 * static_cast<double>(pqmax));
     const int    L  = 2 * N * static_cast<int>(pqmax) + 1;

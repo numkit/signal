@@ -101,7 +101,9 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
 
     auto [cfull, lagsfull] = haveY ? xcorr(x, y, mr) : xcorr(x, mr);
     const size_t nc = cfull.numel();
-    double *cd = cfull.doubleDataMut();
+    const bool isCplx = cfull.isComplex();
+    double *cd = isCplx ? nullptr : cfull.doubleDataMut();
+    Complex *ccd = isCplx ? cfull.complexDataMut() : nullptr;
     const double *ld = lagsfull.doubleData();
     const size_t nx = x.numel(), ny = y.numel();
     const size_t N  = std::max(nx, ny);
@@ -110,25 +112,32 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
     std::string opt = scaleopt;
     for (char &ch : opt) if (ch >= 'A' && ch <= 'Z') ch = char(ch + 32);
 
+    auto scaleElem = [&](size_t i, double s) {
+        if (isCplx) ccd[i] *= s;
+        else cd[i] *= s;
+    };
+
     if (opt == "biased") {
         const double inv = (N > 0) ? 1.0 / static_cast<double>(N) : 0.0;
-        for (size_t i = 0; i < nc; ++i) cd[i] *= inv;
+        for (size_t i = 0; i < nc; ++i) scaleElem(i, inv);
     } else if (opt == "unbiased") {
         for (size_t i = 0; i < nc; ++i) {
             const double div = static_cast<double>(N) - std::abs(ld[i]);
-            cd[i] = (div > 0.0) ? cd[i] / div : 0.0;
+            scaleElem(i, (div > 0.0) ? (1.0 / div) : 0.0);
         }
     } else if (opt == "coeff" || opt == "normalized") {
-        // Normalize so an autocorrelation has 1.0 at lag 0:
-        // divide by sqrt(Rxx(0) * Ryy(0)) = sqrt(sum x^2 * sum y^2).
         double c0x = 0.0, c0y = 0.0;
-        const double *xd = x.doubleData();
-        const double *yd = y.doubleData();
-        for (size_t i = 0; i < nx; ++i) c0x += xd[i] * xd[i];
-        for (size_t i = 0; i < ny; ++i) c0y += yd[i] * yd[i];
+        for (size_t i = 0; i < nx; ++i) {
+            if (x.isComplex()) c0x += std::norm(x.complexData()[i]);
+            else { double v = x.elemAsDouble(i); c0x += v * v; }
+        }
+        for (size_t i = 0; i < ny; ++i) {
+            if (y.isComplex()) c0y += std::norm(y.complexData()[i]);
+            else { double v = y.elemAsDouble(i); c0y += v * v; }
+        }
         const double denom = std::sqrt(c0x * c0y);
         if (denom > 0.0)
-            for (size_t i = 0; i < nc; ++i) cd[i] /= denom;
+            for (size_t i = 0; i < nc; ++i) scaleElem(i, 1.0 / denom);
     } else if (!(opt.empty() || opt == "none")) {
         throw Error("xcorr: scaleopt must be 'none', 'biased', 'unbiased', or 'coeff'",
                      0, 0, "xcorr", "", "numkit:xcorr:badScaleopt");
@@ -141,16 +150,20 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
         const int center0 = fullMaxLag;
         const int outLen = 2 * maxlag + 1;
         const bool colOut = (x.dims().rows() > 1 && x.dims().cols() == 1);
-        Value cOut = colOut ? Value::matrix(outLen, 1, ValueType::DOUBLE, mr)
-                            : Value::matrix(1, outLen, ValueType::DOUBLE, mr);
+        ValueType vt = isCplx ? ValueType::COMPLEX : ValueType::DOUBLE;
+        Value cOut = colOut ? Value::matrix(outLen, 1, vt, mr)
+                            : Value::matrix(1, outLen, vt, mr);
         Value lOut = Value::matrix(1, outLen, ValueType::DOUBLE, mr);
-        double *co = cOut.doubleDataMut();
         double *lo = lOut.doubleDataMut();
         for (int m = -maxlag; m <= maxlag; ++m) {
             const int src = center0 + m;
             const int dst = m + maxlag;
             lo[dst] = static_cast<double>(m);
-            co[dst] = (src >= 0 && src < static_cast<int>(nc)) ? cd[src] : 0.0;
+            if (isCplx) {
+                cOut.complexDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? ccd[src] : Complex(0.0, 0.0);
+            } else {
+                cOut.doubleDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? cd[src] : 0.0;
+            }
         }
         cfull = std::move(cOut);
         lagsfull = std::move(lOut);
