@@ -195,22 +195,48 @@ Value fftfilt(const Value &b, const Value &x, size_t nfft, std::pmr::memory_reso
         nfft = nextPow2(blockL + nb - 1);
 
     ScratchArena scratch(mr);
+    const bool isCx = b.isComplex() || x.isComplex();
     // Precompute B(f) = FFT(b padded to nfft).
     auto Bf = ScratchVec<Complex>(nfft, &scratch);
     for (size_t i = 0; i < nb; ++i)
-        Bf[i] = Complex(readReal(b, i), 0.0);
+        Bf[i] = b.isComplex() ? b.complexElem(i) : Complex(readReal(b, i), 0.0);
     auto W_fwd = ScratchVec<Complex>(nfft / 2, &scratch);
     auto W_inv = ScratchVec<Complex>(nfft / 2, &scratch);
     fillFftTwiddles(W_fwd.data(), nfft, +1);
     fillFftTwiddles(W_inv.data(), nfft, -1);
     fftRadix2(Bf.data(), nfft, W_fwd.data());
 
+    auto Xf  = ScratchVec<Complex>(nfft, &scratch);
+    const double invN = 1.0 / static_cast<double>(nfft);
+
+    if (isCx) {
+        const bool row = (x.dims().rows() == 1 && x.dims().cols() >= 1);
+        auto out = Value::complexMatrix(row ? 1 : nx, row ? nx : 1, mr);
+        Complex *dst = out.complexDataMut();
+        std::fill(dst, dst + nx, Complex(0.0, 0.0));
+        for (size_t pos = 0; pos < nx; pos += blockL) {
+            const size_t L = std::min(blockL, nx - pos);
+            std::fill(Xf.begin(), Xf.end(), Complex(0, 0));
+            for (size_t i = 0; i < L; ++i)
+                Xf[i] = x.isComplex() ? x.complexElem(pos + i) : Complex(readReal(x, pos + i), 0.0);
+            fftRadix2(Xf.data(), nfft, W_fwd.data());
+            for (size_t i = 0; i < nfft; ++i)
+                Xf[i] *= Bf[i];
+            fftRadix2(Xf.data(), nfft, W_inv.data());
+            const size_t blockOut = L + nb - 1;
+            for (size_t i = 0; i < blockOut; ++i) {
+                const size_t outIdx = pos + i;
+                if (outIdx < nx)
+                    dst[outIdx] += Xf[i] * invN;
+            }
+        }
+        return out;
+    }
+
     auto out = sameOrientReal(x, nx, mr);
     double *dst = out.doubleDataMut();
     std::fill(dst, dst + nx, 0.0);
 
-    auto Xf  = ScratchVec<Complex>(nfft, &scratch);
-    const double invN = 1.0 / static_cast<double>(nfft);
     for (size_t pos = 0; pos < nx; pos += blockL) {
         const size_t L = std::min(blockL, nx - pos);
         std::fill(Xf.begin(), Xf.end(), Complex(0, 0));
