@@ -120,6 +120,7 @@ void taylorwin_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Cal
 void blackmanharris_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void bohmanwin_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void barthannwin_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
+void dpss_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void unwrap_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void hilbert_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
 void envelope_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx);
@@ -462,6 +463,7 @@ void SignalLibrary::install(PluginContext &engine)
     reg("windows", "blackmanharris", &signal::detail::blackmanharris_reg);
     reg("windows", "bohmanwin",      &signal::detail::bohmanwin_reg);
     reg("windows", "barthannwin",    &signal::detail::barthannwin_reg);
+    reg("windows", "dpss",           &signal::detail::dpss_reg);
     // MATLAB legacy alias `hanning` â†’ also points at hann_reg. compat
     // already has 'hann'; this aliases the same impl into compat as
     // 'hanning' too (separate compat entry â€” different short-name).

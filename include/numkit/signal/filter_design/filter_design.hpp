@@ -43,6 +43,13 @@ Value fir1(int                          N,
            const std::string &          type = "low",
            std::pmr::memory_resource *  mr   = nullptr);
 
+Value fir1(int                          N,
+           const Value &                Wn,
+           const std::string &          type,
+           const Value &                window,
+           bool                         scale,
+           std::pmr::memory_resource *  mr   = nullptr);
+
 /// Least-squares FIR filter design (Type-I linear-phase only).
 /// Solves the weighted least-squares problem on a piecewise-linear
 /// desired amplitude response specified by frequency-edge / amplitude

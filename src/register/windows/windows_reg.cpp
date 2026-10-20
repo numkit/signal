@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/windows/windows_reg.cpp
+// toolboxes/signal/src/windows/windows_reg.cpp
 //
 // Register half of the signal windows builtins: the CallContext wrappers
 // delegating to the engine-free compute in windows.cpp. library.cpp
@@ -222,6 +222,21 @@ void barthannwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> out
     argcheck::checkNargin(args.size(), 1, 2, "barthannwin");
     parseTypeNameOnly(args, "barthannwin");
     outs[0] = barthannwin(windowN(args[0], "barthannwin"), ctx.engine->resource());
+}
+
+void dpss_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 4, "dpss");
+    const size_t N = static_cast<size_t>(argcheck::expectedPositiveInteger(
+        argcheck::expectedReal(args[0], 1, "N", "dpss"), 1, "N", "dpss"));
+    const double nw = args[1].toScalar();
+    size_t k = std::min(N, std::max<size_t>(1, static_cast<size_t>(std::llround(2.0 * nw))));
+    if (args.size() >= 3 && args[2].isNumeric() && !args[2].isEmpty()) {
+        k = std::min(N, static_cast<size_t>(std::max(1.0, std::round(args[2].elemAsDouble(args[2].numel() - 1)))));
+    }
+    auto [E, V] = dpss(N, nw, k, ctx.engine->resource());
+    outs[0] = std::move(E);
+    if (nargout >= 2) outs[1] = std::move(V);
 }
 
 } // namespace detail

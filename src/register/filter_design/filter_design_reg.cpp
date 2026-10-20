@@ -53,12 +53,34 @@ void fir1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
 {
     argcheck::checkNargin(args.size(), 2, 6, "fir1");
     const int N = firOrder(args[0], 1, "n", "fir1");
-    const double Wn = argcheck::expectedReal(args[1], 2, "Wn", "fir1");
-    std::string type = "low";
-    if (args.size() >= 3 && args[2].isChar())
-        type = args[2].toString();
-
-    outs[0] = fir1(N, Wn, type, ctx.engine->resource());
+    if (args[1].isScalar() && args.size() <= 3 && (args.size() < 3 || args[2].isChar() || args[2].isString())) {
+        const double Wn = argcheck::expectedReal(args[1], 2, "Wn", "fir1");
+        std::string type = "low";
+        if (args.size() >= 3 && (args[2].isChar() || args[2].isString()))
+            type = args[2].toString();
+        outs[0] = fir1(N, Wn, type, ctx.engine->resource());
+        return;
+    }
+    std::string type;
+    Value window = Value::Empty;
+    bool scale = true;
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i].isChar() || args[i].isString()) {
+            std::string s = args[i].toString();
+            std::string sl = s;
+            for (char &ch : sl)
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            if (sl == "noscale")
+                scale = false;
+            else if (sl == "scale")
+                scale = true;
+            else
+                type = s;
+        } else if (args[i].isNumeric()) {
+            window = args[i];
+        }
+    }
+    outs[0] = fir1(N, args[1], type, window, scale, ctx.engine->resource());
 }
 
 void firls_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)

@@ -163,33 +163,73 @@ bool solveSPD(const double *A_in, std::size_t n, const double *b_in, double *x_o
     ScratchVec<double> y(n, &scratch);
 
     // Cholesky: L·L' = A
-    for (std::size_t i = 0; i < n; ++i) {
+    bool cholOk = true;
+    for (std::size_t i = 0; i < n && cholOk; ++i) {
         for (std::size_t j = 0; j <= i; ++j) {
             double s = A_in[i * n + j];
             for (std::size_t k = 0; k < j; ++k)
                 s -= L[i * n + k] * L[j * n + k];
             if (i == j) {
-                if (s <= 0.0) return false;
+                if (s <= 1e-14) { cholOk = false; break; }
                 L[i * n + j] = std::sqrt(s);
             } else {
                 L[i * n + j] = s / L[j * n + j];
             }
         }
     }
-    // Forward solve L·y = b
-    for (std::size_t i = 0; i < n; ++i) {
-        double s = b_in[i];
-        for (std::size_t k = 0; k < i; ++k)
-            s -= L[i * n + k] * y[k];
-        y[i] = s / L[i * n + i];
+    if (cholOk) {
+        // Forward solve L·y = b
+        for (std::size_t i = 0; i < n; ++i) {
+            double s = b_in[i];
+            for (std::size_t k = 0; k < i; ++k)
+                s -= L[i * n + k] * y[k];
+            y[i] = s / L[i * n + i];
+        }
+        // Back solve L'·x = y
+        for (std::size_t ii = 0; ii < n; ++ii) {
+            std::size_t i = n - 1 - ii;
+            double s = y[i];
+            for (std::size_t k = i + 1; k < n; ++k)
+                s -= L[k * n + i] * x_out[k];
+            x_out[i] = s / L[i * n + i];
+        }
+        return true;
     }
-    // Back solve L'·x = y
+
+    // Fallback: Gaussian elimination with partial pivoting (matches G \ b for
+    // high-order firls where transition bands make Q numerically semi-definite).
+    for (std::size_t i = 0; i < n * n; ++i) L[i] = A_in[i];
+    for (std::size_t i = 0; i < n; ++i)     y[i] = b_in[i];
+    for (std::size_t k = 0; k < n; ++k) {
+        std::size_t piv = k;
+        double maxAbs = std::abs(L[k * n + k]);
+        for (std::size_t i = k + 1; i < n; ++i) {
+            double v = std::abs(L[i * n + k]);
+            if (v > maxAbs) { maxAbs = v; piv = i; }
+        }
+        if (piv != k) {
+            for (std::size_t j = k; j < n; ++j)
+                std::swap(L[k * n + j], L[piv * n + j]);
+            std::swap(y[k], y[piv]);
+        }
+        double diag = L[k * n + k];
+        if (std::abs(diag) < 1e-15) diag = (diag >= 0.0 ? 1e-15 : -1e-15);
+        for (std::size_t i = k + 1; i < n; ++i) {
+            double factor = L[i * n + k] / diag;
+            L[i * n + k] = 0.0;
+            for (std::size_t j = k + 1; j < n; ++j)
+                L[i * n + j] -= factor * L[k * n + j];
+            y[i] -= factor * y[k];
+        }
+    }
     for (std::size_t ii = 0; ii < n; ++ii) {
         std::size_t i = n - 1 - ii;
         double s = y[i];
-        for (std::size_t k = i + 1; k < n; ++k)
-            s -= L[k * n + i] * x_out[k];
-        x_out[i] = s / L[i * n + i];
+        for (std::size_t j = i + 1; j < n; ++j)
+            s -= L[i * n + j] * x_out[j];
+        double diag = L[i * n + i];
+        if (std::abs(diag) < 1e-15) diag = (diag >= 0.0 ? 1e-15 : -1e-15);
+        x_out[i] = s / diag;
     }
     return true;
 }
@@ -460,6 +500,106 @@ Value fir1(int N, double Wn, const std::string &type, std::pmr::memory_resource 
         for (size_t i = 0; i < filtLen; ++i)
             h[i] = -h[i];
         h[static_cast<size_t>(half)] += 1.0;
+    }
+
+    auto bv = Value::matrix(1, filtLen, ValueType::DOUBLE, mr);
+    for (size_t i = 0; i < filtLen; ++i)
+        bv.doubleDataMut()[i] = h[i];
+    return bv;
+}
+
+Value fir1(int N, const Value &Wn, const std::string &typeIn,
+           const Value &window, bool scale, std::pmr::memory_resource *mr)
+{
+    argcheck::expectedPositive(static_cast<double>(N), 1, "n", "fir1");
+    if (!Wn.isNumeric() || Wn.isComplex() || Wn.isEmpty() || !Wn.dims().isVector())
+        throw Error("fir1: cutoff frequency Wn must be a real non-empty vector.",
+                    0, 0, "fir1", "", "numkit:fir1:invalidWn");
+
+    const size_t nw = Wn.numel();
+    std::string type = typeIn;
+    for (char &ch : type)
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    if (type.empty())
+        type = (nw == 1) ? "low" : (nw == 2 ? "bandpass" : "dc-0");
+
+    if (nw == 1 && window.isEmpty() && scale && (type == "low" || type == "high"))
+        return fir1(N, Wn.elemAsDouble(0), type, mr);
+
+    ScratchArena scratch(mr);
+    ScratchVec<double> w(nw, &scratch);
+    for (size_t k = 0; k < nw; ++k) {
+        w[k] = Wn.elemAsDouble(k);
+        if (!(w[k] > 0.0 && w[k] < 1.0))
+            throw Error("fir1: cutoff frequencies Wn must be inside (0, 1).",
+                        0, 0, "fir1", "", "numkit:fir1:wnOutOfRange");
+        if (k > 0 && !(w[k] > w[k - 1]))
+            throw Error("fir1: cutoff frequencies Wn must be strictly increasing.",
+                        0, 0, "fir1", "", "numkit:fir1:wnNotIncreasing");
+    }
+
+    bool firstBandPass = false;
+    if (nw == 1) {
+        if (type == "low") firstBandPass = true;
+        else if (type == "high") firstBandPass = false;
+        else throw Error("fir1: invalid filter type '" + typeIn + "'.", 0, 0, "fir1", "", "numkit:fir1:invalidType");
+    } else {
+        if (type == "bandpass" || type == "dc-0") firstBandPass = false;
+        else if (type == "stop" || type == "dc-1") firstBandPass = true;
+        else throw Error("fir1: invalid filter type '" + typeIn + "'.", 0, 0, "fir1", "", "numkit:fir1:invalidType");
+    }
+
+    // Odd-order filter with passband at Nyquist (f = 1) gets incremented by 1 when default window is used.
+    const bool passAtNyquist = ((nw % 2 == 1) ? !firstBandPass : firstBandPass);
+    if (passAtNyquist && (N % 2 == 1) && window.isEmpty())
+        N += 1;
+
+    const size_t filtLen = static_cast<size_t>(N + 1);
+    if (!window.isEmpty() && window.numel() != filtLen)
+        throw Error("fir1: window length must equal N + 1.",
+                    0, 0, "fir1", "", "numkit:fir1:badWindowLength");
+
+    // Build passband intervals [fL, fR] in normalized [0, 1].
+    ScratchVec<double> edges(nw + 2, &scratch);
+    edges[0] = 0.0;
+    for (size_t k = 0; k < nw; ++k)
+        edges[k + 1] = w[k];
+    edges[nw + 1] = 1.0;
+
+    const double half = N / 2.0;
+    ScratchVec<double> h(filtLen, 0.0, &scratch);
+    for (size_t b = 0; b <= nw; ++b) {
+        const bool isPass = (b % 2 == 0) ? firstBandPass : !firstBandPass;
+        if (!isPass) continue;
+        const double fL = edges[b];
+        const double fR = edges[b + 1];
+        for (size_t i = 0; i < filtLen; ++i) {
+            const double n = static_cast<double>(i) - half;
+            const double sR = (std::abs(n) < 1e-12) ? fR : std::sin(M_PI * fR * n) / (M_PI * n);
+            const double sL = (std::abs(n) < 1e-12) ? fL : std::sin(M_PI * fL * n) / (M_PI * n);
+            h[i] += (sR - sL);
+        }
+    }
+
+    for (size_t i = 0; i < filtLen; ++i) {
+        const double win = window.isEmpty()
+            ? (N == 0 ? 1.0 : (0.54 - 0.46 * std::cos(2.0 * M_PI * static_cast<double>(i) / static_cast<double>(N))))
+            : window.elemAsDouble(i);
+        h[i] *= win;
+    }
+
+    if (scale) {
+        double f0 = 0.0;
+        if (!firstBandPass) {
+            f0 = (edges[2] == 1.0) ? 1.0 : 0.5 * (edges[1] + edges[2]);
+        }
+        double gain = 0.0;
+        for (size_t i = 0; i < filtLen; ++i)
+            gain += h[i] * std::cos(M_PI * f0 * (static_cast<double>(i) - half));
+        if (std::abs(gain) > 1e-15) {
+            for (size_t i = 0; i < filtLen; ++i)
+                h[i] /= gain;
+        }
     }
 
     auto bv = Value::matrix(1, filtLen, ValueType::DOUBLE, mr);

@@ -213,6 +213,8 @@ Value bohmanwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @return    N×1 DOUBLE column vector.
 Value barthannwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 
+std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
+                             std::pmr::memory_resource *mr = nullptr);
 
 /// @}
 } // namespace numkit::signal

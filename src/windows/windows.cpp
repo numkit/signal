@@ -481,4 +481,124 @@ Value barthannwin(size_t N, std::pmr::memory_resource *mr)
     return out;
 }
 
+// ── dpss ──────────────────────────────────────────────────────────────
+std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
+                             std::pmr::memory_resource *mr)
+{
+    if (N == 0 || k == 0) {
+        return {Value::matrix(N, k, ValueType::DOUBLE, mr),
+                Value::matrix(k, 1, ValueType::DOUBLE, mr)};
+    }
+    if (k > N) k = N;
+    const double W = nw / static_cast<double>(N);
+    const double cos2piW = std::cos(2.0 * M_PI * W);
+
+    std::vector<double> d(N, 0.0);
+    std::vector<double> e(N, 0.0);
+    for (size_t i = 0; i < N; ++i) {
+        const double h = 0.5 * (static_cast<double>(N - 1) - 2.0 * static_cast<double>(i));
+        d[i] = h * h * cos2piW;
+        if (i + 1 < N) {
+            e[i] = 0.5 * static_cast<double>(i + 1) * static_cast<double>(N - 1 - i);
+        }
+    }
+
+    std::vector<double> Z(N * N, 0.0);
+    for (size_t i = 0; i < N; ++i) Z[i + i * N] = 1.0;
+
+    // Symmetric tridiagonal implicit QL with Wilkinson shift (tql2)
+    constexpr double eps = 2.2204460492503131e-16;
+    for (size_t l = 0; l < N; ++l) {
+        for (int iter = 0; iter < 100; ++iter) {
+            size_t m = l;
+            for (; m + 1 < N; ++m) {
+                const double dd = std::abs(d[m]) + std::abs(d[m + 1]);
+                if (std::abs(e[m]) <= eps * dd) break;
+            }
+            if (m == l) break;
+            double g = (d[l + 1] - d[l]) / (2.0 * e[l]);
+            double r = std::hypot(g, 1.0);
+            g = d[m] - d[l] + e[l] / (g + (g >= 0.0 ? r : -r));
+            double s = 1.0, c = 1.0, p = 0.0;
+            bool underflow = false;
+            for (size_t ii = m; ii-- > l;) {
+                double f = s * e[ii];
+                double b = c * e[ii];
+                r = std::hypot(f, g);
+                e[ii + 1] = r;
+                if (r == 0.0) {
+                    d[ii + 1] -= p;
+                    e[m] = 0.0;
+                    underflow = true;
+                    break;
+                }
+                s = f / r;
+                c = g / r;
+                g = d[ii + 1] - p;
+                r = (d[ii] - g) * s + 2.0 * c * b;
+                p = s * r;
+                d[ii + 1] = g + p;
+                g = c * r - b;
+                double *z0 = Z.data() + ii * N;
+                double *z1 = Z.data() + (ii + 1) * N;
+                for (size_t row = 0; row < N; ++row) {
+                    const double v0 = z0[row];
+                    const double v1 = z1[row];
+                    z1[row] = s * v0 + c * v1;
+                    z0[row] = c * v0 - s * v1;
+                }
+            }
+            if (underflow) continue;
+            d[l] -= p;
+            e[l] = g;
+            e[m] = 0.0;
+        }
+    }
+
+    // Sort eigenvalues descending
+    std::vector<size_t> order(N);
+    for (size_t i = 0; i < N; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        return d[a] > d[b];
+    });
+
+    Value E = Value::matrix(N, k, ValueType::DOUBLE, mr);
+    Value V = Value::matrix(k, 1, ValueType::DOUBLE, mr);
+    double *ed = E.doubleDataMut();
+    double *vd = V.doubleDataMut();
+
+    // Precompute sinc row for concentration ratio V
+    std::vector<double> sincLag(N);
+    sincLag[0] = 2.0 * W;
+    for (size_t lag = 1; lag < N; ++lag) {
+        sincLag[lag] = std::sin(2.0 * M_PI * W * static_cast<double>(lag))
+                       / (M_PI * static_cast<double>(lag));
+    }
+
+    for (size_t j = 0; j < k; ++j) {
+        const double *col = Z.data() + order[j] * N;
+        double pol = 0.0;
+        if ((j & 1) == 0) {
+            for (size_t n = 0; n < N; ++n) pol += col[n];
+        } else {
+            for (size_t n = 0; n < N; ++n)
+                pol += (static_cast<double>(N - 1) - 2.0 * static_cast<double>(n)) * col[n];
+        }
+        const double sign = (pol < 0.0) ? -1.0 : 1.0;
+        double *dstCol = ed + j * N;
+        for (size_t n = 0; n < N; ++n) dstCol[n] = sign * col[n];
+
+        double lam = 0.0;
+        for (size_t n = 0; n < N; ++n) {
+            lam += dstCol[n] * dstCol[n] * sincLag[0];
+            for (size_t m = n + 1; m < N; ++m) {
+                lam += 2.0 * dstCol[n] * dstCol[m] * sincLag[m - n];
+            }
+        }
+        vd[j] = std::clamp(lam, 0.0, 1.0);
+    }
+
+    return {std::move(E), std::move(V)};
+}
+
 } // namespace numkit::signal
