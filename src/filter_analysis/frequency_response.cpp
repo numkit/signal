@@ -27,8 +27,12 @@ namespace numkit::signal {
 std::tuple<Value, Value>
 freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::pmr::memory_resource *mr)
 {
-    const double *bd = b.doubleData();
-    const double *ad = a.doubleData();
+    const bool bCplx = b.isComplex();
+    const bool aCplx = a.isComplex();
+    const Complex *bc = bCplx ? b.complexData() : nullptr;
+    const Complex *ac = aCplx ? a.complexData() : nullptr;
+    const double *bd = bCplx ? nullptr : b.doubleData();
+    const double *ad = aCplx ? nullptr : a.doubleData();
     const size_t nb = b.numel(), na = a.numel();
 
     auto W = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
@@ -51,12 +55,12 @@ freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::p
         Complex num(0, 0), den(0, 0);
         Complex ejwk(1, 0);
         for (size_t i = 0; i < nb; ++i) {
-            num += bd[i] * ejwk;
+            num += (bCplx ? bc[i] : Complex(bd[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
         ejwk = Complex(1, 0);
         for (size_t i = 0; i < na; ++i) {
-            den += ad[i] * ejwk;
+            den += (aCplx ? ac[i] : Complex(ad[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
         H.complexDataMut()[k] = num / den;
@@ -70,8 +74,12 @@ freqz(const Value &b, const Value &a, const Value &wvec, std::pmr::memory_resour
 {
     // freqz(b, a, w): response at the GIVEN normalised radian frequencies
     // (the vector-w form; MATLAB evaluates exactly these points).
-    const double *bd = b.doubleData();
-    const double *ad = a.doubleData();
+    const bool bCplx = b.isComplex();
+    const bool aCplx = a.isComplex();
+    const Complex *bc = bCplx ? b.complexData() : nullptr;
+    const Complex *ac = aCplx ? a.complexData() : nullptr;
+    const double *bd = bCplx ? nullptr : b.doubleData();
+    const double *ad = aCplx ? nullptr : a.doubleData();
     const size_t nb = b.numel(), na = a.numel();
     const size_t n = wvec.numel();
     const double *wd = wvec.doubleData();
@@ -88,12 +96,12 @@ freqz(const Value &b, const Value &a, const Value &wvec, std::pmr::memory_resour
         Complex num(0, 0), den(0, 0);
         Complex ejwk(1, 0);
         for (size_t i = 0; i < nb; ++i) {
-            num += bd[i] * ejwk;
+            num += (bCplx ? bc[i] : Complex(bd[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
         ejwk = Complex(1, 0);
         for (size_t i = 0; i < na; ++i) {
-            den += ad[i] * ejwk;
+            den += (aCplx ? ac[i] : Complex(ad[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
         H.complexDataMut()[k] = num / den;

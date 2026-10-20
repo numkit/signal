@@ -140,7 +140,9 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
     if (maxlag != fullMaxLag) {
         const int center0 = fullMaxLag;
         const int outLen = 2 * maxlag + 1;
-        Value cOut = Value::matrix(1, outLen, ValueType::DOUBLE, mr);
+        const bool colOut = (x.dims().rows() > 1 && x.dims().cols() == 1);
+        Value cOut = colOut ? Value::matrix(outLen, 1, ValueType::DOUBLE, mr)
+                            : Value::matrix(1, outLen, ValueType::DOUBLE, mr);
         Value lOut = Value::matrix(1, outLen, ValueType::DOUBLE, mr);
         double *co = cOut.doubleDataMut();
         double *lo = lOut.doubleDataMut();

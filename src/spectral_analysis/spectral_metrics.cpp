@@ -596,14 +596,85 @@ Value thd(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 
 Value sfdr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 {
-    const double fsv = scalarOr(fs, 0.0);
-    auto p = computePsdKaiser(x, fsv, mr);
-    auto h = analyseHarmonics(p.Pxx);
-    // sfdr compares the fundamental peak amplitude to the largest
-    // spurious peak. P[fundamental_bin] is the peak power.
-    const double pPeak = (h.f0Bin >= 0 && h.f0Bin < (int)p.Pxx.size())
-                         ? p.Pxx[h.f0Bin] : 0.0;
-    return Value::scalar(safeDb(pPeak, h.pSpurMax), mr);
+    const size_t n = x.numel();
+    if (n < 2)
+        return Value::scalar(std::numeric_limits<double>::quiet_NaN(), mr);
+    const double fsScalar = (!fs.isEmpty()) ? fs.toScalar() : 1.0;
+    Value w = kaiser(n, 38.0, mr);
+    const double *wd = w.doubleData();
+    double sumW = 0.0, sumW2 = 0.0;
+    Value xw = Value::matrix(n, 1, ValueType::DOUBLE, mr);
+    double *xwd = xw.doubleDataMut();
+    for (size_t i = 0; i < n; ++i) {
+        double wi = wd[i];
+        sumW += wi;
+        sumW2 += wi * wi;
+        xwd[i] = x.elemAsDouble(i) * wi;
+    }
+    const double rbw = (sumW > 0.0) ? (fsScalar * sumW2 / (sumW * sumW)) : 0.0;
+    Value Xv = fft(xw, static_cast<int>(n), 0, mr);
+    const Complex *X = Xv.complexData();
+    const size_t nBins = n / 2 + 1;
+    const double df = fsScalar / static_cast<double>(n);
+    std::vector<double> Pxx(nBins), F(nBins);
+    for (size_t k = 0; k < nBins; ++k) {
+        double mag2 = std::norm(X[k]);
+        if (k > 0 && 2 * k != n)
+            mag2 *= 2.0;
+        Pxx[k] = mag2 / (fsScalar * sumW2);
+        F[k] = static_cast<double>(k) * df;
+    }
+
+    auto getTone = [&](int idxTone, int &outLeft, int &outRight) -> double {
+        int iL = idxTone - 1;
+        int iR = idxTone + 1;
+        while (iL >= 0 && Pxx[iL] <= Pxx[iL + 1]) --iL;
+        while (iR < static_cast<int>(nBins) && Pxx[iR - 1] >= Pxx[iR]) ++iR;
+        ++iL;
+        --iR;
+        outLeft = iL;
+        outRight = iR;
+        double power = 0.0;
+        if (iL < iR) {
+            int len = iR - iL + 1;
+            for (int k = 0; k < len; ++k) {
+                double wBin = 0.0;
+                if (k == 0) wBin = F[iL + 1] - F[iL];
+                else if (k + 1 == len) wBin = F[iR] - F[iR - 1];
+                else wBin = 0.5 * (F[iL + k + 1] - F[iL + k - 1]);
+                power += Pxx[iL + k] * wBin;
+            }
+        } else {
+            power = Pxx[iR] * df;
+        }
+        if (power < rbw * Pxx[idxTone])
+            power = rbw * Pxx[idxTone];
+        return power;
+    };
+
+    // Bump DC component by 3 dB and remove it
+    Pxx[0] *= 2.0;
+    int dcL = 0, dcR = 0;
+    getTone(0, dcL, dcR);
+    for (int k = dcL; k <= dcR; ++k) Pxx[k] = 0.0;
+
+    // Fundamental peak
+    int iFund = static_cast<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    int fL = 0, fR = 0;
+    double Pfund = getTone(iFund, fL, fR);
+    for (int k = fL; k <= fR; ++k) Pxx[k] = 0.0;
+
+    // Max spur
+    int spurBin = static_cast<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    int iLeftBin = std::max(0, spurBin - 1);
+    int iRightBin = std::min(static_cast<int>(nBins) - 1, spurBin + 1);
+    int iSpur = iLeftBin;
+    for (int k = iLeftBin + 1; k <= iRightBin; ++k)
+        if (Pxx[k] > Pxx[iSpur]) iSpur = k;
+    int sL = 0, sR = 0;
+    double Pspur = getTone(iSpur, sL, sR);
+
+    return Value::scalar(safeDb(Pfund, Pspur), mr);
 }
 
 // ════════════════════════════════════════════════════════════════════
