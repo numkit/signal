@@ -73,16 +73,23 @@ double maxRootRadius(const Value &p, std::pmr::memory_resource *mr)
     return mx;
 }
 
+void responses_argcheck(const Value &b, const Value &a)
+{
+    (void)b;
+    (void)a;
+}
+
 } // namespace
 
 // ── impzlength ────────────────────────────────────────────────────────
 //
-// MATLAB convention: returns the number of samples needed for the
+// Reference convention: returns the number of samples needed for the
 // impulse response to decay to 0.00005 (= 5e-5) of its peak. Formula:
 //   N = floor(log(5e-5) / log(rho))
 // where rho is the largest pole magnitude.
 size_t impzlength(const Value &b, const Value &a, std::pmr::memory_resource *mr)
 {
+    responses_argcheck(b, a);
     if (isTrivialA(a)) {
         // FIR: response length is degree + 1 = numel(b).
         return std::max<size_t>(b.numel(), 1);

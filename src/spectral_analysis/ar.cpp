@@ -34,7 +34,7 @@ namespace numkit::signal {
 
 namespace {
 
-void requireValidArgs(const Value &x, int p, const char *fn) {
+void ar_argcheck(const Value &x, int p, const char *fn) {
     if (p < 1)
         throw Error(std::string(fn) + ": order p must be ≥ 1",
                     0, 0, fn, "", "numkit:ar:order");
@@ -115,7 +115,7 @@ YWFit yuleWalkerFit(const Value &x, size_t pp) {
 std::tuple<Value, Value>
 pyulear(const Value &x, int p, size_t nfft, std::pmr::memory_resource *mr)
 {
-    requireValidArgs(x, p, "pyulear");
+    ar_argcheck(x, p, "pyulear");
     if (nfft == 0) nfft = 256;
     auto fit = yuleWalkerFit(x, static_cast<size_t>(p));
     return arSpectrum(fit.a, fit.sigma2, nfft, mr);
@@ -130,7 +130,7 @@ pyulear(const Value &x, int p, size_t nfft, std::pmr::memory_resource *mr)
 std::tuple<Value, Value>
 pburg(const Value &x, int p, size_t nfft, std::pmr::memory_resource *mr)
 {
-    requireValidArgs(x, p, "pburg");
+    ar_argcheck(x, p, "pburg");
     const size_t N = x.numel();
     const size_t pp = static_cast<size_t>(p);
     if (nfft == 0) nfft = (N >= 256) ? 256 : 256;

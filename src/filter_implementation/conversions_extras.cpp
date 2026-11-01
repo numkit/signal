@@ -91,13 +91,23 @@ void requireSosShape(const Value &sos, const char *fn)
                      0, 0, fn, "", std::string("numkit:") + fn + ":badShape");
 }
 
+void sos2tf_argcheck(const Value &sos)
+{
+    requireSosShape(sos, "sos2tf");
+}
+
+void sos2zp_argcheck(const Value &sos)
+{
+    requireSosShape(sos, "sos2zp");
+}
+
 } // namespace
 
 // ── sos2tf ────────────────────────────────────────────────────────────
 std::tuple<Value, Value>
 sos2tf(const Value &sos, double g, std::pmr::memory_resource *mr)
 {
-    requireSosShape(sos, "sos2tf");
+    sos2tf_argcheck(sos);
     const size_t L = sos.dims().rows();
     std::vector<double> b{1.0}, a{1.0};
     for (size_t i = 0; i < L; ++i) {
@@ -115,7 +125,7 @@ sos2tf(const Value &sos, double g, std::pmr::memory_resource *mr)
 std::tuple<Value, Value, double>
 sos2zp(const Value &sos, double g, std::pmr::memory_resource *mr)
 {
-    requireSosShape(sos, "sos2zp");
+    sos2zp_argcheck(sos);
     const size_t L = sos.dims().rows();
     std::vector<Complex> zeros, poles;
     double gain = g;

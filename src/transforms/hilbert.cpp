@@ -77,10 +77,20 @@ ScratchVec<Complex> hilbertBuf(const Value &x, std::pmr::memory_resource *mr)
 
 } // anonymous namespace
 
+namespace {
+
+void hilbert_argcheck(const Value &x)
+{
+    (void)x;
+}
+
+} // namespace
+
 Value hilbert(const Value &x, std::pmr::memory_resource *mr)
 {
     const size_t N = x.numel();
     ScratchArena scratch(mr);
+    hilbert_argcheck(x);
     auto buf = hilbertBuf(x, &scratch);
     return packComplexResult(buf.data(), N, mr);
 }

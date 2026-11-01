@@ -42,20 +42,23 @@ std::string toLower(const std::string &s)
     return r;
 }
 
+double db_argcheck(const std::string &signalType)
+{
+    const std::string mode = toLower(signalType);
+    if (mode == "voltage" || mode.empty())
+        return 20.0;
+    if (mode == "power")
+        return 10.0;
+    throw Error("db: signalType must be 'voltage' or 'power'",
+                 0, 0, "db", "", "numkit:db:badType");
+}
+
 } // namespace
 
 // ── db ─────────────────────────────────────────────────────────────────
 Value db(const Value &x, const std::string &signalType, std::pmr::memory_resource *mr)
 {
-    const std::string mode = toLower(signalType);
-    double scale;
-    if (mode == "voltage" || mode.empty())
-        scale = 20.0;
-    else if (mode == "power")
-        scale = 10.0;
-    else
-        throw Error("db: signalType must be 'voltage' or 'power'",
-                     0, 0, "db", "", "numkit:db:badType");
+    const double scale = db_argcheck(signalType);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
                  [scale](double v) { return scale * std::log10(v); });

@@ -210,8 +210,20 @@ Value flattopwin(size_t N, std::pmr::memory_resource *mr)
 }
 
 // ── gausswin ──────────────────────────────────────────────────────────
+namespace {
+
+void gausswin_argcheck(double alpha)
+{
+    if (alpha <= 0)
+        throw Error("gausswin: alpha must be positive",
+                     0, 0, "gausswin", "", "numkit:gausswin:badAlpha");
+}
+
+} // namespace
+
 Value gausswin(size_t N, double alpha, std::pmr::memory_resource *mr)
 {
+    gausswin_argcheck(alpha);
     if (alpha <= 0)
         throw Error("gausswin: alpha must be positive",
                      0, 0, "gausswin", "", "numkit:gausswin:badAlpha");

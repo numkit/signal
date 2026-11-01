@@ -41,6 +41,17 @@
 
 namespace numkit::signal {
 
+namespace {
+
+void cusum_argcheck(const Value &x, double climit, double mshift)
+{
+    (void)x;
+    (void)climit;
+    (void)mshift;
+}
+
+} // namespace
+
 // ── seqperiod ─────────────────────────────────────────────────────────
 std::pair<Value, Value>
 seqperiod(const Value &x, double tol, std::pmr::memory_resource *mr)
@@ -101,6 +112,7 @@ CusumResult cusum(const Value &x, double climit, double mshift,
                   const Value &tmean, const Value &tdev,
                   std::pmr::memory_resource *mr)
 {
+    cusum_argcheck(x, climit, mshift);
     const bool have_tmean   = !tmean.isEmpty();
     const bool have_tdev    = !tdev.isEmpty();
     const double tmean_user = have_tmean ? tmean.toScalar() : 0.0;

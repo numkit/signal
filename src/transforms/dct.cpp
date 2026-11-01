@@ -32,6 +32,11 @@ using Cd = std::complex<double>;
 
 inline bool isPowerOfTwo(size_t n) { return n != 0 && (n & (n - 1)) == 0; }
 
+void dct_argcheck(const Value &x)
+{
+    (void)x;
+}
+
 // Direct O(N²) reference implementation. Used as a fallback when N
 // isn't a power of two (nk's fft pads non-pow2 inputs to the next
 // pow2 internally and slices the result, which doesn't match a true
@@ -42,6 +47,7 @@ Value dctDirect(const Value &x, std::pmr::memory_resource *mr)
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
     const double *xd = x.doubleData();
+    dct_argcheck(x);
     double *X  = r.doubleDataMut();
     const double w0 = std::sqrt(1.0 / static_cast<double>(N));
     const double wk = std::sqrt(2.0 / static_cast<double>(N));
@@ -140,6 +146,7 @@ Value dct(const Value &x, std::pmr::memory_resource *mr)
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
     const double *xd = x.doubleData();
+    dct_argcheck(x);
     double *X  = r.doubleDataMut();
 
     if (N == 1) {

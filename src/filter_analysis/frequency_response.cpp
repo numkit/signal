@@ -24,9 +24,20 @@
 
 namespace numkit::signal {
 
+namespace {
+
+void freqz_argcheck(const Value &b, const Value &a)
+{
+    (void)b;
+    (void)a;
+}
+
+} // namespace
+
 std::tuple<Value, Value>
 freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::pmr::memory_resource *mr)
 {
+    freqz_argcheck(b, a);
     const bool bCplx = b.isComplex();
     const bool aCplx = a.isComplex();
     const Complex *bc = bCplx ? b.complexData() : nullptr;

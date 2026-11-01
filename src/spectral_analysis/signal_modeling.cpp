@@ -601,28 +601,79 @@ prony(const Value &h, int nb, int na, std::pmr::memory_resource *mr)
 // approximate impulse response h. Initialise A via Prony, then repeat `niter`
 // times (MATLAB default 5): prefilter the unit impulse and h by 1/A, solve the
 // linear least-squares [E | -G]·[b; a_tail] ≈ g for the new coefficients.
-std::tuple<Value, Value>
-stmcb(const Value &h, int nb, int na, int niter, std::pmr::memory_resource *mr)
+namespace {
+
+void stmcb_argcheck(const Value &y, const Value &x, int nb, int na, const Value &ai)
 {
-    auto      hv = readVec(h);
-    const int N  = static_cast<int>(hv.size());
+    if (nb < 0)
+        throw Error("stmcb: numerator order nb must be non-negative",
+                    0, 0, "stmcb", "", "numkit:stmcb:InvalidNb");
+    if (na < 0)
+        throw Error("stmcb: denominator order na must be non-negative",
+                    0, 0, "stmcb", "", "numkit:stmcb:InvalidNa");
+    if (!x.isEmpty() && x.numel() != y.numel())
+        throw Error("stmcb: input and output signal vectors must have the same length",
+                    0, 0, "stmcb", "", "numkit:stmcb:InvalidDimensions");
+    if (!ai.isEmpty()) {
+        const size_t n_ai = ai.numel();
+        if (n_ai != static_cast<size_t>(na + 1) && n_ai != static_cast<size_t>(na))
+            throw Error("stmcb: initial denominator estimate ai must have length na+1 (or na)",
+                        0, 0, "stmcb", "", "numkit:stmcb:InvalidAiLength");
+        if (n_ai == static_cast<size_t>(na + 1) && ai.elemAsDouble(0) == 0.0)
+            throw Error("stmcb: leading coefficient of ai must be nonzero",
+                        0, 0, "stmcb", "", "numkit:stmcb:ZeroLeadingCoefficient");
+    }
+}
+
+} // anonymous
+
+std::tuple<Value, Value>
+stmcb(const Value &y, const Value &x, int nb, int na, int niter,
+      const Value &ai, std::pmr::memory_resource *mr)
+{
+    stmcb_argcheck(y, x, nb, na, ai);
+    auto      yv = readVec(y);
+    const int N  = static_cast<int>(yv.size());
     if (niter < 1) niter = 5;
 
-    // Initialise the denominator estimate via Prony (MATLAB's default `ai`).
-    auto [b0, a0] = prony(h, nb, na, mr);
-    std::vector<double> b = readVec(b0);
-    std::vector<double> a = readVec(a0);
-    b.resize(nb + 1, 0.0);
-    a.resize(na + 1, 0.0);
+    std::vector<double> xv;
+    if (!x.isEmpty()) {
+        xv = readVec(x);
+    } else {
+        xv.assign(N, 0.0);
+        if (N > 0) xv[0] = 1.0;
+    }
+
+    std::vector<double> b(nb + 1, 0.0);
+    std::vector<double> a(na + 1, 0.0);
     a[0] = 1.0;
+    if (ai.isEmpty()) {
+        // Initialise the denominator estimate via Prony (default `ai`).
+        auto [b0, a0] = prony(y, x.isEmpty() ? nb : 0, na, mr);
+        b = readVec(b0);
+        a = readVec(a0);
+        b.resize(nb + 1, 0.0);
+        a.resize(na + 1, 0.0);
+        a[0] = 1.0;
+    } else {
+        auto aiv = readVec(ai);
+        if (static_cast<int>(aiv.size()) == na + 1) {
+            const double a0_val = aiv[0];
+            for (int k = 0; k <= na; ++k) a[k] = aiv[k] / a0_val;
+            a[0] = 1.0;
+        } else {
+            a[0] = 1.0;
+            for (int k = 0; k < na; ++k) a[k + 1] = aiv[k];
+        }
+    }
 
     const int           P = nb + 1 + na;   // unknowns: b[0..nb] then a[1..na]
     std::vector<double> e(N, 0.0), g(N, 0.0);
     for (int it = 0; it < niter; ++it) {
-        // Prefilter the unit impulse (input) and h (output) by 1/A.
+        // Prefilter the input x and output y by 1/A.
         for (int n = 0; n < N; ++n) {
-            double    se  = (n == 0) ? 1.0 : 0.0;
-            double    sg  = hv[n];
+            double    se  = xv[n];
+            double    sg  = yv[n];
             const int lim = std::min(na, n);
             for (int i = 1; i <= lim; ++i) { se -= a[i] * e[n - i]; sg -= a[i] * g[n - i]; }
             e[n] = se;
@@ -647,6 +698,12 @@ stmcb(const Value &h, int nb, int na, int niter, std::pmr::memory_resource *mr)
         for (int k = 0; k < na;  ++k) a[k + 1] = c[nb + 1 + k];
     }
     return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
+}
+
+std::tuple<Value, Value>
+stmcb(const Value &h, int nb, int na, int niter, std::pmr::memory_resource *mr)
+{
+    return stmcb(h, Value(), nb, na, niter, Value(), mr);
 }
 
 // ── corrmtx ───────────────────────────────────────────────────────
@@ -895,15 +952,34 @@ invfreqLSQ(const std::vector<Cd_invfreq> &H,
     return std::make_tuple(std::move(b), std::move(a));
 }
 
+void invfreqs_argcheck(const Value &H, const Value &w, int nb, int na)
+{
+    if (H.numel() != w.numel())
+        throw std::runtime_error("invfreqs: H and w must be the same length");
+    const int K  = static_cast<int>(H.numel());
+    const int nv = nb + 1 + na;
+    if (K * 2 < nv)
+        throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
+}
+
+void invfreqz_argcheck(const Value &H, const Value &w, int nb, int na)
+{
+    if (H.numel() != w.numel())
+        throw std::runtime_error("invfreqz: H and w must be the same length");
+    const int K  = static_cast<int>(H.numel());
+    const int nv = nb + 1 + na;
+    if (K * 2 < nv)
+        throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
+}
+
 } // anonymous
 
 std::tuple<Value, Value>
 invfreqs(const Value &H, const Value &w, int nb, int na, std::pmr::memory_resource *mr)
 {
+    invfreqs_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
     auto wv = readVec(w);
-    if (Hv.size() != wv.size())
-        throw std::runtime_error("invfreqs: H and w must be the same length");
     std::vector<Cd_invfreq> x(wv.size());
     for (size_t k = 0; k < wv.size(); ++k) x[k] = Cd_invfreq(0.0, wv[k]); // jω
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);
@@ -913,10 +989,9 @@ invfreqs(const Value &H, const Value &w, int nb, int na, std::pmr::memory_resour
 std::tuple<Value, Value>
 invfreqz(const Value &H, const Value &w, int nb, int na, std::pmr::memory_resource *mr)
 {
+    invfreqz_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
     auto wv = readVec(w);
-    if (Hv.size() != wv.size())
-        throw std::runtime_error("invfreqz: H and w must be the same length");
     std::vector<Cd_invfreq> x(wv.size());
     for (size_t k = 0; k < wv.size(); ++k)
         x[k] = std::exp(Cd_invfreq(0.0, -wv[k])); // z⁻¹

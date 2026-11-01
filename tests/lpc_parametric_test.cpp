@@ -90,13 +90,42 @@ TEST_P(LpcParametricTest, Stmcb)
     EXPECT_NEAR(evalScalar("abs(b1(2))"), 0.0, 1e-9);
 
     // 2nd-order system B=[1 0.3], A=[1 -0.6 0.2] recovered from its impulse
-    // response (MATLAB R2025b: b=[1 0.3], a=[1 -0.6 0.2]).
+    // response (reference engine: b=[1 0.3], a=[1 -0.6 0.2]).
     eval("h = filter([1 0.3], [1 -0.6 0.2], [1 zeros(1,29)]);");
     eval("[b2, a2] = stmcb(h, 1, 2);");
     EXPECT_NEAR(evalScalar("b2(1)"),  1.0,  1e-7);
     EXPECT_NEAR(evalScalar("b2(2)"),  0.3,  1e-7);
     EXPECT_NEAR(evalScalar("a2(2)"), -0.6,  1e-7);
     EXPECT_NEAR(evalScalar("a2(3)"),  0.2,  1e-7);
+
+    // Explicit initial denominator estimate ai (length p+1 and length p) on impulse form.
+    eval("[b3, a3] = stmcb(h, 1, 2, 5, [1 -0.5 0.1]);");
+    EXPECT_NEAR(evalScalar("b3(1)"),  1.0,  1e-7);
+    EXPECT_NEAR(evalScalar("b3(2)"),  0.3,  1e-7);
+    EXPECT_NEAR(evalScalar("a3(2)"), -0.6,  1e-7);
+    EXPECT_NEAR(evalScalar("a3(3)"),  0.2,  1e-7);
+
+    eval("[b4, a4] = stmcb(h, 1, 2, 5, [-0.5 0.1]);");
+    EXPECT_NEAR(evalScalar("b4(1)"),  1.0,  1e-7);
+    EXPECT_NEAR(evalScalar("b4(2)"),  0.3,  1e-7);
+    EXPECT_NEAR(evalScalar("a4(2)"), -0.6,  1e-7);
+    EXPECT_NEAR(evalScalar("a4(3)"),  0.2,  1e-7);
+
+    // Two-signal form stmcb(y, x, q, p) and stmcb(y, x, q, p, niter, ai).
+    eval("n = 0:39; x = cos(0.2*n) + 0.5*sin(0.7*n); y = filter([1 0.3], [1 -0.6 0.2], x);");
+    eval("[b5, a5] = stmcb(y, x, 1, 2);");
+    EXPECT_NEAR(evalScalar("b5(1)"),  1.0,  1e-7);
+    EXPECT_NEAR(evalScalar("b5(2)"),  0.3,  1e-7);
+    EXPECT_NEAR(evalScalar("a5(1)"),  1.0,  1e-12);
+    EXPECT_NEAR(evalScalar("a5(2)"), -0.6,  1e-7);
+    EXPECT_NEAR(evalScalar("a5(3)"),  0.2,  1e-7);
+
+    eval("[b6, a6] = stmcb(y, x, 1, 2, 5, [1 -0.4 0.15]);");
+    EXPECT_NEAR(evalScalar("b6(1)"),  1.0,  1e-7);
+    EXPECT_NEAR(evalScalar("b6(2)"),  0.3,  1e-7);
+    EXPECT_NEAR(evalScalar("a6(1)"),  1.0,  1e-12);
+    EXPECT_NEAR(evalScalar("a6(2)"), -0.6,  1e-7);
+    EXPECT_NEAR(evalScalar("a6(3)"),  0.2,  1e-7);
 }
 
 TEST_P(LpcParametricTest, PmusicPeig)

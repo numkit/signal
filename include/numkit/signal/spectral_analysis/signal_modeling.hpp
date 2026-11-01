@@ -280,7 +280,7 @@ prony(const Value &                h,
 /// @param h      Impulse response (real 1-D).
 /// @param nb     Numerator order (`B` has `nb+1` coefficients).
 /// @param na     Denominator order (`A` has `na+1` coefficients, `a(1)=1`).
-/// @param niter  Iterations (`< 1` → MATLAB default 5).
+/// @param niter  Iterations (`< 1` → default 5).
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Tuple `(b, a)` row vectors.
 /// @see prony, levinson, lpc
@@ -290,6 +290,26 @@ stmcb(const Value &                h,
       int                          na,
       int                          niter = 5,
       std::pmr::memory_resource *  mr = nullptr);
+
+/// Steiglitz–McBride IIR identification with optional input signal `x` and
+/// explicit initial denominator estimate `ai` (`[b, a] = stmcb(y, x, nb, na, niter, ai)`).
+///
+/// @param y      Output signal (or impulse response when `x` is empty).
+/// @param x      Input signal (same length as `y`; empty → unit impulse `[1, 0, ...]`).
+/// @param nb     Numerator order (`B` has `nb+1` coefficients).
+/// @param na     Denominator order (`A` has `na+1` coefficients, `a(1)=1`).
+/// @param niter  Iterations (`< 1` → default 5).
+/// @param ai     Initial denominator estimate (length `na+1` or `na`; empty → @ref prony).
+/// @param mr     Memory resource (nullptr → process default).
+/// @return       Tuple `(b, a)` row vectors.
+std::tuple<Value, Value>
+stmcb(const Value &                y,
+      const Value &                x,
+      int                          nb,
+      int                          na,
+      int                          niter = 5,
+      const Value &                ai    = Value(),
+      std::pmr::memory_resource *  mr    = nullptr);
 
 /// Generate the autocorrelation data matrix.
 ///

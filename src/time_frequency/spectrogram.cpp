@@ -28,6 +28,20 @@ namespace {
 
 // Fill caller-provided buffer with Hamming window coefficients, same
 // formula MATLAB uses.
+void iscola_argcheck(const Value &window, std::size_t noverlap, const std::string &method)
+{
+    const std::size_t M = window.numel();
+    if (M == 0)
+        throw Error("iscola: window must be non-empty",
+                     0, 0, "iscola", "", "numkit:iscola:badWindow");
+    if (noverlap >= M)
+        throw Error("iscola: noverlap must be < window length",
+                     0, 0, "iscola", "", "numkit:iscola:badOverlap");
+    if (method != "ola" && method != "wola")
+        throw Error("iscola: method must be 'ola' or 'wola'",
+                     0, 0, "iscola", "", "numkit:iscola:badMethod");
+}
+
 void fillHammingWindow(double *w, size_t N)
 {
     if (N == 1) {
@@ -379,6 +393,7 @@ iscola(const Value &window, std::size_t noverlap, const std::string &method,
     if (noverlap >= M)
         throw Error("iscola: noverlap must be < window length",
                      0, 0, "iscola", "", "numkit:iscola:badOverlap");
+    iscola_argcheck(window, noverlap, method);
     if (method != "ola" && method != "wola")
         throw Error("iscola: method must be 'ola' or 'wola'",
                      0, 0, "iscola", "", "numkit:iscola:badMethod");

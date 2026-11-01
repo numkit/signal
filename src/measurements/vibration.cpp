@@ -42,6 +42,13 @@ Value vecCol(std::pmr::memory_resource *mr, const std::vector<double> &v)
     return out;
 }
 
+void tachorpm_argcheck(const Value &x, double fs, int ppr)
+{
+    (void)x;
+    (void)fs;
+    (void)ppr;
+}
+
 } // anonymous
 
 // ── envspectrum ────────────────────────────────────────────────────
@@ -91,6 +98,7 @@ std::tuple<Value, Value>
 tachorpm(const Value &x, double fs,
          const Value &threshold, int ppr, std::pmr::memory_resource *mr)
 {
+    tachorpm_argcheck(x, fs, ppr);
     auto v = readVec(x);
     const size_t N = v.size();
     double thr;

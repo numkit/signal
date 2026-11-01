@@ -154,7 +154,7 @@ ScratchVec<double> buildDiffMatrix(int order, int framelen, std::pmr::memory_res
 }
 
 // Shared validation for sgolay / sgolayDiff.
-void validateSgolayArgs(int order, int framelen)
+void sgolay_argcheck(int order, int framelen)
 {
     if (framelen <= 0)
         throw Error("sgolay: framelen must be positive",
@@ -174,7 +174,7 @@ void validateSgolayArgs(int order, int framelen)
 
 Value sgolay(int order, int framelen, std::pmr::memory_resource *mr)
 {
-    validateSgolayArgs(order, framelen);
+    sgolay_argcheck(order, framelen);
 
     ScratchArena scratch(mr);
     auto B = buildProjection(order, framelen, &scratch);
@@ -189,7 +189,7 @@ Value sgolay(int order, int framelen, std::pmr::memory_resource *mr)
 
 Value sgolayDiff(int order, int framelen, std::pmr::memory_resource *mr)
 {
-    validateSgolayArgs(order, framelen);
+    sgolay_argcheck(order, framelen);
 
     const int p = order + 1;
     ScratchArena scratch(mr);

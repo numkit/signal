@@ -131,13 +131,37 @@ ScratchVec<double> applyFirDf2t(const double *h, size_t filtLen, const double *x
     return out;
 }
 
+void downsample_argcheck(const Value &x, size_t n, size_t phase)
+{
+    multirateGatherArgcheck(x, "downsample");
+    multiratePhaseArgcheck(n, phase, "downsample");
+}
+
+void upsample_argcheck(const Value &x, size_t n, size_t phase)
+{
+    multirateGatherArgcheck(x, "upsample");
+    multiratePhaseArgcheck(n, phase, "upsample");
+}
+
+void decimate_argcheck(const Value &x)
+{
+    detail::requireFloatInput(x, "decimate");
+}
+
+void resample_argcheck(const Value &x, size_t p, size_t q)
+{
+    detail::requireFloatInput(x, "resample");
+    if (p == 0 || q == 0)
+        throw Error("resample: P and Q must be positive integers",
+                    0, 0, "resample", "", "numkit:resample:pq");
+}
+
 } // anonymous namespace
 
 // ── downsample ────────────────────────────────────────────────────────
 Value downsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource *mr)
 {
-    multirateGatherArgcheck(x, "downsample");
-    multiratePhaseArgcheck(n, phase, "downsample");
+    downsample_argcheck(x, n, phase);
     const GatherShape gs = gatherShape(x);
     const size_t outRows = (phase < gs.rows)
                                ? (gs.rows - phase + n - 1) / n
@@ -159,8 +183,7 @@ Value downsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resour
 // ── upsample ──────────────────────────────────────────────────────────
 Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource *mr)
 {
-    multirateGatherArgcheck(x, "upsample");
-    multiratePhaseArgcheck(n, phase, "upsample");
+    upsample_argcheck(x, n, phase);
     const GatherShape gs = gatherShape(x);
     const size_t outRows = gs.rows * n;
     Value r = allocMultirateOut(x, gs, outRows, mr);
@@ -184,7 +207,7 @@ Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource
 // the reference outright.
 Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 {
-    detail::requireFloatInput(x, "decimate");
+    decimate_argcheck(x);
     const bool xSingle = (x.type() == ValueType::SINGLE);
     if (x.isComplex()) {
         const size_t nx = x.numel();
@@ -236,6 +259,7 @@ Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
 // ── resample ──────────────────────────────────────────────────────────
 Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr)
 {
+    resample_argcheck(x, p, q);
     return resample(x, p, q, 10, 5.0, mr);
 }
 

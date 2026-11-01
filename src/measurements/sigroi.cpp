@@ -54,7 +54,7 @@ inline int64_t roiEnd(const Value &roi, size_t i)
 // of double/single/integer (LOGICAL is rejected by the reference); the
 // nk kernels read doubles, so single is an honest gap
 // (bugs/opened/signal/single-float-inputs.md).
-inline void sigroiRoiArgcheck(const Value &roi, const char *fn)
+inline void sigroi_argcheck(const Value &roi, const char *fn)
 {
     const ValueType t = roi.type();
     if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX && !isIntegerType(t))
@@ -63,6 +63,11 @@ inline void sigroiRoiArgcheck(const Value &roi, const char *fn)
         throw Error(std::string(fn) + ": roi must be an N×2 matrix of "
                     "[start, end] pairs",
                     0, 0, fn, "", std::string("numkit:") + fn + ":roiCols");
+}
+
+inline void sigroiRoiArgcheck(const Value &roi, const char *fn)
+{
+    sigroi_argcheck(roi, fn);
 }
 
 } // namespace

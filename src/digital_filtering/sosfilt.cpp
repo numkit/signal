@@ -92,11 +92,36 @@ void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
         std::copy(scratch.begin(), scratch.begin() + n, out);
 }
 
+void sosfilt_argcheck(const Value &sos, const Value &x)
+{
+    validateSosMatrix(sos, "sosfilt");
+    if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE
+        && x.type() != ValueType::COMPLEX) {
+        throw Error("sosfilt: signal x must have floating point precision "
+                    "(got a " + std::to_string(x.dims().rows()) + "x"
+                    + std::to_string(x.dims().cols()) + " "
+                    + mtypeName(x.type()) + " array)",
+                     0, 0, "sosfilt", "", "numkit:sosfilt:xType");
+    }
+}
+
+void sosfiltfilt_argcheck(const Value &sos, const Value &x)
+{
+    validateSosMatrix(sos, "sosfiltfilt");
+    if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE) {
+        throw Error("sosfiltfilt: signal x must have floating point precision "
+                    "(got a " + std::to_string(x.dims().rows()) + "x"
+                    + std::to_string(x.dims().cols()) + " "
+                    + mtypeName(x.type()) + " array)",
+                     0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:xType");
+    }
+}
+
 } // namespace
 
 Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
 {
-    validateSosMatrix(sos, "sosfilt");
+    sosfilt_argcheck(sos, x);
     const bool anySingle = (sos.type() == ValueType::SINGLE) || (x.type() == ValueType::SINGLE);
     Value sosD = detail::widenSingleToDouble(sos, mr);
     if (x.type() == ValueType::COMPLEX) {
@@ -121,13 +146,6 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
         for (size_t i = 0; i < N; ++i)
             od[i] = Complex(yrd[i], yid[i]);
         return out;
-    }
-    if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE) {
-        throw Error("sosfilt: signal x must have floating point precision "
-                    "(got a " + std::to_string(x.dims().rows()) + "x"
-                    + std::to_string(x.dims().cols()) + " "
-                    + mtypeName(x.type()) + " array)",
-                     0, 0, "sosfilt", "", "numkit:sosfilt:xType");
     }
     if (x.isEmpty())
         return createLike(x, anySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
@@ -318,15 +336,8 @@ void sosfiltfiltColumn(const Value &sos, const double *xs, double *out,
 
 Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
 {
-    validateSosMatrix(sos, "sosfiltfilt");
+    sosfiltfilt_argcheck(sos, x);
     const bool anySingle = (sos.type() == ValueType::SINGLE) || (x.type() == ValueType::SINGLE);
-    if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE) {
-        throw Error("sosfiltfilt: signal x must have floating point precision "
-                    "(got a " + std::to_string(x.dims().rows()) + "x"
-                    + std::to_string(x.dims().cols()) + " "
-                    + mtypeName(x.type()) + " array)",
-                     0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:xType");
-    }
     if (x.isEmpty())
         return createLike(x, anySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 

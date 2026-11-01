@@ -138,6 +138,12 @@ double peakWidth(const double *x, std::size_t n, std::size_t pi, double h,
     return rcross - lcross;
 }
 
+void findpeaks_argcheck(const Value &x, const PeakOpts &opt)
+{
+    (void)x;
+    (void)opt;
+}
+
 } // namespace
 
 // Core detection + filtering. locArr == nullptr => locations are 1-based
@@ -149,6 +155,7 @@ std::tuple<Value, Value, Value, Value>
 findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
               std::pmr::memory_resource *mr)
 {
+    findpeaks_argcheck(x, opt);
     ScratchArena scratch(mr);
     auto val  = ScratchVec<double>(&scratch);      // peak heights
     auto loc  = ScratchVec<double>(&scratch);      // peak locations

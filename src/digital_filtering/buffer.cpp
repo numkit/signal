@@ -202,10 +202,34 @@ Value makePartialZ(const Value &x, size_t startIdx, size_t endIdx, int xOrient, 
     return z;
 }
 
+void buffer_argcheck(int n, int p, const Value &opt)
+{
+    if (n <= 0) return;
+    if (p < 0) {
+        if (!opt.isEmpty()) {
+            const double v = opt.toScalar();
+            if (v < 0.0 || v > -p)
+                throw Error("buffer: OPT (offset) for underlap must be in [0, -P]",
+                            0, 0, "buffer", "", "numkit:buffer:BadOpt");
+        }
+        return;
+    }
+    const int hop = n - p;
+    if (hop <= 0)
+        throw Error("buffer: P must be < N (overlap < frame length)",
+                    0, 0, "buffer", "", "numkit:buffer:BadOverlap");
+    if (p > 0 && !opt.isEmpty() && !isStringLikeNoDelay(opt)) {
+        if (opt.numel() != static_cast<size_t>(p))
+            throw Error("buffer: initial-condition OPT must have length P",
+                        0, 0, "buffer", "", "numkit:buffer:BadInitLen");
+    }
+}
+
 } // anon
 
 Value buffer(const Value &x, int n, int p, const Value &opt, std::pmr::memory_resource *mr)
 {
+    buffer_argcheck(n, p, opt);
     BufferResult r = bufferCore(x, n, p, opt, /*forceCompleteOnly=*/false, mr);
     return r.Y;
 }
@@ -213,6 +237,7 @@ Value buffer(const Value &x, int n, int p, const Value &opt, std::pmr::memory_re
 std::tuple<Value, Value>
 buffer2(const Value &x, int n, int p, const Value &opt, std::pmr::memory_resource *mr)
 {
+    buffer_argcheck(n, p, opt);
     BufferResult r = bufferCore(x, n, p, opt, /*forceCompleteOnly=*/true, mr);
     Value z = makePartialZ(x, r.partialStart, r.partialEnd, rowOrCol(x), mr);
     return {r.Y, z};

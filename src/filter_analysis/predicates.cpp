@@ -48,6 +48,12 @@ double maxRootRadius(const Value &p, std::pmr::memory_resource *mr)
     return mx;
 }
 
+void predicates_argcheck(const Value &b, const Value &a)
+{
+    (void)b;
+    (void)a;
+}
+
 } // namespace
 
 // Strip trailing zeros from a polynomial vector — they don't change the
@@ -75,12 +81,13 @@ bool isSymmetric(const std::vector<double> &v, double scale, double tol)
 // ── isfir ─────────────────────────────────────────────────────────────
 bool isfir(const Value &b)
 {
-    (void)b;
+    predicates_argcheck(b, Value());
     return true;   // single-arg form: anything with implicit a=1 is FIR
 }
 
-bool isfir(const Value & /*b*/, const Value &a)
+bool isfir(const Value &b, const Value &a)
 {
+    predicates_argcheck(b, a);
     return isTrivialA(a);
 }
 

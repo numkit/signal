@@ -461,6 +461,17 @@ Value dutycycle(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return colVec(out, mr);
 }
 
+namespace {
+
+void pulseRiseFall_argcheck(Span<const Value> args, const char *fnname)
+{
+    if (args.empty())
+        throw Error(std::string(fnname) + ": requires at least 1 argument",
+                     0, 0, fnname, "", std::string("numkit:") + fnname + ":nargin");
+}
+
+} // anonymous
+
 // risetime / falltime worker (declared in pulse_metrics_detail.hpp). Lives on
 // the compute side — it only needs the file-local state-level helpers above —
 // so the risetime_reg/falltime_reg adapters forward into it. Emits up to 5
@@ -471,9 +482,7 @@ void pulseRiseFall(Span<const Value> args, std::size_t nargout, Span<Value> outs
                    bool rising, const char *fnname,
                    std::pmr::memory_resource *mr)
 {
-    if (args.empty())
-        throw Error(std::string(fnname) + ": requires at least 1 argument",
-                     0, 0, fnname, "", std::string("numkit:") + fnname + ":nargin");
+    pulseRiseFall_argcheck(args, fnname);
     const Value &fsv = (args.size() >= 2) ? args[1] : Value::Empty;
     auto v = readVec(args[0]);
     auto lh = stateLevelsCalc(v.data(), v.size());

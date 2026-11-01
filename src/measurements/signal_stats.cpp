@@ -24,12 +24,17 @@ using ::numkit::ops::firstNonSingletonDim;
 using ::numkit::ops::resolveDim;   // 0 -> first non-singleton, else validate
 using ::numkit::ops::validateDim;
 
+int signal_stats_argcheck(const Value &x, int dim, const char *fn)
+{
+    return resolveDim(x, dim, fn);
+}
+
 } // namespace
 
 // ── rms ────────────────────────────────────────────────────────────────
 Value rms(const Value &x, int dim, std::pmr::memory_resource *mr)
 {
-    const int d = resolveDim(x, dim, "rms");
+    const int d = signal_stats_argcheck(x, dim, "rms");
     return applyAlongDim(x, d,
         [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
             if (n == 0) return std::numeric_limits<double>::quiet_NaN();
@@ -43,7 +48,7 @@ Value rms(const Value &x, int dim, std::pmr::memory_resource *mr)
 // ── rssq ───────────────────────────────────────────────────────────────
 Value rssq(const Value &x, int dim, std::pmr::memory_resource *mr)
 {
-    const int d = resolveDim(x, dim, "rssq");
+    const int d = signal_stats_argcheck(x, dim, "rssq");
     return applyAlongDim(x, d,
         [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
             double s = 0.0;
@@ -56,7 +61,7 @@ Value rssq(const Value &x, int dim, std::pmr::memory_resource *mr)
 // ── peak2peak ──────────────────────────────────────────────────────────
 Value peak2peak(const Value &x, int dim, std::pmr::memory_resource *mr)
 {
-    const int d = resolveDim(x, dim, "peak2peak");
+    const int d = signal_stats_argcheck(x, dim, "peak2peak");
     return applyAlongDim(x, d,
         [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
             if (n == 0) return std::numeric_limits<double>::quiet_NaN();
@@ -76,7 +81,7 @@ Value peak2peak(const Value &x, int dim, std::pmr::memory_resource *mr)
 // ── peak2rms ───────────────────────────────────────────────────────────
 Value peak2rms(const Value &x, int dim, std::pmr::memory_resource *mr)
 {
-    const int d = resolveDim(x, dim, "peak2rms");
+    const int d = signal_stats_argcheck(x, dim, "peak2rms");
     return applyAlongDim(x, d,
         [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
             if (n == 0) return std::numeric_limits<double>::quiet_NaN();

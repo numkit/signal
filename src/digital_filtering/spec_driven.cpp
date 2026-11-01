@@ -65,24 +65,55 @@ inline Value pairWn(double w1, double w2, std::pmr::memory_resource *mr) {
     return v;
 }
 
+void lowpass_argcheck(double fpass, double fs, int order)
+{
+    validateOrder(order, "lowpass");
+    (void)normaliseW(fpass, fs, "lowpass");
+}
+
+void highpass_argcheck(double fpass, double fs, int order)
+{
+    validateOrder(order, "highpass");
+    (void)normaliseW(fpass, fs, "highpass");
+}
+
+void bandpass_argcheck(double flo, double fhi, double fs, int order)
+{
+    validateOrder(order, "bandpass");
+    if (!(flo < fhi))
+        throw Error("bandpass: low cutoff must be < high cutoff",
+                     0, 0, "bandpass", "", "numkit:bandpass:badRange");
+    (void)normaliseW(flo, fs, "bandpass");
+    (void)normaliseW(fhi, fs, "bandpass");
+}
+
+void bandstop_argcheck(double flo, double fhi, double fs, int order)
+{
+    validateOrder(order, "bandstop");
+    if (!(flo < fhi))
+        throw Error("bandstop: low cutoff must be < high cutoff",
+                     0, 0, "bandstop", "", "numkit:bandstop:badRange");
+    (void)normaliseW(flo, fs, "bandstop");
+    (void)normaliseW(fhi, fs, "bandstop");
+}
+
 } // namespace
 
 Value lowpass(const Value &x, double fpass, double fs, int order, std::pmr::memory_resource *mr)
 {
-    validateOrder(order, "lowpass");
+    lowpass_argcheck(fpass, fs, order);
     const double Wp = normaliseW(fpass, fs, "lowpass");
-    // honour explicit order; remap legacy default 8 -> 7 to match MATLAB
+    // honour explicit order; remap legacy default 8 -> 7 to match the reference engine
     const int N = (order == 8) ? kDefaultIirOrder : order;
     auto [b, a] = ellip(N, kDefaultRp, kDefaultRs, scalarWn(Wp, mr), FilterType::Lowpass, /*analog=*/false, mr);
-    // SOS-form filtfilt is numerically stable for high-order IIR --
-    // matches MATLAB filtfilt(d, x) for digitalFilter SOS objects.
+    // SOS-form filtfilt is numerically stable for high-order IIR.
     auto sos = tf2sos(b, a, mr);
     return sosfiltfilt(sos, x, mr);
 }
 
 Value highpass(const Value &x, double fpass, double fs, int order, std::pmr::memory_resource *mr)
 {
-    validateOrder(order, "highpass");
+    highpass_argcheck(fpass, fs, order);
     const double Wp = normaliseW(fpass, fs, "highpass");
     const int N = (order == 8) ? kDefaultIirOrder : order;
     auto [b, a] = ellip(N, kDefaultRp, kDefaultRs, scalarWn(Wp, mr), FilterType::Highpass, /*analog=*/false, mr);
@@ -92,10 +123,7 @@ Value highpass(const Value &x, double fpass, double fs, int order, std::pmr::mem
 
 Value bandpass(const Value &x, double flo, double fhi, double fs, int order, std::pmr::memory_resource *mr)
 {
-    validateOrder(order, "bandpass");
-    if (!(flo < fhi))
-        throw Error("bandpass: low cutoff must be < high cutoff",
-                     0, 0, "bandpass", "", "numkit:bandpass:badRange");
+    bandpass_argcheck(flo, fhi, fs, order);
     const double Wlo = normaliseW(flo, fs, "bandpass");
     const double Whi = normaliseW(fhi, fs, "bandpass");
     const int N = (order == 8) ? kDefaultIirOrder : order;
@@ -106,10 +134,7 @@ Value bandpass(const Value &x, double flo, double fhi, double fs, int order, std
 
 Value bandstop(const Value &x, double flo, double fhi, double fs, int order, std::pmr::memory_resource *mr)
 {
-    validateOrder(order, "bandstop");
-    if (!(flo < fhi))
-        throw Error("bandstop: low cutoff must be < high cutoff",
-                     0, 0, "bandstop", "", "numkit:bandstop:badRange");
+    bandstop_argcheck(flo, fhi, fs, order);
     const double Wlo = normaliseW(flo, fs, "bandstop");
     const double Whi = normaliseW(fhi, fs, "bandstop");
     const int N = (order == 8) ? kDefaultIirOrder : order;

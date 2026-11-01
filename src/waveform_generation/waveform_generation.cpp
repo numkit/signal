@@ -57,13 +57,32 @@ double gauspulsScalar(double tv, double fc, double alpha)
     return std::exp(-alpha * tv * tv) * std::cos(kTwoPi * fc * tv);
 }
 
-} // namespace
-
-Value rectpuls(const Value &t, double w, std::pmr::memory_resource *mr)
+void rectpuls_argcheck(double w)
 {
     if (w <= 0)
         throw Error("rectpuls: width w must be positive",
                      0, 0, "rectpuls", "", "numkit:rectpuls:badWidth");
+}
+
+void tripuls_argcheck(double w)
+{
+    if (w <= 0)
+        throw Error("tripuls: width w must be positive",
+                     0, 0, "tripuls", "", "numkit:tripuls:badWidth");
+}
+
+void gauspuls_argcheck(double fc, double bw)
+{
+    if (fc <= 0 || bw <= 0)
+        throw Error("gauspuls: fc and bw must be positive",
+                     0, 0, "gauspuls", "", "numkit:gauspuls:badArg");
+}
+
+} // namespace
+
+Value rectpuls(const Value &t, double w, std::pmr::memory_resource *mr)
+{
+    rectpuls_argcheck(w);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
     const size_t n = t.numel();
@@ -74,9 +93,7 @@ Value rectpuls(const Value &t, double w, std::pmr::memory_resource *mr)
 
 Value tripuls(const Value &t, double w, std::pmr::memory_resource *mr)
 {
-    if (w <= 0)
-        throw Error("tripuls: width w must be positive",
-                     0, 0, "tripuls", "", "numkit:tripuls:badWidth");
+    tripuls_argcheck(w);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
     const size_t n = t.numel();
@@ -87,9 +104,7 @@ Value tripuls(const Value &t, double w, std::pmr::memory_resource *mr)
 
 Value gauspuls(const Value &t, double fc, double bw, std::pmr::memory_resource *mr)
 {
-    if (fc <= 0 || bw <= 0)
-        throw Error("gauspuls: fc and bw must be positive",
-                     0, 0, "gauspuls", "", "numkit:gauspuls:badArg");
+    gauspuls_argcheck(fc, bw);
     const double alpha = gauspulsAlpha(fc, bw);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();

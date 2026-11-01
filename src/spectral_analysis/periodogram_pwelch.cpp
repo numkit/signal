@@ -269,9 +269,17 @@ struct CrossWelchOut {
     size_t nfft = 0;
 };
 
+void crossWelch_argcheck(const Value &x, const Value &y)
+{
+    if (x.numel() != y.numel())
+        throw Error("cpsd/mscohere: x and y must have the same length",
+                    0, 0, "cpsd", "", "numkit:cpsd:size");
+}
+
 CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, size_t noverlap, size_t nfft, std::pmr::memory_resource *mr)
 {
     const size_t nx = x.numel();
+    crossWelch_argcheck(x, y);
     const size_t ny = y.numel();
     if (nx != ny)
         throw Error("cpsd/mscohere: x and y must have the same length",

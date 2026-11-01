@@ -32,12 +32,22 @@ namespace numkit::signal {
 // numeric class and may have any shape — the result matches ind's
 // shape, exactly as the reference (probed R2025b: fractional and
 // out-of-range ind values are NOT validated by the reference either).
+namespace {
+
+void goertzel_argcheck(const Value &x, const Value &ind)
+{
+    detail::requireFloatInput(x, "goertzel");
+    detail::requireNumericOrLogicalInput(ind, "goertzel", "ind", 2);
+}
+
+} // namespace
+
 Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
 {
     // Contract (probed R2025b): x is single/double/complex (single is a
     // capability gap here); logical/integer are rejected. ind is
     // unvalidated by the reference — accept every numeric class.
-    detail::requireFloatInput(x, "goertzel");
+    goertzel_argcheck(x, ind);
     detail::requireNumericOrLogicalInput(ind, "goertzel", "ind", 2);
 
     const size_t N = x.numel();

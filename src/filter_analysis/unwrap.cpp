@@ -18,8 +18,18 @@
 
 namespace numkit::signal {
 
+namespace {
+
+void unwrap_argcheck(const Value &phase)
+{
+    (void)phase;
+}
+
+} // namespace
+
 Value unwrap(const Value &phase, std::pmr::memory_resource *mr)
 {
+    unwrap_argcheck(phase);
     const size_t n = phase.numel();
     const double *p = phase.doubleData();
 

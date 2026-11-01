@@ -178,10 +178,21 @@ void transformOneColumn(const double *srcCol, std::size_t L,
     }
 }
 
+void fwht_argcheck(const Value &x, const std::string &ordering)
+{
+    if (ordering != "sequency" && ordering != "hadamard" && ordering != "dyadic")
+        throw Error("fwht: ordering must be 'sequency', 'hadamard', or 'dyadic'",
+                     0, 0, "fwht", "", "numkit:fwht:badOrdering");
+    if (x.dims().ndim() > 2)
+        throw Error("fwht: input must be a vector or matrix",
+                     0, 0, "fwht", "", "numkit:fwht:notMatrix");
+}
+
 Value runWalshHadamard(const Value &x, std::size_t n,
                        const std::string &ordering, bool forward,
                        std::pmr::memory_resource *mr)
 {
+    fwht_argcheck(x, ordering);
     if (ordering != "sequency" && ordering != "hadamard" && ordering != "dyadic")
         throw Error("fwht: ordering must be 'sequency', 'hadamard', or 'dyadic'",
                      0, 0, "fwht", "", "numkit:fwht:badOrdering");

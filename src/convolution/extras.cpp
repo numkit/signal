@@ -119,7 +119,9 @@ Value cconv(const Value &x, const Value &y, size_t n, std::pmr::memory_resource 
 // element bits survive). Integer classes would need integer-class
 // outputs which the Value kernel layer cannot allocate yet
 // (bugs/opened/signal/integer-class-outputs.md).
-Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
+namespace {
+
+void convmtx_argcheck(const Value &h, size_t n)
 {
     if (n == 0)
         throw Error("convmtx: n must be positive",
@@ -137,6 +139,24 @@ Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
         // The reference accepts every numeric class EXCEPT logical.
         detail::throwInputType(h, "convmtx", "h", 1, "numeric");
     }
+}
+
+void xcorr2_argcheck(const Value &A, const Value &B)
+{
+    detail::requireNumericSignalInput(A, "xcorr2", "A", 1);
+    detail::requireNumericSignalInput(B, "xcorr2", "B", 2);
+    if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
+        throw Error("xcorr2: N-D arrays are not supported",
+                     0, 0, "xcorr2", "", "numkit:xcorr2:nd");
+}
+
+} // namespace
+
+Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
+{
+    convmtx_argcheck(h, n);
+    const size_t nh = h.numel();
+    const ValueType ht = h.type();
 
     // Default to row-form when h is a vector with rows() == 1 OR is
     // 1-D / scalar. Column form only when h is explicitly Nx1 (rows>1).
@@ -168,11 +188,7 @@ Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
 // bugs/opened/signal/complex-kernel-gaps.md).
 Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
 {
-    detail::requireNumericSignalInput(A, "xcorr2", "A", 1);
-    detail::requireNumericSignalInput(B, "xcorr2", "B", 2);
-    if (A.dims().ndim() > 2 || B.dims().ndim() > 2)
-        throw Error("xcorr2: N-D arrays are not supported",
-                     0, 0, "xcorr2", "", "numkit:xcorr2:nd");
+    xcorr2_argcheck(A, B);
     const bool anySingle = (A.type() == ValueType::SINGLE) || (B.type() == ValueType::SINGLE);
     Value aHold, bHold;
     if (!A.isComplex() && (A.isLogical() || isIntegerType(A.type()) || A.type() == ValueType::SINGLE))

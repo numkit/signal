@@ -57,6 +57,31 @@ inline bool isVectorShape(const Value &v)
     return v.isEmpty() || d.rows() == 1 || d.cols() == 1;
 }
 
+void polyscale_argcheck(const Value &p, const Value &scale)
+{
+    detail::requireFloatInput(p, "polyscale", "p", 1);
+    detail::requireFloatInput(scale, "polyscale", "scale", 2);
+    if (p.isEmpty())
+        return;
+    const size_t n = isVectorShape(p) ? p.numel() : p.dims().cols();
+    const size_t scaleN = scale.numel();
+    if (scaleN != 1 && scaleN != n) {
+        throw numkit::Error(
+            "polyscale: scale must be a scalar or a vector matching the "
+            "polynomial length",
+            0, 0, "polyscale", "", "numkit:polyscale:BadScale");
+    }
+}
+
+void polystab_argcheck(const Value &a)
+{
+    detail::requireFloatInput(a, "polystab");
+    if (!isVectorShape(a)) {
+        throw numkit::Error("Input must be a vector.",
+                            0, 0, "polystab", "", "numkit:polystab:notVector");
+    }
+}
+
 } // anonymous namespace
 
 // ─────────────────────────────────────────────────────────────────────
@@ -74,8 +99,7 @@ Value polyscale(const Value &p, const Value &scale,
 {
     // Reference (R2025b) validates p and scale as double/single/complex
     // (logical and integer classes are rejected with sigcheckfloattype).
-    detail::requireFloatInput(p, "polyscale", "p", 1);
-    detail::requireFloatInput(scale, "polyscale", "scale", 2);
+    polyscale_argcheck(p, scale);
     const bool pSingle = (p.type() == ValueType::SINGLE);
 
     // Edge case: empty polynomial → empty result (0×0).
@@ -98,12 +122,6 @@ Value polyscale(const Value &p, const Value &scale,
     // Resolve the scale argument: either a scalar or a length-n vector.
     const size_t scaleN = scale.numel();
     const bool scaleScalar = (scaleN == 1);
-    if (!scaleScalar && scaleN != n) {
-        throw numkit::Error(
-            "polyscale: scale must be a scalar or a vector matching the "
-            "polynomial length",
-            0, 0, "polyscale", "", "numkit:polyscale:BadScale");
-    }
 
     // Result is complex iff either input is complex.
     const bool wantComplex = isComplex(p) || isComplex(scale);
@@ -176,14 +194,8 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
 {
     // Reference (R2025b): double/single/complex vectors only — logical
     // and integer classes are rejected (the eig step voices inputType).
-    detail::requireFloatInput(a, "polystab");
+    polystab_argcheck(a);
     const bool aSingle = (a.type() == ValueType::SINGLE);
-
-    // Matrix input is not allowed.
-    if (!isVectorShape(a)) {
-        throw numkit::Error("Input must be a vector.",
-                            0, 0, "polystab", "", "numkit:polystab:notVector");
-    }
 
     // Empty input → empty result (0×0).
     if (a.isEmpty())

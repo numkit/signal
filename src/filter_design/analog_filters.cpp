@@ -717,17 +717,22 @@ std::vector<Cd> polyFromRootsComplex(const std::vector<Cd> &roots) {
     return p;
 }
 
+void impinvar_argcheck(const Value &b, const Value &a)
+{
+    if (a.numel() < 2)
+        throw std::runtime_error("impinvar: a must have degree ≥ 1");
+    if (b.numel() >= a.numel())
+        throw std::runtime_error("impinvar: numerator degree must be less than denominator");
+}
+
 } // anonymous
 
 std::tuple<Value, Value>
 impinvar(const Value &b, const Value &a, double fs, double /*tol*/, std::pmr::memory_resource *mr)
 {
+    impinvar_argcheck(b, a);
     auto bv = readVec(b);
     auto av = readVec(a);
-    if (av.size() < 2)
-        throw std::runtime_error("impinvar: a must have degree ≥ 1");
-    if (bv.size() >= av.size())
-        throw std::runtime_error("impinvar: numerator degree must be less than denominator");
     const int N = static_cast<int>(av.size()) - 1;
     const double T = 1.0 / fs;
 

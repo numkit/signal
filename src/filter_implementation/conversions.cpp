@@ -233,14 +233,27 @@ inline ScratchVec<Complex> coeffsAsVector(const Value &v, std::pmr::memory_resou
     return out;
 }
 
+void zp2sos_argcheck(const Value &zerosV, const Value &polesV)
+{
+    if (polesV.isEmpty())
+        throw Error("zp2sos: at least one pole is required",
+                     0, 0, "zp2sos", "", "numkit:zp2sos:noPoles");
+    if (!zerosV.isEmpty() && zerosV.type() != ValueType::COMPLEX
+        && zerosV.type() != ValueType::DOUBLE && zerosV.type() != ValueType::SINGLE)
+        throw Error("zp2sos: zeros/poles must be double, single, or complex vectors",
+                    0, 0, "zp2sos", "", "numkit:zp2sos:inputType");
+    if (polesV.type() != ValueType::COMPLEX && polesV.type() != ValueType::DOUBLE
+        && polesV.type() != ValueType::SINGLE)
+        throw Error("zp2sos: zeros/poles must be double, single, or complex vectors",
+                    0, 0, "zp2sos", "", "numkit:zp2sos:inputType");
+}
+
 } // namespace
 
 std::tuple<Value, double>
 zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surplusAtOrigin, std::pmr::memory_resource *mr)
 {
-    if (polesV.isEmpty())
-        throw Error("zp2sos: at least one pole is required",
-                     0, 0, "zp2sos", "", "numkit:zp2sos:noPoles");
+    zp2sos_argcheck(zerosV, polesV);
 
     const bool anySingle = (zerosV.type() == ValueType::SINGLE) || (polesV.type() == ValueType::SINGLE);
     ScratchArena scratch(mr);

@@ -102,9 +102,18 @@ Value dftmtx(size_t N, std::pmr::memory_resource *mr)
 // would need integer-class outputs the Value layer cannot allocate yet
 // (bugs/opened/signal/integer-class-outputs.md); char is rejected
 // (MustBeNumericOrLogical).
-Value bitrevorder(const Value &x, std::pmr::memory_resource *mr)
+namespace {
+
+void bitrevorder_argcheck(const Value &x)
 {
     detail::requireNumericOrLogicalInput(x, "bitrevorder");
+}
+
+} // namespace
+
+Value bitrevorder(const Value &x, std::pmr::memory_resource *mr)
+{
+    bitrevorder_argcheck(x);
     const ValueType t = x.type();
     const size_t n = x.numel();
     if (!isPow2(n))

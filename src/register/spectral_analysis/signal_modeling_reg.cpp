@@ -190,18 +190,24 @@ void stmcb_reg(Span<const Value> args, size_t nargout,
                Span<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "stmcb");
-    // Two-signal form stmcb(y, x, nb, na) â€” x is a vector, not a scalar order.
-    if (!args[1].isScalar())
-        throw Error("stmcb: the two-signal form stmcb(y, x, ...) is not yet supported",
-                    0, 0, "stmcb", "", "numkit:stmcb:twosignal");
+    if (args.size() >= 4 && ((!args[1].isScalar() && !args[1].isEmpty()) || args.size() == 6)) {
+        // Two-signal form stmcb(y, x, nb, na [, niter [, ai]])
+        const int nb    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "stmcb"), 3, "nb", "stmcb");
+        const int na    = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "stmcb"), 4, "na", "stmcb");
+        const int niter = (args.size() >= 5 && !args[4].isEmpty())
+                              ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[4], 5, "niter", "stmcb"), 5, "niter", "stmcb") : 5;
+        const Value ai  = (args.size() >= 6) ? args[5] : Value();
+        auto [b, a] = stmcb(args[0], args[1], nb, na, niter, ai, ctx.engine->resource());
+        outs[0] = std::move(b);
+        if (nargout > 1) outs[1] = std::move(a);
+        return;
+    }
     const int nb    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "stmcb"), 2, "nb", "stmcb");
     const int na    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "stmcb"), 3, "na", "stmcb");
     const int niter = (args.size() >= 4 && !args[3].isEmpty())
                           ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "niter", "stmcb"), 4, "niter", "stmcb") : 5;
-    if (args.size() >= 5)
-        throw Error("stmcb: an explicit ai initial estimate is not yet supported",
-                    0, 0, "stmcb", "", "numkit:stmcb:ai");
-    auto [b, a] = stmcb(args[0], nb, na, niter, ctx.engine->resource());
+    const Value ai  = (args.size() >= 5) ? args[4] : Value();
+    auto [b, a] = stmcb(args[0], Value(), nb, na, niter, ai, ctx.engine->resource());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);
 }

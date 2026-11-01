@@ -42,10 +42,7 @@ Value sameOrientReal(const Value &like, size_t n, std::pmr::memory_resource *mr)
             : Value::matrix(n, 1, ValueType::DOUBLE, mr);
 }
 
-} // namespace
-
-// ── intfilt (FIR design) ──────────────────────────────────────────────
-Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
+void intfilt_argcheck(size_t r, size_t n, double alpha)
 {
     if (r < 1)
         throw Error("intfilt: r must be >= 1",
@@ -56,6 +53,29 @@ Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
     if (!(alpha > 0.0) || !(alpha <= 1.0))
         throw Error("intfilt: alpha must be in (0, 1]",
                      0, 0, "intfilt", "", "numkit:intfilt:badAlpha");
+}
+
+void upfirdn_argcheck(size_t p, size_t q)
+{
+    if (p < 1 || q < 1)
+        throw Error("upfirdn: p and q must be >= 1",
+                     0, 0, "upfirdn", "", "numkit:upfirdn:badPQ");
+}
+
+void interp_argcheck(const Value &x, size_t n)
+{
+    if (x.numel() < 2 * n + 1)
+        throw Error("interp: input 1 (x) length (" + std::to_string(x.numel()) +
+                        ") must be at least 2*n+1 (" + std::to_string(2 * n + 1) + ")",
+                    0, 0, "interp", "", "numkit:interp:inputTooShort");
+}
+
+} // namespace
+
+// ── intfilt (FIR design) ──────────────────────────────────────────────
+Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
+{
+    intfilt_argcheck(r, n, alpha);
 
     // MATLAB intfilt(R, L, freqmult): a bandlimited interpolation FIR of
     // length 2*R*L-1, designed by LEAST SQUARES (firls) over a piecewise
@@ -101,9 +121,7 @@ Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
 // by q yields ceil(/q) samples.
 Value upfirdn(const Value &x, const Value &h, size_t p, size_t q, std::pmr::memory_resource *mr)
 {
-    if (p < 1 || q < 1)
-        throw Error("upfirdn: p and q must be >= 1",
-                     0, 0, "upfirdn", "", "numkit:upfirdn:badPQ");
+    upfirdn_argcheck(p, q);
     const size_t Lx = x.numel();
     const size_t Lh = h.numel();
     if (Lx == 0 || Lh == 0) return sameOrientReal(x, 0, mr);
@@ -142,10 +160,7 @@ Value upfirdn(const Value &x, const Value &h, size_t p, size_t q, std::pmr::memo
 // ── interp ────────────────────────────────────────────────────────────
 Value interp(const Value &x, size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
 {
-    if (x.numel() < 2 * n + 1)
-        throw Error("interp: input 1 (x) length (" + std::to_string(x.numel()) +
-                        ") must be at least 2*n+1 (" + std::to_string(2 * n + 1) + ")",
-                    0, 0, "interp", "", "numkit:interp:inputTooShort");
+    interp_argcheck(x, n);
     if (r == 1) {
         // Pass-through: copy x.
         auto out = sameOrientReal(x, x.numel(), mr);

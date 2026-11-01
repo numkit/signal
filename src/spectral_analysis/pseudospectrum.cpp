@@ -34,6 +34,14 @@ namespace {
 
 // Classical Jacobi eigendecomposition of a D×D symmetric matrix A (row-major).
 // On exit A's diagonal holds the eigenvalues; V's columns are the eigenvectors.
+void pseudospectrum_argcheck(const Value &x, int p, int nfft, double fs)
+{
+    (void)x;
+    (void)p;
+    (void)nfft;
+    (void)fs;
+}
+
 void jacobiEig(std::vector<double> &A, std::vector<double> &V, size_t D)
 {
     V.assign(D * D, 0.0);
@@ -79,6 +87,7 @@ std::tuple<Value, Value>
 pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
                std::pmr::memory_resource *mr)
 {
+    pseudospectrum_argcheck(x, p, nfft, fs);
     if (p < 1) p = 1;
     if (nfft < 2) nfft = 256;
     const int M = 2 * p;                       // correlation-matrix order (MATLAB default)
