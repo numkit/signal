@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/multirate/multirate_reg.cpp
+// toolboxes/signal/src/multirate/multirate_reg.cpp
 //
 // Register half of the signal multirate builtins: the CallContext wrappers
 // delegating to the engine-free compute in multirate.cpp. library.cpp
@@ -74,9 +74,10 @@ void resample_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     int n_order = 10;
     double beta = 5.0;
     if (args.size() >= 4 && args[3].isNumeric() && args[3].numel() == 1)
-        n_order = static_cast<int>(args[3].toScalar());
+        n_order = argcheck::expectedInteger(
+            argcheck::expectedReal(args[3], 4, "n", "resample"), 4, "n", "resample");
     if (args.size() >= 5 && args[4].isNumeric() && args[4].numel() == 1)
-        beta = args[4].toScalar();
+        beta = argcheck::expectedReal(args[4], 5, "beta", "resample");
     outs[0] = resample(args[0], p, q, n_order, beta, ctx.engine->resource());
 }
 
