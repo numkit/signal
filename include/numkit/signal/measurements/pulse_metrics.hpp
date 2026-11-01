@@ -1,6 +1,6 @@
 /// @file pulse_metrics.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/measurements/pulse_metrics.hpp
+// toolboxes/signal/include/numkit/signal/measurements/pulse_metrics.hpp
 //
 // Pulse and transition metrics for digital / step-shaped time-series.
 // The pulse-metric family: `risetime / falltime / overshoot /

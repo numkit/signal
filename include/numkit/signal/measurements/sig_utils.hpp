@@ -1,6 +1,6 @@
 /// @file sig_utils.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/measurements/sig_utils.hpp
+// toolboxes/signal/include/numkit/signal/measurements/sig_utils.hpp
 #pragma once
 
 #include <memory_resource>

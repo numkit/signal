@@ -1,4 +1,4 @@
-// include/nk/builtin/elmat.hpp
+// include/numkit/builtin/elmat.hpp
 // Standalone elmat header for numkit modules
 #pragma once
 

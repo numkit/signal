@@ -1,6 +1,6 @@
 /// @file quantizers.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/digital_filtering/quantizers.hpp
+// toolboxes/signal/include/numkit/signal/digital_filtering/quantizers.hpp
 //
 // Uniform-quantization helpers (Phase 4.2):
 //   uencode — float → integer (signed/unsigned, N bits, peak V)

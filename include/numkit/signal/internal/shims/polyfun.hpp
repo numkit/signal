@@ -1,4 +1,4 @@
-// include/nk/builtin/polyfun.hpp
+// include/numkit/builtin/polyfun.hpp
 // Standalone polyfun header for numkit modules
 #pragma once
 

@@ -1,6 +1,6 @@
 /// @file spectrogram.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/time_frequency/spectrogram.hpp
+// toolboxes/signal/include/numkit/signal/time_frequency/spectrogram.hpp
 //
 // Short-time Fourier transform. periodogram / pwelch (which collapse the
 // time axis) live in spectral_analysis/periodogram_pwelch.hpp.

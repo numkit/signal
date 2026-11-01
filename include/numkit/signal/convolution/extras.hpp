@@ -1,6 +1,6 @@
 /// @file extras.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/convolution/extras.hpp
+// toolboxes/signal/include/numkit/signal/convolution/extras.hpp
 //
 // Convolution / correlation extras (E1):
 //   cconv(x, y[, n])           — circular convolution

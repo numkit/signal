@@ -1,6 +1,6 @@
 /// @file signal_stats.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/measurements/signal_stats.hpp
+// toolboxes/signal/include/numkit/signal/measurements/signal_stats.hpp
 //
 // Signal-side reductions: rms, rssq, peak2peak, peak2rms.
 

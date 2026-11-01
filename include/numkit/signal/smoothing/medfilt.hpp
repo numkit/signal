@@ -1,6 +1,6 @@
 /// @file medfilt.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/smoothing/medfilt.hpp
+// toolboxes/signal/include/numkit/signal/smoothing/medfilt.hpp
 #pragma once
 
 #include <memory_resource>

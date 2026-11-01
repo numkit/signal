@@ -1,6 +1,6 @@
 /// @file goertzel.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/transforms/goertzel.hpp
+// toolboxes/signal/include/numkit/signal/transforms/goertzel.hpp
 #pragma once
 
 #include <memory_resource>

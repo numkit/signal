@@ -1,4 +1,4 @@
-// toolboxes/signal/include/nk/signal/spectral_analysis/spectral_metrics.hpp
+// toolboxes/signal/include/numkit/signal/spectral_analysis/spectral_metrics.hpp
 //
 // Spectral measurement functions.
 

@@ -1,6 +1,6 @@
 /// @file filter_design.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_design/filter_design.hpp
+// toolboxes/signal/include/numkit/signal/filter_design/filter_design.hpp
 #pragma once
 
 #include <memory_resource>

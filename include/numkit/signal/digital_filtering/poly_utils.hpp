@@ -1,6 +1,6 @@
 /// @file poly_utils.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/digital_filtering/poly_utils.hpp
+// toolboxes/signal/include/numkit/signal/digital_filtering/poly_utils.hpp
 //
 // Signal-processing polynomial utilities.
 

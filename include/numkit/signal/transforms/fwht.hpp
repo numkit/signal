@@ -1,6 +1,6 @@
 /// @file fwht.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/transforms/fwht.hpp
+// toolboxes/signal/include/numkit/signal/transforms/fwht.hpp
 #pragma once
 
 #include <memory_resource>

@@ -1,6 +1,6 @@
 /// @file dbconv.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/measurements/dbconv.hpp
+// toolboxes/signal/include/numkit/signal/measurements/dbconv.hpp
 //
 // Magnitude / dB conversion utilities. Element-wise transforms over
 // real or complex arrays.

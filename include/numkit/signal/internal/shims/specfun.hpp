@@ -1,4 +1,4 @@
-// include/nk/builtin/specfun.hpp
+// include/numkit/builtin/specfun.hpp
 // Standalone specfun header for numkit modules
 #pragma once
 

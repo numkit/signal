@@ -1,6 +1,6 @@
 /// @file responses.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_analysis/responses.hpp
+// toolboxes/signal/include/numkit/signal/filter_analysis/responses.hpp
 //
 // Time- and phase-domain response helpers around the (b, a) digital-
 // filter representation. Built on the existing filter() / freqz()

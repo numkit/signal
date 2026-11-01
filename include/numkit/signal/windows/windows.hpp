@@ -1,6 +1,6 @@
 /// @file windows.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/windows/windows.hpp
+// toolboxes/signal/include/numkit/signal/windows/windows.hpp
 #pragma once
 
 #include <memory_resource>

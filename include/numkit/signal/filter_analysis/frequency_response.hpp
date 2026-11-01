@@ -1,6 +1,6 @@
 /// @file frequency_response.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_analysis/frequency_response.hpp
+// toolboxes/signal/include/numkit/signal/filter_analysis/frequency_response.hpp
 #pragma once
 
 #include <memory_resource>

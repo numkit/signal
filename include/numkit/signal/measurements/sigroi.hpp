@@ -1,4 +1,4 @@
-// toolboxes/signal/include/nk/signal/measurements/sigroi.hpp
+// toolboxes/signal/include/numkit/signal/measurements/sigroi.hpp
 #pragma once
 
 #include <memory_resource>

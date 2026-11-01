@@ -1,6 +1,6 @@
 /// @file iir_designs.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_design/iir_designs.hpp
+// toolboxes/signal/include/numkit/signal/filter_design/iir_designs.hpp
 //
 // Top-level IIR filter designs that compose the analog prototypes
 // (cheb1ap / cheb2ap / besselap / ellipap) with the LP→{HP,BP,BS}

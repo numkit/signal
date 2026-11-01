@@ -1,6 +1,6 @@
 /// @file multirate.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/multirate/multirate.hpp
+// toolboxes/signal/include/numkit/signal/multirate/multirate.hpp
 #pragma once
 
 #include <memory_resource>

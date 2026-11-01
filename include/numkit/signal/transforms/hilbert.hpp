@@ -1,6 +1,6 @@
 /// @file hilbert.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/transforms/hilbert.hpp
+// toolboxes/signal/include/numkit/signal/transforms/hilbert.hpp
 #pragma once
 
 #include <memory_resource>

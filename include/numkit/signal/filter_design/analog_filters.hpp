@@ -1,6 +1,6 @@
 /// @file analog_filters.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_design/analog_filters.hpp
+// toolboxes/signal/include/numkit/signal/filter_design/analog_filters.hpp
 //
 // Analog filter prototypes + lowpass-to-X frequency transformations +
 // bilinear z-transform + analog freq response. Together these form the

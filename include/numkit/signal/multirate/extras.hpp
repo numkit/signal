@@ -1,6 +1,6 @@
 /// @file extras.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/multirate/extras.hpp
+// toolboxes/signal/include/numkit/signal/multirate/extras.hpp
 //
 // Multirate extras (F1): upfirdn, interp, intfilt, fftfilt.
 

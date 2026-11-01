@@ -1,6 +1,6 @@
 /// @file conversions.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_implementation/conversions.hpp
+// toolboxes/signal/include/numkit/signal/filter_implementation/conversions.hpp
 //
 // Convert between filter representations: zp2sos / tf2sos. The cascade
 // applicator sosfilt lives in digital_filtering/sosfilt.hpp.

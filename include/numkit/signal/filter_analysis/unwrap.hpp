@@ -1,6 +1,6 @@
 /// @file unwrap.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_analysis/unwrap.hpp
+// toolboxes/signal/include/numkit/signal/filter_analysis/unwrap.hpp
 #pragma once
 
 #include <memory_resource>

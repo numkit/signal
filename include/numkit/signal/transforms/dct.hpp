@@ -1,6 +1,6 @@
 /// @file dct.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/transforms/dct.hpp
+// toolboxes/signal/include/numkit/signal/transforms/dct.hpp
 #pragma once
 
 #include <memory_resource>

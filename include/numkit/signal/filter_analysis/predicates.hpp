@@ -1,6 +1,6 @@
 /// @file predicates.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_analysis/predicates.hpp
+// toolboxes/signal/include/numkit/signal/filter_analysis/predicates.hpp
 //
 // Boolean classifiers for digital filters: isfir / isallpass / isstable /
 // islinphase / isminphase / ismaxphase. All take (b) or (b, a) and

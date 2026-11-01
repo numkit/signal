@@ -1,6 +1,6 @@
 /// @file conversions_extras.hpp
 /// @ingroup group_signal
-// toolboxes/signal/include/nk/signal/filter_implementation/conversions_extras.hpp
+// toolboxes/signal/include/numkit/signal/filter_implementation/conversions_extras.hpp
 //
 // Additional filter-form conversions: sos ↔ tf, sos ↔ zpk, tf ↔ ss,
 // sos ↔ ss, zpk ↔ ss, plus tf2zpk (gain-explicit alias of tf2zp).
