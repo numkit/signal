@@ -43,7 +43,7 @@ size_t parseSflag(Span<const Value> args, bool &periodic)
     if (!last.isChar() && !last.isString()) return args.size();
     std::string s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (s == "symmetric") return args.size() - 1;
     if (s == "periodic") { periodic = true; return args.size() - 1; }
     return args.size();   // not an sflag â€” leave for caller
@@ -75,7 +75,7 @@ void parseTypeNameOnly(Span<const Value> args, const char *fn)
     if (!last.isChar() && !last.isString()) return;
     std::string s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (s != "double" && s != "single")
         throw Error(std::string(fn) + ": Expected TYPENAME to match one of "
                     "these values: 'double', 'single' (got '" + s + "')",

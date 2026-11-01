@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/spectral_analysis/periodogram_pwelch_reg.cpp
+// toolboxes/signal/src/spectral_analysis/periodogram_pwelch_reg.cpp
 //
 // CallContext register half of spectral_analysis/periodogram_pwelch.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -55,7 +55,7 @@ void periodogram_reg(Span<const Value> args, size_t nargout, Span<Value> outs, C
         if (!args[i].isChar()) continue;
         std::string opt = args[i].toString();
         std::transform(opt.begin(), opt.end(), opt.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (opt == "confidencelevel")
             conf = args[i + 1].toScalar();
     }

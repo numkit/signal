@@ -46,7 +46,7 @@ bool isStringLikeNoDelay(const Value &v)
     if (v.type() != ValueType::CHAR && v.type() != ValueType::STRING) return false;
     std::string s = v.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                    [](unsigned char c) { return std::tolower(c); });
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return s == "nodelay";
 }
 

@@ -371,11 +371,11 @@ Value demod(const Value &y, double Fc, double Fs,
             std::pmr::memory_resource *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
-    const ValueType t = y.type();
-    if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX)
+    const ValueType vt = y.type();
+    if (vt != ValueType::DOUBLE && vt != ValueType::SINGLE && vt != ValueType::COMPLEX)
         detail::throwInputType(y, "demod", "y", 1,
                                "a double, single, or complex double array");
-    const bool ySingle = (t == ValueType::SINGLE);
+    const bool ySingle = (vt == ValueType::SINGLE);
     if (Fs <= 0.0)
         throw Error("demod: Fs must be positive",
                     0, 0, "demod", "", "numkit:demod:BadFs");
@@ -386,7 +386,7 @@ Value demod(const Value &y, double Fc, double Fs,
 
     std::string m = method;
     std::transform(m.begin(), m.end(), m.begin(),
-                    [](unsigned char c) { return std::tolower(c); });
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     const bool isAmFamily = (m == "am" || m == "amdsb-sc" || m == "amdsb-tc");
     const bool isFmPm = (m == "fm" || m == "pm");
@@ -516,11 +516,11 @@ Value modulate(const Value &x, double Fc, double Fs,
                std::pmr::memory_resource *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
-    const ValueType t = x.type();
-    if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX)
+    const ValueType vt = x.type();
+    if (vt != ValueType::DOUBLE && vt != ValueType::SINGLE && vt != ValueType::COMPLEX)
         detail::throwInputType(x, "modulate", "x", 1,
                                "a double, single, or complex double array");
-    const bool xSingle = (t == ValueType::SINGLE);
+    const bool xSingle = (vt == ValueType::SINGLE);
     if (Fs <= 0.0)
         throw Error("modulate: Fs must be positive",
                     0, 0, "modulate", "", "numkit:modulate:BadFs");
@@ -531,7 +531,7 @@ Value modulate(const Value &x, double Fc, double Fs,
 
     std::string m = method;
     std::transform(m.begin(), m.end(), m.begin(),
-                    [](unsigned char c) { return std::tolower(c); });
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     const bool isRowVec = (x.dims().rows() == 1 && x.dims().cols() > 1);
     const std::size_t len = isRowVec ? x.dims().cols() : x.dims().rows();

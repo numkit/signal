@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/digital_filtering/quantizers_reg.cpp
+// toolboxes/signal/src/digital_filtering/quantizers_reg.cpp
 //
 // Register half of the signal quantizers builtins: the CallContext wrappers
 // delegating to the engine-free compute in quantizers.cpp. library.cpp
@@ -45,7 +45,7 @@ void uencode_reg(Span<const Value> args, size_t /*nargout*/,
     if (args.size() >= 4 && !args[3].isEmpty()) {
         std::string s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
-                        [](unsigned char c) { return std::tolower(c); });
+                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (s == "signed")        signedOut = true;
         else if (s == "unsigned") signedOut = false;
         else throw Error("uencode: 4th arg must be 'signed' or 'unsigned'",
@@ -69,7 +69,7 @@ void udecode_reg(Span<const Value> args, size_t /*nargout*/,
     if (args.size() >= 4 && !args[3].isEmpty()) {
         std::string s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
-                        [](unsigned char c) { return std::tolower(c); });
+                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (s == "wrap")          wrap = true;
         else if (s == "saturate") wrap = false;
         else throw Error("udecode: 4th arg must be 'saturate' or 'wrap'",
