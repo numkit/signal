@@ -117,7 +117,8 @@ void pulstran_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
 {
     argcheck::checkNargin(args.size(), 3, "pulstran");  // variadic by design: trailing pulse-function parameters
     std::pmr::memory_resource *mr = ctx.engine->resource();
-    if (args[2].isFuncHandle()) {
+    if (args[2].isFuncHandle()
+        || (args[2].isCell() && args[2].numel() >= 1 && args[2].cellAt(0).isFuncHandle())) {
         const auto &handle = args[2];
         auto cb = [&ctx, &handle](Span<const Value> ar, Span<Value> ou,
                                    std::pmr::memory_resource * /*mr*/) {

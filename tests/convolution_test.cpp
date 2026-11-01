@@ -255,8 +255,8 @@ TEST_F(ConvolutionTest, XcorrAutoSymmetric)
 TEST_F(ConvolutionTest, XcorrCrossLength)
 {
     eval("[c, lags] = xcorr([1 2 3], [4 5]);");
-    // length = 3 + 2 - 1 = 4
-    EXPECT_EQ(eval("c").numel(), 4u);
+    // length = 2 * max(3, 2) - 1 = 5 (MATLAB zero-pads shorter vector to M)
+    EXPECT_EQ(eval("c").numel(), 5u);
 }
 
 TEST_F(ConvolutionTest, XcorrLagsRange)

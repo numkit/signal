@@ -201,7 +201,7 @@ const std::vector<std::pair<const char *, int>> kBounds = {
     std::make_pair("rectpuls", 2),
     std::make_pair("rectwin", 1),
     std::make_pair("removesigroi", 2),
-    std::make_pair("resample", 3),
+    std::make_pair("resample", 5),
     std::make_pair("rlevinson", 2),
     std::make_pair("rms", 3),
     std::make_pair("rssq", 2),
