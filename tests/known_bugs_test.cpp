@@ -6,7 +6,7 @@
 // guards the moment the bug is fixed — just remove the `DISABLED_` prefix.
 // Each test asserts the MATLAB R2025b-correct behaviour.
 //
-// Run: nk_gtest.exe --gtest_also_run_disabled_tests --gtest_filter='SignalKnownBug*'
+// Run: numkit_gtest.exe --gtest_also_run_disabled_tests --gtest_filter='SignalKnownBug*'
 
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
