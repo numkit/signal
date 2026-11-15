@@ -34,10 +34,10 @@ void bandpower_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 1, 4, "bandpower");
     auto *mr = ctx.engine->allocator();
     if (args.size() >= 3 && (args[args.size() - 1].isChar() || args[args.size() - 1].isString())) {
-        std::string opt = args[args.size() - 1].toString();
+        std::string opt(args[args.size() - 1].toString().as_ref());
         for (char &c : opt) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (opt != "psd")
-            throw Error("bandpower: unrecognized option '" + args[args.size() - 1].toString() +
+            throw Error("bandpower: unrecognized option '" + std::string(args[args.size() - 1].toString().as_ref()) +
                         "' ('psd' is the only supported option)",
                         0, 0, "bandpower", "", "numkit:bandpower:badOption");
         const Value &fr = (args.size() == 4) ? args[2] : Value::Empty;
@@ -98,8 +98,9 @@ NUMKIT_SPEC1_REG(snr,              snr, 1, 6)
 NUMKIT_SPEC1_REG(sinad,            sinad, 1, 4)
 NUMKIT_SPEC1_REG(thd,              thd, 1, 6)
 NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
-static std::string toLowerCopy(std::string s)
+static std::string toLowerCopy(keel::StringRef sv)
 {
+    std::string s(sv.data(), sv.size());
     for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
 }
@@ -123,7 +124,7 @@ static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
                         0, 0, caller, "", std::string("numkit:") + caller + ":invalidOption");
         const std::string key = toLowerCopy(args[i].toString());
         if (i + 1 >= args.size())
-            throw Error(std::string(caller) + ": missing value for option '" + args[i].toString() + "'",
+            throw Error(std::string(caller) + ": missing value for option '" + std::string(args[i].toString().as_ref()) + "'",
                         0, 0, caller, "", std::string("numkit:") + caller + ":missingOptionValue");
         const Value &val = args[i + 1];
         if (key == "leakage") {
@@ -147,7 +148,7 @@ static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
                             0, 0, caller, "", std::string("numkit:") + caller + ":method");
             *methodOut = toLowerCopy(val.toString());
         } else {
-            throw Error(std::string(caller) + ": unrecognized option '" + args[i].toString() + "'",
+            throw Error(std::string(caller) + ": unrecognized option '" + std::string(args[i].toString().as_ref()) + "'",
                         0, 0, caller, "", std::string("numkit:") + caller + ":invalidOption");
         }
         i += 2;

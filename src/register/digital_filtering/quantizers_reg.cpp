@@ -43,7 +43,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
         V = argcheck::expectedReal(args[2], 3, "V", "uencode");
     bool signedOut = false;
     if (args.size() >= 4 && !args[3].isEmpty()) {
-        std::string s = args[3].toString();
+        std::string s(args[3].toString().as_ref());
         std::transform(s.begin(), s.end(), s.begin(),
                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (s == "signed")        signedOut = true;
@@ -67,7 +67,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
         V = argcheck::expectedReal(args[2], 3, "V", "udecode");
     bool wrap = false;
     if (args.size() >= 4 && !args[3].isEmpty()) {
-        std::string s = args[3].toString();
+        std::string s(args[3].toString().as_ref());
         std::transform(s.begin(), s.end(), s.begin(),
                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (s == "wrap")          wrap = true;

@@ -42,7 +42,7 @@ keel::usize parseSflag(keel::ArrayRef<Value> args, bool &periodic)
     if (args.empty()) return 0;
     const Value &last = args[args.size() - 1];
     if (!last.isChar() && !last.isString()) return args.size();
-    std::string s = last.toString();
+    std::string s(last.toString().as_ref());
     std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (s == "symmetric") return args.size() - 1;
@@ -74,7 +74,7 @@ void parseTypeNameOnly(keel::ArrayRef<Value> args, const char *fn)
     if (args.size() < 2) return;
     const Value &last = args[args.size() - 1];
     if (!last.isChar() && !last.isString()) return;
-    std::string s = last.toString();
+    std::string s(last.toString().as_ref());
     std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (s != "double" && s != "single")

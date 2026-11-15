@@ -74,11 +74,11 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
         if (!args[argi].isChar() && !args[argi].isString())
             throw Error("findpeaks: expected an option name",
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
-        std::string name = args[argi].toString();
+        std::string name(args[argi].toString().as_ref());
         for (char &c : name)
             c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (argi + 1 >= args.size())
-            throw Error("findpeaks: option '" + args[argi].toString() + "' needs a value",
+            throw Error("findpeaks: option '" + std::string(args[argi].toString().as_ref()) + "' needs a value",
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         const Value &v = args[argi + 1];
 
@@ -98,7 +98,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                                      "NPeaks", "findpeaks"),
                 argi ? static_cast<int>(argi) + 2 : 2, "NPeaks", "findpeaks"));
         } else if (name == "sortstr") {
-            std::string s = v.toString();
+            std::string s(v.toString().as_ref());
             for (char &c : s)
                 c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if      (s == "none")    opt.sortMode = 0;
@@ -122,7 +122,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                 v, {"peaks", "extents"}, static_cast<int>(argi) + 2,
                 "Annotate", "findpeaks");
         } else {
-            throw Error("findpeaks: option '" + args[argi].toString() + "' not supported",
+            throw Error("findpeaks: option '" + std::string(args[argi].toString().as_ref()) + "' not supported",
                          0, 0, "findpeaks", "", "numkit:findpeaks:unsupportedOpt");
         }
     }

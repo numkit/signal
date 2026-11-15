@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/transforms/dct_reg.cpp
+// toolboxes/signal/src/transforms/dct_reg.cpp
 //
 // CallContext register half of transforms/dct.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -41,7 +41,7 @@ static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
             if (pos + 1 >= args.size())
                 throw Error(std::string(fn) + ": missing value after name",
                              0, 0, fn, "", "numkit:dct:nv");
-            const std::string key = args[pos].toString();
+            const auto key = args[pos].toString();
             if (key == "Type" || key == "type") {
                 a.hasType = true;
                 a.typeVal = args[pos + 1].toScalar();

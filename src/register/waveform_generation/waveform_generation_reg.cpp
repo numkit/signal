@@ -54,7 +54,7 @@ void demod_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     if (!args[3].isChar() && !args[3].isString())
         throw Error("demod: method must be a string",
                     0, 0, "demod", "", "numkit:demod:BadMethodType");
-    std::string method = args[3].toString();
+    std::string method(args[3].toString().as_ref());
     const Value &opt = (args.size() >= 5) ? args[4] : Value::Empty;
     outs[0] = demod(args[0], Fc, Fs, method, opt, ctx.engine->allocator());
 }
@@ -67,7 +67,7 @@ void modulate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     if (!args[3].isChar() && !args[3].isString())
         throw Error("modulate: method must be a string",
                     0, 0, "modulate", "", "numkit:modulate:BadMethodType");
-    std::string method = args[3].toString();
+    std::string method(args[3].toString().as_ref());
     const Value &opt = (args.size() >= 5) ? args[4] : Value::Empty;
     outs[0] = modulate(args[0], Fc, Fs, method, opt, ctx.engine->allocator());
 }
@@ -157,7 +157,7 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     if (!args[2].isChar() && !args[2].isString())
         throw Error("pulstran: 3rd argument must be a string name or a function handle",
                      0, 0, "pulstran", "", "numkit:pulstran:fnType");
-    const std::string fnName = args[2].toString();
+    const std::string fnName(args[2].toString().as_ref());
     const double fcOrW = (args.size() >= 4) ? args[3].toScalar() : 1.0;
     const double bw    = (args.size() >= 5) ? args[4].toScalar() : 0.5;
     outs[0] = pulstran(args[0], args[1], fnName, fcOrW, bw, mr);

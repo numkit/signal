@@ -39,7 +39,7 @@ namespace detail {
 static std::string shapeArg(const Value &v, std::string_view fn)
 {
     if (v.isChar() || v.isString())
-        return v.toString();
+        return std::string(v.toString().as_ref());
     throw Error(std::string(fn) + ": shape option must be 'full', 'same', "
                     "or 'valid' (got a non-string argument)",
                 0, 0, std::string(fn), "",

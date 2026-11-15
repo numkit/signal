@@ -54,7 +54,7 @@ void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     bool zeropad = true;
     for (keel::usize a = args.size(); a-- > 1;) {
         if (args[a].isChar() || args[a].isString()) {
-            std::string s = args[a].toString();
+            std::string s(args[a].toString().as_ref());
             for (char &c : s) c = static_cast<char>(std::tolower((unsigned char)c));
             if (s == "truncate") zeropad = false;
             else if (s == "zeropad") zeropad = true;
@@ -82,10 +82,10 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     keel::usize order = 0;
     if (args.size() >= 3 && !args[2].isEmpty()) {
         if (args[2].isChar() || args[2].isString()) {
-            std::string s = args[2].toString();
+            std::string s(args[2].toString().as_ref());
             for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if (s != "aic")
-                throw Error("fillgaps: ORDER string must be 'aic' (got '" + args[2].toString() + "')",
+                throw Error("fillgaps: ORDER string must be 'aic' (got '" + std::string(args[2].toString().as_ref()) + "')",
                             0, 0, "fillgaps", "", "numkit:fillgaps:invalidOrder");
             order = 0;
         } else {

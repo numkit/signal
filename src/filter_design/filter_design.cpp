@@ -462,9 +462,9 @@ void fir1_argcheck(int N, double Wn, const std::string &type)
     argcheck::expectedPositive(static_cast<double>(N), 1, "n", "fir1");
     argcheck::expectedPositive(Wn, 2, "Wn", "fir1");
     if (Wn >= 1.0)
-        throw Error("fir1: cutoff frequency Wn must be inside the open "
-                    "interval (0, 1) (got " + argcheck::detail::num(Wn)
-                        + ").",
+        throw Error(std::string("fir1: cutoff frequency Wn must be inside the open "
+                                "interval (0, 1) (got ")
+                        + argcheck::detail::num(Wn).c_str() + ").",
                     0, 0, "fir1", "", "numkit:fir1:wnOutOfRange");
     if (type != "low" && type != "high")
         throw Error("fir1: type must be one of: 'low', 'high' (got '"

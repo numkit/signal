@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/transforms/hilbert_reg.cpp
+// toolboxes/signal/src/transforms/hilbert_reg.cpp
 //
 // CallContext register half of transforms/hilbert.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
@@ -42,7 +42,7 @@ void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     if (args.size() >= 2 && !args[1].isEmpty())
         n = (keel::usize)args[1].toScalar();
     if (args.size() >= 3 && (args[2].isChar() || args[2].isString())) {
-        std::string m = args[2].toString();
+        std::string m(args[2].toString().as_ref());
         for (auto &c : m) c = (char)std::tolower((unsigned char)c);
         if      (m == "analytic")           mode = 1;
         else if (m == "rms")                mode = 2;

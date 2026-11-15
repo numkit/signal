@@ -1,4 +1,4 @@
-﻿// toolboxes/signal/src/filter_design/iir_designs_reg.cpp
+// toolboxes/signal/src/filter_design/iir_designs_reg.cpp
 //
 // CallContext register half of filter_design/iir_designs.cpp (Phase 2b compute/register split).
 // The detail{{}} *_reg fns were interleaved with compute in the original
@@ -102,7 +102,7 @@ int iirOrder(const Value &v, const char *fn)
     const double n = v.toScalar();
     if (n != std::floor(n))
         throw Error(std::string(fn) + ": filter order N must be a positive "
-                        "integer (got " + argcheck::detail::num(n) + ").",
+                        "integer (got " + argcheck::detail::num(n).c_str() + ").",
                     0, 0, fn, "", std::string("numkit:") + fn + ":orderNotInteger");
     return static_cast<int>(n);
 }
@@ -220,7 +220,7 @@ void ellipord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     argcheck::checkNargin(args.size(), 4, 5, "ellipord");
     bool analog = false;
     if (args.size() >= 5) {
-        std::string s = args[4].toString();
+        const auto s = args[4].toString();
         analog = (s == "s" || s == "S");
     }
     auto [N, Wn] = ellipord(args[0], args[1], args[2].toScalar(), args[3].toScalar(), analog, ctx.engine->allocator());

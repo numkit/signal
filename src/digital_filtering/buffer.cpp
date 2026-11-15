@@ -29,6 +29,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <string>
+#include <vector>
 
 namespace numkit::signal {
 
@@ -45,7 +47,7 @@ int rowOrCol(const Value &x)
 bool isStringLikeNoDelay(const Value &v)
 {
     if (v.type() != ValueType::CHAR && v.type() != ValueType::STRING) return false;
-    std::string s = v.toString();
+    std::string s(v.toString().as_ref());
     std::transform(s.begin(), s.end(), s.begin(),
                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return s == "nodelay";

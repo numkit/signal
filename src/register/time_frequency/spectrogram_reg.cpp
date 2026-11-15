@@ -306,7 +306,7 @@ static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
         if (!args[i].isChar())
             throw Error("stft: name-value pair name must be a string",
                          0, 0, "stft", "", "numkit:stft:badNVName");
-        const std::string key = args[i].toString();
+        const std::string key(args[i].toString().as_ref());
         const Value &val      = args[i + 1];
         if (eqIgnoreCase(key, "Window"))           window    = val;
         else if (eqIgnoreCase(key, "OverlapLength"))

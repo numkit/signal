@@ -62,14 +62,14 @@ void ifft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     keel::usize nargs = args.size();
     bool symmetric = false;
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
-        std::string flag = args[nargs - 1].toString();
+        std::string flag(args[nargs - 1].toString().as_ref());
         for (char &c : flag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
             symmetric = false;
         else
-            throw Error("ifft: unknown option '" + args[nargs - 1].toString() +
+            throw Error("ifft: unknown option '" + std::string(args[nargs - 1].toString().as_ref()) +
                             "' (expected 'symmetric' or 'nonsymmetric')",
                          0, 0, "ifft", "", "numkit:ifft:badOption");
         --nargs;   // consume the flag
@@ -115,14 +115,14 @@ void ifft2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     keel::usize nargs = args.size();
     bool symmetric = false;
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
-        std::string flag = args[nargs - 1].toString();
+        std::string flag(args[nargs - 1].toString().as_ref());
         for (char &c : flag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
             symmetric = false;
         else
-            throw Error("ifft2: unknown option '" + args[nargs - 1].toString() +
+            throw Error("ifft2: unknown option '" + std::string(args[nargs - 1].toString().as_ref()) +
                             "' (expected 'symmetric' or 'nonsymmetric')",
                          0, 0, "ifft2", "", "numkit:ifft2:badOption");
         --nargs;

@@ -41,7 +41,7 @@ int firOrder(const Value &v, int argNum, const char *name, const char *fn)
     if (n != std::floor(n))
         throw Error(std::string(fn) + ": filter order " + name
                         + " must be a positive integer (got "
-                        + argcheck::detail::num(n) + ").",
+                        + argcheck::detail::num(n).c_str() + ").",
                     0, 0, fn, "", std::string("numkit:") + fn + ":orderNotInteger");
     return static_cast<int>(n);
 }
@@ -65,7 +65,7 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     bool scale = true;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
-            std::string s = args[i].toString();
+            std::string s(args[i].toString().as_ref());
             std::string sl = s;
             for (char &ch : sl)
                 ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));

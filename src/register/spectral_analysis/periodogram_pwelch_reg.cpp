@@ -51,7 +51,7 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     double conf = 0.95;
     for (keel::usize i = firstStr; i + 1 < args.size(); ++i) {
         if (!args[i].isChar()) continue;
-        std::string opt = args[i].toString();
+        std::string opt(args[i].toString().as_ref());
         std::transform(opt.begin(), opt.end(), opt.begin(),
                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (opt == "confidencelevel")
@@ -92,7 +92,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     bool twoSided = args[0].isComplex();
     for (keel::usize i = 1; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
-            std::string s = args[i].toString();
+            std::string s(args[i].toString().as_ref());
             for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if (s == "twosided" || s == "centered") twoSided = true;
         }

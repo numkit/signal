@@ -48,7 +48,7 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     const Value *wvec = nullptr;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
-            std::string s = args[i].toString();
+            std::string s(args[i].toString().as_ref());
             for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if (s == "whole") whole = true;
         } else if (!args[i].isEmpty()) {

@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace numkit::signal {
 
