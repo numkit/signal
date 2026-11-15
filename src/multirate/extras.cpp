@@ -6,10 +6,14 @@
 // reuse intfilt (a sinc-with-Hamming-window FIR) and the existing
 // filter() / upsample() / downsample() primitives.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
 #include <numkit/signal/multirate/extras.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/signal/digital_filtering/filter.hpp>
 #include <numkit/signal/filter_design/filter_design.hpp>   // firls
@@ -31,10 +35,10 @@ namespace numkit::signal {
 namespace {
 
 // 1-D real vector accessor that handles both row and column orientation.
-double readReal(const Value &v, size_t i) { return v.elemAsDouble(i); }
+double readReal(const Value &v, keel::usize i) { return v.elemAsDouble(i); }
 
 // Allocate a real row/column vector matching the orientation of `like`.
-Value sameOrientReal(const Value &like, size_t n, std::pmr::memory_resource *mr)
+Value sameOrientReal(const Value &like, keel::usize n, keel::Allocator *mr)
 {
     const bool isRow = (like.dims().rows() == 1);
     return isRow
@@ -42,7 +46,7 @@ Value sameOrientReal(const Value &like, size_t n, std::pmr::memory_resource *mr)
             : Value::matrix(n, 1, ValueType::DOUBLE, mr);
 }
 
-void intfilt_argcheck(size_t r, size_t n, double alpha)
+void intfilt_argcheck(keel::usize r, keel::usize n, double alpha)
 {
     if (r < 1)
         throw Error("intfilt: r must be >= 1",
@@ -55,14 +59,14 @@ void intfilt_argcheck(size_t r, size_t n, double alpha)
                      0, 0, "intfilt", "", "numkit:intfilt:badAlpha");
 }
 
-void upfirdn_argcheck(size_t p, size_t q)
+void upfirdn_argcheck(keel::usize p, keel::usize q)
 {
     if (p < 1 || q < 1)
         throw Error("upfirdn: p and q must be >= 1",
                      0, 0, "upfirdn", "", "numkit:upfirdn:badPQ");
 }
 
-void interp_argcheck(const Value &x, size_t n)
+void interp_argcheck(const Value &x, keel::usize n)
 {
     if (x.numel() < 2 * n + 1)
         throw Error("interp: input 1 (x) length (" + std::to_string(x.numel()) +
@@ -73,7 +77,7 @@ void interp_argcheck(const Value &x, size_t n)
 } // namespace
 
 // ── intfilt (FIR design) ──────────────────────────────────────────────
-Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
+Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
 {
     intfilt_argcheck(r, n, alpha);
 
@@ -95,7 +99,7 @@ Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
         const double hw = alpha / (2.0 * R);          // half passband width
         M = {R, R};
         F = {0.0, hw};
-        for (size_t k = 1; static_cast<double>(k) / R <= 0.5 + 1e-9; ++k) {
+        for (keel::usize k = 1; static_cast<double>(k) / R <= 0.5 + 1e-9; ++k) {
             const double f = static_cast<double>(k) / R;
             F.push_back(f - hw);
             F.push_back(f + hw);
@@ -109,7 +113,7 @@ Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
     Value Mv = Value::matrix(1, M.size(), ValueType::DOUBLE, mr);
     double *fd = Fv.doubleDataMut();
     double *md = Mv.doubleDataMut();
-    for (size_t i = 0; i < F.size(); ++i) { fd[i] = F[i] * 2.0; md[i] = M[i]; }
+    for (keel::usize i = 0; i < F.size(); ++i) { fd[i] = F[i] * 2.0; md[i] = M[i]; }
     return firls(order, Fv, Mv, mr);
 }
 
@@ -119,46 +123,46 @@ Value intfilt(size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
 // has length (Lx-1)*p + 1 (NOT Lx*p -- no trailing zeros). Then
 // linear convolution with h gives length (Lx-1)*p + Lh, and downsample
 // by q yields ceil(/q) samples.
-Value upfirdn(const Value &x, const Value &h, size_t p, size_t q, std::pmr::memory_resource *mr)
+Value upfirdn(const Value &x, const Value &h, keel::usize p, keel::usize q, keel::Allocator *mr)
 {
     upfirdn_argcheck(p, q);
-    const size_t Lx = x.numel();
-    const size_t Lh = h.numel();
+    const keel::usize Lx = x.numel();
+    const keel::usize Lh = h.numel();
     if (Lx == 0 || Lh == 0) return sameOrientReal(x, 0, mr);
 
     // Length after upsample (no trailing zeros): (Lx-1)*p + 1.
-    const size_t upLen = (Lx - 1) * p + 1;
+    const keel::usize upLen = (Lx - 1) * p + 1;
     // Linear convolution length.
-    const size_t convLen = upLen + Lh - 1;
+    const keel::usize convLen = upLen + Lh - 1;
     // Downsampled output length.
-    const size_t outLen = (convLen + q - 1) / q;   // ceil(convLen / q)
+    const keel::usize outLen = (convLen + q - 1) / q;   // ceil(convLen / q)
 
-    ScratchArena local(mr);
-    auto convOut = ScratchVec<double>(convLen, &local);
+    keel::ArenaTemp local = keel::get_scratch(mr);
+    auto convOut = keel::Array<double>(convLen, local.allocator());
     std::fill(convOut.begin(), convOut.end(), 0.0);
 
     // Direct upsample-then-convolve in one pass: x[i] sits at upsampled
     // position i*p, so each x[i] contributes h[j] to output position
     // i*p + j.
-    for (size_t i = 0; i < Lx; ++i) {
+    for (keel::usize i = 0; i < Lx; ++i) {
         const double xi = readReal(x, i);
         if (xi == 0.0) continue;
-        const size_t base = i * p;
-        for (size_t j = 0; j < Lh; ++j) {
+        const keel::usize base = i * p;
+        for (keel::usize j = 0; j < Lh; ++j) {
             convOut[base + j] += xi * readReal(h, j);
         }
     }
 
     auto out = sameOrientReal(x, outLen, mr);
     double *od = out.doubleDataMut();
-    for (size_t k = 0; k < outLen; ++k) {
+    for (keel::usize k = 0; k < outLen; ++k) {
         od[k] = convOut[k * q];
     }
     return out;
 }
 
 // ── interp ────────────────────────────────────────────────────────────
-Value interp(const Value &x, size_t r, size_t n, double alpha, std::pmr::memory_resource *mr)
+Value interp(const Value &x, keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
 {
     interp_argcheck(x, n);
     if (r == 1) {
@@ -172,14 +176,14 @@ Value interp(const Value &x, size_t r, size_t n, double alpha, std::pmr::memory_
     // Trim group delay introduced by the symmetric FIR (length L=2nr+1
     // gives delay nr in upsampled samples). MATLAB's interp keeps the
     // first nx*r samples after the symmetric leading delay.
-    const size_t target = x.numel() * r;
-    const size_t leadDelay = n * r;
+    const keel::usize target = x.numel() * r;
+    const keel::usize leadDelay = n * r;
     auto trimmed = sameOrientReal(x, target, mr);
     double *dst = trimmed.doubleDataMut();
     const double *src = y.doubleData();
-    const size_t srcN = y.numel();
-    for (size_t i = 0; i < target; ++i) {
-        const size_t j = i + leadDelay;
+    const keel::usize srcN = y.numel();
+    for (keel::usize i = 0; i < target; ++i) {
+        const keel::usize j = i + leadDelay;
         dst[i] = (j < srcN) ? src[j] : 0.0;
     }
     return trimmed;
@@ -189,19 +193,19 @@ Value interp(const Value &x, size_t r, size_t n, double alpha, std::pmr::memory_
 // Overlap-add convolution. Choose block length L per typical heuristic:
 // L ≈ 2 * nb (rounded up to power of 2). NFFT = L + nb - 1 → next power
 // of 2.
-Value fftfilt(const Value &b, const Value &x, size_t nfft, std::pmr::memory_resource *mr)
+Value fftfilt(const Value &b, const Value &x, keel::usize nfft, keel::Allocator *mr)
 {
-    const size_t nb = b.numel();
-    const size_t nx = x.numel();
+    const keel::usize nb = b.numel();
+    const keel::usize nx = x.numel();
     if (nb == 0 || nx == 0)
         return sameOrientReal(x, 0, mr);
 
-    size_t blockL;
+    keel::usize blockL;
     if (nfft >= nb) {
         blockL = nfft - nb + 1;
     } else {
         // Heuristic: block ≈ max(nb, 32), then NFFT next pow2 of L+nb-1.
-        blockL = std::max<size_t>(nb, 32);
+        blockL = std::max<keel::usize>(nb, 32);
         nfft = nextPow2(blockL + nb - 1);
         blockL = nfft - nb + 1;
     }
@@ -209,38 +213,38 @@ Value fftfilt(const Value &b, const Value &x, size_t nfft, std::pmr::memory_reso
     if (nfft < blockL + nb - 1)
         nfft = nextPow2(blockL + nb - 1);
 
-    ScratchArena scratch(mr);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
     const bool isCx = b.isComplex() || x.isComplex();
     // Precompute B(f) = FFT(b padded to nfft).
-    auto Bf = ScratchVec<Complex>(nfft, &scratch);
-    for (size_t i = 0; i < nb; ++i)
-        Bf[i] = b.isComplex() ? b.complexElem(i) : Complex(readReal(b, i), 0.0);
-    auto W_fwd = ScratchVec<Complex>(nfft / 2, &scratch);
-    auto W_inv = ScratchVec<Complex>(nfft / 2, &scratch);
+    auto Bf = keel::Array<keel::c64>(nfft, scratch.allocator());
+    for (keel::usize i = 0; i < nb; ++i)
+        Bf[i] = b.isComplex() ? b.complexElem(i) : keel::c64(readReal(b, i), 0.0);
+    auto W_fwd = keel::Array<keel::c64>(nfft / 2, scratch.allocator());
+    auto W_inv = keel::Array<keel::c64>(nfft / 2, scratch.allocator());
     fillFftTwiddles(W_fwd.data(), nfft, +1);
     fillFftTwiddles(W_inv.data(), nfft, -1);
     fftRadix2(Bf.data(), nfft, W_fwd.data());
 
-    auto Xf  = ScratchVec<Complex>(nfft, &scratch);
+    auto Xf  = keel::Array<keel::c64>(nfft, scratch.allocator());
     const double invN = 1.0 / static_cast<double>(nfft);
 
     if (isCx) {
         const bool row = (x.dims().rows() == 1 && x.dims().cols() >= 1);
         auto out = Value::complexMatrix(row ? 1 : nx, row ? nx : 1, mr);
-        Complex *dst = out.complexDataMut();
-        std::fill(dst, dst + nx, Complex(0.0, 0.0));
-        for (size_t pos = 0; pos < nx; pos += blockL) {
-            const size_t L = std::min(blockL, nx - pos);
-            std::fill(Xf.begin(), Xf.end(), Complex(0, 0));
-            for (size_t i = 0; i < L; ++i)
-                Xf[i] = x.isComplex() ? x.complexElem(pos + i) : Complex(readReal(x, pos + i), 0.0);
+        keel::c64 *dst = out.complexDataMut();
+        std::fill(dst, dst + nx, keel::c64(0.0, 0.0));
+        for (keel::usize pos = 0; pos < nx; pos += blockL) {
+            const keel::usize L = std::min(blockL, nx - pos);
+            std::fill(Xf.begin(), Xf.end(), keel::c64(0, 0));
+            for (keel::usize i = 0; i < L; ++i)
+                Xf[i] = x.isComplex() ? x.complexElem(pos + i) : keel::c64(readReal(x, pos + i), 0.0);
             fftRadix2(Xf.data(), nfft, W_fwd.data());
-            for (size_t i = 0; i < nfft; ++i)
+            for (keel::usize i = 0; i < nfft; ++i)
                 Xf[i] *= Bf[i];
             fftRadix2(Xf.data(), nfft, W_inv.data());
-            const size_t blockOut = L + nb - 1;
-            for (size_t i = 0; i < blockOut; ++i) {
-                const size_t outIdx = pos + i;
+            const keel::usize blockOut = L + nb - 1;
+            for (keel::usize i = 0; i < blockOut; ++i) {
+                const keel::usize outIdx = pos + i;
                 if (outIdx < nx)
                     dst[outIdx] += Xf[i] * invN;
             }
@@ -252,18 +256,18 @@ Value fftfilt(const Value &b, const Value &x, size_t nfft, std::pmr::memory_reso
     double *dst = out.doubleDataMut();
     std::fill(dst, dst + nx, 0.0);
 
-    for (size_t pos = 0; pos < nx; pos += blockL) {
-        const size_t L = std::min(blockL, nx - pos);
-        std::fill(Xf.begin(), Xf.end(), Complex(0, 0));
-        for (size_t i = 0; i < L; ++i)
-            Xf[i] = Complex(readReal(x, pos + i), 0.0);
+    for (keel::usize pos = 0; pos < nx; pos += blockL) {
+        const keel::usize L = std::min(blockL, nx - pos);
+        std::fill(Xf.begin(), Xf.end(), keel::c64(0, 0));
+        for (keel::usize i = 0; i < L; ++i)
+            Xf[i] = keel::c64(readReal(x, pos + i), 0.0);
         fftRadix2(Xf.data(), nfft, W_fwd.data());
-        for (size_t i = 0; i < nfft; ++i)
+        for (keel::usize i = 0; i < nfft; ++i)
             Xf[i] *= Bf[i];
         fftRadix2(Xf.data(), nfft, W_inv.data());
-        const size_t blockOut = L + nb - 1;
-        for (size_t i = 0; i < blockOut; ++i) {
-            const size_t outIdx = pos + i;
+        const keel::usize blockOut = L + nb - 1;
+        for (keel::usize i = 0; i < blockOut; ++i) {
+            const keel::usize outIdx = pos + i;
             if (outIdx < nx)
                 dst[outIdx] += Xf[i].real() * invN;
         }

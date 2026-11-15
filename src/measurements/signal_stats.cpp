@@ -4,6 +4,9 @@
 // chosen dim. Built on the same applyAlongDim infrastructure that
 // builtin stats (mean/var/std/...) use.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/math.h>
 #include <numkit/signal/measurements/signal_stats.hpp>
 
 #include <numkit/value/value.hpp>
@@ -32,41 +35,41 @@ int signal_stats_argcheck(const Value &x, int dim, const char *fn)
 } // namespace
 
 // ── rms ────────────────────────────────────────────────────────────────
-Value rms(const Value &x, int dim, std::pmr::memory_resource *mr)
+Value rms(const Value &x, int dim, keel::Allocator *mr)
 {
     const int d = signal_stats_argcheck(x, dim, "rms");
     return applyAlongDim(x, d,
-        [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
+        [](keel::usize /*outIdx*/, const double *slice, keel::usize n) -> double {
             if (n == 0) return std::numeric_limits<double>::quiet_NaN();
             double s = 0.0;
-            for (size_t i = 0; i < n; ++i)
+            for (keel::usize i = 0; i < n; ++i)
                 s += slice[i] * slice[i];
             return std::sqrt(s / static_cast<double>(n));
         }, mr);
 }
 
 // ── rssq ───────────────────────────────────────────────────────────────
-Value rssq(const Value &x, int dim, std::pmr::memory_resource *mr)
+Value rssq(const Value &x, int dim, keel::Allocator *mr)
 {
     const int d = signal_stats_argcheck(x, dim, "rssq");
     return applyAlongDim(x, d,
-        [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
+        [](keel::usize /*outIdx*/, const double *slice, keel::usize n) -> double {
             double s = 0.0;
-            for (size_t i = 0; i < n; ++i)
+            for (keel::usize i = 0; i < n; ++i)
                 s += slice[i] * slice[i];
             return std::sqrt(s);
         }, mr);
 }
 
 // ── peak2peak ──────────────────────────────────────────────────────────
-Value peak2peak(const Value &x, int dim, std::pmr::memory_resource *mr)
+Value peak2peak(const Value &x, int dim, keel::Allocator *mr)
 {
     const int d = signal_stats_argcheck(x, dim, "peak2peak");
     return applyAlongDim(x, d,
-        [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
+        [](keel::usize /*outIdx*/, const double *slice, keel::usize n) -> double {
             if (n == 0) return std::numeric_limits<double>::quiet_NaN();
             double mn = slice[0], mx = slice[0];
-            for (size_t i = 1; i < n; ++i) {
+            for (keel::usize i = 1; i < n; ++i) {
                 const double v = slice[i];
                 if (std::isnan(v)) return std::numeric_limits<double>::quiet_NaN();
                 if (v < mn) mn = v;
@@ -79,15 +82,15 @@ Value peak2peak(const Value &x, int dim, std::pmr::memory_resource *mr)
 }
 
 // ── peak2rms ───────────────────────────────────────────────────────────
-Value peak2rms(const Value &x, int dim, std::pmr::memory_resource *mr)
+Value peak2rms(const Value &x, int dim, keel::Allocator *mr)
 {
     const int d = signal_stats_argcheck(x, dim, "peak2rms");
     return applyAlongDim(x, d,
-        [](size_t /*outIdx*/, const double *slice, size_t n) -> double {
+        [](keel::usize /*outIdx*/, const double *slice, keel::usize n) -> double {
             if (n == 0) return std::numeric_limits<double>::quiet_NaN();
             double s = 0.0, peak = 0.0;
-            for (size_t i = 0; i < n; ++i) {
-                const double a = std::abs(slice[i]);
+            for (keel::usize i = 0; i < n; ++i) {
+                const double a = keel::abs(slice[i]);
                 s += a * a;
                 if (a > peak) peak = a;
             }

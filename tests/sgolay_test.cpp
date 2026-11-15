@@ -3,6 +3,7 @@
 // Savitzky-Golay smoothing filter — sgolay() projection matrix and
 // sgolayfilt() applied to vectors.
 
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 
@@ -177,7 +178,7 @@ TEST_F(SgolayTest, SgolayfiltWeighted)
     EXPECT_NEAR(evalScalar("yw(9);"), 5.8666666666666671, 1e-9);
     // Confirm weighting actually changed the output vs unweighted.
     eval("yu = sgolayfilt(x, 2, 5);");
-    EXPECT_GT(std::abs(evalScalar("yw(1) - yu(1);")), 1e-6);
+    EXPECT_GT(keel::abs(evalScalar("yw(1) - yu(1);")), 1e-6);
 }
 
 TEST_F(SgolayTest, SgolayfiltColumnVectorUnchanged)

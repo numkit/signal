@@ -1,5 +1,11 @@
 // toolboxes/signal/src/multirate/multirate.cpp
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/multirate/multirate.hpp>
 #include <numkit/signal/multirate/extras.hpp>          // upfirdn
 #include <numkit/signal/filter_design/filter_design.hpp> // firls
@@ -8,7 +14,6 @@
 #include <numkit/signal/windows/windows.hpp>           // kaiser
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value_type.hpp>   // mtypeName / isIntegerType
 #include <numkit/ops/helpers.hpp>
@@ -19,7 +24,6 @@
 #define _USE_MATH_DEFINES
 #include <algorithm>
 #include <cmath>
-#include <memory_resource>
 #include <numeric>
 
 #ifndef M_PI
@@ -48,7 +52,7 @@ void multirateGatherArgcheck(const Value &x, const char *fn)
     detail::throwInputType(x, fn, "x", 1, "numeric or logical");
 }
 
-void multiratePhaseArgcheck(size_t n, size_t phase, const char *fn)
+void multiratePhaseArgcheck(keel::usize n, keel::usize phase, const char *fn)
 {
     if (phase >= n)
         throw Error(std::string(fn) + ": phase must be an integer in "
@@ -59,8 +63,8 @@ void multiratePhaseArgcheck(size_t n, size_t phase, const char *fn)
 
 // Column count / orientation helpers shared by the typed gathers.
 struct GatherShape {
-    size_t rows;      // per-column length
-    size_t cols;      // product of trailing dimensions
+    keel::usize rows;      // per-column length
+    keel::usize cols;      // product of trailing dimensions
     bool   isRow;     // input was a 2-D row vector → row output
 };
 GatherShape gatherShape(const Value &x)
@@ -69,13 +73,13 @@ GatherShape gatherShape(const Value &x)
         return {x.numel(), 1, true};  // row vector (incl. 1×1): row output
     if (x.dims().isVector() || x.isScalar())
         return {x.numel(), 1, false}; // column vector / scalar
-    const size_t r = x.dims().rows();
-    const size_t c = (r > 0) ? (x.numel() / r) : x.dims().cols();
+    const keel::usize r = x.dims().rows();
+    const keel::usize c = (r > 0) ? (x.numel() / r) : x.dims().cols();
     return {r, c, false};
 }
 
-Value allocMultirateOut(const Value &x, const GatherShape &gs, size_t outRows,
-                        std::pmr::memory_resource *mr)
+Value allocMultirateOut(const Value &x, const GatherShape &gs, keel::usize outRows,
+                        keel::Allocator *mr)
 {
     const ValueType t = x.type();
     if (gs.isRow)
@@ -83,10 +87,10 @@ Value allocMultirateOut(const Value &x, const GatherShape &gs, size_t outRows,
     const int nd = x.dims().ndim();
     if (nd <= 2)
         return Value::matrix(outRows, gs.cols, t, mr);
-    std::vector<size_t> od(static_cast<size_t>(nd));
+    std::vector<keel::usize> od(static_cast<keel::usize>(nd));
     od[0] = outRows;
     for (int d = 1; d < nd; ++d)
-        od[static_cast<size_t>(d)] = x.dims().dim(d);
+        od[static_cast<keel::usize>(d)] = x.dims().dim(d);
     return Value::matrixND(od.data(), nd, t, mr);
 }
 
@@ -96,48 +100,48 @@ namespace {
 
 // Windowed-sinc lowpass FIR, Hamming window, cutoff wc (radians).
 // Normalized so DC gain is 1. Order is filtLen - 1; filtLen must be >= 2.
-ScratchVec<double> designLowpassFir(size_t filtLen, double wc, std::pmr::memory_resource *mr)
+keel::Array<double> designLowpassFir(keel::usize filtLen, double wc, keel::Allocator *mr)
 {
-    const size_t filtOrder = filtLen - 1;
+    const keel::usize filtOrder = filtLen - 1;
     const double half = filtOrder / 2.0;
 
-    ScratchVec<double> h(filtLen, mr);
+    keel::Array<double> h(filtLen, mr);
     double hSum = 0.0;
-    for (size_t i = 0; i < filtLen; ++i) {
+    for (keel::usize i = 0; i < filtLen; ++i) {
         const double n = i - half;
-        const double sinc = (std::abs(n) < 1e-12)
+        const double sinc = (keel::abs(n) < 1e-12)
                                 ? wc / M_PI
                                 : std::sin(wc * n) / (M_PI * n);
         const double win = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / filtOrder);
         h[i] = sinc * win;
         hSum += h[i];
     }
-    for (size_t i = 0; i < filtLen; ++i)
+    for (keel::usize i = 0; i < filtLen; ++i)
         h[i] /= hSum;
     return h;
 }
 
 // Direct Form II transposed FIR apply — matches filter.cpp's core for
 // the a = [1] denominator case. Used by decimate and resample.
-ScratchVec<double> applyFirDf2t(const double *h, size_t filtLen, const double *x, size_t nx, std::pmr::memory_resource *mr)
+keel::Array<double> applyFirDf2t(const double *h, keel::usize filtLen, const double *x, keel::usize nx, keel::Allocator *mr)
 {
-    ScratchVec<double> out(nx, mr);
-    ScratchVec<double> z(filtLen, mr);
-    for (size_t n = 0; n < nx; ++n) {
+    keel::Array<double> out(nx, mr);
+    keel::Array<double> z(filtLen, mr);
+    for (keel::usize n = 0; n < nx; ++n) {
         out[n] = h[0] * x[n] + z[0];
-        for (size_t i = 1; i < filtLen; ++i)
+        for (keel::usize i = 1; i < filtLen; ++i)
             z[i - 1] = h[i] * x[n] + (i < filtLen - 1 ? z[i] : 0.0);
     }
     return out;
 }
 
-void downsample_argcheck(const Value &x, size_t n, size_t phase)
+void downsample_argcheck(const Value &x, keel::usize n, keel::usize phase)
 {
     multirateGatherArgcheck(x, "downsample");
     multiratePhaseArgcheck(n, phase, "downsample");
 }
 
-void upsample_argcheck(const Value &x, size_t n, size_t phase)
+void upsample_argcheck(const Value &x, keel::usize n, keel::usize phase)
 {
     multirateGatherArgcheck(x, "upsample");
     multiratePhaseArgcheck(n, phase, "upsample");
@@ -148,7 +152,7 @@ void decimate_argcheck(const Value &x)
     detail::requireFloatInput(x, "decimate");
 }
 
-void resample_argcheck(const Value &x, size_t p, size_t q)
+void resample_argcheck(const Value &x, keel::usize p, keel::usize q)
 {
     detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
@@ -159,44 +163,44 @@ void resample_argcheck(const Value &x, size_t p, size_t q)
 } // anonymous namespace
 
 // ── downsample ────────────────────────────────────────────────────────
-Value downsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource *mr)
+Value downsample(const Value &x, keel::usize n, keel::usize phase, keel::Allocator *mr)
 {
     downsample_argcheck(x, n, phase);
     const GatherShape gs = gatherShape(x);
-    const size_t outRows = (phase < gs.rows)
+    const keel::usize outRows = (phase < gs.rows)
                                ? (gs.rows - phase + n - 1) / n
                                : 0;
     Value r = allocMultirateOut(x, gs, outRows, mr);
     if (outRows == 0 || gs.cols == 0 || x.numel() == 0)
         return r;
-    const size_t es = x.rawBytes() / x.numel();
+    const keel::usize es = x.rawBytes() / x.numel();
     const char *xd = static_cast<const char *>(x.rawData());
     char *od = static_cast<char *>(r.rawDataMut());
-    for (size_t c = 0; c < gs.cols; ++c)
-        for (size_t i = 0; i < outRows; ++i)
-            std::memcpy(od + (c * outRows + i) * es,
-                        xd + (c * gs.rows + phase + i * n) * es,
-                        es);
+    for (keel::usize c = 0; c < gs.cols; ++c)
+        for (keel::usize i = 0; i < outRows; ++i)
+            keel::mem_copy(od + (c * outRows + i) * es,
+                           xd + (c * gs.rows + phase + i * n) * es,
+                           es);
     return r;
 }
 
 // ── upsample ──────────────────────────────────────────────────────────
-Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource *mr)
+Value upsample(const Value &x, keel::usize n, keel::usize phase, keel::Allocator *mr)
 {
     upsample_argcheck(x, n, phase);
     const GatherShape gs = gatherShape(x);
-    const size_t outRows = gs.rows * n;
+    const keel::usize outRows = gs.rows * n;
     Value r = allocMultirateOut(x, gs, outRows, mr);
     if (outRows == 0 || gs.cols == 0 || x.numel() == 0)
         return r;
-    const size_t es = x.rawBytes() / x.numel();
+    const keel::usize es = x.rawBytes() / x.numel();
     const char *xd = static_cast<const char *>(x.rawData());
     char *od = static_cast<char *>(r.rawDataMut());
-    for (size_t c = 0; c < gs.cols; ++c)
-        for (size_t i = 0; i < gs.rows; ++i)
-            std::memcpy(od + (c * outRows + phase + i * n) * es,
-                        xd + (c * gs.rows + i) * es,
-                        es);
+    for (keel::usize c = 0; c < gs.cols; ++c)
+        for (keel::usize i = 0; i < gs.rows; ++i)
+            keel::mem_copy(od + (c * outRows + phase + i * n) * es,
+                           xd + (c * gs.rows + i) * es,
+                           es);
     return r;
 }
 
@@ -205,33 +209,33 @@ Value upsample(const Value &x, size_t n, size_t phase, std::pmr::memory_resource
 // pipeline here is double-buffer only, so single and complex are
 // honest capability gaps; logical and integer classes are rejected by
 // the reference outright.
-Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
+Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
 {
     decimate_argcheck(x);
     const bool xSingle = (x.type() == ValueType::SINGLE);
     if (x.isComplex()) {
-        const size_t nx = x.numel();
+        const keel::usize nx = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
         Value xi = createLike(x, ValueType::DOUBLE, mr);
         double *xrd = xr.doubleDataMut();
         double *xid = xi.doubleDataMut();
-        const Complex *xcd = x.complexData();
-        for (size_t i = 0; i < nx; ++i) {
+        const keel::c64 *xcd = x.complexData();
+        for (keel::usize i = 0; i < nx; ++i) {
             xrd[i] = xcd[i].real();
             xid[i] = xcd[i].imag();
         }
         Value yr = decimate(xr, factor, mr);
         Value yi = decimate(xi, factor, mr);
         Value out = createLike(yr, ValueType::COMPLEX, mr);
-        Complex *od = out.complexDataMut();
+        keel::c64 *od = out.complexDataMut();
         const double *yrd = yr.doubleData();
         const double *yid = yi.doubleData();
-        for (size_t i = 0; i < yr.numel(); ++i)
-            od[i] = Complex(yrd[i], yid[i]);
+        for (keel::usize i = 0; i < yr.numel(); ++i)
+            od[i] = keel::c64(yrd[i], yid[i]);
         return out;
     }
     Value xD = detail::widenSingleToDouble(x, mr);
-    const size_t nx = xD.numel();
+    const keel::usize nx = xD.numel();
     const bool isRow = xD.dims().rows() == 1;
     if (factor <= 1 || nx == 0) {
         auto r = isRow ? Value::matrix(1, nx, ValueType::DOUBLE, mr)
@@ -246,24 +250,24 @@ Value decimate(const Value &x, size_t factor, std::pmr::memory_resource *mr)
     Value filtered = filtfilt(b, a, xD, mr);
     const double *fd = filtered.doubleData();
 
-    const size_t outLen = (nx + factor - 1) / factor;
-    const size_t nbeg = (nx - 1) % factor;
+    const keel::usize outLen = (nx + factor - 1) / factor;
+    const keel::usize nbeg = (nx - 1) % factor;
     auto r = isRow ? Value::matrix(1, outLen, ValueType::DOUBLE, mr)
                    : Value::matrix(outLen, 1, ValueType::DOUBLE, mr);
     double *rd = r.doubleDataMut();
-    for (size_t i = 0; i < outLen; ++i)
+    for (keel::usize i = 0; i < outLen; ++i)
         rd[i] = fd[nbeg + i * factor];
     return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
 }
 
 // ── resample ──────────────────────────────────────────────────────────
-Value resample(const Value &x, size_t p, size_t q, std::pmr::memory_resource *mr)
+Value resample(const Value &x, keel::usize p, keel::usize q, keel::Allocator *mr)
 {
     resample_argcheck(x, p, q);
     return resample(x, p, q, 10, 5.0, mr);
 }
 
-Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, std::pmr::memory_resource *mr)
+Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double beta_in, keel::Allocator *mr)
 {
     detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
@@ -271,35 +275,35 @@ Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, 
                     0, 0, "resample", "", "numkit:resample:pq");
     const bool xSingle = (x.type() == ValueType::SINGLE);
     if (x.isComplex()) {
-        const size_t nx = x.numel();
+        const keel::usize nx = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
         Value xi = createLike(x, ValueType::DOUBLE, mr);
         double *xrd = xr.doubleDataMut();
         double *xid = xi.doubleDataMut();
-        const Complex *xcd = x.complexData();
-        for (size_t i = 0; i < nx; ++i) {
+        const keel::c64 *xcd = x.complexData();
+        for (keel::usize i = 0; i < nx; ++i) {
             xrd[i] = xcd[i].real();
             xid[i] = xcd[i].imag();
         }
         Value yr = resample(xr, p, q, n_order, beta_in, mr);
         Value yi = resample(xi, p, q, n_order, beta_in, mr);
         Value out = createLike(yr, ValueType::COMPLEX, mr);
-        Complex *od = out.complexDataMut();
+        keel::c64 *od = out.complexDataMut();
         const double *yrd = yr.doubleData();
         const double *yid = yi.doubleData();
-        for (size_t i = 0; i < yr.numel(); ++i)
-            od[i] = Complex(yrd[i], yid[i]);
+        for (keel::usize i = 0; i < yr.numel(); ++i)
+            od[i] = keel::c64(yrd[i], yid[i]);
         return out;
     }
 
     Value xD = detail::widenSingleToDouble(x, mr);
 
     // Reduce P/Q by their GCD first (as MATLAB does).
-    const size_t g = std::gcd(p, q);
+    const keel::usize g = std::gcd(p, q);
     p /= g;
     q /= g;
 
-    const size_t nx = xD.numel();
+    const keel::usize nx = xD.numel();
     const bool isRow = xD.dims().rows() == 1;
 
     // Anti-alias filter: fc = 1/(2·max(p,q)); L = 2·N·max(p,q)+1.
@@ -307,7 +311,7 @@ Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, 
     // (normalised so sum(h) = p — the interpolation gain).
     const int    N    = (n_order > 0) ? n_order : 10;
     const double beta = beta_in;
-    const size_t pqmax = std::max(p, q);
+    const keel::usize pqmax = std::max(p, q);
     const double fc = 1.0 / (2.0 * static_cast<double>(pqmax));
     const int    L  = 2 * N * static_cast<int>(pqmax) + 1;
 
@@ -317,12 +321,12 @@ Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, 
     { double *a = A.doubleDataMut(); a[0] = 1.0; a[1] = 1.0; a[2] = 0.0; a[3] = 0.0; }
 
     Value fb = firls(L - 1, F, A, mr);                   // length L
-    Value kw = kaiser(static_cast<size_t>(L), beta, mr); // length L
+    Value kw = kaiser(static_cast<keel::usize>(L), beta, mr); // length L
     const double *fbd = fb.doubleData();
     const double *kwd = kw.doubleData();
 
-    ScratchArena scratch(mr);
-    auto fk = ScratchVec<double>(static_cast<size_t>(L), &scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto fk = keel::Array<double>(static_cast<keel::usize>(L), scratch.allocator());
     double sumfk = 0.0;
     for (int i = 0; i < L; ++i) { fk[i] = fbd[i] * kwd[i]; sumfk += fk[i]; }
 
@@ -331,7 +335,7 @@ Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, 
     const long long nz     = static_cast<long long>(q) - (Lhalf % static_cast<long long>(q));
     const long long Lhalf2 = Lhalf + nz;
 
-    Value hh = Value::matrix(1, static_cast<size_t>(nz) + static_cast<size_t>(L),
+    Value hh = Value::matrix(1, static_cast<keel::usize>(nz) + static_cast<keel::usize>(L),
                              ValueType::DOUBLE, mr);
     {
         double *hd = hh.doubleDataMut();
@@ -341,19 +345,19 @@ Value resample(const Value &x, size_t p, size_t q, int n_order, double beta_in, 
     }
 
     Value yfull = upfirdn(xD, hh, p, q, mr);
-    const size_t  yfn = yfull.numel();
+    const keel::usize  yfn = yfull.numel();
     const double *yfd = yfull.doubleData();
 
     const long long delay = Lhalf2 / static_cast<long long>(q);     // floor(ceil(Lhalf2)/q)
     const long long Ly    = static_cast<long long>((nx * p + q - 1) / q); // ceil(Lx·p/q)
-    const size_t    outLen = (Ly > 0) ? static_cast<size_t>(Ly) : 0;
+    const keel::usize    outLen = (Ly > 0) ? static_cast<keel::usize>(Ly) : 0;
 
     Value r = isRow ? Value::matrix(1, outLen, ValueType::DOUBLE, mr)
                     : Value::matrix(outLen, 1, ValueType::DOUBLE, mr);
     double *rd = r.doubleDataMut();
-    for (size_t i = 0; i < outLen; ++i) {
+    for (keel::usize i = 0; i < outLen; ++i) {
         const long long idx = delay + static_cast<long long>(i);
-        rd[i] = (idx >= 0 && static_cast<size_t>(idx) < yfn) ? yfd[idx] : 0.0;
+        rd[i] = (idx >= 0 && static_cast<keel::usize>(idx) < yfn) ? yfd[idx] : 0.0;
     }
     return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
 }

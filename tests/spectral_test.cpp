@@ -1,5 +1,6 @@
 // tests/spectral_test.cpp
 
+#include <keel/core.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -173,7 +174,7 @@ TEST_F(SpectralTest, SpectrogramFrequencyVector)
 {
     eval("[S, F, T] = spectrogram(randn(1, 512), 128, 64, 128);");
     EXPECT_NEAR(evalScalar("F(1)"), 0.0, 1e-10);
-    size_t nFreqs = eval("F").numel();
+    keel::usize nFreqs = eval("F").numel();
     EXPECT_EQ(nFreqs, 65u); // 128/2+1
 }
 

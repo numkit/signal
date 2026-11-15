@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 #include <tuple>
 
@@ -41,7 +41,7 @@ namespace numkit::signal {
 std::tuple<Value, Value, Value>
 shiftdata(const Value &                x,
           int                          dim = 0,
-          std::pmr::memory_resource *  mr  = nullptr);
+          keel::Allocator *  mr  = nullptr);
 
 /// @brief Inverse of @ref shiftdata.
 ///
@@ -56,7 +56,7 @@ shiftdata(const Value &                x,
 /// @return          Restored array in original layout.
 /// @see shiftdata
 Value unshiftdata(const Value &x, const Value &perm, const Value &nshifts,
-                  std::pmr::memory_resource *mr = nullptr);
+                  keel::Allocator *mr = nullptr);
 
 
 /// @}

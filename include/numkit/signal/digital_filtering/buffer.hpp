@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 #include <string>
 #include <tuple>
@@ -37,7 +37,7 @@ namespace numkit::signal {
 /// @see buffer2
 Value buffer(const Value &x, int n, int p = 0,
              const Value &opt = Value::Empty,
-             std::pmr::memory_resource *mr = nullptr);
+             keel::Allocator *mr = nullptr);
 
 /// @brief 2-output form: `[Y, Z] = buffer(x, n, p, opt)`.
 ///
@@ -55,7 +55,7 @@ Value buffer(const Value &x, int n, int p = 0,
 std::tuple<Value, Value>
 buffer2(const Value &x, int n, int p = 0,
         const Value &opt = Value::Empty,
-        std::pmr::memory_resource *mr = nullptr);
+        keel::Allocator *mr = nullptr);
 
 
 /// @}

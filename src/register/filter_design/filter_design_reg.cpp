@@ -4,6 +4,8 @@
 // The detail{{}} *_reg fns were interleaved with compute in the original
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
@@ -12,14 +14,11 @@
 #include <numkit/signal/transforms/fft.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/argcheck.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <cstring>
 #include <string>
@@ -49,7 +48,7 @@ int firOrder(const Value &v, int argNum, const char *name, const char *fn)
 
 } // namespace
 
-void fir1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 6, "fir1");
     const int N = firOrder(args[0], 1, "n", "fir1");
@@ -58,13 +57,13 @@ void fir1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
         std::string type = "low";
         if (args.size() >= 3 && (args[2].isChar() || args[2].isString()))
             type = args[2].toString();
-        outs[0] = fir1(N, Wn, type, ctx.engine->resource());
+        outs[0] = fir1(N, Wn, type, ctx.engine->allocator());
         return;
     }
     std::string type;
     Value window = Value::Empty;
     bool scale = true;
-    for (size_t i = 2; i < args.size(); ++i) {
+    for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
             std::string s = args[i].toString();
             std::string sl = s;
@@ -80,25 +79,25 @@ void fir1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
             window = args[i];
         }
     }
-    outs[0] = fir1(N, args[1], type, window, scale, ctx.engine->resource());
+    outs[0] = fir1(N, args[1], type, window, scale, ctx.engine->allocator());
 }
 
-void firls_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void firls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "firls");
     const int N = firOrder(args[0], 1, "N", "firls");
     Value W = Value::Empty;
     std::string ftype;
-    for (std::size_t i = 3; i < args.size(); ++i) {
+    for (keel::usize i = 3; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString())
             ftype = args[i].toString();
         else
             W = args[i];
     }
-    outs[0] = firls(N, args[1], args[2], W, ftype, ctx.engine->resource());
+    outs[0] = firls(N, args[1], args[2], W, ftype, ctx.engine->allocator());
 }
 
-void fir2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void fir2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "fir2");
     const int N = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "fir2"), 1, "N", "fir2");
@@ -108,7 +107,7 @@ void fir2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
     // output window.
     Fir2Options opts;
     int scalarsSeen = 0;
-    for (size_t i = 3; i < args.size(); ++i) {
+    for (keel::usize i = 3; i < args.size(); ++i) {
         const Value &a = args[i];
         if (a.numel() == 1) {
             if (scalarsSeen == 0)
@@ -125,18 +124,18 @@ void fir2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
             opts.window = a;
         }
     }
-    outs[0] = fir2(N, args[1], args[2], opts, ctx.engine->resource());
+    outs[0] = fir2(N, args[1], args[2], opts, ctx.engine->allocator());
 }
 
 } // namespace detail
 
 namespace detail {
 
-void cell2sos_reg(Span<const Value> args, size_t nargout,
-                  Span<Value> outs, CallContext &ctx)
+void cell2sos_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "cell2sos");
-    auto [S, g] = cell2sos(args[0], ctx.engine->resource());
+    auto [S, g] = cell2sos(args[0], ctx.engine->allocator());
     outs[0] = std::move(S);
     if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(g);
 }
@@ -145,7 +144,7 @@ void cell2sos_reg(Span<const Value> args, size_t nargout,
 
 namespace detail {
 
-void firpm_reg(Span<const Value> args, std::size_t nargout, Span<Value> outs,
+void firpm_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "firpm");
@@ -155,7 +154,7 @@ void firpm_reg(Span<const Value> args, std::size_t nargout, Span<Value> outs,
     // accepts them in either order (W [, ftype] or ftype only).
     Value W;
     std::string ftype;
-    for (std::size_t i = 3; i < args.size(); ++i) {
+    for (keel::usize i = 3; i < args.size(); ++i) {
         if (args[i].isCell())
             throw Error("firpm: cell-form lgrid argument deferred",
                         0, 0, "firpm", "", "numkit:firpm:unsupportedLgrid");
@@ -166,10 +165,10 @@ void firpm_reg(Span<const Value> args, std::size_t nargout, Span<Value> outs,
     }
 
     auto [b, err] = firpm(N, args[1], args[2], W, ftype,
-                          ctx.engine->resource());
+                          ctx.engine->allocator());
     outs[0] = std::move(b);
     if (nargout >= 2 && outs.size() >= 2)
-        outs[1] = Value::scalar(err, ctx.engine->resource());
+        outs[1] = Value::scalar(err, ctx.engine->allocator());
 }
 
 } // namespace detail

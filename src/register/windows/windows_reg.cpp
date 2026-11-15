@@ -6,14 +6,15 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/ref.h>
 #include <numkit/signal/windows/windows.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -35,7 +36,7 @@ namespace {
 // Detect MATLAB's `'symmetric'` (default) / `'periodic'` window flag at
 // the trailing argument position. Returns the effective positional arg
 // count; sets `periodic = true` for the periodic form.
-size_t parseSflag(Span<const Value> args, bool &periodic)
+keel::usize parseSflag(keel::ArrayRef<Value> args, bool &periodic)
 {
     periodic = false;
     if (args.empty()) return 0;
@@ -53,7 +54,7 @@ size_t parseSflag(Span<const Value> args, bool &periodic)
 // symmetric variant, the MATLAB periodic variant is the first N samples
 // of f(N+1). This avoids modifying every window's implementation.
 template <typename Fn>
-Value applySflag(size_t N, bool periodic, Fn impl, std::pmr::memory_resource *mr)
+Value applySflag(keel::usize N, bool periodic, Fn impl, keel::Allocator *mr)
 {
     if (!periodic) return impl(N);
     Value full = impl(N + 1);
@@ -68,7 +69,7 @@ Value applySflag(size_t N, bool periodic, Fn impl, std::pmr::memory_resource *mr
 // reject 'periodic' explicitly with the documented MATLAB error.
 // `single` output cast is currently a no-op: nk emits double
 // regardless of the requested typeName.
-void parseTypeNameOnly(Span<const Value> args, const char *fn)
+void parseTypeNameOnly(keel::ArrayRef<Value> args, const char *fn)
 {
     if (args.size() < 2) return;
     const Value &last = args[args.size() - 1];
@@ -84,157 +85,157 @@ void parseTypeNameOnly(Span<const Value> args, const char *fn)
 
 } // anonymous
 
-void hamming_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void hamming_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "hamming");
     bool periodic = false; (void)parseSflag(args, periodic);
-    auto *mr = ctx.engine->resource();
-    outs[0] = applySflag(argcheck::roundLength(args[0], 1, "N", "hamming"), periodic, [&](size_t M){ return hamming(M, mr); }, mr);
+    auto *mr = ctx.engine->allocator();
+    outs[0] = applySflag(argcheck::roundLength(args[0], 1, "N", "hamming"), periodic, [&](keel::usize M){ return hamming(M, mr); }, mr);
 }
 
-void hann_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void hann_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "hann");  // alias hann,hanning: union of probed bounds
     bool periodic = false; (void)parseSflag(args, periodic);
-    auto *mr = ctx.engine->resource();
-    outs[0] = applySflag(argcheck::roundLength(args[0], 1, "N", "hann"), periodic, [&](size_t M){ return hann(M, mr); }, mr);
+    auto *mr = ctx.engine->allocator();
+    outs[0] = applySflag(argcheck::roundLength(args[0], 1, "N", "hann"), periodic, [&](keel::usize M){ return hann(M, mr); }, mr);
 }
 
-void blackman_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void blackman_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "blackman");
     bool periodic = false; (void)parseSflag(args, periodic);
-    auto *mr = ctx.engine->resource();
-    outs[0] = applySflag(argcheck::roundLength(args[0], 1, "N", "blackman"), periodic, [&](size_t M){ return blackman(M, mr); }, mr);
+    auto *mr = ctx.engine->allocator();
+    outs[0] = applySflag(argcheck::roundLength(args[0], 1, "N", "blackman"), periodic, [&](keel::usize M){ return blackman(M, mr); }, mr);
 }
 
-void kaiser_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void kaiser_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "kaiser");
-    const size_t N = argcheck::roundLength(args[0], 1, "N", "kaiser");
+    const keel::usize N = argcheck::roundLength(args[0], 1, "N", "kaiser");
     const double beta = (args.size() >= 2) ? args[1].toScalar() : 0.5;
-    outs[0] = kaiser(N, beta, ctx.engine->resource());
+    outs[0] = kaiser(N, beta, ctx.engine->allocator());
 }
 
-void rectwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void rectwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "rectwin");
     parseTypeNameOnly(args, "rectwin");
-    outs[0] = rectwin(argcheck::roundLength(args[0], 1, "N", "rectwin"), ctx.engine->resource());
+    outs[0] = rectwin(argcheck::roundLength(args[0], 1, "N", "rectwin"), ctx.engine->allocator());
 }
 
-void bartlett_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void bartlett_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "bartlett");
     parseTypeNameOnly(args, "bartlett");
-    outs[0] = bartlett(argcheck::roundLength(args[0], 1, "N", "bartlett"), ctx.engine->resource());
+    outs[0] = bartlett(argcheck::roundLength(args[0], 1, "N", "bartlett"), ctx.engine->allocator());
 }
 
 // Local helper: extract N from arg[0] with a `name` for error messages.
-static size_t windowN(const Value &a, const char *name)
+static keel::usize windowN(const Value &a, const char *name)
 {
     return argcheck::roundLength(a, 1, "N", name);
 }
 
-void triang_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void triang_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "triang");
     parseTypeNameOnly(args, "triang");
-    outs[0] = triang(windowN(args[0], "triang"), ctx.engine->resource());
+    outs[0] = triang(windowN(args[0], "triang"), ctx.engine->allocator());
 }
 
-void tukeywin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void tukeywin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "tukeywin");
-    const size_t N = windowN(args[0], "tukeywin");
+    const keel::usize N = windowN(args[0], "tukeywin");
     const double r = (args.size() >= 2) ? args[1].toScalar() : 0.5;
-    outs[0] = tukeywin(N, r, ctx.engine->resource());
+    outs[0] = tukeywin(N, r, ctx.engine->allocator());
 }
 
-void flattopwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void flattopwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "flattopwin");
     bool periodic = false; (void)parseSflag(args, periodic);
-    auto *mr = ctx.engine->resource();
-    outs[0] = applySflag(windowN(args[0], "flattopwin"), periodic, [&](size_t M){ return flattopwin(M, mr); }, mr);
+    auto *mr = ctx.engine->allocator();
+    outs[0] = applySflag(windowN(args[0], "flattopwin"), periodic, [&](keel::usize M){ return flattopwin(M, mr); }, mr);
 }
 
-void gausswin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void gausswin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "gausswin");
-    const size_t N = windowN(args[0], "gausswin");
+    const keel::usize N = windowN(args[0], "gausswin");
     const double alpha = (args.size() >= 2) ? args[1].toScalar() : 2.5;
-    outs[0] = gausswin(N, alpha, ctx.engine->resource());
+    outs[0] = gausswin(N, alpha, ctx.engine->allocator());
 }
 
-void chebwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void chebwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "chebwin");
-    const size_t N = windowN(args[0], "chebwin");
+    const keel::usize N = windowN(args[0], "chebwin");
     const double at = (args.size() >= 2) ? args[1].toScalar() : 100.0;
-    outs[0] = chebwin(N, at, ctx.engine->resource());
+    outs[0] = chebwin(N, at, ctx.engine->allocator());
 }
 
-void parzenwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void parzenwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "parzenwin");
     parseTypeNameOnly(args, "parzenwin");
-    outs[0] = parzenwin(windowN(args[0], "parzenwin"), ctx.engine->resource());
+    outs[0] = parzenwin(windowN(args[0], "parzenwin"), ctx.engine->allocator());
 }
 
-void nuttallwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void nuttallwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "nuttallwin");
     bool periodic = false; (void)parseSflag(args, periodic);
-    auto *mr = ctx.engine->resource();
-    outs[0] = applySflag(windowN(args[0], "nuttallwin"), periodic, [&](size_t M){ return nuttallwin(M, mr); }, mr);
+    auto *mr = ctx.engine->allocator();
+    outs[0] = applySflag(windowN(args[0], "nuttallwin"), periodic, [&](keel::usize M){ return nuttallwin(M, mr); }, mr);
 }
 
-void taylorwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void taylorwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "taylorwin");
-    const size_t N = windowN(args[0], "taylorwin");
+    const keel::usize N = windowN(args[0], "taylorwin");
     const int nbar = (args.size() >= 2)
         ? argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[1], 2, "nbar", "taylorwin"), 2, "nbar", "taylorwin")
         : 4;
     const double sll = (args.size() >= 3) ? args[2].toScalar() : -30.0;
-    outs[0] = taylorwin(N, nbar, sll, ctx.engine->resource());
+    outs[0] = taylorwin(N, nbar, sll, ctx.engine->allocator());
 }
 
-void blackmanharris_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void blackmanharris_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "blackmanharris");
     bool periodic = false; (void)parseSflag(args, periodic);
-    auto *mr = ctx.engine->resource();
-    outs[0] = applySflag(windowN(args[0], "blackmanharris"), periodic, [&](size_t M){ return blackmanharris(M, mr); }, mr);
+    auto *mr = ctx.engine->allocator();
+    outs[0] = applySflag(windowN(args[0], "blackmanharris"), periodic, [&](keel::usize M){ return blackmanharris(M, mr); }, mr);
 }
 
-void bohmanwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void bohmanwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "bohmanwin");
     parseTypeNameOnly(args, "bohmanwin");
-    outs[0] = bohmanwin(windowN(args[0], "bohmanwin"), ctx.engine->resource());
+    outs[0] = bohmanwin(windowN(args[0], "bohmanwin"), ctx.engine->allocator());
 }
 
-void barthannwin_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void barthannwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "barthannwin");
     parseTypeNameOnly(args, "barthannwin");
-    outs[0] = barthannwin(windowN(args[0], "barthannwin"), ctx.engine->resource());
+    outs[0] = barthannwin(windowN(args[0], "barthannwin"), ctx.engine->allocator());
 }
 
-void dpss_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void dpss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "dpss");
-    const size_t N = static_cast<size_t>(argcheck::expectedPositiveInteger(
+    const keel::usize N = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[0], 1, "N", "dpss"), 1, "N", "dpss"));
     const double nw = args[1].toScalar();
-    size_t k = std::min(N, std::max<size_t>(1, static_cast<size_t>(std::llround(2.0 * nw))));
+    keel::usize k = std::min(N, std::max<keel::usize>(1, static_cast<keel::usize>(std::llround(2.0 * nw))));
     if (args.size() >= 3 && args[2].isNumeric() && !args[2].isEmpty()) {
-        k = std::min(N, static_cast<size_t>(std::max(1.0, std::round(args[2].elemAsDouble(args[2].numel() - 1)))));
+        k = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(args[2].elemAsDouble(args[2].numel() - 1)))));
     }
-    auto [E, V] = dpss(N, nw, k, ctx.engine->resource());
+    auto [E, V] = dpss(N, nw, k, ctx.engine->allocator());
     outs[0] = std::move(E);
     if (nargout >= 2) outs[1] = std::move(V);
 }

@@ -3,19 +3,17 @@
 // CallContext register half of measurements/sigroi.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/sigroi.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -30,69 +28,69 @@ namespace detail {
 // Marshalling for the sigroi scalar lengths: scalarity/integrality here
 // (nk ids); range/content contracts (positive, nonnegative) live in the
 // compute argchecks.
-static int64_t sigroiLen(const Value &v, int argNum, const char *name,
+static keel::i64 sigroiLen(const Value &v, int argNum, const char *name,
                          const char *fn)
 {
-    return static_cast<int64_t>(argcheck::expectedInteger(
+    return static_cast<keel::i64>(argcheck::expectedInteger(
         argcheck::expectedReal(v, argNum, name, fn), argNum, name, fn));
 }
 
-void binmask2sigroi_reg(Span<const Value> args, size_t /*nargout*/,
-                        Span<Value> outs, CallContext &ctx)
+void binmask2sigroi_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                        keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "binmask2sigroi");
-    outs[0] = binmask2sigroi(args[0], ctx.engine->resource());
+    outs[0] = binmask2sigroi(args[0], ctx.engine->allocator());
 }
 
-void sigroi2binmask_reg(Span<const Value> args, size_t /*nargout*/,
-                        Span<Value> outs, CallContext &ctx)
+void sigroi2binmask_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                        keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "sigroi2binmask");
-    int64_t len = -1;
+    keel::i64 len = -1;
     if (args.size() >= 2) len = sigroiLen(args[1], 2, "L", "sigroi2binmask");
-    outs[0] = sigroi2binmask(args[0], len, ctx.engine->resource());
+    outs[0] = sigroi2binmask(args[0], len, ctx.engine->allocator());
 }
 
-void extendsigroi_reg(Span<const Value> args, size_t /*nargout*/,
-                      Span<Value> outs, CallContext &ctx)
+void extendsigroi_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                      keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 3, "extendsigroi");
     outs[0] = extendsigroi(args[0],
                            sigroiLen(args[1], 2, "SL", "extendsigroi"),
                            sigroiLen(args[2], 3, "SR", "extendsigroi"),
-                           ctx.engine->resource());
+                           ctx.engine->allocator());
 }
 
-void shortensigroi_reg(Span<const Value> args, size_t /*nargout*/,
-                       Span<Value> outs, CallContext &ctx)
+void shortensigroi_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                       keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 3, "shortensigroi");
     outs[0] = shortensigroi(args[0],
                             sigroiLen(args[1], 2, "Lpre", "shortensigroi"),
                             sigroiLen(args[2], 3, "Lpost", "shortensigroi"),
-                            ctx.engine->resource());
+                            ctx.engine->allocator());
 }
 
-void mergesigroi_reg(Span<const Value> args, size_t /*nargout*/,
-                     Span<Value> outs, CallContext &ctx)
+void mergesigroi_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                     keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 2, "mergesigroi");
     outs[0] = mergesigroi(args[0],
                           sigroiLen(args[1], 2, "S", "mergesigroi"),
-                          ctx.engine->resource());
+                          ctx.engine->allocator());
 }
 
-void removesigroi_reg(Span<const Value> args, size_t /*nargout*/,
-                      Span<Value> outs, CallContext &ctx)
+void removesigroi_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                      keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 2, "removesigroi");
     outs[0] = removesigroi(args[0],
                            sigroiLen(args[1], 2, "maxLen", "removesigroi"),
-                           ctx.engine->resource());
+                           ctx.engine->allocator());
 }
 
-void extractsigroi_reg(Span<const Value> args, size_t /*nargout*/,
-                       Span<Value> outs, CallContext &ctx)
+void extractsigroi_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                       keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "extractsigroi");
     bool concat = false;
@@ -100,14 +98,14 @@ void extractsigroi_reg(Span<const Value> args, size_t /*nargout*/,
         concat = argcheck::expectedReal(args[2], 3, "concat",
                                         "extractsigroi") != 0.0;
     }
-    outs[0] = extractsigroi(args[0], args[1], concat, ctx.engine->resource());
+    outs[0] = extractsigroi(args[0], args[1], concat, ctx.engine->allocator());
 }
 
-void sigrangebinmask_reg(Span<const Value> args, size_t /*nargout*/,
-                         Span<Value> outs, CallContext &ctx)
+void sigrangebinmask_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                         keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 2, "sigrangebinmask");  // reference has an option-string tail (unimplemented)
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     const Value &bound = args[1];
     if (bound.numel() == 1)
         outs[0] = sigrangebinmask(args[0], bound.toScalar(), mr);

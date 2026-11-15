@@ -2,6 +2,7 @@
 //
 // Tests for F1: upfirdn / interp / intfilt / fftfilt.
 
+#include <keel/core.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -33,8 +34,8 @@ TEST_F(MultirateExtrasTest, IntfiltLength)
 TEST_F(MultirateExtrasTest, IntfiltSymmetric)
 {
     eval("h = intfilt(3, 4, 0.5);");
-    const size_t L = eval("h").numel();
-    for (size_t i = 1; i <= L / 2; ++i) {
+    const keel::usize L = eval("h").numel();
+    for (keel::usize i = 1; i <= L / 2; ++i) {
         const double l = evalScalar("h(" + std::to_string(i) + ")");
         const double r = evalScalar("h(" + std::to_string(L + 1 - i) + ")");
         EXPECT_NEAR(l, r, 1e-12);

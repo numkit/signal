@@ -7,7 +7,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -34,8 +35,8 @@ namespace numkit::signal {
 /// @see hilbert
 std::tuple<Value, Value>
 envspectrum(const Value &                x,
-            double                       fs = 0.0,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::f64                       fs = 0.0,
+            keel::Allocator *  mr = nullptr);
 
 /// Convert a tachometer pulse signal to an RPM trace.
 ///
@@ -54,10 +55,10 @@ envspectrum(const Value &                x,
 /// @see tsa
 std::tuple<Value, Value>
 tachorpm(const Value &                x,
-         double                       fs,
+         keel::f64                       fs,
          const Value &                threshold = Value::Empty,
          int                          ppr       = 1,
-         std::pmr::memory_resource *  mr        = nullptr);
+         keel::Allocator *  mr        = nullptr);
 
 /// Rainflow cycle counting (ASTM E1049-85).
 ///
@@ -71,7 +72,7 @@ tachorpm(const Value &                x,
 ///            `[count, range, mean, start_idx, end_idx]`.
 ///            `count = 1.0` for full cycles, `0.5` for half cycles.
 Value rainflow(const Value &                x,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// Time-synchronous average (TSA).
 ///
@@ -92,11 +93,11 @@ Value rainflow(const Value &                x,
 /// @see tachorpm, envspectrum
 std::tuple<Value, Value>
 tsa(const Value &                x,
-    double                       fs,
+    keel::f64                       fs,
     const Value &                rpm,
-    double                       fs_rpm,
+    keel::f64                       fs_rpm,
     int                          n_per_rev = 1024,
-    std::pmr::memory_resource *  mr        = nullptr);
+    keel::Allocator *  mr        = nullptr);
 
 
 /// @}

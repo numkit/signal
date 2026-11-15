@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/digital_filtering/spec_driven.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -33,35 +33,35 @@ namespace detail {
 // MATLAB lowpass/highpass/bandpass/bandstop: when fs is omitted, the
 // cutoffs are interpreted as already normalized to Nyquist, equivalent
 // to fs = 2 (so fpass in [0, 1] maps to [0, pi] in normalized rad/sample).
-void lowpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void lowpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "lowpass");
     if ((args[1].isChar() || args[1].isString()) && args.size() >= 3) {
         const double fc = args[2].toScalar();
-        outs[0] = lowpass(args[0], fc, 2.0, 8, ctx.engine->resource());
+        outs[0] = lowpass(args[0], fc, 2.0, 8, ctx.engine->allocator());
         return;
     }
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "lowpass"), 4, "order", "lowpass") : 8;
-    outs[0] = lowpass(args[0], args[1].toScalar(), fs, order, ctx.engine->resource());
+    outs[0] = lowpass(args[0], args[1].toScalar(), fs, order, ctx.engine->allocator());
 }
 
-void highpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void highpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "highpass");
     if ((args[1].isChar() || args[1].isString()) && args.size() >= 3) {
         const double fc = args[2].toScalar();
-        outs[0] = highpass(args[0], fc, 2.0, 8, ctx.engine->resource());
+        outs[0] = highpass(args[0], fc, 2.0, 8, ctx.engine->allocator());
         return;
     }
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "highpass"), 4, "order", "highpass") : 8;
-    outs[0] = highpass(args[0], args[1].toScalar(), fs, order, ctx.engine->resource());
+    outs[0] = highpass(args[0], args[1].toScalar(), fs, order, ctx.engine->allocator());
 }
 
-void bandpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void bandpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "bandpass");
     if (args[1].numel() != 2)
@@ -70,10 +70,10 @@ void bandpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandpass"), 4, "order", "bandpass") : 8;
-    outs[0] = bandpass(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->resource());
+    outs[0] = bandpass(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->allocator());
 }
 
-void bandstop_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void bandstop_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "bandstop");
     if (args[1].numel() != 2)
@@ -82,7 +82,7 @@ void bandstop_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
     const double fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const int order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandstop"), 4, "order", "bandstop") : 8;
-    outs[0] = bandstop(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->resource());
+    outs[0] = bandstop(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->allocator());
 }
 
 } // namespace detail

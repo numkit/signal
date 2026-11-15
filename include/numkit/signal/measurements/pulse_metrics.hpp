@@ -19,7 +19,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -40,7 +41,7 @@ namespace numkit::signal {
 ///
 /// @see risetime, falltime, midcross
 Value statelevels(const Value &                x,
-                  std::pmr::memory_resource *  mr = nullptr);
+                  keel::Allocator *  mr = nullptr);
 
 /// Mid-state crossing times.
 ///
@@ -56,7 +57,7 @@ Value statelevels(const Value &                x,
 /// @see statelevels
 Value midcross(const Value &                x,
                const Value &                fs = Value::Empty,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// Rise time of positive-going transitions.
 ///
@@ -71,7 +72,7 @@ Value midcross(const Value &                x,
 /// @see falltime, slewrate
 Value risetime(const Value &                x,
                const Value &                fs = Value::Empty,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// @brief Fall time of negative-going transitions (90% → 10%).
 ///
@@ -83,7 +84,7 @@ Value risetime(const Value &                x,
 /// @return    Column vector of fall times; one per detected transition.
 /// @see risetime, slewrate
 Value falltime(const Value &x, const Value &fs = Value::Empty,
-               std::pmr::memory_resource *mr = nullptr);
+               keel::Allocator *mr = nullptr);
 
 /// Slew rate of each transition.
 ///
@@ -98,7 +99,7 @@ Value falltime(const Value &x, const Value &fs = Value::Empty,
 /// @see risetime, falltime
 Value slewrate(const Value &                x,
                const Value &                fs = Value::Empty,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// @brief Percent overshoot above the upper state.
 ///
@@ -111,7 +112,7 @@ Value slewrate(const Value &                x,
 /// @return    Column vector of percentages, one per transition.
 /// @see undershoot, settlingtime
 Value overshoot(const Value &x, const Value &fs = Value::Empty,
-                std::pmr::memory_resource *mr = nullptr);
+                keel::Allocator *mr = nullptr);
 
 /// @brief Percent undershoot below the lower state level.
 ///
@@ -123,7 +124,7 @@ Value overshoot(const Value &x, const Value &fs = Value::Empty,
 /// @return    Column vector of percentages.
 /// @see overshoot
 Value undershoot(const Value &x, const Value &fs = Value::Empty,
-                 std::pmr::memory_resource *mr = nullptr);
+                 keel::Allocator *mr = nullptr);
 
 /// Settling time of each transition.
 ///
@@ -139,8 +140,8 @@ Value undershoot(const Value &x, const Value &fs = Value::Empty,
 /// @see risetime
 Value settlingtime(const Value &                x,
                    const Value &                fs = Value::Empty,
-                   double                       tol = 0.02,
-                   std::pmr::memory_resource *  mr  = nullptr);
+                   keel::f64                       tol = 0.02,
+                   keel::Allocator *  mr  = nullptr);
 
 /// Duration each pulse stays above the mid-state.
 ///
@@ -152,7 +153,7 @@ Value settlingtime(const Value &                x,
 /// @see pulseperiod, dutycycle
 Value pulsewidth(const Value &                x,
                  const Value &                fs = Value::Empty,
-                 std::pmr::memory_resource *  mr = nullptr);
+                 keel::Allocator *  mr = nullptr);
 
 /// @brief Period between consecutive same-direction mid-state crossings.
 ///
@@ -162,7 +163,7 @@ Value pulsewidth(const Value &                x,
 /// @return    Column vector of periods, one per consecutive pulse pair.
 /// @see pulsewidth, dutycycle
 Value pulseperiod(const Value &x, const Value &fs = Value::Empty,
-                  std::pmr::memory_resource *mr = nullptr);
+                  keel::Allocator *mr = nullptr);
 
 /// @brief Separation between consecutive pulses (time below mid-state).
 ///
@@ -172,7 +173,7 @@ Value pulseperiod(const Value &x, const Value &fs = Value::Empty,
 /// @return    Column vector of separations.
 /// @see pulsewidth, pulseperiod
 Value pulsesep(const Value &x, const Value &fs = Value::Empty,
-               std::pmr::memory_resource *mr = nullptr);
+               keel::Allocator *mr = nullptr);
 
 /// Duty cycle: fraction of each pulse period spent above the mid-state.
 ///
@@ -185,7 +186,7 @@ Value pulsesep(const Value &x, const Value &fs = Value::Empty,
 /// @see pulsewidth, pulseperiod
 Value dutycycle(const Value &                x,
                 const Value &                fs = Value::Empty,
-                std::pmr::memory_resource *  mr = nullptr);
+                keel::Allocator *  mr = nullptr);
 
 
 /// @}

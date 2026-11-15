@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/multirate/multirate.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -28,9 +29,9 @@ namespace numkit::signal {
 /// `phase` (0 ≤ phase < n) offsets the first kept sample: the output is
 /// `x[phase], x[phase+n], …`.
 Value downsample(const Value &                x,
-                 size_t                       n,
-                 size_t                       phase = 0,
-                 std::pmr::memory_resource *  mr = nullptr);
+                 keel::usize                       n,
+                 keel::usize                       phase = 0,
+                 keel::Allocator *  mr = nullptr);
 
 /// Integer-rate upsampling — zero-stuff between samples.
 ///
@@ -48,9 +49,9 @@ Value downsample(const Value &                x,
 /// `phase` (0 ≤ phase < n) places the samples at offset `phase`:
 /// `y[phase + i·n] = x[i]`.
 Value upsample(const Value &                x,
-               size_t                       n,
-               size_t                       phase = 0,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::usize                       n,
+               keel::usize                       phase = 0,
+               keel::Allocator *  mr = nullptr);
 
 /// Integer-factor decimation with anti-alias filtering.
 ///
@@ -66,8 +67,8 @@ Value upsample(const Value &                x,
 ///
 /// @see downsample, resample
 Value decimate(const Value &                x,
-               size_t                       factor,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::usize                       factor,
+               keel::Allocator *  mr = nullptr);
 
 /// Rational rate conversion: change rate by factor `p/q`.
 ///
@@ -87,16 +88,16 @@ Value decimate(const Value &                x,
 ///
 /// @see decimate, upsample, downsample
 Value resample(const Value &                x,
-               size_t                       p,
-               size_t                       q,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::usize                       p,
+               keel::usize                       q,
+               keel::Allocator *  mr = nullptr);
 
 Value resample(const Value &                x,
-               size_t                       p,
-               size_t                       q,
+               keel::usize                       p,
+               keel::usize                       q,
                int                          n,
-               double                       beta = 5.0,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::f64                       beta = 5.0,
+               keel::Allocator *  mr = nullptr);
 
 
 /// @}

@@ -6,13 +6,13 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/digital_filtering/poly_utils.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,18 +30,18 @@ namespace numkit::signal {
 
 namespace detail {
 
-void polyscale_reg(Span<const Value> args, size_t /*nargout*/,
-                   Span<Value> outs, CallContext &ctx)
+void polyscale_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 2, "polyscale");
-    outs[0] = polyscale(args[0], args[1], ctx.engine->resource());
+    outs[0] = polyscale(args[0], args[1], ctx.engine->allocator());
 }
 
-void polystab_reg(Span<const Value> args, size_t /*nargout*/,
-                  Span<Value> outs, CallContext &ctx)
+void polystab_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "polystab");
-    outs[0] = polystab(args[0], ctx.engine->resource());
+    outs[0] = polystab(args[0], ctx.engine->allocator());
 }
 
 } // namespace detail

@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/smoothing/medfilt.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,11 +30,11 @@ namespace numkit::signal {
 
 namespace detail {
 
-void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 6, "medfilt1");
-    size_t k = 3;
+    keel::usize k = 3;
     if (args.size() >= 2 && !args[1].isEmpty()
         && !args[1].isChar() && !args[1].isString()) {
         // k = 0 is LEGAL (the reference answers an all-NaN signal â€”
@@ -44,7 +44,7 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         if (kv < 0)
             throw Error("medfilt1: window length must be nonnegative",
                          0, 0, "medfilt1", "", "numkit:medfilt1:badK");
-        k = static_cast<size_t>(kv);
+        k = static_cast<keel::usize>(kv);
     }
 
     // Padding mode: MATLAB default 'zeropad'; a trailing 'truncate' string
@@ -52,7 +52,7 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     // the window at the ends instead. (blksz/dim/nanflag args are accepted
     // but ignored for now â€” noted as a gap.)
     bool zeropad = true;
-    for (size_t a = args.size(); a-- > 1;) {
+    for (keel::usize a = args.size(); a-- > 1;) {
         if (args[a].isChar() || args[a].isString()) {
             std::string s = args[a].toString();
             for (char &c : s) c = static_cast<char>(std::tolower((unsigned char)c));
@@ -61,25 +61,25 @@ void medfilt1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
             break;
         }
     }
-    outs[0] = medfilt1(args[0], k, zeropad, ctx.engine->resource());
+    outs[0] = medfilt1(args[0], k, zeropad, ctx.engine->allocator());
 }
 
-void fillgaps_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "fillgaps");
-    size_t maxlen = 0;
+    keel::usize maxlen = 0;
     if (args.size() >= 2 && !args[1].isEmpty()) {
         const double ml = argcheck::expectedReal(args[1], 2, "MAXLEN", "fillgaps");
         if (std::isinf(ml) && ml > 0.0) {
             maxlen = 0;
         } else {
-            maxlen = static_cast<size_t>(
+            maxlen = static_cast<keel::usize>(
                 argcheck::expectedPositiveInteger(ml, 2, "MAXLEN", "fillgaps"));
         }
     }
 
-    size_t order = 0;
+    keel::usize order = 0;
     if (args.size() >= 3 && !args[2].isEmpty()) {
         if (args[2].isChar() || args[2].isString()) {
             std::string s = args[2].toString();
@@ -93,13 +93,13 @@ void fillgaps_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
             if (std::isinf(ord) && ord > 0.0) {
                 order = 0;
             } else {
-                order = static_cast<size_t>(
+                order = static_cast<keel::usize>(
                     argcheck::expectedPositiveInteger(ord, 3, "ORDER", "fillgaps"));
             }
         }
     }
 
-    outs[0] = fillgaps(args[0], maxlen, order, ctx.engine->resource());
+    outs[0] = fillgaps(args[0], maxlen, order, ctx.engine->allocator());
 }
 
 } // namespace detail

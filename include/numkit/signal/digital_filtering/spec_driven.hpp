@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -33,10 +34,10 @@ namespace numkit::signal {
 ///
 /// @see highpass, bandpass, bandstop, butter
 Value lowpass(const Value &                x,
-              double                       fpass,
-              double                       fs,
+              keel::f64                       fpass,
+              keel::f64                       fs,
               int                          order = 8,
-              std::pmr::memory_resource *  mr    = nullptr);
+              keel::Allocator *  mr    = nullptr);
 
 /// One-call zero-phase Butterworth highpass filter.
 ///
@@ -49,10 +50,10 @@ Value lowpass(const Value &                x,
 ///
 /// @see lowpass
 Value highpass(const Value &                x,
-               double                       fpass,
-               double                       fs,
+               keel::f64                       fpass,
+               keel::f64                       fs,
                int                          order = 8,
-               std::pmr::memory_resource *  mr    = nullptr);
+               keel::Allocator *  mr    = nullptr);
 
 /// One-call zero-phase Butterworth bandpass filter.
 ///
@@ -72,11 +73,11 @@ Value highpass(const Value &                x,
 ///       passbands. For sharp transitions design a single-stage BP
 ///       filter directly.
 Value bandpass(const Value &                x,
-               double                       flo,
-               double                       fhi,
-               double                       fs,
+               keel::f64                       flo,
+               keel::f64                       fhi,
+               keel::f64                       fs,
                int                          order = 8,
-               std::pmr::memory_resource *  mr    = nullptr);
+               keel::Allocator *  mr    = nullptr);
 
 /// One-call zero-phase Butterworth bandstop (notch) filter.
 ///
@@ -91,11 +92,11 @@ Value bandpass(const Value &                x,
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Filtered signal.
 Value bandstop(const Value &                x,
-               double                       flo,
-               double                       fhi,
-               double                       fs,
+               keel::f64                       flo,
+               keel::f64                       fhi,
+               keel::f64                       fs,
                int                          order = 8,
-               std::pmr::memory_resource *  mr    = nullptr);
+               keel::Allocator *  mr    = nullptr);
 
 
 /// @}

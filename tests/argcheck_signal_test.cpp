@@ -11,6 +11,7 @@
 // is validated against the reference engine; expected strings are
 // nk-voiced with the received value/shape (user rule 2026-09-17).
 
+#include <keel/memory.h>
 #include <gtest/gtest.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/signal/digital_filtering/filter.hpp>
@@ -90,7 +91,7 @@ TEST_F(ArgcheckSignalTest, FilterLogicalInputWorks)
 // ── filter: direct C++ (both-paths guarantee) ────────────────────────────
 TEST_F(ArgcheckSignalTest, FilterDirectCApiContract)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
 
     Value b = Value::matrix(1, 2, ValueType::DOUBLE, mr);
     b.doubleDataMut()[0] = 1.0;
@@ -162,7 +163,7 @@ TEST_F(ArgcheckSignalTest, Fir1ArgcheckDiagnostics)
 TEST_F(ArgcheckSignalTest, Fir1DirectCApiContract)
 {
     try {
-        (void)signal::fir1(-5, 0.5, "low", std::pmr::get_default_resource());
+        (void)signal::fir1(-5, 0.5, "low", keel::default_allocator());
         FAIL() << "expected nNotPositive";
     } catch (const Error &e) {
         EXPECT_EQ(e.identifier(), "numkit:fir1:nNotPositive");
@@ -207,7 +208,7 @@ TEST_F(ArgcheckSignalTest, ButterOrderArgcheckDiagnostics)
 TEST_F(ArgcheckSignalTest, ButterDirectCApiContract)
 {
     try {
-        std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+        keel::Allocator *mr = keel::default_allocator();
         Value wn = Value::scalar(0.5, mr);
         (void)signal::butter(-5, wn, signal::FilterType::Lowpass, false, mr);
         FAIL() << "expected orderNotPositive";
@@ -544,7 +545,7 @@ TEST_F(ArgcheckSignalTest, ModulateDemodContract)
 // bypasses the interpreter crosses the same checks (both-paths rule).
 TEST_F(ArgcheckSignalTest, DirectCApiContracts)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     try {
         (void)signal::downsample(Value::cell(1, 2, mr), 2, 0, mr);
         FAIL() << "expected downsample inputType";

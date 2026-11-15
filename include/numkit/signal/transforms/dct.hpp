@@ -3,7 +3,7 @@
 // toolboxes/signal/include/numkit/signal/transforms/dct.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -25,7 +25,7 @@ namespace numkit::signal {
 /// @code  Value Y = dct({1.0, 2.0, 3.0, 4.0});  @endcode
 ///
 /// @see idct
-Value dct(const Value &x, std::pmr::memory_resource *mr = nullptr);
+Value dct(const Value &x, keel::Allocator *mr = nullptr);
 
 /// @brief Inverse Type-II DCT (1-D form).
 ///
@@ -35,7 +35,7 @@ Value dct(const Value &x, std::pmr::memory_resource *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE vector (reconstructed signal).
 /// @see dct
-Value idct(const Value &x, std::pmr::memory_resource *mr = nullptr);
+Value idct(const Value &x, keel::Allocator *mr = nullptr);
 
 /// DCT-II with explicit length / axis.
 ///
@@ -53,7 +53,7 @@ Value idct(const Value &x, std::pmr::memory_resource *mr = nullptr);
 Value dct(const Value &                x,
           int                          n,
           int                          dim,
-          std::pmr::memory_resource *  mr = nullptr);
+          keel::Allocator *  mr = nullptr);
 
 /// @brief Inverse DCT-II with explicit length / axis.
 ///
@@ -68,7 +68,7 @@ Value dct(const Value &                x,
 /// @return     DOUBLE array with `dim` axis replaced by length `n`.
 /// @see dct
 Value idct(const Value &x, int n, int dim,
-           std::pmr::memory_resource *mr = nullptr);
+           keel::Allocator *mr = nullptr);
 
 
 /// @}

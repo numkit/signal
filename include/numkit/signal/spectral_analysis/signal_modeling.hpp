@@ -9,7 +9,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -43,7 +44,7 @@ namespace numkit::signal {
 std::tuple<Value, Value, Value>
 levinson(const Value &                r,
          int                          n  = -1,
-         std::pmr::memory_resource *  mr = nullptr);
+         keel::Allocator *  mr = nullptr);
 
 /// Inverse Levinson recursion: recover autocorrelation from AR poly.
 ///
@@ -56,8 +57,8 @@ levinson(const Value &                r,
 /// @see levinson
 std::tuple<Value, Value>
 rlevinson(const Value &                a,
-          double                       efinal,
-          std::pmr::memory_resource *  mr = nullptr);
+          keel::f64                       efinal,
+          keel::Allocator *  mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Autoregressive estimation
@@ -77,7 +78,7 @@ rlevinson(const Value &                a,
 std::tuple<Value, Value, Value>
 aryule(const Value &                x,
        int                          p,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::Allocator *  mr = nullptr);
 
 /// @brief Burg's AR(p) parameter estimation.
 ///
@@ -93,7 +94,7 @@ aryule(const Value &                x,
 /// @see aryule, pburg
 std::tuple<Value, Value, Value>
 arburg(const Value &x, int p,
-       std::pmr::memory_resource *mr = nullptr);
+       keel::Allocator *mr = nullptr);
 
 /// Linear-prediction coefficients (`aryule` alias + sqrt-error gain).
 ///
@@ -106,7 +107,7 @@ arburg(const Value &x, int p,
 std::tuple<Value, Value>
 lpc(const Value &                x,
     int                          p,
-    std::pmr::memory_resource *  mr = nullptr);
+    keel::Allocator *  mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Representation conversions (poly ↔ rc ↔ autocorr)
@@ -118,7 +119,7 @@ lpc(const Value &                x,
 /// @return    Tuple `(a, e)`.
 std::tuple<Value, Value>
 ac2poly(const Value &                R,
-        std::pmr::memory_resource *  mr = nullptr);
+        keel::Allocator *  mr = nullptr);
 
 /// AR poly + prediction error → autocorrelation.
 /// @param a   AR coefficient vector.
@@ -126,8 +127,8 @@ ac2poly(const Value &                R,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Autocorrelation column of length `numel(a)`.
 Value poly2ac(const Value &                a,
-              double                       e,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::f64                       e,
+              keel::Allocator *  mr = nullptr);
 
 /// Autocorrelation → reflection coefficients.
 /// @param R   Autocorrelation sequence.
@@ -135,7 +136,7 @@ Value poly2ac(const Value &                a,
 /// @return    Tuple `(k, r0)` — reflection coefficients and `r[0]`.
 std::tuple<Value, Value>
 ac2rc(const Value &                R,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::Allocator *  mr = nullptr);
 
 /// Schur reflection coefficients from autocorrelation.
 ///
@@ -144,7 +145,7 @@ ac2rc(const Value &                R,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Column vector of length `numel(R) - 1`.
 Value schurrc(const Value &                R,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::Allocator *  mr = nullptr);
 
 /// @brief Reflection coefficients + r[0] → autocorrelation.
 ///
@@ -155,8 +156,8 @@ Value schurrc(const Value &                R,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Autocorrelation column of length `numel(k) + 1`.
 /// @see ac2rc
-Value rc2ac(const Value &k, double r0,
-            std::pmr::memory_resource *mr = nullptr);
+Value rc2ac(const Value &k, keel::f64 r0,
+            keel::Allocator *mr = nullptr);
 
 /// AR poly → reflection coefficients (step-down recursion).
 /// @param a       AR coefficient vector.
@@ -167,8 +168,8 @@ Value rc2ac(const Value &k, double r0,
 ///                `R0 = efinal / prod(1 - k.^2)`.
 std::tuple<Value, Value>
 poly2rc(const Value &                a,
-        double                       efinal = 0.0,
-        std::pmr::memory_resource *  mr     = nullptr);
+        keel::f64                       efinal = 0.0,
+        keel::Allocator *  mr     = nullptr);
 
 /// Reflection coefficients → AR poly (step-up recursion).
 /// @param k   Reflection coefficients.
@@ -179,8 +180,8 @@ poly2rc(const Value &                a,
 ///            `efinal = r0 * prod(1 - k.^2)`.
 std::tuple<Value, Value>
 rc2poly(const Value &                k,
-        double                       r0 = 1.0,
-        std::pmr::memory_resource *  mr = nullptr);
+        keel::f64                       r0 = 1.0,
+        keel::Allocator *  mr = nullptr);
 
 /// @brief Inverse-sine parameterisation → reflection coefficients.
 ///
@@ -189,7 +190,7 @@ rc2poly(const Value &                k,
 /// @return    Reflection-coefficient vector.
 /// @see rc2is
 Value is2rc(const Value &                is,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 /// @brief Reflection coefficients → inverse-sine parameterisation.
 ///
@@ -198,7 +199,7 @@ Value is2rc(const Value &                is,
 /// @return    Inverse-sine parameter vector.
 /// @see is2rc
 Value rc2is(const Value &                k,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 /// @brief Log-area-ratio → reflection coefficients.
 ///
@@ -207,7 +208,7 @@ Value rc2is(const Value &                k,
 /// @return    Reflection-coefficient vector.
 /// @see rc2lar
 Value lar2rc(const Value &                g,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// @brief Reflection coefficients → log-area-ratio.
 ///
@@ -216,7 +217,7 @@ Value lar2rc(const Value &                g,
 /// @return    Log-area-ratio vector.
 /// @see lar2rc
 Value rc2lar(const Value &                k,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Covariance / modified-covariance AR + Prony + corrmtx
@@ -236,7 +237,7 @@ Value rc2lar(const Value &                k,
 std::tuple<Value, Value>
 arcov(const Value &                x,
       int                          p,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::Allocator *  mr = nullptr);
 
 /// @brief Modified-covariance AR estimation.
 ///
@@ -250,7 +251,7 @@ arcov(const Value &                x,
 /// @see arcov, arburg
 std::tuple<Value, Value>
 armcov(const Value &x, int p,
-       std::pmr::memory_resource *mr = nullptr);
+       keel::Allocator *mr = nullptr);
 
 /// Prony IIR identification from impulse response.
 ///
@@ -268,7 +269,7 @@ std::tuple<Value, Value>
 prony(const Value &                h,
       int                          nb,
       int                          na,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::Allocator *  mr = nullptr);
 
 /// Steiglitz–McBride IIR identification (`[b, a] = stmcb(h, nb, na, niter)`).
 ///
@@ -289,7 +290,7 @@ stmcb(const Value &                h,
       int                          nb,
       int                          na,
       int                          niter = 5,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::Allocator *  mr = nullptr);
 
 /// Steiglitz–McBride IIR identification with optional input signal `x` and
 /// explicit initial denominator estimate `ai` (`[b, a] = stmcb(y, x, nb, na, niter, ai)`).
@@ -309,7 +310,7 @@ stmcb(const Value &                y,
       int                          na,
       int                          niter = 5,
       const Value &                ai    = Value(),
-      std::pmr::memory_resource *  mr    = nullptr);
+      keel::Allocator *  mr    = nullptr);
 
 /// Generate the autocorrelation data matrix.
 ///
@@ -323,7 +324,7 @@ stmcb(const Value &                y,
 /// @return    `(n+m) × (m+1)` data matrix.
 Value corrmtx(const Value &                x,
               int                          m,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::Allocator *  mr = nullptr);
 
 /// MUSIC pseudospectrum (`[P, F] = pmusic(x, p, nfft, fs)`).
 ///
@@ -347,8 +348,8 @@ std::tuple<Value, Value>
 pmusic(const Value &                x,
        int                          p,
        int                          nfft = 256,
-       double                       fs   = 2.0 * 3.14159265358979323846,
-       std::pmr::memory_resource *  mr   = nullptr);
+       keel::f64                       fs   = 2.0 * 3.14159265358979323846,
+       keel::Allocator *  mr   = nullptr);
 
 /// Eigenvector pseudospectrum (`[P, F] = peig(x, p, nfft, fs)`).
 ///
@@ -366,8 +367,8 @@ std::tuple<Value, Value>
 peig(const Value &                x,
      int                          p,
      int                          nfft = 256,
-     double                       fs   = 2.0 * 3.14159265358979323846,
-     std::pmr::memory_resource *  mr   = nullptr);
+     keel::f64                       fs   = 2.0 * 3.14159265358979323846,
+     keel::Allocator *  mr   = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // LSF ↔ AR poly
@@ -379,7 +380,7 @@ peig(const Value &                x,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Column vector of N angles in `(0, π)`.
 Value poly2lsf(const Value &                a,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// Line-spectral frequencies → AR poly.
 ///
@@ -387,7 +388,7 @@ Value poly2lsf(const Value &                a,
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      AR coefficient vector of length `numel(lsf) + 1`.
 Value lsf2poly(const Value &                lsf,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // invfreqs / invfreqz — frequency-response least-squares fit
@@ -411,7 +412,7 @@ invfreqs(const Value &                H,
          const Value &                w,
          int                          nb,
          int                          na,
-         std::pmr::memory_resource *  mr = nullptr);
+         keel::Allocator *  mr = nullptr);
 
 /// @brief Digital counterpart of @ref invfreqs.
 ///
@@ -426,7 +427,7 @@ invfreqs(const Value &                H,
 /// @see invfreqs, freqz
 std::tuple<Value, Value>
 invfreqz(const Value &H, const Value &w, int nb, int na,
-         std::pmr::memory_resource *mr = nullptr);
+         keel::Allocator *mr = nullptr);
 
 
 /// @}

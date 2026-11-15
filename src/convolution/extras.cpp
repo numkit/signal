@@ -2,10 +2,13 @@
 //
 // cconv / convmtx / xcorr2 / finddelay / alignsignals.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/convolution/extras.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <tuple>
 #include <numkit/signal/convolution/convolution.hpp>     // xcorr
@@ -13,7 +16,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
 #include <cstring>
 
 #include "signal_detail.hpp"     // shared argcheck cores
@@ -22,7 +24,7 @@ namespace numkit::signal {
 
 namespace {
 
-double readReal(const Value &v, size_t i)
+double readReal(const Value &v, keel::usize i)
 {
     return v.elemAsDouble(i);
 }
@@ -33,9 +35,9 @@ double readReal(const Value &v, size_t i)
 // MATLAB default for cconv(x, y) (no N): N = length(x) + length(y) - 1
 // — the linear-convolution length. The 3-arg form cconv(x, y, n) does
 // true circular convolution with period n. See BUGS.md #33.
-Value cconv(const Value &x, const Value &y, size_t n, std::pmr::memory_resource *mr)
+Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
 {
-    const size_t nx = x.numel(), ny = y.numel();
+    const keel::usize nx = x.numel(), ny = y.numel();
     if (n == 0) {
         if (nx == 0 || ny == 0) n = 0;
         else                    n = nx + ny - 1;
@@ -59,44 +61,44 @@ Value cconv(const Value &x, const Value &y, size_t n, std::pmr::memory_resource 
         double *yd = yp.doubleDataMut();
         std::fill(xd, xd + n, 0.0);
         std::fill(yd, yd + n, 0.0);
-        for (size_t i = 0; i < nx; ++i) xd[i] = readReal(x, i);
-        for (size_t i = 0; i < ny; ++i) yd[i] = readReal(y, i);
+        for (keel::usize i = 0; i < nx; ++i) xd[i] = readReal(x, i);
+        for (keel::usize i = 0; i < ny; ++i) yd[i] = readReal(y, i);
         // nk's fft pads non-pow2 to nextPow2 internally, so for
         // arbitrary n this would corrupt the spectrum. We only enter
         // this branch when we don't need true length-n circular conv;
         // padding to any size ≥ nx+ny-1 yields the same first-n
         // samples of the linear conv. Force length-nextPow2 explicitly
         // for predictable behaviour.
-        const size_t fftLen = [&]() {
-            size_t r = 1; while (r < n) r <<= 1; return r;
+        const keel::usize fftLen = [&]() {
+            keel::usize r = 1; while (r < n) r <<= 1; return r;
         }();
         Value X = fft(xp, static_cast<int>(fftLen), /*dim=*/0, mr);
         Value Y = fft(yp, static_cast<int>(fftLen), /*dim=*/0, mr);
         // Pointwise multiply.
         auto Z = Value::complexMatrix(fftLen, 1, mr);
-        const std::complex<double> *Xc = X.complexData();
-        const std::complex<double> *Yc = Y.complexData();
-        std::complex<double> *Zc = Z.complexDataMut();
-        for (size_t k = 0; k < fftLen; ++k) Zc[k] = Xc[k] * Yc[k];
+        const keel::c64 *Xc = X.complexData();
+        const keel::c64 *Yc = Y.complexData();
+        keel::c64 *Zc = Z.complexDataMut();
+        for (keel::usize k = 0; k < fftLen; ++k) Zc[k] = Xc[k] * Yc[k];
         Value z = ifft(Z, /*n=*/-1, /*dim=*/0, mr);
         // ifft can return REAL when the spectrum is conjugate-symmetric.
         if (z.type() == ValueType::COMPLEX) {
-            const std::complex<double> *zd = z.complexData();
-            for (size_t k = 0; k < n; ++k) dst[k] = zd[k].real();
+            const keel::c64 *zd = z.complexData();
+            for (keel::usize k = 0; k < n; ++k) dst[k] = zd[k].real();
         } else {
             const double *zd = z.doubleData();
-            for (size_t k = 0; k < n; ++k) dst[k] = zd[k];
+            for (keel::usize k = 0; k < n; ++k) dst[k] = zd[k];
         }
         return out;
     }
 
     // Slow path: n < nx + ny - 1 means actual aliased circular conv;
     // use the direct O(n²) loop.
-    for (size_t k = 0; k < n; ++k) {
+    for (keel::usize k = 0; k < n; ++k) {
         double s = 0.0;
-        for (size_t i = 0; i < n; ++i) {
+        for (keel::usize i = 0; i < n; ++i) {
             const double xi = (i < nx) ? readReal(x, i) : 0.0;
-            const size_t j = (k + n - i) % n;     // (k - i) mod n
+            const keel::usize j = (k + n - i) % n;     // (k - i) mod n
             const double yj = (j < ny) ? readReal(y, j) : 0.0;
             s += xi * yj;
         }
@@ -121,12 +123,12 @@ Value cconv(const Value &x, const Value &y, size_t n, std::pmr::memory_resource 
 // (bugs/opened/signal/integer-class-outputs.md).
 namespace {
 
-void convmtx_argcheck(const Value &h, size_t n)
+void convmtx_argcheck(const Value &h, keel::usize n)
 {
     if (n == 0)
         throw Error("convmtx: n must be positive",
                      0, 0, "convmtx", "", "numkit:convmtx:badN");
-    const size_t nh = h.numel();
+    const keel::usize nh = h.numel();
     if (nh == 0)
         throw Error("convmtx: h must be non-empty",
                      0, 0, "convmtx", "", "numkit:convmtx:emptyH");
@@ -152,29 +154,29 @@ void xcorr2_argcheck(const Value &A, const Value &B)
 
 } // namespace
 
-Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
+Value convmtx(const Value &h, keel::usize n, keel::Allocator *mr)
 {
     convmtx_argcheck(h, n);
-    const size_t nh = h.numel();
+    const keel::usize nh = h.numel();
     const ValueType ht = h.type();
 
     // Default to row-form when h is a vector with rows() == 1 OR is
     // 1-D / scalar. Column form only when h is explicitly Nx1 (rows>1).
     const bool hIsColumn = (h.dims().rows() > 1 && h.dims().cols() == 1);
 
-    const size_t outRows = hIsColumn ? (n + nh - 1) : n;
-    const size_t outCols = hIsColumn ? n : (n + nh - 1);
+    const keel::usize outRows = hIsColumn ? (n + nh - 1) : n;
+    const keel::usize outCols = hIsColumn ? n : (n + nh - 1);
     auto out = Value::matrix(outRows, outCols, ht, mr);
-    const size_t es = h.rawBytes() / nh;
+    const keel::usize es = h.rawBytes() / nh;
     const char *src = static_cast<const char *>(h.rawData());
     char *dst = static_cast<char *>(out.rawDataMut());
     if (hIsColumn) {
-        for (size_t col = 0; col < n; ++col)
-            for (size_t i = 0; i < nh; ++i)
+        for (keel::usize col = 0; col < n; ++col)
+            for (keel::usize i = 0; i < nh; ++i)
                 std::memcpy(dst + ((col + i) + col * outRows) * es, src + i * es, es);
     } else {
-        for (size_t row = 0; row < n; ++row)
-            for (size_t i = 0; i < nh; ++i)
+        for (keel::usize row = 0; row < n; ++row)
+            for (keel::usize i = 0; i < nh; ++i)
                 std::memcpy(dst + (row + (row + i) * outRows) * es, src + i * es, es);
     }
     return out;
@@ -186,7 +188,7 @@ Value convmtx(const Value &h, size_t n, std::pmr::memory_resource *mr)
 // double), N-D input is rejected, single and complex are honest kernel
 // gaps (bugs/opened/signal/single-float-inputs.md,
 // bugs/opened/signal/complex-kernel-gaps.md).
-Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
+Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
 {
     xcorr2_argcheck(A, B);
     const bool anySingle = (A.type() == ValueType::SINGLE) || (B.type() == ValueType::SINGLE);
@@ -195,7 +197,7 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
         aHold = [&]() {
             const auto &d = A.dims();
             Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
-            for (size_t i = 0; i < r.numel(); ++i)
+            for (keel::usize i = 0; i < r.numel(); ++i)
                 r.doubleDataMut()[i] = A.elemAsDouble(i);
             return r;
         }();
@@ -203,39 +205,39 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
         bHold = [&]() {
             const auto &d = B.dims();
             Value r = Value::matrix(d.rows(), d.cols(), ValueType::DOUBLE, mr);
-            for (size_t i = 0; i < r.numel(); ++i)
+            for (keel::usize i = 0; i < r.numel(); ++i)
                 r.doubleDataMut()[i] = B.elemAsDouble(i);
             return r;
         }();
     const Value &Av = aHold.isEmpty() ? A : aHold;
     const Value &Bv = bHold.isEmpty() ? B : bHold;
 
-    const size_t rA = Av.dims().rows(), cA = Av.dims().cols();
-    const size_t rB = Bv.dims().rows(), cB = Bv.dims().cols();
+    const keel::usize rA = Av.dims().rows(), cA = Av.dims().cols();
+    const keel::usize rB = Bv.dims().rows(), cB = Bv.dims().cols();
     const bool anyCplx = Av.isComplex() || Bv.isComplex();
     if (rA == 0 || cA == 0 || rB == 0 || cB == 0)
         return Value::matrix(0, 0, anyCplx ? ValueType::COMPLEX : (anySingle ? ValueType::SINGLE : ValueType::DOUBLE), mr);
-    const size_t rOut = rA + rB - 1;
-    const size_t cOut = cA + cB - 1;
+    const keel::usize rOut = rA + rB - 1;
+    const keel::usize cOut = cA + cB - 1;
     if (anyCplx) {
         auto outC = Value::matrix(rOut, cOut, ValueType::COMPLEX, mr);
-        Complex *dstC = outC.complexDataMut();
-        std::fill(dstC, dstC + rOut * cOut, Complex(0.0, 0.0));
-        auto getC = [](const Value &v, size_t r, size_t c, size_t rows) -> Complex {
-            const size_t idx = r + c * rows;
-            return v.isComplex() ? v.complexData()[idx] : Complex(v.elemAsDouble(idx), 0.0);
+        keel::c64 *dstC = outC.complexDataMut();
+        std::fill(dstC, dstC + rOut * cOut, keel::c64(0.0, 0.0));
+        auto getC = [](const Value &v, keel::usize r, keel::usize c, keel::usize rows) -> keel::c64 {
+            const keel::usize idx = r + c * rows;
+            return v.isComplex() ? v.complexData()[idx] : keel::c64(v.elemAsDouble(idx), 0.0);
         };
-        for (size_t i = 0; i < rA; ++i) {
-            for (size_t j = 0; j < cA; ++j) {
-                const Complex a = getC(Av, i, j, rA);
-                if (a == Complex(0.0, 0.0)) continue;
-                for (size_t p = 0; p < rB; ++p) {
+        for (keel::usize i = 0; i < rA; ++i) {
+            for (keel::usize j = 0; j < cA; ++j) {
+                const keel::c64 a = getC(Av, i, j, rA);
+                if (a == keel::c64(0.0, 0.0)) continue;
+                for (keel::usize p = 0; p < rB; ++p) {
                     const long kRow = static_cast<long>(i) - static_cast<long>(p) + static_cast<long>(rB) - 1;
                     if (kRow < 0 || kRow >= static_cast<long>(rOut)) continue;
-                    for (size_t q = 0; q < cB; ++q) {
+                    for (keel::usize q = 0; q < cB; ++q) {
                         const long kCol = static_cast<long>(j) - static_cast<long>(q) + static_cast<long>(cB) - 1;
                         if (kCol < 0 || kCol >= static_cast<long>(cOut)) continue;
-                        dstC[kRow + kCol * rOut] += a * std::conj(getC(Bv, p, q, rB));
+                        dstC[kRow + kCol * rOut] += a * keel::conj(getC(Bv, p, q, rB));
                     }
                 }
             }
@@ -250,8 +252,8 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
     // A (zero) and the flipped B into rOut × cOut grids, fft2 both,
     // multiply pointwise, ifft2, take real part. Threshold below the
     // FFT path's startup cost — for tiny problems direct is faster.
-    const size_t cellsOut = rOut * cOut;
-    const size_t cellsDirect = rA * cA * rB * cB;
+    const keel::usize cellsOut = rOut * cOut;
+    const keel::usize cellsDirect = rA * cA * rB * cB;
     const bool useFft = cellsDirect > 8192 && cellsOut >= 64;
 
     if (useFft) {
@@ -262,25 +264,25 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
         std::fill(ad, ad + cellsOut, 0.0);
         std::fill(bd, bd + cellsOut, 0.0);
         // Place A in the top-left.
-        for (size_t j = 0; j < cA; ++j)
-            for (size_t i = 0; i < rA; ++i)
+        for (keel::usize j = 0; j < cA; ++j)
+            for (keel::usize i = 0; i < rA; ++i)
                 ad[i + j * rOut] = Av(i, j);
         // Place flipped B (both axes) in the top-left.
-        for (size_t j = 0; j < cB; ++j)
-            for (size_t i = 0; i < rB; ++i)
+        for (keel::usize j = 0; j < cB; ++j)
+            for (keel::usize i = 0; i < rB; ++i)
                 bd[i + j * rOut] = Bv(rB - 1 - i, cB - 1 - j);
 
         Value FA = fft2(Ap, -1, -1, mr);
         Value FB = fft2(Bf, -1, -1, mr);
-        const Complex *fa = FA.complexData();
-        const Complex *fb = FB.complexData();
+        const keel::c64 *fa = FA.complexData();
+        const keel::c64 *fb = FB.complexData();
         auto Z = Value::complexMatrix(rOut, cOut, mr);
-        Complex *zd = Z.complexDataMut();
-        for (size_t k = 0; k < cellsOut; ++k) zd[k] = fa[k] * fb[k];
+        keel::c64 *zd = Z.complexDataMut();
+        for (keel::usize k = 0; k < cellsOut; ++k) zd[k] = fa[k] * fb[k];
         Value z = ifft2(Z, -1, -1, mr);
         if (z.type() == ValueType::COMPLEX) {
-            const Complex *zr = z.complexData();
-            for (size_t k = 0; k < cellsOut; ++k) dst[k] = zr[k].real();
+            const keel::c64 *zr = z.complexData();
+            for (keel::usize k = 0; k < cellsOut; ++k) dst[k] = zr[k].real();
         } else {
             std::memcpy(dst, z.doubleData(), cellsOut * sizeof(double));
         }
@@ -288,14 +290,14 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
     }
 
     // Direct path for small inputs.
-    for (size_t i = 0; i < rA; ++i) {
-        for (size_t j = 0; j < cA; ++j) {
+    for (keel::usize i = 0; i < rA; ++i) {
+        for (keel::usize j = 0; j < cA; ++j) {
             const double a = Av(i, j);
             if (a == 0.0) continue;
-            for (size_t p = 0; p < rB; ++p) {
+            for (keel::usize p = 0; p < rB; ++p) {
                 const long kRow = static_cast<long>(i) - static_cast<long>(p) + static_cast<long>(rB) - 1;
                 if (kRow < 0 || kRow >= static_cast<long>(rOut)) continue;
-                for (size_t q = 0; q < cB; ++q) {
+                for (keel::usize q = 0; q < cB; ++q) {
                     const long kCol = static_cast<long>(j) - static_cast<long>(q) + static_cast<long>(cB) - 1;
                     if (kCol < 0 || kCol >= static_cast<long>(cOut)) continue;
                     dst[kRow + kCol * rOut] += a * Bv(p, q);
@@ -307,18 +309,18 @@ Value xcorr2(const Value &A, const Value &B, std::pmr::memory_resource *mr)
 }
 
 // ── finddelay ─────────────────────────────────────────────────────────
-long finddelay(const Value &x, const Value &y, long max_lag, std::pmr::memory_resource *mr)
+long finddelay(const Value &x, const Value &y, long max_lag, keel::Allocator *mr)
 {
     auto [c, lags] = xcorr(x, y, mr);
-    const size_t n = c.numel();
+    const keel::usize n = c.numel();
     const double *cp = c.doubleData();
     const double *lp = lags.doubleData();
     long best_lag = 0;
     double best_mag = -1.0;
-    for (size_t i = 0; i < n; ++i) {
+    for (keel::usize i = 0; i < n; ++i) {
         const long lag = static_cast<long>(lp[i]);
-        if (max_lag > 0 && std::abs(lag) > max_lag) continue;
-        const double mag = std::abs(cp[i]);
+        if (max_lag > 0 && keel::abs(lag) > max_lag) continue;
+        const double mag = keel::abs(cp[i]);
         if (mag > best_mag) {
             best_mag = mag;
             best_lag = lag;
@@ -331,28 +333,28 @@ long finddelay(const Value &x, const Value &y, long max_lag, std::pmr::memory_re
 
 // ── alignsignals ──────────────────────────────────────────────────────
 std::tuple<Value, Value>
-alignsignals(const Value &x, const Value &y, long max_lag, std::pmr::memory_resource *mr)
+alignsignals(const Value &x, const Value &y, long max_lag, keel::Allocator *mr)
 {
     const long d = finddelay(x, y, max_lag, mr);
-    const size_t nx = x.numel(), ny = y.numel();
+    const keel::usize nx = x.numel(), ny = y.numel();
 
     // Lead-pad whichever signal is "leading" so peaks line up:
     //   d > 0: y is delayed by d → prepend d zeros to x.
     //   d < 0: x is delayed by |d| → prepend |d| zeros to y.
-    const size_t pad_x = (d > 0) ? static_cast<size_t>(d) : 0;
-    const size_t pad_y = (d < 0) ? static_cast<size_t>(-d) : 0;
+    const keel::usize pad_x = (d > 0) ? static_cast<keel::usize>(d) : 0;
+    const keel::usize pad_y = (d < 0) ? static_cast<keel::usize>(-d) : 0;
     // Then trail-pad whichever ends short so both outputs are same length.
-    const size_t finalLen = std::max(nx + pad_x, ny + pad_y);
+    const keel::usize finalLen = std::max(nx + pad_x, ny + pad_y);
 
-    auto orient = [&](const Value &src, size_t lead_pad) {
+    auto orient = [&](const Value &src, keel::usize lead_pad) {
         const bool isRow = (src.dims().rows() == 1);
         auto out = isRow
                     ? Value::matrix(1, finalLen, ValueType::DOUBLE, mr)
                     : Value::matrix(finalLen, 1, ValueType::DOUBLE, mr);
         double *dst = out.doubleDataMut();
         std::fill(dst, dst + finalLen, 0.0);
-        const size_t n = src.numel();
-        for (size_t i = 0; i < n; ++i)
+        const keel::usize n = src.numel();
+        for (keel::usize i = 0; i < n; ++i)
             dst[lead_pad + i] = src.elemAsDouble(i);
         return out;
     };

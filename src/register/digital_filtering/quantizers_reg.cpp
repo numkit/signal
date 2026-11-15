@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/digital_filtering/quantizers.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,8 +30,8 @@ namespace numkit::signal {
 
 namespace detail {
 
-void uencode_reg(Span<const Value> args, size_t /*nargout*/,
-                 Span<Value> outs, CallContext &ctx)
+void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                 keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "uencode");
     // Marshalling only â€” the [2, 32] range contract lives in the
@@ -51,11 +51,11 @@ void uencode_reg(Span<const Value> args, size_t /*nargout*/,
         else throw Error("uencode: 4th arg must be 'signed' or 'unsigned'",
                           0, 0, "uencode", "", "numkit:uencode:Polarity");
     }
-    outs[0] = uencode(args[0], N, V, signedOut, ctx.engine->resource());
+    outs[0] = uencode(args[0], N, V, signedOut, ctx.engine->allocator());
 }
 
-void udecode_reg(Span<const Value> args, size_t /*nargout*/,
-                 Span<Value> outs, CallContext &ctx)
+void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                 keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "udecode");
     // Marshalling only: the [2, 32] range and V positivity contracts
@@ -75,7 +75,7 @@ void udecode_reg(Span<const Value> args, size_t /*nargout*/,
         else throw Error("udecode: 4th arg must be 'saturate' or 'wrap'",
                           0, 0, "udecode", "", "numkit:udecode:BadOpt");
     }
-    outs[0] = udecode(args[0], N, V, wrap, ctx.engine->resource());
+    outs[0] = udecode(args[0], N, V, wrap, ctx.engine->allocator());
 }
 
 } // namespace detail

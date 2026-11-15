@@ -21,6 +21,8 @@
 //
 // PMR HARD RULE.
 
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/signal/digital_filtering/quantizers.hpp>
 
 #include <numkit/value/value.hpp>
@@ -50,7 +52,7 @@ ValueType pickSignedType(int N)
 }
 
 // Allocate output Value of the requested integer type with same shape as u.
-Value allocLikeIntType(const Value &u, ValueType vt, std::pmr::memory_resource *mr)
+Value allocLikeIntType(const Value &u, ValueType vt, keel::Allocator *mr)
 {
     if (u.dims().is3D())
         return Value::matrix3d(u.dims().rows(), u.dims().cols(),
@@ -68,7 +70,7 @@ inline double floorClip(double x, double lo, double hi)
 
 } // anon
 
-Value uencode(const Value &u, int N, double V, bool signedOutput, std::pmr::memory_resource *mr)
+Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocator *mr)
 {
     if (N < 2 || N > 32)
         throw Error("uencode: N must be in [2, 32]",
@@ -84,23 +86,23 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, std::pmr::memo
 
     const ValueType vt = signedOutput ? pickSignedType(N) : pickUnsignedType(N);
     Value out = allocLikeIntType(u, vt, mr);
-    const size_t M = u.numel();
+    const keel::usize M = u.numel();
     if (M == 0) return out;
 
     // Helper to write one element into the typed buffer.
-    auto writeElem = [&](size_t i, double v) {
+    auto writeElem = [&](keel::usize i, double v) {
         switch (vt) {
-            case ValueType::UINT8:  out.uint8DataMut()[i]  = static_cast<uint8_t>(v); break;
-            case ValueType::UINT16: out.uint16DataMut()[i] = static_cast<uint16_t>(v); break;
-            case ValueType::UINT32: out.uint32DataMut()[i] = static_cast<uint32_t>(v); break;
-            case ValueType::INT8:   out.int8DataMut()[i]   = static_cast<int8_t>(v); break;
-            case ValueType::INT16:  out.int16DataMut()[i]  = static_cast<int16_t>(v); break;
-            case ValueType::INT32:  out.int32DataMut()[i]  = static_cast<int32_t>(v); break;
+            case ValueType::UINT8:  out.uint8DataMut()[i]  = static_cast<keel::u8>(v); break;
+            case ValueType::UINT16: out.uint16DataMut()[i] = static_cast<keel::u16>(v); break;
+            case ValueType::UINT32: out.uint32DataMut()[i] = static_cast<keel::u32>(v); break;
+            case ValueType::INT8:   out.int8DataMut()[i]   = static_cast<keel::i8>(v); break;
+            case ValueType::INT16:  out.int16DataMut()[i]  = static_cast<keel::i16>(v); break;
+            case ValueType::INT32:  out.int32DataMut()[i]  = static_cast<keel::i32>(v); break;
             default: break;
         }
     };
 
-    for (size_t i = 0; i < M; ++i) {
+    for (keel::usize i = 0; i < M; ++i) {
         const double ui = u.elemAsDouble(i);
         double scaled = (ui + V) * T;
         if (signedOutput) {
@@ -138,7 +140,7 @@ static void udecode_argcheck(const Value &u, int N, double V)
                     0, 0, "udecode", "", "numkit:udecode:BadInputType");
 }
 
-Value udecode(const Value &u, int N, double V, bool wrapOnOverflow, std::pmr::memory_resource *mr)
+Value udecode(const Value &u, int N, double V, bool wrapOnOverflow, keel::Allocator *mr)
 {
     udecode_argcheck(u, N, V);
     const bool isSigned = (u.type() == ValueType::INT8 || u.type() == ValueType::INT16
@@ -157,8 +159,8 @@ Value udecode(const Value &u, int N, double V, bool wrapOnOverflow, std::pmr::me
                 : Value::matrix(u.dims().rows(), u.dims().cols(),
                                  ValueType::DOUBLE, mr);
     double *od = out.doubleDataMut();
-    const size_t M = u.numel();
-    for (size_t i = 0; i < M; ++i) {
+    const keel::usize M = u.numel();
+    for (keel::usize i = 0; i < M; ++i) {
         double v = u.elemAsDouble(i);  // promotes int → double
         if (wrapOnOverflow) {
             // mod((v - lower), 2^N) + lower (matches MATLAB sign convention)

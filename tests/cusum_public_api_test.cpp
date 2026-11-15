@@ -26,7 +26,7 @@ TEST(CusumPublicApi, StepDetection)
     // Upper sum first exceeds 2 at sample 4 (value 5 - 0.5 = 4.5).
     Value x = cv(e, "[0 0 0 5 5 5 5 5]", "x");
     signal::CusumResult r =
-        signal::cusum(x, 2.0, 1.0, cv(e, "0", "tm"), cv(e, "1", "td"), e.resource());
+        signal::cusum(x, 2.0, 1.0, cv(e, "0", "tm"), cv(e, "1", "td"), e.allocator());
     ASSERT_EQ(r.iupper.numel(), 1u);
     EXPECT_DOUBLE_EQ(r.iupper.toScalar(), 4.0);
     EXPECT_EQ(r.ilower.numel(), 0u); // no downward detection

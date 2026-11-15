@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <string>
@@ -55,11 +56,11 @@ enum class FilterType {
 /// @see cheby2, ellip, butter
 std::tuple<Value, Value>
 cheby1(int                          N,
-       double                       Rp,
+       keel::f64                       Rp,
        const Value &                Wn,
        FilterType                   ftype  = FilterType::Lowpass,
        bool                         analog = false,
-       std::pmr::memory_resource *  mr     = nullptr);
+       keel::Allocator *  mr     = nullptr);
 
 /// Chebyshev type-II (inverse Chebyshev) IIR filter design.
 ///
@@ -76,11 +77,11 @@ cheby1(int                          N,
 /// @see cheby1, ellip
 std::tuple<Value, Value>
 cheby2(int                          N,
-       double                       Rs,
+       keel::f64                       Rs,
        const Value &                Wn,
        FilterType                   ftype  = FilterType::Lowpass,
        bool                         analog = false,
-       std::pmr::memory_resource *  mr     = nullptr);
+       keel::Allocator *  mr     = nullptr);
 
 /// Bessel-Thompson IIR filter design.
 ///
@@ -100,7 +101,7 @@ besself(int                          N,
         const Value &                Wn,
         FilterType                   ftype  = FilterType::Lowpass,
         bool                         analog = false,
-        std::pmr::memory_resource *  mr     = nullptr);
+        keel::Allocator *  mr     = nullptr);
 
 /// Butterworth IIR filter — maximally flat passband, shared pipeline
 /// with cheby1/besself. `butter(N, Wn, 's')` designs in the s-domain
@@ -115,7 +116,7 @@ butter(int                          N,
        const Value &                Wn,
        FilterType                   ftype  = FilterType::Lowpass,
        bool                         analog = false,
-       std::pmr::memory_resource *  mr     = nullptr);
+       keel::Allocator *  mr     = nullptr);
 
 /// Elliptic (Cauer) IIR filter design.
 ///
@@ -132,12 +133,12 @@ butter(int                          N,
 /// @return        Tuple `(b, a)`.
 std::tuple<Value, Value>
 ellip(int                          N,
-      double                       Rp,
-      double                       Rs,
+      keel::f64                       Rp,
+      keel::f64                       Rs,
       const Value &                Wn,
       FilterType                   ftype  = FilterType::Lowpass,
       bool                         analog = false,
-      std::pmr::memory_resource *  mr     = nullptr);
+      keel::Allocator *  mr     = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Order estimators — pick the minimum order to meet given specs.
@@ -167,10 +168,10 @@ ellip(int                          N,
 std::tuple<int, Value>
 buttord(const Value &                Wp,
         const Value &                Ws,
-        double                       Rp,
-        double                       Rs,
+        keel::f64                       Rp,
+        keel::f64                       Rs,
         bool                         analog = false,
-        std::pmr::memory_resource *  mr     = nullptr);
+        keel::Allocator *  mr     = nullptr);
 
 /// @brief Chebyshev type-I order estimator
 /// (`[N, Wn] = cheb1ord(Wp, Ws, Rp, Rs, analog)`).
@@ -181,9 +182,9 @@ buttord(const Value &                Wp,
 /// @return                       Tuple `(N, Wn)`.
 /// @see buttord, cheby1
 std::tuple<int, Value>
-cheb1ord(const Value &Wp, const Value &Ws, double Rp, double Rs,
+cheb1ord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
          bool analog = false,
-         std::pmr::memory_resource *mr = nullptr);
+         keel::Allocator *mr = nullptr);
 
 /// @brief Chebyshev type-II order estimator
 /// (`[N, Wn] = cheb2ord(Wp, Ws, Rp, Rs, analog)`).
@@ -194,9 +195,9 @@ cheb1ord(const Value &Wp, const Value &Ws, double Rp, double Rs,
 /// @return                       Tuple `(N, Wn)`.
 /// @see buttord, cheby2
 std::tuple<int, Value>
-cheb2ord(const Value &Wp, const Value &Ws, double Rp, double Rs,
+cheb2ord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
          bool analog = false,
-         std::pmr::memory_resource *mr = nullptr);
+         keel::Allocator *mr = nullptr);
 
 /// @brief Elliptic (Cauer) order estimator
 /// (`[N, Wn] = ellipord(Wp, Ws, Rp, Rs, analog)`).
@@ -209,9 +210,9 @@ cheb2ord(const Value &Wp, const Value &Ws, double Rp, double Rs,
 /// @return                       Tuple `(N, Wn)`.
 /// @see buttord, ellip
 std::tuple<int, Value>
-ellipord(const Value &Wp, const Value &Ws, double Rp, double Rs,
+ellipord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
          bool analog = false,
-         std::pmr::memory_resource *mr = nullptr);
+         keel::Allocator *mr = nullptr);
 
 /// Parks-McClellan FIR order estimator.
 ///
@@ -235,8 +236,8 @@ std::tuple<int, Value, Value, Value>
 firpmord(const Value &                F,
          const Value &                A,
          const Value &                dev,
-         double                       fs = 2.0,
-         std::pmr::memory_resource *  mr = nullptr);
+         keel::f64                       fs = 2.0,
+         keel::Allocator *  mr = nullptr);
 
 /// Kaiser-window FIR order estimator.
 ///
@@ -252,12 +253,12 @@ firpmord(const Value &                F,
 ///             `"low"`, `"high"`, `"stop"`, `"bandpass"`, `"DC-0"`, `"DC-1"`.
 ///
 /// @see fir1, kaiser
-std::tuple<int, Value, double, std::string>
+std::tuple<int, Value, keel::f64, std::string>
 kaiserord(const Value &                F,
           const Value &                A,
           const Value &                dev,
-          double                       fs = 2.0,
-          std::pmr::memory_resource *  mr = nullptr);
+          keel::f64                       fs = 2.0,
+          keel::Allocator *  mr = nullptr);
 
 
 /// @}

@@ -14,16 +14,20 @@
 // polynomial with the same magnitude response, reflecting any root with
 // |root| > 1 to its conjugate reciprocal 1/conj(root).
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/digital_filtering/poly_utils.hpp>
 
 #include <numkit/signal/internal/shims/polyfun.hpp>  // numkit::builtin::roots / numkit::builtin::poly
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <complex>
 
 #include "../signal_detail.hpp"   // shared argcheck cores
 
@@ -35,11 +39,11 @@ namespace {
 // Read element k of a Value uniformly as a Complex. Column-major linear
 // index; works for DOUBLE and COMPLEX inputs (the only numeric types
 // these two functions need to handle).
-inline Complex elemAsComplex(const Value &v, size_t k)
+inline keel::c64 elemAsComplex(const Value &v, keel::usize k)
 {
     if (v.type() == ValueType::COMPLEX)
         return v.complexData()[k];
-    return Complex(v.elemAsDouble(k), 0.0);
+    return keel::c64(v.elemAsDouble(k), 0.0);
 }
 
 inline bool isComplex(const Value &v)
@@ -63,8 +67,8 @@ void polyscale_argcheck(const Value &p, const Value &scale)
     detail::requireFloatInput(scale, "polyscale", "scale", 2);
     if (p.isEmpty())
         return;
-    const size_t n = isVectorShape(p) ? p.numel() : p.dims().cols();
-    const size_t scaleN = scale.numel();
+    const keel::usize n = isVectorShape(p) ? p.numel() : p.dims().cols();
+    const keel::usize scaleN = scale.numel();
     if (scaleN != 1 && scaleN != n) {
         throw numkit::Error(
             "polyscale: scale must be a scalar or a vector matching the "
@@ -95,7 +99,7 @@ void polystab_argcheck(const Value &a)
 // polynomial per row, each scaled with the same power factors.
 // ─────────────────────────────────────────────────────────────────────
 Value polyscale(const Value &p, const Value &scale,
-                std::pmr::memory_resource *mr)
+                keel::Allocator *mr)
 {
     // Reference (R2025b) validates p and scale as double/single/complex
     // (logical and integer classes are rejected with sigcheckfloattype).
@@ -110,7 +114,7 @@ Value polyscale(const Value &p, const Value &scale,
     //   * vector input  → one polynomial of length n (output is 1×n row)
     //   * matrix m×n    → m polynomials, each length n (output m×n)
     const Dims &pd = p.dims();
-    size_t m, n;
+    keel::usize m, n;
     if (isVectorShape(p)) {
         m = 1;
         n = p.numel();
@@ -120,7 +124,7 @@ Value polyscale(const Value &p, const Value &scale,
     }
 
     // Resolve the scale argument: either a scalar or a length-n vector.
-    const size_t scaleN = scale.numel();
+    const keel::usize scaleN = scale.numel();
     const bool scaleScalar = (scaleN == 1);
 
     // Result is complex iff either input is complex.
@@ -129,21 +133,21 @@ Value polyscale(const Value &p, const Value &scale,
     // ── Build the per-coefficient power factors p(k), k = 0 .. n-1 ────
     // p(0) = α^0 = 1 always; p(k) = base(k)^k where base(k) is the
     // scalar α or alpha[k].  Computed once, reused for every row.
-    ScratchArena arena(mr);
-    ScratchVec<Complex> factor(n, &arena);
+    keel::ArenaTemp arena = keel::get_scratch(mr);
+    keel::Array<keel::c64> factor(n, arena.allocator());
     if (n > 0)
-        factor[0] = Complex(1.0, 0.0);
+        factor[0] = keel::c64(1.0, 0.0);
     if (scaleScalar) {
-        const Complex a = elemAsComplex(scale, 0);
+        const keel::c64 a = elemAsComplex(scale, 0);
         // Successive multiplication: factor[k] = factor[k-1] · α.
-        for (size_t k = 1; k < n; ++k)
+        for (keel::usize k = 1; k < n; ++k)
             factor[k] = factor[k - 1] * a;
     } else {
         // Per-coefficient base: factor[k] = alpha[k]^k via repeated mul.
-        for (size_t k = 1; k < n; ++k) {
-            const Complex base = elemAsComplex(scale, k);
-            Complex acc(1.0, 0.0);
-            for (size_t e = 0; e < k; ++e)
+        for (keel::usize k = 1; k < n; ++k) {
+            const keel::c64 base = elemAsComplex(scale, k);
+            keel::c64 acc(1.0, 0.0);
+            for (keel::usize e = 0; e < k; ++e)
                 acc *= base;
             factor[k] = acc;
         }
@@ -155,19 +159,19 @@ Value polyscale(const Value &p, const Value &scale,
                                           : ValueType::DOUBLE,
                               mr);
     if (wantComplex) {
-        Complex *dst = out.complexDataMut();
-        for (size_t i = 0; i < m; ++i) {
-            for (size_t k = 0; k < n; ++k) {
+        keel::c64 *dst = out.complexDataMut();
+        for (keel::usize i = 0; i < m; ++i) {
+            for (keel::usize k = 0; k < n; ++k) {
                 // Column-major linear index for an m×n result.
-                const size_t lin = k * m + i;
+                const keel::usize lin = k * m + i;
                 dst[lin] = elemAsComplex(p, lin) * factor[k];
             }
         }
     } else {
         double *dst = out.doubleDataMut();
-        for (size_t i = 0; i < m; ++i) {
-            for (size_t k = 0; k < n; ++k) {
-                const size_t lin = k * m + i;
+        for (keel::usize i = 0; i < m; ++i) {
+            for (keel::usize k = 0; k < n; ++k) {
+                const keel::usize lin = k * m + i;
                 // factor[k] is purely real here (both inputs real).
                 dst[lin] = p.elemAsDouble(lin) * factor[k].real();
             }
@@ -190,7 +194,7 @@ Value polyscale(const Value &p, const Value &scale,
 //   4. p ← p · (first non-zero coefficient of a)   — restore gain
 //   5. a real → take real part to drop round-off
 // ─────────────────────────────────────────────────────────────────────
-Value polystab(const Value &a, std::pmr::memory_resource *mr)
+Value polystab(const Value &a, keel::Allocator *mr)
 {
     // Reference (R2025b): double/single/complex vectors only — logical
     // and integer classes are rejected (the eig step voices inputType).
@@ -202,7 +206,7 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
         return Value::matrix(0, 0, aSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
     const bool aComplex = isComplex(a);
-    const size_t n = a.numel();
+    const keel::usize n = a.numel();
 
     // Scalar input: no roots to move — return unchanged, as a 1×1 row.
     if (n == 1) {
@@ -221,11 +225,11 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
     // roots() ignores leading zeros, so the gain is taken from the
     // first coefficient that is actually non-zero. If every coefficient
     // is zero, a is the zero polynomial — return it unchanged.
-    Complex gain(0.0, 0.0);
+    keel::c64 gain(0.0, 0.0);
     bool gainFound = false;
-    for (size_t k = 0; k < n; ++k) {
-        const Complex c = elemAsComplex(a, k);
-        if (c != Complex(0.0, 0.0)) {
+    for (keel::usize k = 0; k < n; ++k) {
+        const keel::c64 c = elemAsComplex(a, k);
+        if (c != keel::c64(0.0, 0.0)) {
             gain = c;
             gainFound = true;
             break;
@@ -239,22 +243,22 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
                                            : ValueType::DOUBLE,
                                   mr);
         if (aComplex) {
-            Complex *dst = out.complexDataMut();
-            for (size_t k = 0; k < n; ++k)
+            keel::c64 *dst = out.complexDataMut();
+            for (keel::usize k = 0; k < n; ++k)
                 dst[k] = elemAsComplex(a, k);
         } else {
             double *dst = out.doubleDataMut();
-            for (size_t k = 0; k < n; ++k)
+            for (keel::usize k = 0; k < n; ++k)
                 dst[k] = a.elemAsDouble(k);
         }
         return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 1: roots of a ───────────────────────────────────────────
-    ScratchArena arena(mr);
-    Value aWork = detail::widenSingleToDouble(a, &arena);
-    Value rv = numkit::builtin::roots(aWork, &arena);
-    const size_t nr = rv.numel();
+    keel::ArenaTemp arena = keel::get_scratch(mr);
+    Value aWork = detail::widenSingleToDouble(a, arena.allocator());
+    Value rv = numkit::builtin::roots(aWork, arena.allocator());
+    const keel::usize nr = rv.numel();
 
     // No finite roots (e.g. a degree-0 leftover after stripping) — the
     // stabilised polynomial is just the gain.
@@ -271,11 +275,11 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
     }
 
     // ── Step 2: reflect roots with |r| > 1 to 1/conj(r) ──────────────
-    ScratchVec<Complex> stabRoots(nr, &arena);
+    keel::Array<keel::c64> stabRoots(nr, arena.allocator());
     bool rootsComplex = false;
-    for (size_t k = 0; k < nr; ++k) {
-        Complex r = elemAsComplex(rv, k);
-        const double mag = std::abs(r);
+    for (keel::usize k = 0; k < nr; ++k) {
+        keel::c64 r = elemAsComplex(rv, k);
+        const double mag = keel::abs(r);
         if (mag > 1.0) {
             // Conjugate reciprocal: magnitude 1/|r|, unchanged angle.
             // 1/conj(r) = r / |r|^2.
@@ -294,18 +298,18 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
     // if all stabilised roots are real, a DOUBLE root vector suffices.
     Value rootVec;
     if (rootsComplex) {
-        rootVec = Value::matrix(nr, 1, ValueType::COMPLEX, &arena);
-        Complex *rd = rootVec.complexDataMut();
-        for (size_t k = 0; k < nr; ++k)
+        rootVec = Value::matrix(nr, 1, ValueType::COMPLEX, arena.allocator());
+        keel::c64 *rd = rootVec.complexDataMut();
+        for (keel::usize k = 0; k < nr; ++k)
             rd[k] = stabRoots[k];
     } else {
-        rootVec = Value::matrix(nr, 1, ValueType::DOUBLE, &arena);
+        rootVec = Value::matrix(nr, 1, ValueType::DOUBLE, arena.allocator());
         double *rd = rootVec.doubleDataMut();
-        for (size_t k = 0; k < nr; ++k)
+        for (keel::usize k = 0; k < nr; ++k)
             rd[k] = stabRoots[k].real();
     }
-    Value monic = numkit::builtin::poly(rootVec, &arena);
-    const size_t mlen = monic.numel();
+    Value monic = numkit::builtin::poly(rootVec, arena.allocator());
+    const keel::usize mlen = monic.numel();
 
     // ── Steps 4 & 5: apply gain, drop round-off for real input ───────
     // Result is complex only if the input a is complex; for a real a,
@@ -316,13 +320,13 @@ Value polystab(const Value &a, std::pmr::memory_resource *mr)
                                        : ValueType::DOUBLE,
                               mr);
     if (aComplex) {
-        Complex *dst = out.complexDataMut();
-        for (size_t k = 0; k < mlen; ++k)
+        keel::c64 *dst = out.complexDataMut();
+        for (keel::usize k = 0; k < mlen; ++k)
             dst[k] = elemAsComplex(monic, k) * gain;
     } else {
         double *dst = out.doubleDataMut();
         const double g = gain.real();
-        for (size_t k = 0; k < mlen; ++k)
+        for (keel::usize k = 0; k < mlen; ++k)
             dst[k] = elemAsComplex(monic, k).real() * g;
     }
     return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);

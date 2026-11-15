@@ -3,6 +3,7 @@
 // Regression guard for modulate (Phase 4.12). Bit-equal MATLAB R2025b
 // on the 4 supported modes (am, amdsb-tc, fm, pm).
 
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <gtest/gtest.h>
 
@@ -59,7 +60,7 @@ TEST_F(ModulateTest, AmssbApproxMatchesMatlab)
          "y1 = y(5); y2 = y(8);");
     // Just sanity-check finite output and approximate magnitude bound.
     EXPECT_TRUE(std::isfinite(evalScalar("y1")));
-    EXPECT_LT(std::abs(evalScalar("y1")), 2.0);  // amssb amplitudes ~|x| + |hilbert(x)|
+    EXPECT_LT(keel::abs(evalScalar("y1")), 2.0);  // amssb amplitudes ~|x| + |hilbert(x)|
 }
 
 TEST_F(ModulateTest, RejectsUnsupportedMethod)

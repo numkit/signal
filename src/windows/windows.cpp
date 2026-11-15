@@ -1,9 +1,13 @@
 // toolboxes/signal/src/windows/windows.cpp
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/math.h>
 #include <numkit/signal/windows/windows.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 
 #include "dsp_helpers.hpp"  // fillFftTwiddles, fftRadix2, nextPow2
@@ -11,7 +15,6 @@
 #define _USE_MATH_DEFINES
 #include <algorithm>
 #include <cmath>
-#include <complex>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -38,7 +41,7 @@ double besseli0(double x)
 // Chebyshev polynomial T_n(x) — uses cos for |x|<=1, cosh for |x|>1.
 double chebyT(int n, double x)
 {
-    if (std::abs(x) <= 1.0)
+    if (keel::abs(x) <= 1.0)
         return std::cos(n * std::acos(x));
     if (x > 1.0)
         return std::cosh(n * std::acosh(x));
@@ -50,40 +53,40 @@ double chebyT(int n, double x)
 } // anonymous namespace
 
 // ── hamming ───────────────────────────────────────────────────────────
-Value hamming(size_t N, std::pmr::memory_resource *mr)
+Value hamming(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
         r.doubleDataMut()[0] = 1.0;
         return r;
     }
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         r.doubleDataMut()[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (N - 1));
     return r;
 }
 
 // ── hann ──────────────────────────────────────────────────────────────
-Value hann(size_t N, std::pmr::memory_resource *mr)
+Value hann(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
         r.doubleDataMut()[0] = 1.0;
         return r;
     }
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         r.doubleDataMut()[i] = 0.5 * (1.0 - std::cos(2.0 * M_PI * i / (N - 1)));
     return r;
 }
 
 // ── blackman ──────────────────────────────────────────────────────────
-Value blackman(size_t N, std::pmr::memory_resource *mr)
+Value blackman(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
         r.doubleDataMut()[0] = 1.0;
         return r;
     }
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double x = 2.0 * M_PI * i / (N - 1);
         r.doubleDataMut()[i] = 0.42 - 0.5 * std::cos(x) + 0.08 * std::cos(2.0 * x);
     }
@@ -91,7 +94,7 @@ Value blackman(size_t N, std::pmr::memory_resource *mr)
 }
 
 // ── kaiser ────────────────────────────────────────────────────────────
-Value kaiser(size_t N, double beta, std::pmr::memory_resource *mr)
+Value kaiser(keel::usize N, double beta, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -99,7 +102,7 @@ Value kaiser(size_t N, double beta, std::pmr::memory_resource *mr)
         return r;
     }
     const double denom = besseli0(beta);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double alpha = 2.0 * i / (N - 1) - 1.0;
         r.doubleDataMut()[i] = besseli0(beta * std::sqrt(1.0 - alpha * alpha)) / denom;
     }
@@ -107,16 +110,16 @@ Value kaiser(size_t N, double beta, std::pmr::memory_resource *mr)
 }
 
 // ── rectwin ───────────────────────────────────────────────────────────
-Value rectwin(size_t N, std::pmr::memory_resource *mr)
+Value rectwin(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         r.doubleDataMut()[i] = 1.0;
     return r;
 }
 
 // ── bartlett ──────────────────────────────────────────────────────────
-Value bartlett(size_t N, std::pmr::memory_resource *mr)
+Value bartlett(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -124,8 +127,8 @@ Value bartlett(size_t N, std::pmr::memory_resource *mr)
         return r;
     }
     const double half = (N - 1) / 2.0;
-    for (size_t i = 0; i < N; ++i)
-        r.doubleDataMut()[i] = 1.0 - std::abs((i - half) / half);
+    for (keel::usize i = 0; i < N; ++i)
+        r.doubleDataMut()[i] = 1.0 - keel::abs((i - half) / half);
     return r;
 }
 
@@ -133,7 +136,7 @@ Value bartlett(size_t N, std::pmr::memory_resource *mr)
 // Differs from bartlett: endpoints are non-zero. Even-N formula uses
 // 1 - |2k - (N-1)| / N; odd-N uses 1 - |2k - (N-1)| / (N+1) (matches
 // MATLAB's `triang` reference output).
-Value triang(size_t N, std::pmr::memory_resource *mr)
+Value triang(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -144,18 +147,18 @@ Value triang(size_t N, std::pmr::memory_resource *mr)
     const double mid = (static_cast<double>(N) - 1.0) / 2.0;
     if (N % 2 == 0) {
         const double denom = static_cast<double>(N);
-        for (size_t i = 0; i < N; ++i)
-            dst[i] = 1.0 - std::abs((2.0 * i - (N - 1)) / denom);
+        for (keel::usize i = 0; i < N; ++i)
+            dst[i] = 1.0 - keel::abs((2.0 * i - (N - 1)) / denom);
     } else {
         const double denom = static_cast<double>(N + 1);
-        for (size_t i = 0; i < N; ++i)
-            dst[i] = 1.0 - std::abs(2.0 * (i - mid)) / denom;
+        for (keel::usize i = 0; i < N; ++i)
+            dst[i] = 1.0 - keel::abs(2.0 * (i - mid)) / denom;
     }
     return r;
 }
 
 // ── tukeywin ──────────────────────────────────────────────────────────
-Value tukeywin(size_t N, double r, std::pmr::memory_resource *mr)
+Value tukeywin(keel::usize N, double r, keel::Allocator *mr)
 {
     if (r < 0.0) r = 0.0;
     if (r > 1.0) r = 1.0;
@@ -166,13 +169,13 @@ Value tukeywin(size_t N, double r, std::pmr::memory_resource *mr)
     }
     double *dst = out.doubleDataMut();
     if (r == 0.0) {
-        for (size_t i = 0; i < N; ++i)
+        for (keel::usize i = 0; i < N; ++i)
             dst[i] = 1.0;
         return out;
     }
     const double Nm1 = static_cast<double>(N - 1);
     const double tEdge = r * Nm1 * 0.5;       // taper region width on each side
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double x = static_cast<double>(i);
         if (x < tEdge) {
             dst[i] = 0.5 * (1.0 + std::cos(M_PI * (x / tEdge - 1.0)));
@@ -187,7 +190,7 @@ Value tukeywin(size_t N, double r, std::pmr::memory_resource *mr)
 
 // ── flattopwin ────────────────────────────────────────────────────────
 // Matlab "symmetric" 5-term coefficients (R2018b reference).
-Value flattopwin(size_t N, std::pmr::memory_resource *mr)
+Value flattopwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -201,7 +204,7 @@ Value flattopwin(size_t N, std::pmr::memory_resource *mr)
     constexpr double a4 = 0.006947368;
     double *dst = out.doubleDataMut();
     const double Nm1 = static_cast<double>(N - 1);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double x = 2.0 * M_PI * i / Nm1;
         dst[i] = a0 - a1 * std::cos(x) + a2 * std::cos(2.0 * x)
                     - a3 * std::cos(3.0 * x) + a4 * std::cos(4.0 * x);
@@ -221,7 +224,7 @@ void gausswin_argcheck(double alpha)
 
 } // namespace
 
-Value gausswin(size_t N, double alpha, std::pmr::memory_resource *mr)
+Value gausswin(keel::usize N, double alpha, keel::Allocator *mr)
 {
     gausswin_argcheck(alpha);
     if (alpha <= 0)
@@ -234,7 +237,7 @@ Value gausswin(size_t N, double alpha, std::pmr::memory_resource *mr)
     }
     double *dst = out.doubleDataMut();
     const double half = static_cast<double>(N - 1) / 2.0;
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double n = (static_cast<double>(i) - half) / half;
         dst[i] = std::exp(-0.5 * (alpha * n) * (alpha * n));
     }
@@ -263,7 +266,7 @@ Value gausswin(size_t N, double alpha, std::pmr::memory_resource *mr)
 // Direct O(N²) — windows are small (N ≤ ~few thousand). Replaces the
 // previous FFT-based path that was numerically fragile on even N
 // (degenerate all-ones output) due to a half-bin offset bug.
-Value chebwin(size_t N, double at, std::pmr::memory_resource *mr)
+Value chebwin(keel::usize N, double at, keel::Allocator *mr)
 {
     if (at <= 0)
         throw Error("chebwin: at must be positive (sidelobe attenuation in dB)",
@@ -274,22 +277,22 @@ Value chebwin(size_t N, double at, std::pmr::memory_resource *mr)
         return out;
     }
 
-    ScratchArena scratch(mr);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
     const int M = static_cast<int>(N) - 1;
     const double r_lin = std::pow(10.0, at / 20.0);
     const double beta  = std::cosh(std::acosh(r_lin) / static_cast<double>(M));
 
     auto cheb_T_M = [M](double x) -> double {
-        if (std::abs(x) <= 1.0)
+        if (keel::abs(x) <= 1.0)
             return std::cos(static_cast<double>(M) * std::acos(x));
-        const double a = std::cosh(static_cast<double>(M) * std::acosh(std::abs(x)));
+        const double a = std::cosh(static_cast<double>(M) * std::acosh(keel::abs(x)));
         return (x < 0 && (M & 1)) ? -a : a;
     };
 
     // Build positive-frequency spectrum W(k) for k = 0..K.
-    const size_t K = (N - 1) / 2;  // floor((N-1)/2)
-    auto Wp = ScratchVec<double>(K + 1, &scratch);
-    for (size_t k = 0; k <= K; ++k) {
+    const keel::usize K = (N - 1) / 2;  // floor((N-1)/2)
+    auto Wp = keel::Array<double>(K + 1, scratch.allocator());
+    for (keel::usize k = 0; k <= K; ++k) {
         const double ck = beta * std::cos(M_PI * static_cast<double>(k)
                                           / static_cast<double>(N));
         Wp[k] = cheb_T_M(ck);
@@ -299,10 +302,10 @@ Value chebwin(size_t N, double at, std::pmr::memory_resource *mr)
     double *dst = out.doubleDataMut();
     const double N0 = 0.5 * static_cast<double>(N - 1);
     const double two_pi_over_N = 2.0 * M_PI / static_cast<double>(N);
-    for (size_t n = 0; n < N; ++n) {
+    for (keel::usize n = 0; n < N; ++n) {
         double s = Wp[0];
         const double phase_n = (static_cast<double>(n) - N0);
-        for (size_t k = 1; k <= K; ++k) {
+        for (keel::usize k = 1; k <= K; ++k) {
             s += 2.0 * Wp[k] * std::cos(two_pi_over_N * static_cast<double>(k) * phase_n);
         }
         dst[n] = s / static_cast<double>(N);
@@ -310,17 +313,17 @@ Value chebwin(size_t N, double at, std::pmr::memory_resource *mr)
 
     // Normalise peak to 1.
     double peak = 0.0;
-    for (size_t i = 0; i < N; ++i) peak = std::max(peak, std::abs(dst[i]));
+    for (keel::usize i = 0; i < N; ++i) peak = std::max(peak, keel::abs(dst[i]));
     if (peak > 0.0) {
         const double inv = 1.0 / peak;
-        for (size_t i = 0; i < N; ++i) dst[i] *= inv;
+        for (keel::usize i = 0; i < N; ++i) dst[i] *= inv;
     }
     return out;
 }
 
 // ── parzenwin ─────────────────────────────────────────────────────────
 // Piecewise cubic, defined symmetrically around the centre.
-Value parzenwin(size_t N, std::pmr::memory_resource *mr)
+Value parzenwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -330,8 +333,8 @@ Value parzenwin(size_t N, std::pmr::memory_resource *mr)
     double *dst = out.doubleDataMut();
     const double half = static_cast<double>(N) / 2.0;
     const double mid = (static_cast<double>(N) - 1.0) / 2.0;
-    for (size_t i = 0; i < N; ++i) {
-        const double n = std::abs(static_cast<double>(i) - mid);
+    for (keel::usize i = 0; i < N; ++i) {
+        const double n = keel::abs(static_cast<double>(i) - mid);
         const double r = n / half;
         if (n <= half * 0.5) {
             dst[i] = 1.0 - 6.0 * r * r + 6.0 * r * r * r;
@@ -345,7 +348,7 @@ Value parzenwin(size_t N, std::pmr::memory_resource *mr)
 
 // ── nuttallwin ────────────────────────────────────────────────────────
 // 4-term, "minimum 4-term" Nuttall coefficients (matches MATLAB default).
-Value nuttallwin(size_t N, std::pmr::memory_resource *mr)
+Value nuttallwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -358,7 +361,7 @@ Value nuttallwin(size_t N, std::pmr::memory_resource *mr)
     constexpr double a3 = 0.0106411;
     double *dst = out.doubleDataMut();
     const double Nm1 = static_cast<double>(N - 1);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double x = 2.0 * M_PI * i / Nm1;
         dst[i] = a0 - a1 * std::cos(x) + a2 * std::cos(2.0 * x)
                     - a3 * std::cos(3.0 * x);
@@ -382,7 +385,7 @@ Value nuttallwin(size_t N, std::pmr::memory_resource *mr)
 // Bug fix 2026-05-08: previous impl used (-1)^m sign instead of
 // (-1)^(m+1), inverting the window (peak at edges, dip at centre);
 // also wrongly normalised peak to 1.
-Value taylorwin(size_t N, int nbar, double sll, std::pmr::memory_resource *mr)
+Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
 {
     if (sll >= 0)
         throw Error("taylorwin: sll must be negative (peak sidelobe in dB)",
@@ -400,7 +403,7 @@ Value taylorwin(size_t N, int nbar, double sll, std::pmr::memory_resource *mr)
                           (A * A + (nbar - 0.5) * (nbar - 0.5));
 
     // Coefficients F_m, m = 1..nbar-1.
-    auto Fm = std::vector<double>(static_cast<size_t>(nbar - 1), 0.0);
+    auto Fm = std::vector<double>(static_cast<keel::usize>(nbar - 1), 0.0);
     for (int m = 1; m < nbar; ++m) {
         double num = 1.0, den = 1.0;
         for (int k = 1; k < nbar; ++k) {
@@ -418,7 +421,7 @@ Value taylorwin(size_t N, int nbar, double sll, std::pmr::memory_resource *mr)
 
     double *dst = out.doubleDataMut();
     const double Nm1 = static_cast<double>(N - 1);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double xn = (static_cast<double>(i) - Nm1 * 0.5);
         double w = 1.0;
         for (int m = 1; m < nbar; ++m)
@@ -432,7 +435,7 @@ Value taylorwin(size_t N, int nbar, double sll, std::pmr::memory_resource *mr)
 }
 
 // ── blackmanharris ────────────────────────────────────────────────────
-Value blackmanharris(size_t N, std::pmr::memory_resource *mr)
+Value blackmanharris(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -445,7 +448,7 @@ Value blackmanharris(size_t N, std::pmr::memory_resource *mr)
     constexpr double a3 = 0.01168;
     double *dst = out.doubleDataMut();
     const double Nm1 = static_cast<double>(N - 1);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double x = 2.0 * M_PI * i / Nm1;
         dst[i] = a0 - a1 * std::cos(x) + a2 * std::cos(2.0 * x)
                     - a3 * std::cos(3.0 * x);
@@ -454,7 +457,7 @@ Value blackmanharris(size_t N, std::pmr::memory_resource *mr)
 }
 
 // ── bohmanwin ─────────────────────────────────────────────────────────
-Value bohmanwin(size_t N, std::pmr::memory_resource *mr)
+Value bohmanwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -463,8 +466,8 @@ Value bohmanwin(size_t N, std::pmr::memory_resource *mr)
     }
     double *dst = out.doubleDataMut();
     const double half = (static_cast<double>(N) - 1.0) / 2.0;
-    for (size_t i = 0; i < N; ++i) {
-        const double x = std::abs((static_cast<double>(i) - half) / half);
+    for (keel::usize i = 0; i < N; ++i) {
+        const double x = keel::abs((static_cast<double>(i) - half) / half);
         if (x >= 1.0) {
             dst[i] = 0.0;
         } else {
@@ -476,7 +479,7 @@ Value bohmanwin(size_t N, std::pmr::memory_resource *mr)
 }
 
 // ── barthannwin ───────────────────────────────────────────────────────
-Value barthannwin(size_t N, std::pmr::memory_resource *mr)
+Value barthannwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 1) {
@@ -485,17 +488,17 @@ Value barthannwin(size_t N, std::pmr::memory_resource *mr)
     }
     double *dst = out.doubleDataMut();
     const double Nm1 = static_cast<double>(N - 1);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double t = static_cast<double>(i) / Nm1 - 0.5;
-        dst[i] = 0.62 - 0.48 * std::abs(t)
+        dst[i] = 0.62 - 0.48 * keel::abs(t)
                  + 0.38 * std::cos(2.0 * M_PI * t);
     }
     return out;
 }
 
 // ── dpss ──────────────────────────────────────────────────────────────
-std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
-                             std::pmr::memory_resource *mr)
+std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
+                             keel::Allocator *mr)
 {
     if (N == 0 || k == 0) {
         return {Value::matrix(N, k, ValueType::DOUBLE, mr),
@@ -507,7 +510,7 @@ std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
 
     std::vector<double> d(N, 0.0);
     std::vector<double> e(N, 0.0);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double h = 0.5 * (static_cast<double>(N - 1) - 2.0 * static_cast<double>(i));
         d[i] = h * h * cos2piW;
         if (i + 1 < N) {
@@ -516,16 +519,16 @@ std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
     }
 
     std::vector<double> Z(N * N, 0.0);
-    for (size_t i = 0; i < N; ++i) Z[i + i * N] = 1.0;
+    for (keel::usize i = 0; i < N; ++i) Z[i + i * N] = 1.0;
 
     // Symmetric tridiagonal implicit QL with Wilkinson shift (tql2)
     constexpr double eps = 2.2204460492503131e-16;
-    for (size_t l = 0; l < N; ++l) {
+    for (keel::usize l = 0; l < N; ++l) {
         for (int iter = 0; iter < 100; ++iter) {
-            size_t m = l;
+            keel::usize m = l;
             for (; m + 1 < N; ++m) {
-                const double dd = std::abs(d[m]) + std::abs(d[m + 1]);
-                if (std::abs(e[m]) <= eps * dd) break;
+                const double dd = keel::abs(d[m]) + keel::abs(d[m + 1]);
+                if (keel::abs(e[m]) <= eps * dd) break;
             }
             if (m == l) break;
             double g = (d[l + 1] - d[l]) / (2.0 * e[l]);
@@ -533,7 +536,7 @@ std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
             g = d[m] - d[l] + e[l] / (g + (g >= 0.0 ? r : -r));
             double s = 1.0, c = 1.0, p = 0.0;
             bool underflow = false;
-            for (size_t ii = m; ii-- > l;) {
+            for (keel::usize ii = m; ii-- > l;) {
                 double f = s * e[ii];
                 double b = c * e[ii];
                 r = std::hypot(f, g);
@@ -553,7 +556,7 @@ std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
                 g = c * r - b;
                 double *z0 = Z.data() + ii * N;
                 double *z1 = Z.data() + (ii + 1) * N;
-                for (size_t row = 0; row < N; ++row) {
+                for (keel::usize row = 0; row < N; ++row) {
                     const double v0 = z0[row];
                     const double v1 = z1[row];
                     z1[row] = s * v0 + c * v1;
@@ -568,9 +571,9 @@ std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
     }
 
     // Sort eigenvalues descending
-    std::vector<size_t> order(N);
-    for (size_t i = 0; i < N; ++i) order[i] = i;
-    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+    std::vector<keel::usize> order(N);
+    for (keel::usize i = 0; i < N; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](keel::usize a, keel::usize b) {
         return d[a] > d[b];
     });
 
@@ -582,28 +585,28 @@ std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
     // Precompute sinc row for concentration ratio V
     std::vector<double> sincLag(N);
     sincLag[0] = 2.0 * W;
-    for (size_t lag = 1; lag < N; ++lag) {
+    for (keel::usize lag = 1; lag < N; ++lag) {
         sincLag[lag] = std::sin(2.0 * M_PI * W * static_cast<double>(lag))
                        / (M_PI * static_cast<double>(lag));
     }
 
-    for (size_t j = 0; j < k; ++j) {
+    for (keel::usize j = 0; j < k; ++j) {
         const double *col = Z.data() + order[j] * N;
         double pol = 0.0;
         if ((j & 1) == 0) {
-            for (size_t n = 0; n < N; ++n) pol += col[n];
+            for (keel::usize n = 0; n < N; ++n) pol += col[n];
         } else {
-            for (size_t n = 0; n < N; ++n)
+            for (keel::usize n = 0; n < N; ++n)
                 pol += (static_cast<double>(N - 1) - 2.0 * static_cast<double>(n)) * col[n];
         }
         const double sign = (pol < 0.0) ? -1.0 : 1.0;
         double *dstCol = ed + j * N;
-        for (size_t n = 0; n < N; ++n) dstCol[n] = sign * col[n];
+        for (keel::usize n = 0; n < N; ++n) dstCol[n] = sign * col[n];
 
         double lam = 0.0;
-        for (size_t n = 0; n < N; ++n) {
+        for (keel::usize n = 0; n < N; ++n) {
             lam += dstCol[n] * dstCol[n] * sincLag[0];
-            for (size_t m = n + 1; m < N; ++m) {
+            for (keel::usize m = n + 1; m < N; ++m) {
                 lam += 2.0 * dstCol[n] * dstCol[m] * sincLag[m - n];
             }
         }

@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -41,8 +42,8 @@ namespace numkit::signal {
 std::tuple<Value, Value>
 impz(const Value &                b,
      const Value &                a,
-     size_t                       n  = 0,
-     std::pmr::memory_resource *  mr = nullptr);
+     keel::usize                       n  = 0,
+     keel::Allocator *  mr = nullptr);
 
 /// Heuristic estimate of the number of significant impulse-response samples.
 ///
@@ -56,9 +57,9 @@ impz(const Value &                b,
 /// @return    Suggested impulse-response length.
 ///
 /// @see impz
-size_t impzlength(const Value &                b,
+keel::usize impzlength(const Value &                b,
                   const Value &                a,
-                  std::pmr::memory_resource *  mr = nullptr);
+                  keel::Allocator *  mr = nullptr);
 
 /// Step response of a digital filter.
 ///
@@ -75,8 +76,8 @@ size_t impzlength(const Value &                b,
 std::tuple<Value, Value>
 stepz(const Value &                b,
       const Value &                a,
-      size_t                       n  = 0,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::usize                       n  = 0,
+      keel::Allocator *  mr = nullptr);
 
 /// Phase delay of a digital filter.
 ///
@@ -94,8 +95,8 @@ stepz(const Value &                b,
 std::tuple<Value, Value>
 phasedelay(const Value &                b,
            const Value &                a,
-           size_t                       n  = 512,
-           std::pmr::memory_resource *  mr = nullptr);
+           keel::usize                       n  = 512,
+           keel::Allocator *  mr = nullptr);
 
 /// Equivalent zero-phase response.
 ///
@@ -115,8 +116,8 @@ phasedelay(const Value &                b,
 std::tuple<Value, Value>
 zerophase(const Value &                b,
           const Value &                a,
-          size_t                       n  = 512,
-          std::pmr::memory_resource *  mr = nullptr);
+          keel::usize                       n  = 512,
+          keel::Allocator *  mr = nullptr);
 
 
 /// @}

@@ -6,6 +6,10 @@
 // rc ↔ ac ↔ is ↔ lar). All implementations follow the standard real-
 // data formulations; complex AR isn't covered here.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>
 
 #include <numkit/signal/internal/shims/polyfun.hpp>
@@ -28,20 +32,20 @@ namespace {
 
 std::vector<double> readVec(const Value &x)
 {
-    const size_t n = x.numel();
+    const keel::usize n = x.numel();
     std::vector<double> v(n);
-    for (size_t i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
+    for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
-Value rowVec(const std::vector<double> &v, std::pmr::memory_resource *mr)
+Value rowVec(const std::vector<double> &v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
     if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
     return out;
 }
 
-Value colVec(const std::vector<double> &v, std::pmr::memory_resource *mr)
+Value colVec(const std::vector<double> &v, keel::Allocator *mr)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
     if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
@@ -52,11 +56,11 @@ Value colVec(const std::vector<double> &v, std::pmr::memory_resource *mr)
 // for k in 0..maxLag. Returns vector of length maxLag+1.
 std::vector<double> biasedAutocorr(const std::vector<double> &x, int maxLag)
 {
-    const size_t N = x.size();
+    const keel::usize N = x.size();
     std::vector<double> R(maxLag + 1, 0.0);
     for (int k = 0; k <= maxLag; ++k) {
         double s = 0.0;
-        for (size_t i = 0; i + k < N; ++i) s += x[i] * x[i + k];
+        for (keel::usize i = 0; i + k < N; ++i) s += x[i] * x[i + k];
         R[k] = s / static_cast<double>(N);
     }
     return R;
@@ -114,7 +118,7 @@ LevinsonResult levinsonCore(const std::vector<double> &r, int p)
 // ── Levinson-Durbin ────────────────────────────────────────────────
 
 std::tuple<Value, Value, Value>
-levinson(const Value &r, int n, std::pmr::memory_resource *mr)
+levinson(const Value &r, int n, keel::Allocator *mr)
 {
     auto rv = readVec(r);
     if (n < 0) n = static_cast<int>(rv.size()) - 1;
@@ -130,7 +134,7 @@ levinson(const Value &r, int n, std::pmr::memory_resource *mr)
 // recover the autocorrelation sequence + reflection coefficients via
 // step-down. Returns (R, k).
 std::tuple<Value, Value>
-rlevinson(const Value &a, double efinal, std::pmr::memory_resource *mr)
+rlevinson(const Value &a, double efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
     const int p = static_cast<int>(av.size()) - 1;
@@ -143,7 +147,7 @@ rlevinson(const Value &a, double efinal, std::pmr::memory_resource *mr)
     for (int i = p; i >= 1; --i) {
         const double ki = cur[i];
         k[i - 1] = ki;
-        if (std::abs(1.0 - ki * ki) < 1e-300) break;
+        if (keel::abs(1.0 - ki * ki) < 1e-300) break;
         std::vector<double> prev(i + 1, 0.0);  // a_{i-1}
         prev[0] = 1.0;
         const double denom = 1.0 - ki * ki;
@@ -167,7 +171,7 @@ rlevinson(const Value &a, double efinal, std::pmr::memory_resource *mr)
 // ── AR estimation ─────────────────────────────────────────────────
 
 std::tuple<Value, Value, Value>
-aryule(const Value &x, int p, std::pmr::memory_resource *mr)
+aryule(const Value &x, int p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = biasedAutocorr(v, p);
@@ -178,13 +182,13 @@ aryule(const Value &x, int p, std::pmr::memory_resource *mr)
 }
 
 std::tuple<Value, Value, Value>
-arburg(const Value &x, int p, std::pmr::memory_resource *mr)
+arburg(const Value &x, int p, keel::Allocator *mr)
 {
     // Burg's algorithm. Maintains forward / backward prediction
     // errors and updates AR coefficients via reflection coefficients
     // chosen to minimise the sum of forward + backward residual energy.
     auto v = readVec(x);
-    const size_t N = v.size();
+    const keel::usize N = v.size();
     std::vector<double> ef = v;
     std::vector<double> eb = v;
     std::vector<double> a(p + 1, 0.0); a[0] = 1.0;
@@ -198,7 +202,7 @@ arburg(const Value &x, int p, std::pmr::memory_resource *mr)
         // Reflection coefficient: maximise correlation of forward and
         // backward errors.
         double num = 0.0, den = 0.0;
-        for (size_t n = i + 1; n < N; ++n) {
+        for (keel::usize n = i + 1; n < N; ++n) {
             num += ef[n] * eb[n - 1];
             den += ef[n] * ef[n] + eb[n - 1] * eb[n - 1];
         }
@@ -206,7 +210,7 @@ arburg(const Value &x, int p, std::pmr::memory_resource *mr)
         k[i] = ki;
 
         // Update prediction errors in-place.
-        for (size_t n = N - 1; n > static_cast<size_t>(i); --n) {
+        for (keel::usize n = N - 1; n > static_cast<keel::usize>(i); --n) {
             const double f = ef[n];
             const double b = eb[n - 1];
             ef[n] = f + ki * b;
@@ -228,7 +232,7 @@ arburg(const Value &x, int p, std::pmr::memory_resource *mr)
 }
 
 std::tuple<Value, Value>
-lpc(const Value &x, int p, std::pmr::memory_resource *mr)
+lpc(const Value &x, int p, keel::Allocator *mr)
 {
     // MATLAB's lpc returns (a, g) where g is the prediction error
     // variance (NOT its sqrt — the docs are explicit). Same numbers
@@ -241,7 +245,7 @@ lpc(const Value &x, int p, std::pmr::memory_resource *mr)
 // ── Representation conversions ────────────────────────────────────
 
 std::tuple<Value, Value>
-ac2poly(const Value &R, std::pmr::memory_resource *mr)
+ac2poly(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
     const int p = static_cast<int>(rv.size()) - 1;
@@ -249,7 +253,7 @@ ac2poly(const Value &R, std::pmr::memory_resource *mr)
     return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
 
-Value poly2ac(const Value &a, double e, std::pmr::memory_resource *mr)
+Value poly2ac(const Value &a, double e, keel::Allocator *mr)
 {
     auto [Rv, kv] = rlevinson(a, e, mr);
     (void)kv;
@@ -257,7 +261,7 @@ Value poly2ac(const Value &a, double e, std::pmr::memory_resource *mr)
 }
 
 std::tuple<Value, Value>
-ac2rc(const Value &R, std::pmr::memory_resource *mr)
+ac2rc(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
     const int p = static_cast<int>(rv.size()) - 1;
@@ -266,7 +270,7 @@ ac2rc(const Value &R, std::pmr::memory_resource *mr)
                            Value::scalar(rv.empty() ? 0.0 : rv[0], mr));
 }
 
-Value schurrc(const Value &R, std::pmr::memory_resource *mr)
+Value schurrc(const Value &R, keel::Allocator *mr)
 {
     // Standalone Schur / Levinson reflection-coeff recursion. Does NOT
     // bail on negative residual energy — schurrc returns the math-valid
@@ -297,7 +301,7 @@ Value schurrc(const Value &R, std::pmr::memory_resource *mr)
     return colVec(k, mr);
 }
 
-Value rc2ac(const Value &k, double r0, std::pmr::memory_resource *mr)
+Value rc2ac(const Value &k, double r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
     const int p = static_cast<int>(kv.size());
@@ -324,7 +328,7 @@ Value rc2ac(const Value &k, double r0, std::pmr::memory_resource *mr)
 }
 
 std::tuple<Value, Value>
-poly2rc(const Value &a, double efinal, std::pmr::memory_resource *mr)
+poly2rc(const Value &a, double efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
     const int p = static_cast<int>(av.size()) - 1;
@@ -334,7 +338,7 @@ poly2rc(const Value &a, double efinal, std::pmr::memory_resource *mr)
         const double ki = cur[i];
         k[i - 1] = ki;
         const double denom = 1.0 - ki * ki;
-        if (std::abs(denom) < 1e-300) break;
+        if (keel::abs(denom) < 1e-300) break;
         std::vector<double> prev(i + 1, 0.0); prev[0] = 1.0;
         for (int j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
@@ -350,7 +354,7 @@ poly2rc(const Value &a, double efinal, std::pmr::memory_resource *mr)
 }
 
 std::tuple<Value, Value>
-rc2poly(const Value &k, double r0, std::pmr::memory_resource *mr)
+rc2poly(const Value &k, double r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
     const int p = static_cast<int>(kv.size());
@@ -373,14 +377,14 @@ rc2poly(const Value &k, double r0, std::pmr::memory_resource *mr)
 
 // is2rc / rc2is — inverse-sine parameterisation. MATLAB scales the inverse
 // sine into [-1, 1]: isin = (2/pi)*asin(k), so k = sin((pi/2)*isin).
-Value is2rc(const Value &is, std::pmr::memory_resource *mr)
+Value is2rc(const Value &is, keel::Allocator *mr)
 {
     constexpr double kHalfPi = 1.5707963267948966;  // pi/2
     auto v = readVec(is);
     for (auto &y : v) y = std::sin(kHalfPi * y);
     return colVec(v, mr);
 }
-Value rc2is(const Value &k, std::pmr::memory_resource *mr)
+Value rc2is(const Value &k, keel::Allocator *mr)
 {
     constexpr double kTwoOverPi = 0.6366197723675814;  // 2/pi
     auto v = readVec(k);
@@ -394,7 +398,7 @@ Value rc2is(const Value &k, std::pmr::memory_resource *mr)
 }
 
 // lar2rc / rc2lar — log-area-ratio: lar = log((1+k)/(1-k)).
-Value lar2rc(const Value &g, std::pmr::memory_resource *mr)
+Value lar2rc(const Value &g, keel::Allocator *mr)
 {
     auto v = readVec(g);
     for (auto &y : v) {
@@ -403,7 +407,7 @@ Value lar2rc(const Value &g, std::pmr::memory_resource *mr)
     }
     return colVec(v, mr);
 }
-Value rc2lar(const Value &k, std::pmr::memory_resource *mr)
+Value rc2lar(const Value &k, keel::Allocator *mr)
 {
     auto v = readVec(k);
     for (auto &y : v) {
@@ -429,9 +433,9 @@ solveSPD(std::vector<double> &A, std::vector<double> &b, int p)
     for (int k = 0; k < p; ++k) {
         // Pivot.
         int piv = k;
-        double pivVal = std::abs(A[k * p + k]);
+        double pivVal = keel::abs(A[k * p + k]);
         for (int i = k + 1; i < p; ++i)
-            if (std::abs(A[i * p + k]) > pivVal) { pivVal = std::abs(A[i * p + k]); piv = i; }
+            if (keel::abs(A[i * p + k]) > pivVal) { pivVal = keel::abs(A[i * p + k]); piv = i; }
         if (pivVal < 1e-300) continue;
         if (piv != k) {
             for (int j = k; j < p; ++j)
@@ -450,7 +454,7 @@ solveSPD(std::vector<double> &A, std::vector<double> &b, int p)
         double s = b[i];
         for (int j = i + 1; j < p; ++j) s -= A[i * p + j] * x[j];
         const double diag = A[i * p + i];
-        x[i] = (std::abs(diag) > 1e-300) ? s / diag : 0.0;
+        x[i] = (keel::abs(diag) > 1e-300) ? s / diag : 0.0;
     }
     return x;
 }
@@ -509,7 +513,7 @@ ArCovResult solveArCov(const std::vector<double> &R, int p)
 } // anonymous
 
 std::tuple<Value, Value>
-arcov(const Value &x, int p, std::pmr::memory_resource *mr)
+arcov(const Value &x, int p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = covMatrixForward(v, p);
@@ -523,7 +527,7 @@ arcov(const Value &x, int p, std::pmr::memory_resource *mr)
 }
 
 std::tuple<Value, Value>
-armcov(const Value &x, int p, std::pmr::memory_resource *mr)
+armcov(const Value &x, int p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = covMatrixForwardBackward(v, p);
@@ -543,7 +547,7 @@ armcov(const Value &x, int p, std::pmr::memory_resource *mr)
 //   2. Solve by least squares.
 //   3. b = (a convolved with h) truncated to nb+1 terms.
 std::tuple<Value, Value>
-prony(const Value &h, int nb, int na, std::pmr::memory_resource *mr)
+prony(const Value &h, int nb, int na, keel::Allocator *mr)
 {
     auto hv = readVec(h);
     const int N = static_cast<int>(hv.size());
@@ -615,11 +619,11 @@ void stmcb_argcheck(const Value &y, const Value &x, int nb, int na, const Value 
         throw Error("stmcb: input and output signal vectors must have the same length",
                     0, 0, "stmcb", "", "numkit:stmcb:InvalidDimensions");
     if (!ai.isEmpty()) {
-        const size_t n_ai = ai.numel();
-        if (n_ai != static_cast<size_t>(na + 1) && n_ai != static_cast<size_t>(na))
+        const keel::usize n_ai = ai.numel();
+        if (n_ai != static_cast<keel::usize>(na + 1) && n_ai != static_cast<keel::usize>(na))
             throw Error("stmcb: initial denominator estimate ai must have length na+1 (or na)",
                         0, 0, "stmcb", "", "numkit:stmcb:InvalidAiLength");
-        if (n_ai == static_cast<size_t>(na + 1) && ai.elemAsDouble(0) == 0.0)
+        if (n_ai == static_cast<keel::usize>(na + 1) && ai.elemAsDouble(0) == 0.0)
             throw Error("stmcb: leading coefficient of ai must be nonzero",
                         0, 0, "stmcb", "", "numkit:stmcb:ZeroLeadingCoefficient");
     }
@@ -629,7 +633,7 @@ void stmcb_argcheck(const Value &y, const Value &x, int nb, int na, const Value 
 
 std::tuple<Value, Value>
 stmcb(const Value &y, const Value &x, int nb, int na, int niter,
-      const Value &ai, std::pmr::memory_resource *mr)
+      const Value &ai, keel::Allocator *mr)
 {
     stmcb_argcheck(y, x, nb, na, ai);
     auto      yv = readVec(y);
@@ -685,7 +689,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
             const int s = col - nb;             // 1..na
             return (n - s >= 0) ? -g[n - s] : 0.0;
         };
-        std::vector<double> MtM(static_cast<size_t>(P) * P, 0.0), Mtg(P, 0.0);
+        std::vector<double> MtM(static_cast<keel::usize>(P) * P, 0.0), Mtg(P, 0.0);
         for (int n = 0; n < N; ++n)
             for (int i = 0; i < P; ++i) {
                 const double mi = Mcol(n, i);
@@ -701,7 +705,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
 }
 
 std::tuple<Value, Value>
-stmcb(const Value &h, int nb, int na, int niter, std::pmr::memory_resource *mr)
+stmcb(const Value &h, int nb, int na, int niter, keel::Allocator *mr)
 {
     return stmcb(h, Value(), nb, na, niter, Value(), mr);
 }
@@ -711,7 +715,7 @@ stmcb(const Value &h, int nb, int na, int niter, std::pmr::memory_resource *mr)
 // data matrix X with X(i, j) = x(i-j+1), zero-padded outside the
 // input range, such that X' * X is the (m+1)×(m+1) autocorrelation
 // matrix.
-Value corrmtx(const Value &x, int m, std::pmr::memory_resource *mr)
+Value corrmtx(const Value &x, int m, keel::Allocator *mr)
 {
     auto v = readVec(x);
     const int N = static_cast<int>(v.size());
@@ -747,7 +751,7 @@ std::vector<double> padLeft(const std::vector<double> &p, int n)
 {
     std::vector<double> r(n, 0.0);
     const int off = n - static_cast<int>(p.size());
-    for (size_t i = 0; i < p.size(); ++i) r[off + i] = p[i];
+    for (keel::usize i = 0; i < p.size(); ++i) r[off + i] = p[i];
     return r;
 }
 
@@ -762,7 +766,7 @@ std::vector<double> padLeft(const std::vector<double> &p, int n)
 // 57(S1):S35, 1975; P. Kabal & R. P. Ramachandran, "The computation of
 // line spectral frequencies using Chebyshev polynomials", IEEE Trans.
 // ASSP 34(6):1419-1426, 1986.
-Value poly2lsf(const Value &a, std::pmr::memory_resource *mr)
+Value poly2lsf(const Value &a, keel::Allocator *mr)
 {
     auto av = readVec(a);
     const int N = static_cast<int>(av.size()) - 1;
@@ -784,9 +788,9 @@ Value poly2lsf(const Value &a, std::pmr::memory_resource *mr)
     for (auto &poly : {P, Q}) {
         Value polyV = rowVec(poly, mr);
         Value rts = numkit::builtin::roots(polyV, mr);
-        const size_t n = rts.numel();
-        for (size_t i = 0; i < n; ++i) {
-            const Complex c = rts.complexData()[i];
+        const keel::usize n = rts.numel();
+        for (keel::usize i = 0; i < n; ++i) {
+            const keel::c64 c = rts.complexData()[i];
             const double a_ang = std::atan2(c.imag(), c.real());
             if (a_ang > 1e-9 && a_ang < M_PI - 1e-9) angles.push_back(a_ang);
         }
@@ -797,7 +801,7 @@ Value poly2lsf(const Value &a, std::pmr::memory_resource *mr)
     return colVec(angles, mr);
 }
 
-Value lsf2poly(const Value &lsf, std::pmr::memory_resource *mr)
+Value lsf2poly(const Value &lsf, keel::Allocator *mr)
 {
     auto lv = readVec(lsf);
     const int m = static_cast<int>(lv.size());
@@ -822,8 +826,8 @@ Value lsf2poly(const Value &lsf, std::pmr::memory_resource *mr)
     auto convOne = [](const std::vector<double> &a,
                       const std::vector<double> &b) {
         std::vector<double> r(a.size() + b.size() - 1, 0.0);
-        for (size_t i = 0; i < a.size(); ++i)
-            for (size_t j = 0; j < b.size(); ++j)
+        for (keel::usize i = 0; i < a.size(); ++i)
+            for (keel::usize j = 0; j < b.size(); ++j)
                 r[i + j] += a[i] * b[j];
         return r;
     };
@@ -856,7 +860,7 @@ Value lsf2poly(const Value &lsf, std::pmr::memory_resource *mr)
     // P and Q have identical length now. a = (P + Q) / 2, then drop
     // the trailing element (it cancels to ~0 by construction).
     std::vector<double> a(P.size(), 0.0);
-    for (size_t i = 0; i < P.size(); ++i) a[i] = 0.5 * (P[i] + Q[i]);
+    for (keel::usize i = 0; i < P.size(); ++i) a[i] = 0.5 * (P[i] + Q[i]);
     if (a.size() > 1) a.pop_back();
     return rowVec(a, mr);
 }
@@ -878,16 +882,14 @@ Value lsf2poly(const Value &lsf, std::pmr::memory_resource *mr)
 
 namespace {
 
-using Cd_invfreq = std::complex<double>;
-
-std::vector<Cd_invfreq> readComplexVecLocal(const Value &v) {
-    const size_t n = v.numel();
-    std::vector<Cd_invfreq> out(n);
+std::vector<keel::c64> readComplexVecLocal(const Value &v) {
+    const keel::usize n = v.numel();
+    std::vector<keel::c64> out(n);
     if (v.type() == ValueType::COMPLEX) {
-        const Cd_invfreq *cd = v.complexData();
-        for (size_t i = 0; i < n; ++i) out[i] = cd[i];
+        const keel::c64 *cd = v.complexData();
+        for (keel::usize i = 0; i < n; ++i) out[i] = cd[i];
     } else {
-        for (size_t i = 0; i < n; ++i) out[i] = Cd_invfreq(v.elemAsDouble(i), 0.0);
+        for (keel::usize i = 0; i < n; ++i) out[i] = keel::c64(v.elemAsDouble(i), 0.0);
     }
     return out;
 }
@@ -895,8 +897,8 @@ std::vector<Cd_invfreq> readComplexVecLocal(const Value &v) {
 // Common solver: x is the "step" variable per frequency point —
 // jω_k for invfreqs, e^{-jω_k} for invfreqz.
 std::tuple<std::vector<double>, std::vector<double>>
-invfreqLSQ(const std::vector<Cd_invfreq> &H,
-           const std::vector<Cd_invfreq> &x,
+invfreqLSQ(const std::vector<keel::c64> &H,
+           const std::vector<keel::c64> &x,
            int nb, int na)
 {
     const int K  = static_cast<int>(H.size());
@@ -910,13 +912,13 @@ invfreqLSQ(const std::vector<Cd_invfreq> &H,
     for (int k = 0; k < K; ++k) {
         // Build x^0..x^max(nb, na) once.
         const int M = std::max(nb, na);
-        std::vector<Cd_invfreq> xpow(M + 1);
-        xpow[0] = Cd_invfreq(1.0, 0.0);
+        std::vector<keel::c64> xpow(M + 1);
+        xpow[0] = keel::c64(1.0, 0.0);
         for (int i = 1; i <= M; ++i) xpow[i] = xpow[i - 1] * x[k];
 
         // Row k contains:
         //   -1, -x, -x², …, -x^nb, H·x, H·x², …, H·x^na
-        std::vector<Cd_invfreq> row(nv);
+        std::vector<keel::c64> row(nv);
         for (int i = 0; i <= nb; ++i) row[i] = -xpow[i];
         for (int j = 1; j <= na; ++j) row[nb + j] = H[k] * xpow[j];
 
@@ -975,26 +977,26 @@ void invfreqz_argcheck(const Value &H, const Value &w, int nb, int na)
 } // anonymous
 
 std::tuple<Value, Value>
-invfreqs(const Value &H, const Value &w, int nb, int na, std::pmr::memory_resource *mr)
+invfreqs(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
 {
     invfreqs_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
     auto wv = readVec(w);
-    std::vector<Cd_invfreq> x(wv.size());
-    for (size_t k = 0; k < wv.size(); ++k) x[k] = Cd_invfreq(0.0, wv[k]); // jω
+    std::vector<keel::c64> x(wv.size());
+    for (keel::usize k = 0; k < wv.size(); ++k) x[k] = keel::c64(0.0, wv[k]); // jω
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);
     return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
 }
 
 std::tuple<Value, Value>
-invfreqz(const Value &H, const Value &w, int nb, int na, std::pmr::memory_resource *mr)
+invfreqz(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
 {
     invfreqz_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
     auto wv = readVec(w);
-    std::vector<Cd_invfreq> x(wv.size());
-    for (size_t k = 0; k < wv.size(); ++k)
-        x[k] = std::exp(Cd_invfreq(0.0, -wv[k])); // z⁻¹
+    std::vector<keel::c64> x(wv.size());
+    for (keel::usize k = 0; k < wv.size(); ++k)
+        x[k] = keel::exp(keel::c64(0.0, -wv[k])); // z⁻¹
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);
     return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
 }

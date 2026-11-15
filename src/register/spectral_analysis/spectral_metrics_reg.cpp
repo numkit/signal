@@ -3,6 +3,8 @@
 // CallContext register half of spectral_analysis/spectral_metrics.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
@@ -11,13 +13,10 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -29,11 +28,11 @@ namespace numkit::signal {
 
 namespace detail {
 
-void bandpower_reg(Span<const Value> args, size_t /*nargout*/,
-                   Span<Value> outs, CallContext &ctx)
+void bandpower_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "bandpower");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     if (args.size() >= 3 && (args[args.size() - 1].isChar() || args[args.size() - 1].isString())) {
         std::string opt = args[args.size() - 1].toString();
         for (char &c : opt) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -55,14 +54,14 @@ void bandpower_reg(Span<const Value> args, size_t /*nargout*/,
     outs[0] = bandpower(args[0], fs, fr, mr);
 }
 
-void obw_reg(Span<const Value> args, size_t nargout,
-             Span<Value> outs, CallContext &ctx)
+void obw_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+             keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 5, "obw");
     const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
     double p = 0.99;
     if (args.size() >= 3 && !args[2].isEmpty()) p = args[2].toScalar();
-    auto [bw, flo, fhi, pw] = obw(args[0], fs, p, ctx.engine->resource());
+    auto [bw, flo, fhi, pw] = obw(args[0], fs, p, ctx.engine->allocator());
     outs[0] = std::move(bw);
     if (nargout > 1) outs[1] = std::move(flo);
     if (nargout > 2) outs[2] = std::move(fhi);
@@ -70,20 +69,20 @@ void obw_reg(Span<const Value> args, size_t nargout,
 }
 
 #define NUMKIT_SPEC1_REG(name, fn, mn, mx)                                          \
-    void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,                \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), mn, mx, #name);                      \
         const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;          \
-        outs[0] = fn(args[0], fs, ctx.engine->resource());                      \
+        outs[0] = fn(args[0], fs, ctx.engine->allocator());                      \
     }
 #define NUMKIT_SPEC1_NV_REG(name, fn)  /* no max: name-value tail in the reference */\
-    void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,                \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 1, #name);                           \
         const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;          \
-        outs[0] = fn(args[0], fs, ctx.engine->resource());                      \
+        outs[0] = fn(args[0], fs, ctx.engine->allocator());                      \
     }
 
 NUMKIT_SPEC1_REG(meanfreq,         meanfreq, 1, 4)
@@ -105,11 +104,11 @@ static std::string toLowerCopy(std::string s)
     return s;
 }
 
-static void parsePspectrumTail(Span<const Value> args, size_t startIdx,
+static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
                                PspectrumOptions &opts, std::string *methodOut,
                                bool allowTypeFlag, const char *caller)
 {
-    size_t i = startIdx;
+    keel::usize i = startIdx;
     if (allowTypeFlag && i < args.size() && (args[i].isChar() || args[i].isString())) {
         const std::string low = toLowerCopy(args[i].toString());
         if (low == "power" || low == "spectrogram") {
@@ -155,32 +154,32 @@ static void parsePspectrumTail(Span<const Value> args, size_t startIdx,
     }
 }
 
-void pspectrum_reg(Span<const Value> args, size_t nargout,
-                   Span<Value> outs, CallContext &ctx)
+void pspectrum_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 11, "pspectrum");
     PspectrumOptions opts;
-    size_t idx = 1;
+    keel::usize idx = 1;
     Value fsOrT = Value::Empty;
     if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
         fsOrT = args[idx];
         ++idx;
     }
     parsePspectrumTail(args, idx, opts, nullptr, true, "pspectrum");
-    auto res = pspectrum(args[0], fsOrT, opts, ctx.engine->resource());
+    auto res = pspectrum(args[0], fsOrT, opts, ctx.engine->allocator());
     outs[0] = std::move(res.p);
     if (nargout > 1) outs[1] = std::move(res.f);
     if (nargout > 2) outs[2] = std::move(res.t);
 }
 
-void instfreq_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+void instfreq_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 7, "instfreq");
     PspectrumOptions opts;
     opts.type = "spectrogram";
     std::string method = "tfmoment";
-    size_t idx = 1;
+    keel::usize idx = 1;
     Value fsOrT = Value::Empty;
     if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
         fsOrT = args[idx];
@@ -188,7 +187,7 @@ void instfreq_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     }
     parsePspectrumTail(args, idx, opts, &method, false, "instfreq");
     if (method == "hilbert") {
-        auto [ifr, t] = instfreqHilbert(args[0], fsOrT, ctx.engine->resource());
+        auto [ifr, t] = instfreqHilbert(args[0], fsOrT, ctx.engine->allocator());
         outs[0] = std::move(ifr);
         if (nargout > 1) outs[1] = std::move(t);
         return;
@@ -196,25 +195,25 @@ void instfreq_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     if (method != "tfmoment")
         throw Error("instfreq: 'Method' must be 'tfmoment' or 'hilbert' (got '" + method + "')",
                     0, 0, "instfreq", "", "numkit:instfreq:method");
-    auto [ifr, t] = instfreqWithTime(args[0], fsOrT, opts, ctx.engine->resource());
+    auto [ifr, t] = instfreqWithTime(args[0], fsOrT, opts, ctx.engine->allocator());
     outs[0] = std::move(ifr);
     if (nargout > 1) outs[1] = std::move(t);
 }
 
-void instbw_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+void instbw_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                 CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 7, "instbw");
     PspectrumOptions opts;
     opts.type = "spectrogram";
-    size_t idx = 1;
+    keel::usize idx = 1;
     Value fsOrT = Value::Empty;
     if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
         fsOrT = args[idx];
         ++idx;
     }
     parsePspectrumTail(args, idx, opts, nullptr, false, "instbw");
-    auto [ibw, t] = instbwWithTime(args[0], fsOrT, opts, ctx.engine->resource());
+    auto [ibw, t] = instbwWithTime(args[0], fsOrT, opts, ctx.engine->allocator());
     outs[0] = std::move(ibw);
     if (nargout > 1) outs[1] = std::move(t);
 }

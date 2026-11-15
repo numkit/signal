@@ -3,21 +3,21 @@
 // CallContext register half of measurements/findpeaks.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
+#include <keel/arena.h>
+#include <keel/array.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/findpeaks.hpp>
 #include "measurements/findpeaks_detail.hpp"
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -28,11 +28,11 @@ namespace numkit::signal {
 
 namespace detail {
 
-void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                    CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "findpeaks");  // no max: name-value tail in the reference
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     const Value &y = args[0];
 
     if (nargout > 4)
@@ -40,16 +40,16 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
                      0, 0, "findpeaks", "", "numkit:findpeaks:nargout");
 
     PeakOpts opt;
-    ScratchArena locScratch(mr);
-    auto locStore = ScratchVec<double>(&locScratch); // for the Fs form
+    keel::ArenaTemp locScratch = keel::get_scratch(mr);
+    auto locStore = keel::Array<double>(locScratch.allocator()); // for the Fs form
     const double *locArr = nullptr;
 
-    std::size_t argi = 1;
+    keel::usize argi = 1;
 
     // Optional positional X-vector or Fs-scalar (before any Name-Value pair).
     if (args.size() > 1 && !args[1].isChar() && !args[1].isString()) {
         const Value &second = args[1];
-        const std::size_t n = y.numel();
+        const keel::usize n = y.numel();
         if (second.numel() == 1) {
             // Sampling frequency: location(i) = i / Fs  (0-based sample index).
             const double fs = second.toScalar();
@@ -57,7 +57,7 @@ void findpeaks_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
                 throw Error("findpeaks: sample rate Fs must be positive",
                              0, 0, "findpeaks", "", "numkit:findpeaks:badFs");
             locStore.assign(n, 0.0);
-            for (std::size_t i = 0; i < n; ++i)
+            for (keel::usize i = 0; i < n; ++i)
                 locStore[i] = static_cast<double>(i) / fs;
             locArr = locStore.data();
         } else {

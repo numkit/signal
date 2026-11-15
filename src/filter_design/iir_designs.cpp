@@ -11,6 +11,9 @@
 // For bandpass/bandstop, Wn is a 2-vector [Wlo, Whi]; the prototype is
 // scaled to centre Ω₀ = √(Wlo·Whi), bandwidth Bw = Whi - Wlo.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/math.h>
 #include <numkit/signal/filter_design/iir_designs.hpp>
 
 #include <numkit/signal/filter_design/analog_filters.hpp>
@@ -49,9 +52,9 @@ void iirOrder_argcheck(int N, const char *fn)
 
 // Convert Wn (Value) → 1 or 2 doubles.
 std::vector<double> readWn(const Value &Wn) {
-    const size_t n = Wn.numel();
+    const keel::usize n = Wn.numel();
     std::vector<double> out(n);
-    for (size_t i = 0; i < n; ++i) out[i] = Wn.elemAsDouble(i);
+    for (keel::usize i = 0; i < n; ++i) out[i] = Wn.elemAsDouble(i);
     return out;
 }
 
@@ -63,7 +66,7 @@ inline double prewarp(double Wn_norm) {
 
 // Apply lp2X transform per ftype to (z, p, k).
 std::tuple<Value, Value, Value>
-applyLp2X(Value z, Value p, double k, FilterType ftype, const std::vector<double> &Wo_analog, std::pmr::memory_resource *mr)
+applyLp2X(Value z, Value p, double k, FilterType ftype, const std::vector<double> &Wo_analog, keel::Allocator *mr)
 {
     switch (ftype) {
         case FilterType::Lowpass:
@@ -95,7 +98,7 @@ void validateWn(FilterType ftype, const std::vector<double> &Wn) {
 
 // Common end-of-pipe: zpk → tf → bilinear (or stay analog).
 std::tuple<Value, Value>
-finishDesign(Value z, Value p, Value k_v, bool analog, std::pmr::memory_resource *mr)
+finishDesign(Value z, Value p, Value k_v, bool analog, keel::Allocator *mr)
 {
     const double k = k_v.toScalar();
     auto [b, a] = ::numkit::builtin::zp2tf(z, p, k, mr);
@@ -110,14 +113,14 @@ finishDesign(Value z, Value p, Value k_v, bool analog, std::pmr::memory_resource
 std::vector<double> wnToAnalog(const std::vector<double> &Wn, bool analog) {
     if (analog) return Wn;
     std::vector<double> out(Wn.size());
-    for (size_t i = 0; i < Wn.size(); ++i) out[i] = prewarp(Wn[i]);
+    for (keel::usize i = 0; i < Wn.size(); ++i) out[i] = prewarp(Wn[i]);
     return out;
 }
 
 } // anonymous
 
 std::tuple<Value, Value>
-cheby1(int N, double Rp, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_resource *mr)
+cheby1(int N, double Rp, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "cheby1");
     auto wn = readWn(Wn);
@@ -129,7 +132,7 @@ cheby1(int N, double Rp, const Value &Wn, FilterType ftype, bool analog, std::pm
 }
 
 std::tuple<Value, Value>
-cheby2(int N, double Rs, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_resource *mr)
+cheby2(int N, double Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "cheby2");
     auto wn = readWn(Wn);
@@ -141,7 +144,7 @@ cheby2(int N, double Rs, const Value &Wn, FilterType ftype, bool analog, std::pm
 }
 
 std::tuple<Value, Value>
-besself(int N, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_resource *mr)
+besself(int N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "besself");
     auto wn = readWn(Wn);
@@ -153,7 +156,7 @@ besself(int N, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_
 }
 
 std::tuple<Value, Value>
-butter(int N, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_resource *mr)
+butter(int N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "butter");
     // Same pipeline as cheby1/besself: Butterworth prototype, LP→X
@@ -169,7 +172,7 @@ butter(int N, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_r
 }
 
 std::tuple<Value, Value>
-ellip(int N, double Rp, double Rs, const Value &Wn, FilterType ftype, bool analog, std::pmr::memory_resource *mr)
+ellip(int N, double Rp, double Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "ellip");
     auto wn = readWn(Wn);
@@ -251,12 +254,12 @@ OrdNormalised normaliseOrd(const std::vector<double> &Wp,
         if (bp) {
             // Bandpass→lowpass map: Ω_LP = (Ω² - Ω0²) / (Bw·Ω).
             // Take absolute value; ratio = |Ω_LP_stopband| (≥ 1 for valid spec).
-            auto mp = [&](double O){ return std::abs((O * O - Wo * Wo) / (Bw * O)); };
+            auto mp = [&](double O){ return keel::abs((O * O - Wo * Wo) / (Bw * O)); };
             n.ratio = std::min(mp(Os1), mp(Os2));
             n.Wo_passband = 1.0;  // unit prototype
         } else {
             // Bandstop→lowpass: Ω_LP = (Bw·Ω) / (Ω² - Ω0²)  (reciprocal form).
-            auto mp = [&](double O){ return std::abs((Bw * O) / (O * O - Wo * Wo)); };
+            auto mp = [&](double O){ return keel::abs((Bw * O) / (O * O - Wo * Wo)); };
             n.ratio = std::min(mp(Os1), mp(Os2));
             n.Wo_passband = 1.0;
         }
@@ -267,7 +270,7 @@ OrdNormalised normaliseOrd(const std::vector<double> &Wp,
 }
 
 // Convert the prototype Ω back into the requested Wn vector.
-Value wnFromPrototype(const OrdNormalised &n, double Wn_analog, bool analog, std::pmr::memory_resource *mr)
+Value wnFromPrototype(const OrdNormalised &n, double Wn_analog, bool analog, keel::Allocator *mr)
 {
     switch (n.ftype) {
         case FilterType::Lowpass:
@@ -292,7 +295,7 @@ Value wnFromPrototype(const OrdNormalised &n, double Wn_analog, bool analog, std
 } // anonymous
 
 std::tuple<int, Value>
-buttord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, std::pmr::memory_resource *mr)
+buttord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, keel::Allocator *mr)
 {
     auto Wp = readWn(Wp_v);
     auto Ws = readWn(Ws_v);
@@ -320,7 +323,7 @@ buttord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog,
 }
 
 std::tuple<int, Value>
-cheb1ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, std::pmr::memory_resource *mr)
+cheb1ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, keel::Allocator *mr)
 {
     auto Wp = readWn(Wp_v);
     auto Ws = readWn(Ws_v);
@@ -341,7 +344,7 @@ cheb1ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
 }
 
 std::tuple<int, Value>
-cheb2ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, std::pmr::memory_resource *mr)
+cheb2ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, keel::Allocator *mr)
 {
     auto Wp = readWn(Wp_v);
     auto Ws = readWn(Ws_v);
@@ -385,11 +388,11 @@ cheb2ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
 
 namespace {
 
-double findElliporderImpl(const std::vector<double> &WA, double Rp, double Rs, std::pmr::memory_resource *mr)
+double findElliporderImpl(const std::vector<double> &WA, double Rp, double Rs, keel::Allocator *mr)
 {
-    double WAmin = std::abs(WA[0]);
-    for (size_t i = 1; i < WA.size(); ++i)
-        if (std::abs(WA[i]) < WAmin) WAmin = std::abs(WA[i]);
+    double WAmin = keel::abs(WA[0]);
+    for (keel::usize i = 1; i < WA.size(); ++i)
+        if (keel::abs(WA[i]) < WAmin) WAmin = keel::abs(WA[i]);
     const double epsilon = std::sqrt(std::pow(10.0, 0.1 * Rp) - 1.0);
     const double k1 = epsilon / std::sqrt(std::pow(10.0, 0.1 * Rs) - 1.0);
     const double k  = 1.0 / WAmin;
@@ -420,7 +423,7 @@ double findElliporderImpl(const std::vector<double> &WA, double Rp, double Rs, s
 } // anon
 
 std::tuple<int, Value>
-ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, std::pmr::memory_resource *mr)
+ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog, keel::Allocator *mr)
 {
     if (Rp <= 0.0 || Rs <= 0.0)
         throw Error("ellipord: Rp, Rs must be positive",
@@ -429,13 +432,13 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
         throw Error("ellipord: Wp and Ws must have same length",
                     0, 0, "ellipord", "", "numkit:ellipord:DimMismatch");
 
-    const size_t numW = Wp_v.numel();
+    const keel::usize numW = Wp_v.numel();
     if (numW != 1 && numW != 2)
         throw Error("ellipord: Wp must be scalar or 2-vector",
                     0, 0, "ellipord", "", "numkit:ellipord:BadWp");
 
     std::vector<double> wp(numW), ws(numW);
-    for (size_t i = 0; i < numW; ++i) {
+    for (keel::usize i = 0; i < numW; ++i) {
         wp[i] = Wp_v.elemAsDouble(i);
         ws[i] = Ws_v.elemAsDouble(i);
     }
@@ -447,7 +450,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     // Prewarp digital → analog if needed.
     std::vector<double> WP(numW), WS(numW);
     if (!analog) {
-        for (size_t i = 0; i < numW; ++i) {
+        for (keel::usize i = 0; i < numW; ++i) {
             WP[i] = std::tan(M_PI * wp[i] / 2.0);
             WS[i] = std::tan(M_PI * ws[i] / 2.0);
         }
@@ -473,7 +476,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
             // here as the reciprocal of the case-4 expression so the shared
             // sign/abs convention in findElliporderImpl (WAmin = min|WA|) picks
             // the worst-case stopband edge. (Mirrors nk buttord/cheb*ord.)
-            for (size_t i = 0; i < numW; ++i) {
+            for (keel::usize i = 0; i < numW; ++i) {
                 const double w = WS[i];
                 WA.push_back((w * (WP[0] - WP[1])) / (w * w - WP[0] * WP[1]));
             }
@@ -481,7 +484,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
             break;
         }
         case 4: { // bandpass: WA = (WS² - WP1·WP2) / (WS·(WP1-WP2))
-            for (size_t i = 0; i < numW; ++i) {
+            for (keel::usize i = 0; i < numW; ++i) {
                 const double w = WS[i];
                 WA.push_back((w * w - WP[0] * WP[1]) / (w * (WP[0] - WP[1])));
             }
@@ -497,9 +500,9 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     Value Wn = Value::matrix(1, numW, ValueType::DOUBLE, mr);
     double *wd = Wn.doubleDataMut();
     if (!analog) {
-        for (size_t i = 0; i < numW; ++i) wd[i] = wp[i];
+        for (keel::usize i = 0; i < numW; ++i) wd[i] = wp[i];
     } else {
-        for (size_t i = 0; i < numW; ++i) wd[i] = WP[i];
+        for (keel::usize i = 0; i < numW; ++i) wd[i] = WP[i];
     }
 
     return {N, Wn};
@@ -529,18 +532,18 @@ double remlpord(double f1, double f2, double d1, double d2)
         for (int j = 0; j < 3; ++j)
             D += v[i] * AA[i][j] * w[j];
     const double fK = 11.01217 + 0.51244 * (ld1 - ld2);
-    const double df = std::abs(f2 - f1);
+    const double df = keel::abs(f2 - f1);
     return D / df - fK * df + 1.0;
 }
 
 } // anon
 
 std::tuple<int, Value, Value, Value>
-firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::memory_resource *mr)
+firpmord(const Value &F, const Value &A, const Value &dev, double fs, keel::Allocator *mr)
 {
-    const size_t mf     = F.numel();
-    const size_t nbands = A.numel();
-    const size_t ndevs  = dev.numel();
+    const keel::usize mf     = F.numel();
+    const keel::usize nbands = A.numel();
+    const keel::usize ndevs  = dev.numel();
 
     if (nbands != ndevs)
         throw Error("firpmord: A and DEV must have same length",
@@ -553,21 +556,21 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
                     0, 0, "firpmord", "", "numkit:firpmord:BadFs");
 
     std::vector<double> fcuts(mf), mags(nbands), devs(nbands);
-    for (size_t i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
-    for (size_t i = 0; i < nbands; ++i) {
+    for (keel::usize i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
+    for (keel::usize i = 0; i < nbands; ++i) {
         mags[i] = A.elemAsDouble(i);
         devs[i] = dev.elemAsDouble(i);
     }
     {
         double mx = fcuts[0];
-        for (size_t i = 1; i < mf; ++i) if (fcuts[i] > mx) mx = fcuts[i];
+        for (keel::usize i = 1; i < mf; ++i) if (fcuts[i] > mx) mx = fcuts[i];
         if (mx > 0.5)
             throw Error("firpmord: F edges must be <= Fs/2",
                         0, 0, "firpmord", "", "numkit:firpmord:InvalidRange");
     }
 
     // Relative deviation: devs[i] /= (stop + mag) (== 1 either way).
-    for (size_t i = 0; i < nbands; ++i) {
+    for (keel::usize i = 0; i < nbands; ++i) {
         const double zz = (mags[i] == 0.0) ? 1.0 : 0.0;
         const double base = zz + mags[i];
         if (base != 0.0) devs[i] = devs[i] / base;
@@ -575,16 +578,16 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
 
     // Separate transition edges into f1, f2 pairs.
     std::vector<double> f1v, f2v;
-    for (size_t i = 0; i + 1 < mf; i += 2) {
+    for (keel::usize i = 0; i + 1 < mf; i += 2) {
         f1v.push_back(fcuts[i]);
         f2v.push_back(fcuts[i + 1]);
     }
     // Find narrowest transition.
-    size_t nMin = 0;
+    keel::usize nMin = 0;
     {
-        double minWidth = std::abs(f2v[0] - f1v[0]);
-        for (size_t i = 1; i < f1v.size(); ++i) {
-            const double w = std::abs(f2v[i] - f1v[i]);
+        double minWidth = keel::abs(f2v[0] - f1v[0]);
+        for (keel::usize i = 1; i < f1v.size(); ++i) {
+            const double w = keel::abs(f2v[i] - f1v[i]);
             if (w < minWidth) { minWidth = w; nMin = i; }
         }
     }
@@ -593,7 +596,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
     if (nbands == 2) {
         L = remlpord(f1v[nMin], f2v[nMin], devs[0], devs[1]);
     } else {
-        for (size_t i = 1; i + 1 < nbands; ++i) {
+        for (keel::usize i = 1; i + 1 < nbands; ++i) {
             const double L1 = remlpord(f1v[i - 1], f2v[i - 1], devs[i], devs[i - 1]);
             const double L2 = remlpord(f1v[i],     f2v[i],     devs[i], devs[i + 1]);
             if (L1 > L) L = L1;
@@ -609,21 +612,21 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
     {
         double *fd = ff.doubleDataMut();
         fd[0] = 0.0;
-        for (size_t i = 0; i < mf; ++i) fd[i + 1] = 2.0 * fcuts[i];
+        for (keel::usize i = 0; i < mf; ++i) fd[i + 1] = 2.0 * fcuts[i];
         fd[mf + 1] = 1.0;
     }
     // am(1:2:2*nbands-1) = mags  → length 2*nbands-1, others 0
     // aa = [am'; 0] + [0; am']  (i.e., interleave)
     // Effectively aa is length 2*nbands, each band's amplitude appears
     // in both endpoints.
-    const size_t aLen = 2 * nbands;
+    const keel::usize aLen = 2 * nbands;
     Value aa = Value::matrix(1, aLen, ValueType::DOUBLE, mr);
     {
         double *ad = aa.doubleDataMut();
         std::fill(ad, ad + aLen, 0.0);
         // am at indices 0, 2, 4, ..., 2*nbands-2 (in 0-based).
         // After the [am'; 0] + [0; am'] trick: position 2k and 2k+1 both = mags[k].
-        for (size_t k = 0; k < nbands; ++k) {
+        for (keel::usize k = 0; k < nbands; ++k) {
             ad[2 * k]     = mags[k];
             ad[2 * k + 1] = mags[k];
         }
@@ -633,8 +636,8 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::
     {
         double *wd = wts.doubleDataMut();
         double maxDev = devs[0];
-        for (size_t i = 1; i < nbands; ++i) if (devs[i] > maxDev) maxDev = devs[i];
-        for (size_t i = 0; i < nbands; ++i)
+        for (keel::usize i = 1; i < nbands; ++i) if (devs[i] > maxDev) maxDev = devs[i];
+        for (keel::usize i = 0; i < nbands; ++i)
             wd[i] = (devs[i] != 0.0) ? maxDev / devs[i] : 0.0;
     }
 
@@ -668,18 +671,18 @@ KaislpResult kaislpord(double f1, double f2, double d1, double d2)
     const double delta = std::min(d1, d2);
     const double atten = -20.0 * std::log10(delta);
     const double D = (atten - 7.95) / (2.0 * M_PI * 2.285);
-    const double L = D / std::abs(f2 - f1) + 1.0;
+    const double L = D / keel::abs(f2 - f1) + 1.0;
     return {L, kaiserBetaFn(atten)};
 }
 
 } // anon
 
 std::tuple<int, Value, double, std::string>
-kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr::memory_resource *mr)
+kaiserord(const Value &F, const Value &A, const Value &dev, double fs, keel::Allocator *mr)
 {
-    const size_t mf     = F.numel();
-    const size_t nbands = A.numel();
-    const size_t ndevs  = dev.numel();
+    const keel::usize mf     = F.numel();
+    const keel::usize nbands = A.numel();
+    const keel::usize ndevs  = dev.numel();
 
     if (nbands != ndevs)
         throw Error("kaiserord: A and DEV must have same length",
@@ -692,21 +695,21 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
                     0, 0, "kaiserord", "", "numkit:kaiserord:BadFs");
 
     std::vector<double> fcuts(mf), mags(nbands), devs(nbands);
-    for (size_t i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
-    for (size_t i = 0; i < nbands; ++i) {
+    for (keel::usize i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
+    for (keel::usize i = 0; i < nbands; ++i) {
         mags[i] = A.elemAsDouble(i);
         devs[i] = dev.elemAsDouble(i);
     }
     {
         double mx = fcuts[0];
-        for (size_t i = 1; i < mf; ++i) if (fcuts[i] > mx) mx = fcuts[i];
+        for (keel::usize i = 1; i < mf; ++i) if (fcuts[i] > mx) mx = fcuts[i];
         if (mx >= 0.5)
             throw Error("kaiserord: F edges must be < Fs/2",
                         0, 0, "kaiserord", "", "numkit:kaiserord:InvalidRange");
     }
 
     // Convert dev → relative deviation: dev /= (stop + mag)  (== 1 either way)
-    for (size_t i = 0; i < nbands; ++i) {
+    for (keel::usize i = 0; i < nbands; ++i) {
         const double stop = (mags[i] == 0.0) ? 1.0 : 0.0;
         const double base = stop + mags[i];
         if (base != 0.0) devs[i] = devs[i] / base;
@@ -714,17 +717,17 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
 
     // Separate transition edges into f1 / f2 pairs.
     std::vector<double> f1v, f2v;
-    for (size_t i = 0; i + 1 < mf; i += 2) {
+    for (keel::usize i = 0; i + 1 < mf; i += 2) {
         f1v.push_back(fcuts[i]);
         f2v.push_back(fcuts[i + 1]);
     }
 
     // Find narrowest transition zone.
-    size_t nMin = 0;
+    keel::usize nMin = 0;
     {
-        double minWidth = std::abs(f2v[0] - f1v[0]);
-        for (size_t i = 1; i < f1v.size(); ++i) {
-            const double w = std::abs(f2v[i] - f1v[i]);
+        double minWidth = keel::abs(f2v[0] - f1v[0]);
+        for (keel::usize i = 1; i < f1v.size(); ++i) {
+            const double w = keel::abs(f2v[i] - f1v[i]);
             if (w < minWidth) { minWidth = w; nMin = i; }
         }
     }
@@ -735,7 +738,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
         L = r.L;
         bta = r.beta;
     } else {
-        for (size_t i = 1; i + 1 < nbands; ++i) {
+        for (keel::usize i = 1; i + 1 < nbands; ++i) {
             auto r1 = kaislpord(f1v[i - 1], f2v[i - 1], devs[i], devs[i - 1]);
             auto r2 = kaislpord(f1v[i],     f2v[i],     devs[i], devs[i + 1]);
             if (r1.L > L) { L = r1.L; bta = r1.beta; }
@@ -749,7 +752,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, std::pmr:
     Value Wn = Value::matrix(1, f1v.size(), ValueType::DOUBLE, mr);
     {
         double *wd = Wn.doubleDataMut();
-        for (size_t i = 0; i < f1v.size(); ++i) wd[i] = f1v[i] + f2v[i];
+        for (keel::usize i = 0; i < f1v.size(); ++i) wd[i] = f1v[i] + f2v[i];
     }
 
     std::string ftype = "low";

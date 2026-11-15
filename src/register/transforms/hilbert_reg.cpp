@@ -3,21 +3,19 @@
 // CallContext register half of transforms/hilbert.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>     // interp1 (spline)
 #include <numkit/signal/transforms/hilbert.hpp>
 #include <numkit/signal/windows/windows.hpp>          // kaiser
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -29,20 +27,20 @@ namespace numkit::signal {
 
 namespace detail {
 
-void hilbert_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void hilbert_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "hilbert");
-    outs[0] = hilbert(args[0], ctx.engine->resource());
+    outs[0] = hilbert(args[0], ctx.engine->allocator());
 }
 
-void envelope_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "envelope");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     int mode = 0;     // 0=default, 1=analytic, 2=rms, 3=peak
-    size_t n = 0;
+    keel::usize n = 0;
     if (args.size() >= 2 && !args[1].isEmpty())
-        n = (size_t)args[1].toScalar();
+        n = (keel::usize)args[1].toScalar();
     if (args.size() >= 3 && (args[2].isChar() || args[2].isString())) {
         std::string m = args[2].toString();
         for (auto &c : m) c = (char)std::tolower((unsigned char)c);

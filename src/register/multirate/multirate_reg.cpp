@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/multirate/multirate.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,46 +30,46 @@ namespace numkit::signal {
 
 namespace detail {
 
-void downsample_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void downsample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "downsample");
-    const size_t n = static_cast<size_t>(argcheck::expectedPositiveInteger(
+    const keel::usize n = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "n", "downsample"), 2, "n", "downsample"));
-    size_t phase = 0;
+    keel::usize phase = 0;
     if (args.size() >= 3)
-        phase = static_cast<size_t>(argcheck::expectedInteger(
+        phase = static_cast<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[2], 3, "phase", "downsample"), 3, "phase", "downsample"));
     // phase < n contract lives in the compute argcheck.
-    outs[0] = downsample(args[0], n, phase, ctx.engine->resource());
+    outs[0] = downsample(args[0], n, phase, ctx.engine->allocator());
 }
 
-void upsample_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void upsample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "upsample");
-    const size_t n = static_cast<size_t>(argcheck::expectedPositiveInteger(
+    const keel::usize n = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "n", "upsample"), 2, "n", "upsample"));
-    size_t phase = 0;
+    keel::usize phase = 0;
     if (args.size() >= 3)
-        phase = static_cast<size_t>(argcheck::expectedInteger(
+        phase = static_cast<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[2], 3, "phase", "upsample"), 3, "phase", "upsample"));
     // phase < n contract lives in the compute argcheck.
-    outs[0] = upsample(args[0], n, phase, ctx.engine->resource());
+    outs[0] = upsample(args[0], n, phase, ctx.engine->allocator());
 }
 
-void decimate_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void decimate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "decimate");
-    outs[0] = decimate(args[0], static_cast<size_t>(argcheck::expectedPositiveInteger(
+    outs[0] = decimate(args[0], static_cast<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "q", "decimate"), 2, "q", "decimate")),
-        ctx.engine->resource());
+        ctx.engine->allocator());
 }
 
-void resample_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void resample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "resample");
-    const size_t p = static_cast<size_t>(argcheck::expectedPositiveInteger(
+    const keel::usize p = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "p", "resample"), 2, "p", "resample"));
-    const size_t q = static_cast<size_t>(argcheck::expectedPositiveInteger(
+    const keel::usize q = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[2], 3, "q", "resample"), 3, "q", "resample"));
     int n_order = 10;
     double beta = 5.0;
@@ -78,7 +78,7 @@ void resample_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, 
             argcheck::expectedReal(args[3], 4, "n", "resample"), 4, "n", "resample");
     if (args.size() >= 5 && args[4].isNumeric() && args[4].numel() == 1)
         beta = argcheck::expectedReal(args[4], 5, "beta", "resample");
-    outs[0] = resample(args[0], p, q, n_order, beta, ctx.engine->resource());
+    outs[0] = resample(args[0], p, q, n_order, beta, ctx.engine->allocator());
 }
 
 } // namespace detail

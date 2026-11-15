@@ -78,7 +78,7 @@ TEST_F(RcepsTest, CcepsExactLengthSane)
 TEST_F(RcepsTest, PublicApiPair)
 {
     eval("x = [1 2 3 4 3 2 1];");
-    auto [y, ym] = signal::rcepsMinPhase(*engine.getVariable("x"), engine.resource());
+    auto [y, ym] = signal::rcepsMinPhase(*engine.getVariable("x"), engine.allocator());
     ASSERT_EQ(y.numel(), 7u);
     ASSERT_EQ(ym.numel(), 7u);
     EXPECT_NEAR(y.elemAsDouble(0),  0.396084, 1e-6);

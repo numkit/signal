@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -32,7 +32,7 @@ namespace numkit::signal {
 ///               input, `M×N` matrix for a matrix input).
 /// @see polystab
 Value polyscale(const Value &p, const Value &scale,
-                std::pmr::memory_resource *mr = nullptr);
+                keel::Allocator *mr = nullptr);
 
 /// @brief Stabilise a polynomial (`b = polystab(a)`).
 ///
@@ -48,7 +48,7 @@ Value polyscale(const Value &p, const Value &scale,
 /// @note Complex-coefficient input is not supported — nk's `roots`
 ///       handles real polynomials only.
 /// @see polyscale
-Value polystab(const Value &a, std::pmr::memory_resource *mr = nullptr);
+Value polystab(const Value &a, keel::Allocator *mr = nullptr);
 
 
 /// @}

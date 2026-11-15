@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/smoothing/sgolay.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,10 +30,10 @@ namespace numkit::signal {
 
 namespace detail {
 
-void sgolay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void sgolay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "sgolay");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     const int order    = argcheck::expectedInteger(argcheck::expectedReal(args[0], 1, "order", "sgolay"), 1, "order", "sgolay");
     const int framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "framelen", "sgolay"), 2, "framelen", "sgolay");
     outs[0] = sgolay(order, framelen, mr);
@@ -43,10 +43,10 @@ void sgolay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
         outs[1] = sgolayDiff(order, framelen, mr);
 }
 
-void sgolayfilt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void sgolayfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "sgolayfilt");
-    auto *res = ctx.engine->resource();
+    auto *res = ctx.engine->allocator();
     const int order    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "order", "sgolayfilt"), 2, "order", "sgolayfilt");
     const int framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "framelen", "sgolayfilt"), 3, "framelen", "sgolayfilt");
     // sgolayfilt(x, order, framelen, weights, dim): weights (4th) and dim

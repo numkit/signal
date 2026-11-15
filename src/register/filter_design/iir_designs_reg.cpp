@@ -4,6 +4,8 @@
 // The detail{{}} *_reg fns were interleaved with compute in the original
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
@@ -14,13 +16,10 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <cstring>
 #include <string>
@@ -39,7 +38,7 @@ inline FilterType parseFtype(const Value &v) {
     // Case-insensitive compare
     auto eq = [&](const char *t) {
         if (s.size() != std::strlen(t)) return false;
-        for (size_t i = 0; i < s.size(); ++i)
+        for (keel::usize i = 0; i < s.size(); ++i)
             if (std::tolower((unsigned char)s[i]) != (unsigned char)t[i]) return false;
         return true;
     };
@@ -64,9 +63,9 @@ struct Trailing {
     bool analog{false};
 };
 
-inline Trailing parseTrailing(Span<const Value> args, size_t start) {
+inline Trailing parseTrailing(keel::ArrayRef<Value> args, keel::usize start) {
     Trailing t;
-    for (size_t i = start; i < args.size(); ++i) {
+    for (keel::usize i = start; i < args.size(); ++i) {
         if (!args[i].isChar() && !args[i].isString()) continue;
         if (isAnalogFlag(args[i])) t.analog = true;
         else                       { t.ftype = parseFtype(args[i]); t.ftype_set = true; }
@@ -110,7 +109,7 @@ int iirOrder(const Value &v, const char *fn)
 
 } // namespace
 
-void cheby1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void cheby1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "cheby1");
     const int N = iirOrder(args[0], "cheby1");
@@ -118,17 +117,17 @@ void cheby1_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Ca
     const Value &Wn = args[2];
     auto t = parseTrailing(args, 3);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
-    auto [b, a] = cheby1(N, R, Wn, ftype, t.analog, ctx.engine->resource());
+    auto [b, a] = cheby1(N, R, Wn, ftype, t.analog, ctx.engine->allocator());
     if (outs.size() >= 3) {   // [z, p, k] = cheby1(...): digital ZPK via tf2zpk
-        auto [z, p, k] = tf2zpk(b, a, ctx.engine->resource());
-        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->resource());
+        auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator());
+        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
     outs[0] = std::move(b);
     if (outs.size() > 1) outs[1] = std::move(a);
 }
 
-void cheby2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void cheby2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "cheby2");
     const int N = iirOrder(args[0], "cheby2");
@@ -136,17 +135,17 @@ void cheby2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Ca
     const Value &Wn = args[2];
     auto t = parseTrailing(args, 3);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
-    auto [b, a] = cheby2(N, R, Wn, ftype, t.analog, ctx.engine->resource());
+    auto [b, a] = cheby2(N, R, Wn, ftype, t.analog, ctx.engine->allocator());
     if (outs.size() >= 3) {   // [z, p, k] = cheby2(...): digital ZPK via tf2zpk
-        auto [z, p, k] = tf2zpk(b, a, ctx.engine->resource());
-        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->resource());
+        auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator());
+        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
     outs[0] = std::move(b);
     if (outs.size() > 1) outs[1] = std::move(a);
 }
 
-void besself_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void besself_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 5, "besself");
     const int N = iirOrder(args[0], "besself");
@@ -157,12 +156,12 @@ void besself_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, C
     // bilinear transform destroys the maximally-flat group delay). The 's'
     // flag is therefore redundant; ignore the digital path entirely.
     (void)t.analog;
-    auto [b, a] = besself(N, Wn, ftype, /*analog=*/true, ctx.engine->resource());
+    auto [b, a] = besself(N, Wn, ftype, /*analog=*/true, ctx.engine->allocator());
     outs[0] = std::move(b);
     if (outs.size() > 1) outs[1] = std::move(a);
 }
 
-void ellip_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void ellip_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 7, "ellip");
     const int N = iirOrder(args[0], "ellip");
@@ -171,10 +170,10 @@ void ellip_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
     const Value &Wn  = args[3];
     auto t = parseTrailing(args, 4);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
-    auto [b, a] = ellip(N, Rp, Rs, Wn, ftype, t.analog, ctx.engine->resource());
+    auto [b, a] = ellip(N, Rp, Rs, Wn, ftype, t.analog, ctx.engine->allocator());
     if (outs.size() >= 3) {   // [z, p, k] = ellip(...): digital ZPK via tf2zpk
-        auto [z, p, k] = tf2zpk(b, a, ctx.engine->resource());
-        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->resource());
+        auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator());
+        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
     outs[0] = std::move(b);
@@ -182,8 +181,8 @@ void ellip_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Cal
 }
 
 namespace {
-inline bool parseAnalogFromOrdArgs(Span<const Value> args, size_t start) {
-    for (size_t i = start; i < args.size(); ++i)
+inline bool parseAnalogFromOrdArgs(keel::ArrayRef<Value> args, keel::usize start) {
+    for (keel::usize i = start; i < args.size(); ++i)
         if ((args[i].isChar() || args[i].isString()) && isAnalogFlag(args[i]))
             return true;
     return false;
@@ -191,8 +190,8 @@ inline bool parseAnalogFromOrdArgs(Span<const Value> args, size_t start) {
 }
 
 #define NUMKIT_ORD_REG(name)                                                          \
-    void name##_reg(Span<const Value> args, size_t nargout,                       \
-                    Span<Value> outs, CallContext &ctx)                           \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize nargout,                       \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                           \
     {                                                                              \
         argcheck::checkNargin(args.size(), 4, 5, #name);                          \
         const Value &Wp = args[0];                                                \
@@ -200,8 +199,8 @@ inline bool parseAnalogFromOrdArgs(Span<const Value> args, size_t start) {
         const double Rp = args[2].toScalar();                                     \
         const double Rs = args[3].toScalar();                                     \
         const bool analog = parseAnalogFromOrdArgs(args, 4);                      \
-        auto [N, Wn] = name(Wp, Ws, Rp, Rs, analog, ctx.engine->resource());     \
-        outs[0] = Value::scalar(static_cast<double>(N), ctx.engine->resource()); \
+        auto [N, Wn] = name(Wp, Ws, Rp, Rs, analog, ctx.engine->allocator());     \
+        outs[0] = Value::scalar(static_cast<double>(N), ctx.engine->allocator()); \
         if (nargout > 1) outs[1] = std::move(Wn);                                 \
     }
 
@@ -215,8 +214,8 @@ NUMKIT_ORD_REG(cheb2ord)
 
 namespace detail {
 
-void ellipord_reg(Span<const Value> args, size_t nargout,
-                  Span<Value> outs, CallContext &ctx)
+void ellipord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "ellipord");
     bool analog = false;
@@ -224,8 +223,8 @@ void ellipord_reg(Span<const Value> args, size_t nargout,
         std::string s = args[4].toString();
         analog = (s == "s" || s == "S");
     }
-    auto [N, Wn] = ellipord(args[0], args[1], args[2].toScalar(), args[3].toScalar(), analog, ctx.engine->resource());
-    outs[0] = Value::scalar(static_cast<double>(N), ctx.engine->resource());
+    auto [N, Wn] = ellipord(args[0], args[1], args[2].toScalar(), args[3].toScalar(), analog, ctx.engine->allocator());
+    outs[0] = Value::scalar(static_cast<double>(N), ctx.engine->allocator());
     if (nargout > 1) outs[1] = std::move(Wn);
 }
 
@@ -233,14 +232,14 @@ void ellipord_reg(Span<const Value> args, size_t nargout,
 
 namespace detail {
 
-void firpmord_reg(Span<const Value> args, size_t nargout,
-                  Span<Value> outs, CallContext &ctx)
+void firpmord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "firpmord");
     double fs = 2.0;
     if (args.size() >= 4 && !args[3].isEmpty()) fs = args[3].toScalar();
-    auto [N, ff, aa, wts] = firpmord(args[0], args[1], args[2], fs, ctx.engine->resource());
-    outs[0] = Value::scalar(static_cast<double>(N), ctx.engine->resource());
+    auto [N, ff, aa, wts] = firpmord(args[0], args[1], args[2], fs, ctx.engine->allocator());
+    outs[0] = Value::scalar(static_cast<double>(N), ctx.engine->allocator());
     if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(ff);
     if (nargout >= 3 && outs.size() >= 3) outs[2] = std::move(aa);
     if (nargout >= 4 && outs.size() >= 4) outs[3] = std::move(wts);
@@ -250,27 +249,27 @@ void firpmord_reg(Span<const Value> args, size_t nargout,
 
 namespace detail {
 
-void kaiserord_reg(Span<const Value> args, size_t nargout,
-                   Span<Value> outs, CallContext &ctx)
+void kaiserord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "kaiserord");
     double fs = 2.0;
     if (args.size() >= 4 && !args[3].isEmpty()) fs = args[3].toScalar();
-    auto [N, Wn, beta, ftype] = kaiserord(args[0], args[1], args[2], fs, ctx.engine->resource());
-    auto *mr = ctx.engine->resource();
+    auto [N, Wn, beta, ftype] = kaiserord(args[0], args[1], args[2], fs, ctx.engine->allocator());
+    auto *mr = ctx.engine->allocator();
     outs[0] = Value::scalar(static_cast<double>(N), mr);
     if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(Wn);
     if (nargout >= 3 && outs.size() >= 3) outs[2] = Value::scalar(beta, mr);
     if (nargout >= 4 && outs.size() >= 4) {
         Value f = Value::matrix(1, ftype.size(), ValueType::CHAR, mr);
         char *cd = f.charDataMut();
-        for (size_t i = 0; i < ftype.size(); ++i) cd[i] = ftype[i];
+        for (keel::usize i = 0; i < ftype.size(); ++i) cd[i] = ftype[i];
         outs[3] = std::move(f);
     }
 }
 
 
-void butter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void butter_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     // butter(N, Wn[, ftype][, 's']) â€” routed through the shared analog/
     // digital pipeline (bugs/closed/signal/butter-analog-flag-wn-domain.md).
@@ -279,11 +278,11 @@ void butter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
     const Value &Wn = args[1];
     auto t = parseTrailing(args, 2);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
-    auto [b, a] = butter(N, Wn, ftype, t.analog, ctx.engine->resource());
+    auto [b, a] = butter(N, Wn, ftype, t.analog, ctx.engine->allocator());
     if (nargout >= 3) {   // [z, p, k]: ZPK via tf2zpk (order may differ
-        auto [z, p, k] = tf2zpk(b, a, ctx.engine->resource()); // from MATLAB)
+        auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator()); // from MATLAB)
         outs[0] = std::move(z); outs[1] = std::move(p);
-        outs[2] = Value::scalar(k, ctx.engine->resource());
+        outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
     outs[0] = std::move(b);

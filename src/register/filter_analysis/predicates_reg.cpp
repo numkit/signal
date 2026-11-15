@@ -6,6 +6,11 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/ref.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/filter_analysis/predicates.hpp>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 #include "filter_analysis/predicates_detail.hpp"
@@ -13,8 +18,6 @@
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -32,81 +35,87 @@ namespace numkit::signal {
 
 namespace detail {
 
-static Value boolVal(bool b, std::pmr::memory_resource *mr)
+static Value boolVal(bool b, keel::Allocator *mr)
 {
     auto v = Value::matrix(1, 1, ValueType::LOGICAL, mr);
     v.logicalDataMut()[0] = b ? 1 : 0;
     return v;
 }
 
-void isfir_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void isfir_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "isfir");  // nk models the reference's filter object as (b[,a])
     const bool r = (args.size() >= 2) ? isfir(args[0], args[1]) : isfir(args[0]);
-    outs[0] = boolVal(r, ctx.engine->resource());
+    outs[0] = boolVal(r, ctx.engine->allocator());
 }
 
-void isstable_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void isstable_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "isstable");
+    if (args[0].isStruct()) {
+        if (const auto *fn = ctx.engine->findExternal("control.props.isstable")) {
+            (*fn)(args, nargout, outs, ctx);
+            return;
+        }
+    }
     const Value &b = args[0];
-    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->resource());
-    outs[0] = boolVal(isstable(b, a, ctx.engine->resource()), ctx.engine->resource());
+    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
+    outs[0] = boolVal(isstable(b, a, ctx.engine->allocator()), ctx.engine->allocator());
 }
 
-void isminphase_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void isminphase_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "isminphase");
     const Value &b = args[0];
-    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->resource());
-    outs[0] = boolVal(isminphase(b, a, ctx.engine->resource()), ctx.engine->resource());
+    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
+    outs[0] = boolVal(isminphase(b, a, ctx.engine->allocator()), ctx.engine->allocator());
 }
 
-void ismaxphase_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void ismaxphase_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "ismaxphase");
     const Value &b = args[0];
-    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->resource());
-    outs[0] = boolVal(ismaxphase(b, a, ctx.engine->resource()), ctx.engine->resource());
+    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
+    outs[0] = boolVal(ismaxphase(b, a, ctx.engine->allocator()), ctx.engine->allocator());
 }
 
-void islinphase_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void islinphase_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "islinphase");
     const Value &b = args[0];
-    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->resource());
-    outs[0] = boolVal(islinphase(b, a), ctx.engine->resource());
+    Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
+    outs[0] = boolVal(islinphase(b, a), ctx.engine->allocator());
 }
 
-void isallpass_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void isallpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "isallpass");
-    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, ctx.engine->resource());
-    outs[0] = boolVal(isallpass(args[0], a), ctx.engine->resource());
+    Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
+    outs[0] = boolVal(isallpass(args[0], a), ctx.engine->allocator());
 }
 
-void filtord_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void filtord_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "filtord");
     int n = (args.size() >= 2)
         ? filtord(args[0], args[1])
         : filtord(args[0]);
-    outs[0] = Value::scalar(static_cast<double>(n), ctx.engine->resource());
+    outs[0] = Value::scalar(static_cast<double>(n), ctx.engine->allocator());
 }
 
-void firtype_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void firtype_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "firtype");
-    outs[0] = Value::scalar(static_cast<double>(firtype(args[0])), ctx.engine->resource());
+    outs[0] = Value::scalar(static_cast<double>(firtype(args[0])), ctx.engine->allocator());
 }
 
-void filternorm_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void filternorm_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "filternorm");
     double p = 2.0;
     if (args.size() >= 3 && !args[2].isEmpty()) p = args[2].toScalar();
-    outs[0] = Value::scalar(filternorm(args[0], args[1], p, ctx.engine->resource()),
-                            ctx.engine->resource());
+    outs[0] = Value::scalar(filternorm(args[0], args[1], p, ctx.engine->allocator()),
+                            ctx.engine->allocator());
 }
 
 } // namespace detail
@@ -123,9 +132,9 @@ int filtord(const Value &b, const Value &a)
 {
     auto bv = trimTrailingZeros(b);
     auto av = trimTrailingZeros(a);
-    const size_t lb = bv.empty() ? 0 : bv.size();
-    const size_t la = av.empty() ? 0 : av.size();
-    const size_t n  = std::max(lb, la);
+    const keel::usize lb = bv.empty() ? 0 : bv.size();
+    const keel::usize la = av.empty() ? 0 : av.size();
+    const keel::usize n  = std::max(lb, la);
     return (n == 0) ? 0 : static_cast<int>(n) - 1;
 }
 
@@ -149,17 +158,17 @@ int firtype(const Value &b)
 }
 
 // â”€â”€ filternorm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory_resource *mr)
+double filternorm(const Value &b, const Value &a, double pnorm, keel::Allocator *mr)
 {
-    constexpr size_t kNpts = 8192;
+    constexpr keel::usize kNpts = 8192;
     auto [H, W] = freqz(b, a, kNpts, /*whole=*/false, /*fs=*/0.0, mr);
-    const Complex *hd = H.complexData();
+    const keel::c64 *hd = H.complexData();
 
     if (std::isinf(pnorm)) {
         // Lâˆž: max |H(e^{jw})| over the freqz grid.
         double mx = 0.0;
-        for (size_t k = 0; k < kNpts; ++k) {
-            const double m = std::abs(hd[k]);
+        for (keel::usize k = 0; k < kNpts; ++k) {
+            const double m = keel::abs(hd[k]);
             if (m > mx) mx = m;
         }
         return mx;
@@ -170,8 +179,8 @@ double filternorm(const Value &b, const Value &a, double pnorm, std::pmr::memory
     // L2: sqrt((1/Ï€) âˆ«_0^Ï€ |H|Â² dw) via trapezoidal rule on freqz grid.
     // freqz returns npts samples on [0, Ï€] inclusive â€” Î”w = Ï€/(npts-1).
     double sum = 0.0;
-    for (size_t k = 0; k < kNpts; ++k) {
-        const double mag2 = std::norm(hd[k]);  // |z|Â² for complex
+    for (keel::usize k = 0; k < kNpts; ++k) {
+        const double mag2 = keel::norm(hd[k]);  // |z|Â² for complex
         const double w = (k == 0 || k == kNpts - 1) ? 0.5 : 1.0;
         sum += w * mag2;
     }

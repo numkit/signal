@@ -1,5 +1,6 @@
 // tests/convolution_test.cpp
 
+#include <keel/core.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -244,8 +245,8 @@ TEST_F(ConvolutionTest, XcorrAutoSymmetric)
 {
     // Auto-correlation is symmetric
     eval("[c, lags] = xcorr([1 2 3 4]);");
-    size_t n = eval("c").numel();
-    for (size_t i = 0; i < n / 2; ++i) {
+    keel::usize n = eval("c").numel();
+    for (keel::usize i = 0; i < n / 2; ++i) {
         std::string left = "c(" + std::to_string(i + 1) + ")";
         std::string right = "c(" + std::to_string(n - i) + ")";
         EXPECT_NEAR(evalScalar(left), evalScalar(right), 1e-10);

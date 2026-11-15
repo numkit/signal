@@ -10,6 +10,7 @@
 // where fstop = fpass + (1 - Steepness)*(1 - fpass), Steepness = 0.85.
 // We compose ellip() + filtfilt() with the same parameters.
 
+#include <keel/memory.h>
 #include <numkit/signal/digital_filtering/spec_driven.hpp>
 
 #include <numkit/value/value.hpp>
@@ -55,10 +56,10 @@ constexpr int    kDefaultIirOrder  = 7; // matches MATLAB IIR-branch default
 // (Steepness=0.85 only affects the FIR branch's transition width; the
 // IIR ellip path uses the passband edge directly as Wp.)
 
-inline Value scalarWn(double w, std::pmr::memory_resource *mr) {
+inline Value scalarWn(double w, keel::Allocator *mr) {
     return Value::scalar(w, mr);
 }
-inline Value pairWn(double w1, double w2, std::pmr::memory_resource *mr) {
+inline Value pairWn(double w1, double w2, keel::Allocator *mr) {
     auto v = Value::matrix(1, 2, ValueType::DOUBLE, mr);
     v.doubleDataMut()[0] = w1;
     v.doubleDataMut()[1] = w2;
@@ -99,7 +100,7 @@ void bandstop_argcheck(double flo, double fhi, double fs, int order)
 
 } // namespace
 
-Value lowpass(const Value &x, double fpass, double fs, int order, std::pmr::memory_resource *mr)
+Value lowpass(const Value &x, double fpass, double fs, int order, keel::Allocator *mr)
 {
     lowpass_argcheck(fpass, fs, order);
     const double Wp = normaliseW(fpass, fs, "lowpass");
@@ -111,7 +112,7 @@ Value lowpass(const Value &x, double fpass, double fs, int order, std::pmr::memo
     return sosfiltfilt(sos, x, mr);
 }
 
-Value highpass(const Value &x, double fpass, double fs, int order, std::pmr::memory_resource *mr)
+Value highpass(const Value &x, double fpass, double fs, int order, keel::Allocator *mr)
 {
     highpass_argcheck(fpass, fs, order);
     const double Wp = normaliseW(fpass, fs, "highpass");
@@ -121,7 +122,7 @@ Value highpass(const Value &x, double fpass, double fs, int order, std::pmr::mem
     return sosfiltfilt(sos, x, mr);
 }
 
-Value bandpass(const Value &x, double flo, double fhi, double fs, int order, std::pmr::memory_resource *mr)
+Value bandpass(const Value &x, double flo, double fhi, double fs, int order, keel::Allocator *mr)
 {
     bandpass_argcheck(flo, fhi, fs, order);
     const double Wlo = normaliseW(flo, fs, "bandpass");
@@ -132,7 +133,7 @@ Value bandpass(const Value &x, double flo, double fhi, double fs, int order, std
     return sosfiltfilt(sos, x, mr);
 }
 
-Value bandstop(const Value &x, double flo, double fhi, double fs, int order, std::pmr::memory_resource *mr)
+Value bandstop(const Value &x, double flo, double fhi, double fs, int order, keel::Allocator *mr)
 {
     bandstop_argcheck(flo, fhi, fs, order);
     const double Wlo = normaliseW(flo, fs, "bandstop");

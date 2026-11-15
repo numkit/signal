@@ -4,17 +4,20 @@
 // grpdelay. Filter design (butter / fir1) lives in
 // filter_design/filter_design.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <complex>
 #include <limits>
 #include <tuple>
 
@@ -35,16 +38,16 @@ void freqz_argcheck(const Value &b, const Value &a)
 } // namespace
 
 std::tuple<Value, Value>
-freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::pmr::memory_resource *mr)
+freqz(const Value &b, const Value &a, keel::usize npts, bool whole, double fs, keel::Allocator *mr)
 {
     freqz_argcheck(b, a);
     const bool bCplx = b.isComplex();
     const bool aCplx = a.isComplex();
-    const Complex *bc = bCplx ? b.complexData() : nullptr;
-    const Complex *ac = aCplx ? a.complexData() : nullptr;
+    const keel::c64 *bc = bCplx ? b.complexData() : nullptr;
+    const keel::c64 *ac = aCplx ? a.complexData() : nullptr;
     const double *bd = bCplx ? nullptr : b.doubleData();
     const double *ad = aCplx ? nullptr : a.doubleData();
-    const size_t nb = b.numel(), na = a.numel();
+    const keel::usize nb = b.numel(), na = a.numel();
 
     auto W = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     auto H = Value::complexMatrix(npts, 1, mr);
@@ -58,20 +61,20 @@ freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::p
     // (or [0, fs) with 'whole') — i.e. f = w * fs / (2π).
     const double span   = whole ? (2.0 * M_PI) : M_PI;
     const double hzSpan = whole ? fs : (0.5 * fs);
-    for (size_t k = 0; k < npts; ++k) {
+    for (keel::usize k = 0; k < npts; ++k) {
         const double w = span * k / npts;
         W.doubleDataMut()[k] = (fs > 0.0) ? (hzSpan * k / npts) : w;
 
-        const Complex ejw(std::cos(w), -std::sin(w));
-        Complex num(0, 0), den(0, 0);
-        Complex ejwk(1, 0);
-        for (size_t i = 0; i < nb; ++i) {
-            num += (bCplx ? bc[i] : Complex(bd[i], 0.0)) * ejwk;
+        const keel::c64 ejw(std::cos(w), -std::sin(w));
+        keel::c64 num(0, 0), den(0, 0);
+        keel::c64 ejwk(1, 0);
+        for (keel::usize i = 0; i < nb; ++i) {
+            num += (bCplx ? bc[i] : keel::c64(bd[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
-        ejwk = Complex(1, 0);
-        for (size_t i = 0; i < na; ++i) {
-            den += (aCplx ? ac[i] : Complex(ad[i], 0.0)) * ejwk;
+        ejwk = keel::c64(1, 0);
+        for (keel::usize i = 0; i < na; ++i) {
+            den += (aCplx ? ac[i] : keel::c64(ad[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
         H.complexDataMut()[k] = num / den;
@@ -81,38 +84,38 @@ freqz(const Value &b, const Value &a, size_t npts, bool whole, double fs, std::p
 }
 
 std::tuple<Value, Value>
-freqz(const Value &b, const Value &a, const Value &wvec, std::pmr::memory_resource *mr)
+freqz(const Value &b, const Value &a, const Value &wvec, keel::Allocator *mr)
 {
     // freqz(b, a, w): response at the GIVEN normalised radian frequencies
     // (the vector-w form; MATLAB evaluates exactly these points).
     const bool bCplx = b.isComplex();
     const bool aCplx = a.isComplex();
-    const Complex *bc = bCplx ? b.complexData() : nullptr;
-    const Complex *ac = aCplx ? a.complexData() : nullptr;
+    const keel::c64 *bc = bCplx ? b.complexData() : nullptr;
+    const keel::c64 *ac = aCplx ? a.complexData() : nullptr;
     const double *bd = bCplx ? nullptr : b.doubleData();
     const double *ad = aCplx ? nullptr : a.doubleData();
-    const size_t nb = b.numel(), na = a.numel();
-    const size_t n = wvec.numel();
+    const keel::usize nb = b.numel(), na = a.numel();
+    const keel::usize n = wvec.numel();
     const double *wd = wvec.doubleData();
 
     // MATLAB R2025b (probed): H and W preserve w's orientation — a row w
     // yields a row H, a column w a column H.
-    const size_t rows = wvec.dims().rows(), cols = wvec.dims().cols();
+    const keel::usize rows = wvec.dims().rows(), cols = wvec.dims().cols();
     auto W = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
     auto H = Value::complexMatrix(rows, cols, mr);
-    for (size_t k = 0; k < n; ++k) {
+    for (keel::usize k = 0; k < n; ++k) {
         const double w = wd[k];
         W.doubleDataMut()[k] = w;
-        const Complex ejw(std::cos(w), -std::sin(w));
-        Complex num(0, 0), den(0, 0);
-        Complex ejwk(1, 0);
-        for (size_t i = 0; i < nb; ++i) {
-            num += (bCplx ? bc[i] : Complex(bd[i], 0.0)) * ejwk;
+        const keel::c64 ejw(std::cos(w), -std::sin(w));
+        keel::c64 num(0, 0), den(0, 0);
+        keel::c64 ejwk(1, 0);
+        for (keel::usize i = 0; i < nb; ++i) {
+            num += (bCplx ? bc[i] : keel::c64(bd[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
-        ejwk = Complex(1, 0);
-        for (size_t i = 0; i < na; ++i) {
-            den += (aCplx ? ac[i] : Complex(ad[i], 0.0)) * ejwk;
+        ejwk = keel::c64(1, 0);
+        for (keel::usize i = 0; i < na; ++i) {
+            den += (aCplx ? ac[i] : keel::c64(ad[i], 0.0)) * ejwk;
             ejwk *= ejw;
         }
         H.complexDataMut()[k] = num / den;
@@ -124,13 +127,13 @@ namespace {
 
 // Local unwrap (default tolerance π) — keeps phasez free of inter-file
 // dependencies on filter_analysis/unwrap.cpp's Value-typed unwrap().
-void unwrapInPlace(double *p, size_t n)
+void unwrapInPlace(double *p, keel::usize n)
 {
     if (n < 2) return;
     constexpr double kPi  = M_PI;
     constexpr double k2Pi = 2.0 * M_PI;
     double offset = 0.0;
-    for (size_t i = 1; i < n; ++i) {
+    for (keel::usize i = 1; i < n; ++i) {
         const double diff = p[i] + offset - p[i - 1];
         if (diff >  kPi) offset -= k2Pi;
         else if (diff < -kPi) offset += k2Pi;
@@ -141,17 +144,17 @@ void unwrapInPlace(double *p, size_t n)
 } // namespace
 
 std::tuple<Value, Value>
-phasez(const Value &b, const Value &a, size_t npts, double fs, std::pmr::memory_resource *mr)
+phasez(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allocator *mr)
 {
     auto [H, W] = freqz(b, a, npts, /*whole=*/false, fs, mr);
     auto phi = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
-    const Complex *hd = H.complexData();
+    const keel::c64 *hd = H.complexData();
     double *pd = phi.doubleDataMut();
     // MATLAB convention: when |H(w)| is exactly zero, phase is
     // undefined and reported as NaN. Use a tiny epsilon to catch the
     // numerical zeros that come out of the freqz polynomial sum.
     constexpr double kZeroEps = 1e-300;
-    for (size_t k = 0; k < npts; ++k) {
+    for (keel::usize k = 0; k < npts; ++k) {
         const double mag2 = hd[k].real() * hd[k].real()
                           + hd[k].imag() * hd[k].imag();
         if (mag2 < kZeroEps)
@@ -164,7 +167,7 @@ phasez(const Value &b, const Value &a, size_t npts, double fs, std::pmr::memory_
 }
 
 std::tuple<Value, Value>
-grpdelay(const Value &b, const Value &a, size_t npts, double fs, std::pmr::memory_resource *mr)
+grpdelay(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allocator *mr)
 {
     // EXACT group delay (MATLAB's method), NOT a finite-difference of the
     // phase. For H(z) = B(z)/A(z), form the combined polynomial
@@ -175,19 +178,19 @@ grpdelay(const Value &b, const Value &a, size_t npts, double fs, std::pmr::memor
     // (the old phase finite-difference was wildly off at small npts).
     const double *bd = b.doubleData();
     const double *ad = a.doubleData();
-    const size_t nb = b.numel(), na = a.numel();
+    const keel::usize nb = b.numel(), na = a.numel();
 
     auto W  = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     auto gd = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     if (npts == 0 || nb == 0 || na == 0)
         return std::make_tuple(std::move(gd), std::move(W));
 
-    ScratchArena scratch(mr);
-    const size_t nc = nb + na - 1;
-    auto c = ScratchVec<double>(nc, &scratch);
-    for (size_t i = 0; i < nc; ++i) c[i] = 0.0;
-    for (size_t i = 0; i < nb; ++i)
-        for (size_t j = 0; j < na; ++j)
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    const keel::usize nc = nb + na - 1;
+    auto c = keel::Array<double>(nc, scratch.allocator());
+    for (keel::usize i = 0; i < nc; ++i) c[i] = 0.0;
+    for (keel::usize i = 0; i < nb; ++i)
+        for (keel::usize j = 0; j < na; ++j)
             c[i + j] += bd[i] * ad[na - 1 - j];   // conv(b, reverse(a))
 
     double *wp = W.doubleDataMut();
@@ -197,12 +200,12 @@ grpdelay(const Value &b, const Value &a, size_t npts, double fs, std::pmr::memor
     // [0, fs/2). The group delay (in samples) is evaluated from the same
     // normalised w and is unchanged.
     const double hzSpan = 0.5 * fs;
-    for (size_t k = 0; k < npts; ++k) {
+    for (keel::usize k = 0; k < npts; ++k) {
         const double w = M_PI * static_cast<double>(k) / static_cast<double>(npts);
         wp[k] = (fs > 0.0) ? (hzSpan * static_cast<double>(k) / static_cast<double>(npts)) : w;
-        const Complex ejw(std::cos(w), -std::sin(w));
-        Complex C(0, 0), CR(0, 0), ejwk(1, 0);
-        for (size_t n = 0; n < nc; ++n) {
+        const keel::c64 ejw(std::cos(w), -std::sin(w));
+        keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
+        for (keel::usize n = 0; n < nc; ++n) {
             C  += c[n] * ejwk;
             CR += (static_cast<double>(n) * c[n]) * ejwk;
             ejwk *= ejw;

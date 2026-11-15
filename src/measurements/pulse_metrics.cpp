@@ -4,6 +4,10 @@
 // statelevels; transitions detected via crossings of the lower / upper
 // state boundaries (10% / 90% by default).
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/ref.h>
+#include <keel/math.h>
 #include <numkit/signal/measurements/pulse_metrics.hpp>
 #include "pulse_metrics_detail.hpp"
 
@@ -35,18 +39,18 @@ double scalarOrDefault(const Value &v, double dflt)
 // elemAsDouble. Returns the buffer (heap) and length.
 std::vector<double> readVec(const Value &x)
 {
-    const size_t n = x.numel();
+    const keel::usize n = x.numel();
     std::vector<double> v(n);
     if (n == 0) return v;
     if (x.type() == ValueType::DOUBLE) {
         std::memcpy(v.data(), x.doubleData(), n * sizeof(double));
     } else {
-        for (size_t i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
+        for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     }
     return v;
 }
 
-Value colVec(const std::vector<double> &v, std::pmr::memory_resource *mr)
+Value colVec(const std::vector<double> &v, keel::Allocator *mr)
 {
     if (v.empty()) return Value::matrix(0, 1, ValueType::DOUBLE, mr);
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
@@ -58,18 +62,18 @@ Value colVec(const std::vector<double> &v, std::pmr::memory_resource *mr)
 // inputs (range 0) returns [val, val].
 struct LowHigh { double low; double high; };
 
-LowHigh stateLevelsCalc(const double *x, size_t n)
+LowHigh stateLevelsCalc(const double *x, keel::usize n)
 {
     if (n == 0) return {0.0, 0.0};
     double xmin = x[0], xmax = x[0];
-    for (size_t i = 1; i < n; ++i) {
+    for (keel::usize i = 1; i < n; ++i) {
         if (x[i] < xmin) xmin = x[i];
         if (x[i] > xmax) xmax = x[i];
     }
     if (!(xmax > xmin)) return {xmin, xmax};
     const double width = (xmax - xmin) / kHistBins;
     std::vector<int> hist(kHistBins, 0);
-    for (size_t i = 0; i < n; ++i) {
+    for (keel::usize i = 0; i < n; ++i) {
         int b = static_cast<int>((x[i] - xmin) / width);
         if (b >= kHistBins) b = kHistBins - 1;
         if (b < 0) b = 0;
@@ -92,7 +96,7 @@ LowHigh stateLevelsCalc(const double *x, size_t n)
 // Linearly interpolate the sample index where x crosses `level` between
 // indices i and i+1 (assumes x[i] and x[i+1] straddle level). Returns
 // fractional 0-based index.
-double crossingIdx(const double *x, size_t i, double level)
+double crossingIdx(const double *x, keel::usize i, double level)
 {
     const double a = x[i], b = x[i + 1];
     if (a == b) return static_cast<double>(i);
@@ -122,7 +126,7 @@ struct Transition {
 };
 
 std::vector<Transition>
-findTransitions(const double *x, size_t n, double low, double high)
+findTransitions(const double *x, keel::usize n, double low, double high)
 {
     std::vector<Transition> out;
     if (n < 2 || !(high > low)) return out;
@@ -140,7 +144,7 @@ findTransitions(const double *x, size_t n, double low, double high)
     State curState = classify(x[0]);
     double pendingStart = 0.0;
     bool inRise = false, inFall = false;
-    for (size_t i = 1; i < n; ++i) {
+    for (keel::usize i = 1; i < n; ++i) {
         State s = classify(x[i]);
         // Rising-transition tracking: arm when crossing from Below to
         // Mid (record the trail crossing); commit on Mid→Above (lead
@@ -193,10 +197,10 @@ findTransitions(const double *x, size_t n, double low, double high)
 // Midcross helper: every fractional sample where x crosses `level`.
 // Each crossing is counted once (no duplicate if x stays on level).
 std::vector<double>
-midcrossesAt(const double *x, size_t n, double level)
+midcrossesAt(const double *x, keel::usize n, double level)
 {
     std::vector<double> out;
-    for (size_t i = 0; i + 1 < n; ++i) {
+    for (keel::usize i = 0; i + 1 < n; ++i) {
         const double a = x[i], b = x[i + 1];
         if ((a < level && b >= level) || (a > level && b <= level)
             || (a == level && b != level && i == 0)) {
@@ -210,7 +214,7 @@ midcrossesAt(const double *x, size_t n, double level)
 
 // ── statelevels ────────────────────────────────────────────────────
 
-Value statelevels(const Value &x, std::pmr::memory_resource *mr)
+Value statelevels(const Value &x, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -222,7 +226,7 @@ Value statelevels(const Value &x, std::pmr::memory_resource *mr)
 
 // ── midcross ───────────────────────────────────────────────────────
 
-Value midcross(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value midcross(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -230,13 +234,13 @@ Value midcross(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     const auto idx = midcrossesAt(v.data(), v.size(), mid);
     const double f = scalarOrDefault(fs, 0.0);
     std::vector<double> times(idx.size());
-    for (size_t i = 0; i < idx.size(); ++i) times[i] = idxToTime(idx[i], f);
+    for (keel::usize i = 0; i < idx.size(); ++i) times[i] = idxToTime(idx[i], f);
     return colVec(times, mr);
 }
 
 // ── risetime / falltime / slewrate ─────────────────────────────────
 
-Value risetime(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value risetime(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -248,7 +252,7 @@ Value risetime(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return colVec(out, mr);
 }
 
-Value falltime(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value falltime(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -260,7 +264,7 @@ Value falltime(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return colVec(out, mr);
 }
 
-Value slewrate(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value slewrate(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -281,7 +285,7 @@ Value slewrate(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 // (high_state - low_state). The peak window is from the end of the
 // transition until the next opposite transition (or end of signal).
 
-Value overshoot(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value overshoot(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     (void)fs; // overshoot uses transition list only, no time arg needed
     auto v = readVec(x);
@@ -290,26 +294,26 @@ Value overshoot(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     const double range = lh.high - lh.low;
     std::vector<double> out;
     if (range <= 0.0) return colVec(out, mr);
-    for (size_t k = 0; k < trs.size(); ++k) {
+    for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
         if (t.sign <= 0) continue;
         // Window: from end of rise to next transition (or end of signal).
-        const size_t wbeg = static_cast<size_t>(std::ceil(t.endIdx));
-        size_t wend = v.size();
-        for (size_t j = k + 1; j < trs.size(); ++j) {
-            wend = static_cast<size_t>(std::floor(trs[j].startIdx));
+        const keel::usize wbeg = static_cast<keel::usize>(std::ceil(t.endIdx));
+        keel::usize wend = v.size();
+        for (keel::usize j = k + 1; j < trs.size(); ++j) {
+            wend = static_cast<keel::usize>(std::floor(trs[j].startIdx));
             break;
         }
         if (wbeg >= wend) continue;
         double peak = v[wbeg];
-        for (size_t i = wbeg + 1; i < wend; ++i)
+        for (keel::usize i = wbeg + 1; i < wend; ++i)
             if (v[i] > peak) peak = v[i];
         out.push_back(100.0 * (peak - lh.high) / range);
     }
     return colVec(out, mr);
 }
 
-Value undershoot(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value undershoot(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     (void)fs;
     auto v = readVec(x);
@@ -318,18 +322,18 @@ Value undershoot(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     const double range = lh.high - lh.low;
     std::vector<double> out;
     if (range <= 0.0) return colVec(out, mr);
-    for (size_t k = 0; k < trs.size(); ++k) {
+    for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
         if (t.sign >= 0) continue;
-        const size_t wbeg = static_cast<size_t>(std::ceil(t.endIdx));
-        size_t wend = v.size();
-        for (size_t j = k + 1; j < trs.size(); ++j) {
-            wend = static_cast<size_t>(std::floor(trs[j].startIdx));
+        const keel::usize wbeg = static_cast<keel::usize>(std::ceil(t.endIdx));
+        keel::usize wend = v.size();
+        for (keel::usize j = k + 1; j < trs.size(); ++j) {
+            wend = static_cast<keel::usize>(std::floor(trs[j].startIdx));
             break;
         }
         if (wbeg >= wend) continue;
         double trough = v[wbeg];
-        for (size_t i = wbeg + 1; i < wend; ++i)
+        for (keel::usize i = wbeg + 1; i < wend; ++i)
             if (v[i] < trough) trough = v[i];
         out.push_back(100.0 * (lh.low - trough) / range);
     }
@@ -340,7 +344,7 @@ Value undershoot(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 // Time from the start of each transition until x stays within `tol`
 // of the destination state for the rest of the post-transition window.
 
-Value settlingtime(const Value &x, const Value &fs, double tol, std::pmr::memory_resource *mr)
+Value settlingtime(const Value &x, const Value &fs, double tol, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -349,20 +353,20 @@ Value settlingtime(const Value &x, const Value &fs, double tol, std::pmr::memory
     const double f = scalarOrDefault(fs, 1.0);
     std::vector<double> out;
     if (range <= 0.0) return colVec(out, mr);
-    for (size_t k = 0; k < trs.size(); ++k) {
+    for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
         const double dest = (t.sign > 0) ? lh.high : lh.low;
         const double band = tol * range;
-        size_t wend = v.size();
-        for (size_t j = k + 1; j < trs.size(); ++j) {
-            wend = static_cast<size_t>(std::floor(trs[j].startIdx));
+        keel::usize wend = v.size();
+        for (keel::usize j = k + 1; j < trs.size(); ++j) {
+            wend = static_cast<keel::usize>(std::floor(trs[j].startIdx));
             break;
         }
         // Walk backwards from wend-1 to find the LAST sample outside band.
-        size_t lastOut = static_cast<size_t>(std::floor(t.startIdx));
-        for (size_t i = static_cast<size_t>(std::floor(t.startIdx));
+        keel::usize lastOut = static_cast<keel::usize>(std::floor(t.startIdx));
+        for (keel::usize i = static_cast<keel::usize>(std::floor(t.startIdx));
              i + 1 < wend && i < v.size(); ++i) {
-            if (std::abs(v[i] - dest) > band) lastOut = i;
+            if (keel::abs(v[i] - dest) > band) lastOut = i;
         }
         const double settled = static_cast<double>(lastOut) - t.startIdx;
         out.push_back(std::max(0.0, settled) / std::max(f, 1.0));
@@ -378,10 +382,10 @@ namespace {
 // Build a list of (idx, dir) pairs: dir = +1 for rising mid-cross, -1
 // for falling mid-cross. Used by the pulse-shape metrics below.
 std::vector<std::pair<double, int>>
-midCrossesDirected(const double *x, size_t n, double mid)
+midCrossesDirected(const double *x, keel::usize n, double mid)
 {
     std::vector<std::pair<double, int>> out;
-    for (size_t i = 0; i + 1 < n; ++i) {
+    for (keel::usize i = 0; i + 1 < n; ++i) {
         const double a = x[i], b = x[i + 1];
         if (a < mid && b >= mid)      out.emplace_back(crossingIdx(x, i, mid), +1);
         else if (a > mid && b <= mid) out.emplace_back(crossingIdx(x, i, mid), -1);
@@ -391,7 +395,7 @@ midCrossesDirected(const double *x, size_t n, double mid)
 
 } // anonymous
 
-Value pulsewidth(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value pulsewidth(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -400,14 +404,14 @@ Value pulsewidth(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     const double f = scalarOrDefault(fs, 1.0);
     std::vector<double> out;
     // A pulse runs from a +1 crossing to the next -1 crossing.
-    for (size_t i = 0; i + 1 < crs.size(); ++i) {
+    for (keel::usize i = 0; i + 1 < crs.size(); ++i) {
         if (crs[i].second == +1 && crs[i + 1].second == -1)
             out.push_back((crs[i + 1].first - crs[i].first) / std::max(f, 1.0));
     }
     return colVec(out, mr);
 }
 
-Value pulseperiod(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value pulseperiod(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -418,12 +422,12 @@ Value pulseperiod(const Value &x, const Value &fs, std::pmr::memory_resource *mr
     // Period: from one rising mid-cross to the next rising mid-cross.
     std::vector<double> rising;
     for (const auto &c : crs) if (c.second == +1) rising.push_back(c.first);
-    for (size_t i = 0; i + 1 < rising.size(); ++i)
+    for (keel::usize i = 0; i + 1 < rising.size(); ++i)
         out.push_back((rising[i + 1] - rising[i]) / std::max(f, 1.0));
     return colVec(out, mr);
 }
 
-Value pulsesep(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value pulsesep(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -432,14 +436,14 @@ Value pulsesep(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     const double f = scalarOrDefault(fs, 1.0);
     std::vector<double> out;
     // Separation: trailing edge of one pulse to leading edge of the next.
-    for (size_t i = 0; i + 1 < crs.size(); ++i) {
+    for (keel::usize i = 0; i + 1 < crs.size(); ++i) {
         if (crs[i].second == -1 && crs[i + 1].second == +1)
             out.push_back((crs[i + 1].first - crs[i].first) / std::max(f, 1.0));
     }
     return colVec(out, mr);
 }
 
-Value dutycycle(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value dutycycle(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
@@ -450,7 +454,7 @@ Value dutycycle(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     std::vector<double> out;
     // Duty cycle: pulsewidth / pulseperiod for each pulse.
     // Walk +1, -1, +1 triples.
-    for (size_t i = 0; i + 2 < crs.size(); ++i) {
+    for (keel::usize i = 0; i + 2 < crs.size(); ++i) {
         if (crs[i].second == +1 && crs[i + 1].second == -1
             && crs[i + 2].second == +1) {
             const double width  = crs[i + 1].first - crs[i].first;
@@ -463,7 +467,7 @@ Value dutycycle(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 
 namespace {
 
-void pulseRiseFall_argcheck(Span<const Value> args, const char *fnname)
+void pulseRiseFall_argcheck(keel::ArrayRef<Value> args, const char *fnname)
 {
     if (args.empty())
         throw Error(std::string(fnname) + ": requires at least 1 argument",
@@ -478,9 +482,9 @@ void pulseRiseFall_argcheck(Span<const Value> args, const char *fnname)
 // outputs: [R, LT, UT, LL, UL] — duration, lower(10%) crossing time, upper(90%)
 // crossing time, and the lower/upper reference LEVELS. For a fall the lower
 // crossing happens last, the upper first (UT < LT).
-void pulseRiseFall(Span<const Value> args, std::size_t nargout, Span<Value> outs,
+void pulseRiseFall(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                    bool rising, const char *fnname,
-                   std::pmr::memory_resource *mr)
+                   keel::Allocator *mr)
 {
     pulseRiseFall_argcheck(args, fnname);
     const Value &fsv = (args.size() >= 2) ? args[1] : Value::Empty;

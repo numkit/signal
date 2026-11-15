@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/measurements/sig_utils.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <utility>
@@ -31,8 +32,8 @@ namespace numkit::signal {
 ///       is deferred.
 std::pair<Value, Value>
 seqperiod(const Value &                x,
-          double                       tol = 0.0,
-          std::pmr::memory_resource *  mr  = nullptr);
+          keel::f64                       tol = 0.0,
+          keel::Allocator *  mr  = nullptr);
 
 /// Zero-crossing rate of a signal.
 ///
@@ -49,8 +50,8 @@ seqperiod(const Value &                x,
 ///       `'WindowLength'`) and matrix input deferred.
 std::pair<Value, Value>
 zerocrossrate(const Value &                x,
-              double                       level = 0.0,
-              std::pmr::memory_resource *  mr    = nullptr);
+              keel::f64                       level = 0.0,
+              keel::Allocator *  mr    = nullptr);
 
 /// @brief Result of `cusum` — `[iupper, ilower, uppersum, lowersum]`.
 struct CusumResult {
@@ -75,10 +76,10 @@ struct CusumResult {
 /// @param tdev    Target std-dev (`Value::Empty` → `std(x(1:25))`).
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        @ref CusumResult `{ iupper, ilower, uppersum, lowersum }`.
-CusumResult cusum(const Value &x, double climit = 5.0, double mshift = 1.0,
+CusumResult cusum(const Value &x, keel::f64 climit = 5.0, keel::f64 mshift = 1.0,
                   const Value &tmean = Value::Empty,
                   const Value &tdev = Value::Empty,
-                  std::pmr::memory_resource *mr = nullptr);
+                  keel::Allocator *mr = nullptr);
 
 
 /// @}

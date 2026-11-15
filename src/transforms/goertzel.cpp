@@ -2,19 +2,22 @@
 //
 // Goertzel single-bin DFT. Split from toolboxes/signal/src/.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
 #include <numkit/signal/transforms/goertzel.hpp>
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
-#include <numkit/value/scratch.hpp>
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 #include "../signal_detail.hpp" // shared argcheck cores
 
 #include <cmath>
-#include <complex>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -42,7 +45,7 @@ void goertzel_argcheck(const Value &x, const Value &ind)
 
 } // namespace
 
-Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
+Value goertzel(const Value &x, const Value &ind, keel::Allocator *mr)
 {
     // Contract (probed R2025b): x is single/double/complex (single is a
     // capability gap here); logical/integer are rejected. ind is
@@ -50,24 +53,24 @@ Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
     goertzel_argcheck(x, ind);
     detail::requireNumericOrLogicalInput(ind, "goertzel", "ind", 2);
 
-    const size_t N = x.numel();
-    const size_t M = ind.numel();
+    const keel::usize N = x.numel();
+    const keel::usize M = ind.numel();
     auto r = Value::complexMatrix(ind.dims().rows(), ind.dims().cols(), mr);
 
     if (N == 0 || M == 0) return r;
 
     const bool xComplex = x.isComplex();
-    ScratchArena scratch(mr);
-    ScratchVec<Complex> xc(xComplex ? N : 0, &scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    keel::Array<keel::c64> xc(xComplex ? N : 0, scratch.allocator());
     if (xComplex) {
-        const Complex *xd = x.complexData();
-        for (size_t i = 0; i < N; ++i) xc[i] = xd[i];
+        const keel::c64 *xd = x.complexData();
+        for (keel::usize i = 0; i < N; ++i) xc[i] = xd[i];
     }
-    ScratchVec<double> id(M, &scratch);
-    for (size_t j = 0; j < M; ++j) id[j] = ind.elemAsDouble(j);
+    keel::Array<double> id(M, scratch.allocator());
+    for (keel::usize j = 0; j < M; ++j) id[j] = ind.elemAsDouble(j);
 
-    Complex *od = r.complexDataMut();
-    for (size_t m = 0; m < M; ++m) {
+    keel::c64 *od = r.complexDataMut();
+    for (keel::usize m = 0; m < M; ++m) {
         const double k1based = id[m];
         const double k0based = k1based - 1.0;
         const double w = 2.0 * M_PI * k0based / static_cast<double>(N);
@@ -76,19 +79,19 @@ Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
         const double coeff = 2.0 * cw;
 
         if (xComplex) {
-            Complex s_prev(0.0, 0.0), s_prev2(0.0, 0.0);
-            for (size_t n = 0; n < N; ++n) {
-                const Complex s = xc[n] + coeff * s_prev - s_prev2;
+            keel::c64 s_prev(0.0, 0.0), s_prev2(0.0, 0.0);
+            for (keel::usize n = 0; n < N; ++n) {
+                const keel::c64 s = xc[n] + coeff * s_prev - s_prev2;
                 s_prev2 = s_prev;
                 s_prev  = s;
             }
-            const Complex y = s_prev - Complex(cw, -sw) * s_prev2;
+            const keel::c64 y = s_prev - keel::c64(cw, -sw) * s_prev2;
             const double pcw = std::cos(w * static_cast<double>(N - 1));
             const double psw = std::sin(w * static_cast<double>(N - 1));
-            od[m] = y * Complex(pcw, -psw);
+            od[m] = y * keel::c64(pcw, -psw);
         } else {
             double s_prev = 0.0, s_prev2 = 0.0;
-            for (size_t n = 0; n < N; ++n) {
+            for (keel::usize n = 0; n < N; ++n) {
                 const double s = x.elemAsDouble(n) + coeff * s_prev - s_prev2;
                 s_prev2 = s_prev;
                 s_prev  = s;
@@ -103,7 +106,7 @@ Value goertzel(const Value &x, const Value &ind, std::pmr::memory_resource *mr)
             const double psw = std::sin(w * static_cast<double>(N - 1));
             const double out_re = y_re * pcw + y_im * psw;
             const double out_im = y_im * pcw - y_re * psw;
-            od[m] = Complex(out_re, out_im);
+            od[m] = keel::c64(out_re, out_im);
         }
     }
     return r;

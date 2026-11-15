@@ -1,6 +1,7 @@
 // toolboxes/signal/tests/dspgaps_test.cpp
 // Phase 9: medfilt1 / findpeaks / goertzel / dct / idct
 
+#include <keel/core.h>
 #include "dual_engine_fixture.hpp"
 #include <cmath>
 
@@ -300,7 +301,7 @@ TEST_P(DspGapsTest, DctIdctRoundTrip)
     auto *y = getVarPtr("y");
     auto *x = getVarPtr("x");
     EXPECT_EQ(y->numel(), x->numel());
-    for (size_t i = 0; i < x->numel(); ++i)
+    for (keel::usize i = 0; i < x->numel(); ++i)
         EXPECT_NEAR(y->doubleData()[i], x->doubleData()[i], 1e-10);
 }
 

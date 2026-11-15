@@ -3,19 +3,17 @@
 // CallContext register half of transforms/goertzel.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/goertzel.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -27,11 +25,11 @@ namespace numkit::signal {
 
 namespace detail {
 
-void goertzel_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void goertzel_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "goertzel");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     if (args.size() == 1 || args[1].isEmpty()) {
         // 1-arg form (or empty 2nd arg): MATLAB defaults `ind = 1:N`
         // and the output has the SAME SHAPE as x (per `doc goertzel`).
@@ -40,12 +38,12 @@ void goertzel_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
         // ind.dims() to size the output, so building ind with the same
         // dims as x propagates the shape correctly.
         const Value &x = args[0];
-        const size_t N = x.numel();
-        const size_t rows = x.dims().rows();
-        const size_t cols = x.dims().cols();
+        const keel::usize N = x.numel();
+        const keel::usize rows = x.dims().rows();
+        const keel::usize cols = x.dims().cols();
         Value ind = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
         double *id = ind.doubleDataMut();
-        for (size_t i = 0; i < N; ++i)
+        for (keel::usize i = 0; i < N; ++i)
             id[i] = static_cast<double>(i + 1);
         outs[0] = goertzel(x, ind, mr);
         return;

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -39,7 +39,7 @@ namespace numkit::signal {
 /// @see sosfiltfilt, filter, zp2sos
 Value sosfilt(const Value &                sos,
               const Value &                x,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::Allocator *  mr = nullptr);
 
 /// Zero-phase forward + backward SOS cascade.
 ///
@@ -60,7 +60,7 @@ Value sosfilt(const Value &                sos,
 /// @see sosfilt, filtfilt
 Value sosfiltfilt(const Value &                sos,
                   const Value &                x,
-                  std::pmr::memory_resource *  mr = nullptr);
+                  keel::Allocator *  mr = nullptr);
 
 
 /// @}

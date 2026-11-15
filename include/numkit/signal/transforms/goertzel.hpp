@@ -3,7 +3,7 @@
 // toolboxes/signal/include/numkit/signal/transforms/goertzel.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -38,7 +38,7 @@ namespace numkit::signal {
 /// @see fft
 Value goertzel(const Value &                x,
                const Value &                ind,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 
 /// @}

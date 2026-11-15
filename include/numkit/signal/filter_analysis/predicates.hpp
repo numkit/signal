@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -50,7 +51,7 @@ bool isfir(const Value &b, const Value &a);
 /// @see isminphase, ismaxphase
 bool isstable(const Value &                b,
               const Value &                a,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::Allocator *  mr = nullptr);
 
 /// Detects whether a digital filter is minimum-phase.
 ///
@@ -65,7 +66,7 @@ bool isstable(const Value &                b,
 /// @see isstable, ismaxphase
 bool isminphase(const Value &                b,
                 const Value &                a,
-                std::pmr::memory_resource *  mr = nullptr);
+                keel::Allocator *  mr = nullptr);
 
 /// Detects whether a digital filter is maximum-phase.
 ///
@@ -80,7 +81,7 @@ bool isminphase(const Value &                b,
 /// @see isminphase
 bool ismaxphase(const Value &                b,
                 const Value &                a,
-                std::pmr::memory_resource *  mr = nullptr);
+                keel::Allocator *  mr = nullptr);
 
 /// Detects whether a digital filter has linear phase.
 ///
@@ -174,10 +175,10 @@ int firtype(const Value &b);
 /// @endcode
 ///
 /// @see freqz, isstable
-double filternorm(const Value &                b,
+keel::f64 filternorm(const Value &                b,
                   const Value &                a,
-                  double                       pnorm = 2.0,
-                  std::pmr::memory_resource *  mr    = nullptr);
+                  keel::f64                       pnorm = 2.0,
+                  keel::Allocator *  mr    = nullptr);
 
 
 /// @}

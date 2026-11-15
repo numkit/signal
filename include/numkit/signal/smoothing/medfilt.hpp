@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/smoothing/medfilt.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -39,9 +40,9 @@ namespace numkit::signal {
 ///                 (window always `k` long). false: 'truncate' — clip the
 ///                 window to the valid range at the signal ends.
 Value medfilt1(const Value &                x,
-               size_t                       k        = 3,
+               keel::usize                       k        = 3,
                bool                         zeropad  = true,
-               std::pmr::memory_resource *  mr       = nullptr);
+               keel::Allocator *  mr       = nullptr);
 
 /// Fill missing samples (NaNs) using autoregressive modeling.
 ///
@@ -56,9 +57,9 @@ Value medfilt1(const Value &                x,
 /// @param mr      Memory resource (nullptr -> process default).
 /// @return        Gap-filled array with same shape and type as `x`.
 Value fillgaps(const Value &                x,
-               size_t                       maxlen = 0,
-               size_t                       order  = 0,
-               std::pmr::memory_resource *  mr     = nullptr);
+               keel::usize                       maxlen = 0,
+               keel::usize                       order  = 0,
+               keel::Allocator *  mr     = nullptr);
 
 
 /// @}

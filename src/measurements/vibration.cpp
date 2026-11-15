@@ -4,6 +4,10 @@
 // functions (modal*, order tracking, rpm*maps) are not implemented
 // here — they need a full state-space / RPM-resampling stack.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/measurements/vibration.hpp>
 
 #include <numkit/signal/transforms/fft.hpp>
@@ -28,13 +32,13 @@ namespace {
 
 std::vector<double> readVec(const Value &x)
 {
-    const size_t n = x.numel();
+    const keel::usize n = x.numel();
     std::vector<double> v(n);
-    for (size_t i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
+    for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
-Value vecCol(std::pmr::memory_resource *mr, const std::vector<double> &v)
+Value vecCol(keel::Allocator *mr, const std::vector<double> &v)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
     if (!v.empty())
@@ -54,9 +58,9 @@ void tachorpm_argcheck(const Value &x, double fs, int ppr)
 // ── envspectrum ────────────────────────────────────────────────────
 
 std::tuple<Value, Value>
-envspectrum(const Value &x, double fs, std::pmr::memory_resource *mr)
+envspectrum(const Value &x, double fs, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     if (N == 0)
         return std::make_tuple(Value::matrix(0, 1, ValueType::DOUBLE, mr),
                                Value::matrix(0, 1, ValueType::DOUBLE, mr));
@@ -73,19 +77,19 @@ envspectrum(const Value &x, double fs, std::pmr::memory_resource *mr)
     // 3. FFT of the AC envelope, magnitude on the one-sided half.
     Value envAc = vecCol(mr, e);
     Value Z = fft(envAc, /*n=*/-1, /*dim=*/0, mr);
-    const size_t nFft = Z.numel();
-    const size_t nOne = nFft / 2 + 1;
+    const keel::usize nFft = Z.numel();
+    const keel::usize nOne = nFft / 2 + 1;
 
     auto Es = Value::matrix(nOne, 1, ValueType::DOUBLE, mr);
     auto F  = Value::matrix(nOne, 1, ValueType::DOUBLE, mr);
     double *esd = Es.doubleDataMut();
     double *fd  = F.doubleDataMut();
-    const Complex *zd = Z.complexData();
+    const keel::c64 *zd = Z.complexData();
 
     const double fNyq = (fs > 0.0) ? fs * 0.5 : M_PI;
     const double scale = 2.0 / static_cast<double>(N);  // single-sided amp.
-    for (size_t i = 0; i < nOne; ++i) {
-        const double a = std::abs(zd[i]) * scale;
+    for (keel::usize i = 0; i < nOne; ++i) {
+        const double a = keel::abs(zd[i]) * scale;
         esd[i] = (i == 0 || i == nOne - 1) ? 0.5 * a : a;
         fd[i]  = fNyq * static_cast<double>(i) / static_cast<double>(nOne - 1);
     }
@@ -96,11 +100,11 @@ envspectrum(const Value &x, double fs, std::pmr::memory_resource *mr)
 
 std::tuple<Value, Value>
 tachorpm(const Value &x, double fs,
-         const Value &threshold, int ppr, std::pmr::memory_resource *mr)
+         const Value &threshold, int ppr, keel::Allocator *mr)
 {
     tachorpm_argcheck(x, fs, ppr);
     auto v = readVec(x);
-    const size_t N = v.size();
+    const keel::usize N = v.size();
     double thr;
     if (!threshold.isEmpty()) {
         thr = threshold.toScalar();
@@ -112,7 +116,7 @@ tachorpm(const Value &x, double fs,
     // Detect rising-edge crossings of `thr`. Linear-interpolate the
     // sub-sample crossing instant for each.
     std::vector<double> times;
-    for (size_t i = 0; i + 1 < N; ++i) {
+    for (keel::usize i = 0; i + 1 < N; ++i) {
         if (v[i] < thr && v[i + 1] >= thr) {
             const double a = v[i], b = v[i + 1];
             const double frac = (b == a) ? 0.0 : (thr - a) / (b - a);
@@ -123,7 +127,7 @@ tachorpm(const Value &x, double fs,
     // RPM = 60 / (period * ppr). Output one RPM per pulse (carry the
     // last estimate forward to the final pulse).
     std::vector<double> rpm(times.size(), 0.0);
-    for (size_t i = 0; i + 1 < times.size(); ++i) {
+    for (keel::usize i = 0; i + 1 < times.size(); ++i) {
         const double dt = times[i + 1] - times[i];
         if (dt > 0.0) rpm[i] = 60.0 / (dt * ppr);
     }
@@ -147,7 +151,7 @@ std::vector<Turn> turningPointsWithIndex(const std::vector<double> &v)
     std::vector<Turn> out;
     if (v.empty()) return out;
     out.push_back({v.front(), 1.0});
-    for (size_t i = 1; i + 1 < v.size(); ++i) {
+    for (keel::usize i = 1; i + 1 < v.size(); ++i) {
         const double a = v[i - 1], b = v[i], c = v[i + 1];
         if ((b > a && b > c) || (b < a && b < c))
             out.push_back({b, static_cast<double>(i + 1)});
@@ -158,7 +162,7 @@ std::vector<Turn> turningPointsWithIndex(const std::vector<double> &v)
 
 } // anonymous
 
-Value rainflow(const Value &x, std::pmr::memory_resource *mr)
+Value rainflow(const Value &x, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto tp = turningPointsWithIndex(v);
@@ -173,13 +177,13 @@ Value rainflow(const Value &x, std::pmr::memory_resource *mr)
         S.push_back(y);
         // Apply the rule until no more cycles can be extracted.
         while (S.size() >= 3) {
-            const size_t n = S.size();
-            const double X = std::abs(S[n - 1].v - S[n - 2].v);
-            const double Y = std::abs(S[n - 2].v - S[n - 3].v);
+            const keel::usize n = S.size();
+            const double X = keel::abs(S[n - 1].v - S[n - 2].v);
+            const double Y = keel::abs(S[n - 2].v - S[n - 3].v);
             if (X < Y) break;
             if (n == 3) {
                 // Half cycle: pop the bottom of the stack.
-                const double rng = std::abs(S[0].v - S[1].v);
+                const double rng = keel::abs(S[0].v - S[1].v);
                 const double mn  = 0.5 * (S[0].v + S[1].v);
                 cycles.push_back({0.5, rng, mn, S[0].idx, S[1].idx});
                 S.erase(S.begin());
@@ -194,9 +198,9 @@ Value rainflow(const Value &x, std::pmr::memory_resource *mr)
     }
     // Drain residual: every consecutive pair on the residual stack is
     // a half-cycle.
-    for (size_t i = 0; i + 1 < S.size(); ++i) {
+    for (keel::usize i = 0; i + 1 < S.size(); ++i) {
         cycles.push_back({0.5,
-                          std::abs(S[i].v - S[i + 1].v),
+                          keel::abs(S[i].v - S[i + 1].v),
                           0.5 * (S[i].v + S[i + 1].v),
                           S[i].idx,
                           S[i + 1].idx});
@@ -204,8 +208,8 @@ Value rainflow(const Value &x, std::pmr::memory_resource *mr)
     auto out = Value::matrix(cycles.size(), 5, ValueType::DOUBLE, mr);
     if (cycles.empty()) return out;
     double *d = out.doubleDataMut();
-    const size_t rows = cycles.size();
-    for (size_t i = 0; i < rows; ++i) {
+    const keel::usize rows = cycles.size();
+    for (keel::usize i = 0; i < rows; ++i) {
         d[i + 0 * rows] = cycles[i].count;
         d[i + 1 * rows] = cycles[i].range;
         d[i + 2 * rows] = cycles[i].mean;
@@ -220,7 +224,7 @@ Value rainflow(const Value &x, std::pmr::memory_resource *mr)
 std::tuple<Value, Value>
 tsa(const Value &x, double fs,
     const Value &rpm, double fs_rpm, int n_per_rev,
-    std::pmr::memory_resource *mr)
+    keel::Allocator *mr)
 {
     auto signal_v = readVec(x);
     auto rpm_v    = readVec(rpm);
@@ -234,16 +238,16 @@ tsa(const Value &x, double fs,
     //    by integrating ω(t) = 2π·rpm/60 against time.
     //    rpm is sampled at fs_rpm, signal at fs; we interpolate rpm
     //    onto the signal-sample grid first.
-    const size_t N = signal_v.size();
+    const keel::usize N = signal_v.size();
     std::vector<double> theta(N, 0.0);
     {
         double acc = 0.0;
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             const double t = static_cast<double>(i) / fs;
             // Linear-interpolate rpm at time t.
             const double idxR = t * fs_rpm;
-            const size_t i0 = static_cast<size_t>(std::floor(idxR));
-            const size_t i1 = std::min(i0 + 1, rpm_v.size() - 1);
+            const keel::usize i0 = static_cast<keel::usize>(std::floor(idxR));
+            const keel::usize i1 = std::min(i0 + 1, rpm_v.size() - 1);
             const double frac = std::min(std::max(idxR - i0, 0.0), 1.0);
             const double rpmI =
                 (i0 < rpm_v.size())
@@ -260,7 +264,7 @@ tsa(const Value &x, double fs,
     const double twoPi = 2.0 * M_PI;
     std::vector<double> sumBin(n_per_rev, 0.0);
     std::vector<int> cntBin(n_per_rev, 0);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         double ang = std::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
         int b = static_cast<int>(ang / twoPi * n_per_rev);

@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/filter_analysis/frequency_response.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -49,10 +50,10 @@ namespace numkit::signal {
 std::tuple<Value, Value>
 freqz(const Value &                b,
       const Value &                a,
-      size_t                       npts = 512,
+      keel::usize                       npts = 512,
       bool                         whole = false,
-      double                       fs    = 0.0,
-      std::pmr::memory_resource *  mr   = nullptr);
+      keel::f64                       fs    = 0.0,
+      keel::Allocator *  mr   = nullptr);
 
 /// freqz(b, a, w): response at the GIVEN normalised radian frequencies
 /// (the vector-w form).
@@ -60,7 +61,7 @@ std::tuple<Value, Value>
 freqz(const Value &                b,
       const Value &                a,
       const Value &                wvec,
-      std::pmr::memory_resource *  mr   = nullptr);
+      keel::Allocator *  mr   = nullptr);
 
 /// Unwrapped phase response of a digital filter.
 ///
@@ -80,9 +81,9 @@ freqz(const Value &                b,
 std::tuple<Value, Value>
 phasez(const Value &                b,
        const Value &                a,
-       size_t                       npts = 512,
-       double                       fs   = 0.0,
-       std::pmr::memory_resource *  mr   = nullptr);
+       keel::usize                       npts = 512,
+       keel::f64                       fs   = 0.0,
+       keel::Allocator *  mr   = nullptr);
 
 /// Group delay of a digital filter.
 ///
@@ -106,9 +107,9 @@ phasez(const Value &                b,
 std::tuple<Value, Value>
 grpdelay(const Value &                b,
          const Value &                a,
-         size_t                       npts = 512,
-         double                       fs   = 0.0,
-         std::pmr::memory_resource *  mr   = nullptr);
+         keel::usize                       npts = 512,
+         keel::f64                       fs   = 0.0,
+         keel::Allocator *  mr   = nullptr);
 
 
 /// @}

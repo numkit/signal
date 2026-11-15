@@ -6,14 +6,16 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/convolution/convolution.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -44,7 +46,7 @@ static std::string shapeArg(const Value &v, std::string_view fn)
                 "numkit:" + std::string(fn) + ":badShape");
 }
 
-void conv_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void conv_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "conv");
 
@@ -52,23 +54,23 @@ void conv_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, Call
     if (args.size() >= 3 && !args[2].isEmpty())
         shape = shapeArg(args[2], "conv");
 
-    outs[0] = conv(args[0], args[1], shape, ctx.engine->resource());
+    outs[0] = conv(args[0], args[1], shape, ctx.engine->allocator());
 }
 
-void deconv_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void deconv_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "deconv");
 
-    auto [q, r] = deconv(args[0], args[1], ctx.engine->resource());
+    auto [q, r] = deconv(args[0], args[1], ctx.engine->allocator());
     outs[0] = std::move(q);
     if (nargout > 1)
         outs[1] = std::move(r);
 }
 
-void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "xcorr");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     const Value &x = args[0];
     Value y = x;                 // default: autocorrelation
     bool haveY = false;
@@ -78,12 +80,12 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
     // Disambiguate (MATLAB): a string is scaleopt; a scalar numeric in the
     // y-slot is maxlag (autocorr); a vector numeric is y. Trailing args:
     // numeric => maxlag, string => scaleopt.
-    size_t idx = 1;
+    keel::usize idx = 1;
     if (args.size() >= 2 && !args[1].isEmpty()) {
         if (args[1].isChar() || args[1].isString())
             scaleopt = args[1].toString();
         else if (args[1].numel() == 1)
-            maxlag = std::abs(argcheck::expectedInteger(
+            maxlag = keel::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[1], 2, "maxlag", "xcorr"),
                 2, "maxlag", "xcorr"));
         else { y = args[1]; haveY = true; }
@@ -94,50 +96,50 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
         if (args[idx].isChar() || args[idx].isString())
             scaleopt = args[idx].toString();
         else
-            maxlag = std::abs(argcheck::expectedInteger(
+            maxlag = keel::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[idx], int(idx) + 1, "maxlag", "xcorr"),
                 int(idx) + 1, "maxlag", "xcorr"));
     }
 
     auto [cfull, lagsfull] = haveY ? xcorr(x, y, mr) : xcorr(x, mr);
-    const size_t nc = cfull.numel();
+    const keel::usize nc = cfull.numel();
     const bool isCplx = cfull.isComplex();
     double *cd = isCplx ? nullptr : cfull.doubleDataMut();
-    Complex *ccd = isCplx ? cfull.complexDataMut() : nullptr;
+    keel::c64 *ccd = isCplx ? cfull.complexDataMut() : nullptr;
     const double *ld = lagsfull.doubleData();
-    const size_t nx = x.numel(), ny = y.numel();
-    const size_t N  = std::max(nx, ny);
+    const keel::usize nx = x.numel(), ny = y.numel();
+    const keel::usize N  = std::max(nx, ny);
 
     // scaleopt (case-insensitive). Previously accepted-and-ignored.
     std::string opt = scaleopt;
     for (char &ch : opt) if (ch >= 'A' && ch <= 'Z') ch = char(ch + 32);
 
-    auto scaleElem = [&](size_t i, double s) {
+    auto scaleElem = [&](keel::usize i, double s) {
         if (isCplx) ccd[i] *= s;
         else cd[i] *= s;
     };
 
     if (opt == "biased") {
         const double inv = (N > 0) ? 1.0 / static_cast<double>(N) : 0.0;
-        for (size_t i = 0; i < nc; ++i) scaleElem(i, inv);
+        for (keel::usize i = 0; i < nc; ++i) scaleElem(i, inv);
     } else if (opt == "unbiased") {
-        for (size_t i = 0; i < nc; ++i) {
-            const double div = static_cast<double>(N) - std::abs(ld[i]);
+        for (keel::usize i = 0; i < nc; ++i) {
+            const double div = static_cast<double>(N) - keel::abs(ld[i]);
             scaleElem(i, (div > 0.0) ? (1.0 / div) : 0.0);
         }
     } else if (opt == "coeff" || opt == "normalized") {
         double c0x = 0.0, c0y = 0.0;
-        for (size_t i = 0; i < nx; ++i) {
-            if (x.isComplex()) c0x += std::norm(x.complexData()[i]);
+        for (keel::usize i = 0; i < nx; ++i) {
+            if (x.isComplex()) c0x += keel::norm(x.complexData()[i]);
             else { double v = x.elemAsDouble(i); c0x += v * v; }
         }
-        for (size_t i = 0; i < ny; ++i) {
-            if (y.isComplex()) c0y += std::norm(y.complexData()[i]);
+        for (keel::usize i = 0; i < ny; ++i) {
+            if (y.isComplex()) c0y += keel::norm(y.complexData()[i]);
             else { double v = y.elemAsDouble(i); c0y += v * v; }
         }
         const double denom = std::sqrt(c0x * c0y);
         if (denom > 0.0)
-            for (size_t i = 0; i < nc; ++i) scaleElem(i, 1.0 / denom);
+            for (keel::usize i = 0; i < nc; ++i) scaleElem(i, 1.0 / denom);
     } else if (!(opt.empty() || opt == "none")) {
         throw Error("xcorr: scaleopt must be 'none', 'biased', 'unbiased', or 'coeff'",
                      0, 0, "xcorr", "", "numkit:xcorr:badScaleopt");
@@ -160,7 +162,7 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
             const int dst = m + maxlag;
             lo[dst] = static_cast<double>(m);
             if (isCplx) {
-                cOut.complexDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? ccd[src] : Complex(0.0, 0.0);
+                cOut.complexDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? ccd[src] : keel::c64(0.0, 0.0);
             } else {
                 cOut.doubleDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? cd[src] : 0.0;
             }
@@ -173,11 +175,11 @@ void xcorr_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
     if (nargout > 1) outs[1] = std::move(lagsfull);
 }
 
-void xcov_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+void xcov_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
               CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "xcov");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     const Value &x = args[0];
     Value y = x;                 // default: auto-covariance
     int maxlag = -1;             // -1 => full
@@ -185,12 +187,12 @@ void xcov_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
 
     // MATLAB disambiguation: a string arg is scaleopt; a scalar numeric
     // arg in the y-slot is maxlag (auto-cov); a vector numeric is y.
-    size_t idx = 1;
+    keel::usize idx = 1;
     if (args.size() >= 2 && !args[1].isEmpty()) {
         if (args[1].isChar() || args[1].isString()) {
             scaleopt = args[1].toString();
         } else if (args[1].numel() == 1) {
-            maxlag = std::abs(argcheck::expectedInteger(
+            maxlag = keel::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[1], 2, "maxlag", "xcov"),
                 2, "maxlag", "xcov"));
         } else {
@@ -204,7 +206,7 @@ void xcov_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
         if (args[idx].isChar() || args[idx].isString())
             scaleopt = args[idx].toString();
         else
-            maxlag = std::abs(argcheck::expectedInteger(
+            maxlag = keel::abs(argcheck::expectedInteger(
                 argcheck::expectedReal(args[idx], int(idx) + 1, "maxlag", "xcov"),
                 int(idx) + 1, "maxlag", "xcov"));
     }
@@ -214,11 +216,11 @@ void xcov_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
     if (nargout > 1) outs[1] = std::move(std::get<1>(result));
 }
 
-void conv2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void conv2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
                CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "conv2");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     std::string shape = "full";
     if (args.size() >= 3 && !args[2].isEmpty() &&
         !(args[2].isChar() || args[2].isString())) {
@@ -233,13 +235,13 @@ void conv2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
                             0, 0, "conv2", "", "numkit:conv2:badShape");
             shape = args[3].toString();
         }
-        const size_t m = args[0].numel();
-        const size_t n = args[1].numel();
+        const keel::usize m = args[0].numel();
+        const keel::usize n = args[1].numel();
         Value k = Value::matrix(m, n, ValueType::DOUBLE, mr);
         double *kd = k.doubleDataMut();
-        for (size_t c = 0; c < n; ++c) {
+        for (keel::usize c = 0; c < n; ++c) {
             const double vc = args[1].elemAsDouble(c);
-            for (size_t r = 0; r < m; ++r)
+            for (keel::usize r = 0; r < m; ++r)
                 kd[r + c * m] = args[0].elemAsDouble(r) * vc;
         }
         outs[0] = conv2(args[2], k, shape, mr);
@@ -251,24 +253,24 @@ void conv2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     outs[0] = conv2(args[0], args[1], shape, mr);
 }
 
-void filter2_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void filter2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
                  CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "filter2");
     std::string shape = "same";
     if (args.size() >= 3 && !args[2].isEmpty())
         shape = shapeArg(args[2], "filter2");
-    outs[0] = filter2(args[0], args[1], shape, ctx.engine->resource());
+    outs[0] = filter2(args[0], args[1], shape, ctx.engine->allocator());
 }
 
-void convn_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void convn_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
                CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "convn");
     std::string shape = "full";
     if (args.size() >= 3 && !args[2].isEmpty())
         shape = shapeArg(args[2], "convn");
-    outs[0] = convn(args[0], args[1], shape, ctx.engine->resource());
+    outs[0] = convn(args[0], args[1], shape, ctx.engine->allocator());
 }
 
 } // namespace detail

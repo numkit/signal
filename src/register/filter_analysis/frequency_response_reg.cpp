@@ -6,14 +6,17 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,20 +33,20 @@ namespace numkit::signal {
 
 namespace detail {
 
-void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 5, "freqz");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
     // Parse the trailing args: 'whole' (string, any position) and up to two
     // numerics after b,a — the first is n (npts), the second is fs (the
     // freqz(b,a,n,fs) / freqz(b,a,n,'whole',fs) sample-rate form).
-    size_t npts = 512;
+    keel::usize npts = 512;
     double fs   = 0.0;
     bool   whole = false;
     int    numericSeen = 0;
     const Value *wvec = nullptr;
-    for (size_t i = 2; i < args.size(); ++i) {
+    for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
             std::string s = args[i].toString();
             for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -52,7 +55,7 @@ void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
             if (numericSeen == 0 && args[i].numel() > 1)
                 wvec = &args[i];           // freqz(b,a,W): vector-w form
             else if (numericSeen == 0)
-                npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+                npts = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
                     argcheck::expectedReal(args[i], int(i) + 1, "n", "freqz"),
                     int(i) + 1, "n", "freqz"));
             else if (numericSeen == 1) fs   = args[i].toScalar();
@@ -73,19 +76,19 @@ void freqz_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
         outs[1] = std::move(W);
 }
 
-void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void phasez_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 6, "phasez");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
     // n (1st numeric after b,a) and optional fs (2nd) — phasez(b,a,n,fs).
-    size_t npts = 512;
+    keel::usize npts = 512;
     double fs = 0.0;
     int numericSeen = 0;
-    for (size_t i = 2; i < args.size(); ++i) {
+    for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
             if (numericSeen == 0)
-                npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+                npts = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
                     argcheck::expectedReal(args[i], int(i) + 1, "n", "phasez"),
                     int(i) + 1, "n", "phasez"));
         else if (numericSeen == 1) fs   = args[i].toScalar();
@@ -96,48 +99,48 @@ void phasez_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
     if (nargout > 1) outs[1] = std::move(W);
 }
 
-void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 6, "grpdelay");
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
     // n (1st numeric after b,a) and optional fs (2nd) — grpdelay(b,a,n,fs).
-    size_t npts = 512;
+    keel::usize npts = 512;
     double fs = 0.0;
     int numericSeen = 0;
     const Value *fvec = nullptr;
-    for (size_t i = 2; i < args.size(); ++i) {
+    for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
         if (numericSeen == 0 && args[i].numel() > 1)
             fvec = &args[i];
         else if (numericSeen == 0)
-            npts = static_cast<size_t>(argcheck::expectedPositiveInteger(
+            npts = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
                 argcheck::expectedReal(args[i], int(i) + 1, "n", "grpdelay"),
                 int(i) + 1, "n", "grpdelay"));
         else if (numericSeen == 1) fs = args[i].toScalar();
         ++numericSeen;
     }
     if (fvec) {
-        const size_t nf = fvec->numel();
-        const size_t nb = args[0].numel(), na = a.numel();
+        const keel::usize nf = fvec->numel();
+        const keel::usize nb = args[0].numel(), na = a.numel();
         auto gd = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
         if (nf > 0 && nb > 0 && na > 0) {
-            ScratchArena scratch(mr);
-            const size_t nc = nb + na - 1;
-            auto c = ScratchVec<double>(nc, &scratch);
-            for (size_t i = 0; i < nc; ++i) c[i] = 0.0;
-            for (size_t i = 0; i < nb; ++i)
-                for (size_t j = 0; j < na; ++j)
+            keel::ArenaTemp scratch = keel::get_scratch(mr);
+            const keel::usize nc = nb + na - 1;
+            auto c = keel::Array<double>(nc, scratch.allocator());
+            for (keel::usize i = 0; i < nc; ++i) c[i] = 0.0;
+            for (keel::usize i = 0; i < nb; ++i)
+                for (keel::usize j = 0; j < na; ++j)
                     c[i + j] += args[0].elemAsDouble(i) * a.elemAsDouble(na - 1 - j);
             double *g = gd.doubleDataMut();
             const double offset = static_cast<double>(na) - 1.0;
             constexpr double kPi = 3.14159265358979323846;
-            for (size_t k = 0; k < nf; ++k) {
+            for (keel::usize k = 0; k < nf; ++k) {
                 const double fk = fvec->elemAsDouble(k);
                 const double w = (fs > 0.0) ? (2.0 * kPi * fk / fs) : fk;
-                const Complex ejw(std::cos(w), -std::sin(w));
-                Complex C(0, 0), CR(0, 0), ejwk(1, 0);
-                for (size_t n = 0; n < nc; ++n) {
+                const keel::c64 ejw(std::cos(w), -std::sin(w));
+                keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
+                for (keel::usize n = 0; n < nc; ++n) {
                     C  += c[n] * ejwk;
                     CR += (static_cast<double>(n) * c[n]) * ejwk;
                     ejwk *= ejw;
@@ -149,7 +152,7 @@ void grpdelay_reg(Span<const Value> args, size_t nargout, Span<Value> outs, Call
         outs[0] = std::move(gd);
         if (nargout > 1) {
             auto fv = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
-            for (size_t k = 0; k < nf; ++k) fv.doubleDataMut()[k] = fvec->elemAsDouble(k);
+            for (keel::usize k = 0; k < nf; ++k) fv.doubleDataMut()[k] = fvec->elemAsDouble(k);
             outs[1] = std::move(fv);
         }
         return;

@@ -4,8 +4,9 @@
 
 #pragma once
 
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <limits>
-#include <memory_resource>
 #include <string>
 #include <tuple>
 #include <numkit/value/value.hpp>
@@ -42,12 +43,12 @@ namespace numkit::signal {
 Value bandpower(const Value &x,
                 const Value &fs = Value::Empty,
                 const Value &freqrange = Value::Empty,
-                std::pmr::memory_resource *mr = nullptr);
+                keel::Allocator *mr = nullptr);
 
 Value bandpowerPsd(const Value &pxx,
                    const Value &f,
                    const Value &freqrange = Value::Empty,
-                   std::pmr::memory_resource *mr = nullptr);
+                   keel::Allocator *mr = nullptr);
 
 /// @brief Power-weighted mean frequency.
 ///
@@ -59,7 +60,7 @@ Value bandpowerPsd(const Value &pxx,
 /// @return    Scalar mean frequency.
 /// @see medfreq, powerbw
 Value meanfreq(const Value &x, const Value &fs = Value::Empty,
-               std::pmr::memory_resource *mr = nullptr);
+               keel::Allocator *mr = nullptr);
 
 /// @brief Median frequency.
 ///
@@ -71,7 +72,7 @@ Value meanfreq(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar median frequency.
 /// @see meanfreq
 Value medfreq(const Value &x, const Value &fs = Value::Empty,
-              std::pmr::memory_resource *mr = nullptr);
+              keel::Allocator *mr = nullptr);
 
 /// @brief Equivalent noise bandwidth of a window
 /// (`b = enbw(window, fs)`).
@@ -84,7 +85,7 @@ Value medfreq(const Value &x, const Value &fs = Value::Empty,
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        Scalar ENBW.
 Value enbw(const Value &window, const Value &fs = Value::Empty,
-           std::pmr::memory_resource *mr = nullptr);
+           keel::Allocator *mr = nullptr);
 
 /// @brief Occupied bandwidth at fraction `p` of total power
 /// (`[bw, flo, fhi, power] = obw(x, fs, p)`).
@@ -105,8 +106,8 @@ Value enbw(const Value &window, const Value &fs = Value::Empty,
 ///            edges, and the in-band power (`p · total`).
 std::tuple<Value, Value, Value, Value>
 obw(const Value &x, const Value &fs = Value::Empty,
-    double p = 0.99,
-    std::pmr::memory_resource *mr = nullptr);
+    keel::f64 p = 0.99,
+    keel::Allocator *mr = nullptr);
 
 /// @brief 3-dB power bandwidth around the dominant peak.
 ///
@@ -116,7 +117,7 @@ obw(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar bandwidth in Hz / rad/s.
 /// @see obw, meanfreq
 Value powerbw(const Value &x, const Value &fs = Value::Empty,
-              std::pmr::memory_resource *mr = nullptr);
+              keel::Allocator *mr = nullptr);
 
 /// @brief Spectral crest: `max(P) / mean(P)` (peakedness).
 ///
@@ -126,7 +127,7 @@ Value powerbw(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar crest.
 /// @see spectralflatness
 Value spectralcrest(const Value &x, const Value &fs = Value::Empty,
-                    std::pmr::memory_resource *mr = nullptr);
+                    keel::Allocator *mr = nullptr);
 
 /// @brief Spectral flatness: `geomean(P) / mean(P)`.
 ///
@@ -138,7 +139,7 @@ Value spectralcrest(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar flatness in `[0, 1]`.
 /// @see spectralcrest
 Value spectralflatness(const Value &x, const Value &fs = Value::Empty,
-                       std::pmr::memory_resource *mr = nullptr);
+                       keel::Allocator *mr = nullptr);
 
 /// @brief Shannon entropy of the normalised PSD.
 ///
@@ -149,7 +150,7 @@ Value spectralflatness(const Value &x, const Value &fs = Value::Empty,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Scalar entropy.
 Value spectralentropy(const Value &x, const Value &fs = Value::Empty,
-                      std::pmr::memory_resource *mr = nullptr);
+                      keel::Allocator *mr = nullptr);
 
 /// @brief Kurtosis of the PSD treated as a frequency distribution.
 ///
@@ -159,7 +160,7 @@ Value spectralentropy(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar spectral kurtosis.
 /// @see spectralskewness
 Value spectralkurtosis(const Value &x, const Value &fs = Value::Empty,
-                       std::pmr::memory_resource *mr = nullptr);
+                       keel::Allocator *mr = nullptr);
 
 /// @brief Skewness of the PSD treated as a frequency distribution.
 ///
@@ -169,7 +170,7 @@ Value spectralkurtosis(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar spectral skewness.
 /// @see spectralkurtosis
 Value spectralskewness(const Value &x, const Value &fs = Value::Empty,
-                       std::pmr::memory_resource *mr = nullptr);
+                       keel::Allocator *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Harmonic / SNR family
@@ -191,7 +192,7 @@ Value spectralskewness(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar SNR in dB.
 /// @see sinad, thd, sfdr
 Value snr(const Value &x, const Value &fs = Value::Empty,
-          std::pmr::memory_resource *mr = nullptr);
+          keel::Allocator *mr = nullptr);
 
 /// @brief Signal-to-noise-and-distortion in dB.
 ///
@@ -203,7 +204,7 @@ Value snr(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar SINAD in dB.
 /// @see snr, thd
 Value sinad(const Value &x, const Value &fs = Value::Empty,
-            std::pmr::memory_resource *mr = nullptr);
+            keel::Allocator *mr = nullptr);
 
 /// @brief Total harmonic distortion in dB.
 ///
@@ -215,7 +216,7 @@ Value sinad(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar THD in dB.
 /// @see snr, sinad
 Value thd(const Value &x, const Value &fs = Value::Empty,
-          std::pmr::memory_resource *mr = nullptr);
+          keel::Allocator *mr = nullptr);
 
 /// @brief Spurious-free dynamic range in dB.
 ///
@@ -227,7 +228,7 @@ Value thd(const Value &x, const Value &fs = Value::Empty,
 /// @return    Scalar SFDR in dB.
 /// @see snr
 Value sfdr(const Value &x, const Value &fs = Value::Empty,
-           std::pmr::memory_resource *mr = nullptr);
+           keel::Allocator *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Power spectrum / spectrogram and time-frequency moment metrics
@@ -235,11 +236,11 @@ Value sfdr(const Value &x, const Value &fs = Value::Empty,
 
 struct PspectrumOptions {
     std::string type = "power";   // "power" or "spectrogram"
-    double leakage = 0.5;         // in [0, 1]
-    double overlapPercent = -1.0; // -1 = automatic from leakage; else in [0, 100)
-    double timeResolution = -1.0; // -1 = automatic; else > 0 in seconds
-    double fmin = std::numeric_limits<double>::quiet_NaN();
-    double fmax = std::numeric_limits<double>::quiet_NaN();
+    keel::f64 leakage = 0.5;         // in [0, 1]
+    keel::f64 overlapPercent = -1.0; // -1 = automatic from leakage; else in [0, 100)
+    keel::f64 timeResolution = -1.0; // -1 = automatic; else > 0 in seconds
+    keel::f64 fmin = std::numeric_limits<keel::f64>::quiet_NaN();
+    keel::f64 fmax = std::numeric_limits<keel::f64>::quiet_NaN();
     bool twoSided = false;
     bool hasTwoSided = false;
 };
@@ -254,35 +255,35 @@ struct PspectrumResult {
 PspectrumResult pspectrum(const Value &x,
                           const Value &fsOrT = Value::Empty,
                           const PspectrumOptions &opts = {},
-                          std::pmr::memory_resource *mr = nullptr);
+                          keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous frequency via first conditional spectral moment
 /// over the `pspectrum` spectrogram.
 Value instfreq(const Value &x, const Value &fs = Value::Empty,
-               std::pmr::memory_resource *mr = nullptr);
+               keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous frequency and time vector (`[ifreq, t] = instfreq(...)`).
 std::tuple<Value, Value>
 instfreqWithTime(const Value &x, const Value &fs = Value::Empty,
                  const PspectrumOptions &opts = {},
-                 std::pmr::memory_resource *mr = nullptr);
+                 keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous frequency via Hilbert analytic-signal phase derivative
 /// (`instfreq(..., 'Method', 'hilbert')`).
 std::tuple<Value, Value>
 instfreqHilbert(const Value &x, const Value &fs = Value::Empty,
-                std::pmr::memory_resource *mr = nullptr);
+                keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous bandwidth via second central conditional spectral moment
 /// over the `pspectrum` spectrogram.
 Value instbw(const Value &x, const Value &fs = Value::Empty,
-             std::pmr::memory_resource *mr = nullptr);
+             keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous bandwidth and time vector (`[ibw, t] = instbw(...)`).
 std::tuple<Value, Value>
 instbwWithTime(const Value &x, const Value &fs = Value::Empty,
                const PspectrumOptions &opts = {},
-               std::pmr::memory_resource *mr = nullptr);
+               keel::Allocator *mr = nullptr);
 
 
 /// @}

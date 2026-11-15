@@ -1,7 +1,8 @@
 // toolboxes/signal/include/numkit/signal/measurements/sigroi.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <cstdint>
@@ -28,7 +29,7 @@ namespace numkit::signal {
 ///            empty mask → `0 × 0` matrix.
 /// @see sigroi2binmask
 Value binmask2sigroi(const Value &m,
-                     std::pmr::memory_resource *mr = nullptr);
+                     keel::Allocator *mr = nullptr);
 
 /// @brief ROI pairs → binary mask (`m = sigroi2binmask(roi, len)`).
 ///
@@ -38,8 +39,8 @@ Value binmask2sigroi(const Value &m,
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     LOGICAL column.
 /// @see binmask2sigroi
-Value sigroi2binmask(const Value &roi, int64_t len = -1,
-                     std::pmr::memory_resource *mr = nullptr);
+Value sigroi2binmask(const Value &roi, keel::i64 len = -1,
+                     keel::Allocator *mr = nullptr);
 
 /// @brief Extend each ROI (`roi = extendsigroi(roi, Lpre, Lpost)`).
 ///
@@ -52,8 +53,8 @@ Value sigroi2binmask(const Value &roi, int64_t len = -1,
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Extended ROI matrix.
 /// @see shortensigroi
-Value extendsigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
-                   std::pmr::memory_resource *mr = nullptr);
+Value extendsigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
+                   keel::Allocator *mr = nullptr);
 
 /// @brief Shrink each ROI (`roi = shortensigroi(roi, Lpre, Lpost)`).
 ///
@@ -66,8 +67,8 @@ Value extendsigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Shrunken ROI matrix.
 /// @see extendsigroi
-Value shortensigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
-                    std::pmr::memory_resource *mr = nullptr);
+Value shortensigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
+                    keel::Allocator *mr = nullptr);
 
 /// @brief Merge near-adjacent ROIs (`roi = mergesigroi(roi, sep)`).
 ///
@@ -79,8 +80,8 @@ Value shortensigroi(const Value &roi, int64_t Lpre, int64_t Lpost,
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     Merged ROI matrix.
 /// @see extendsigroi
-Value mergesigroi(const Value &roi, int64_t sep,
-                  std::pmr::memory_resource *mr = nullptr);
+Value mergesigroi(const Value &roi, keel::i64 sep,
+                  keel::Allocator *mr = nullptr);
 
 /// @brief Drop short ROIs (`roi = removesigroi(roi, maxLen)`).
 ///
@@ -90,8 +91,8 @@ Value mergesigroi(const Value &roi, int64_t sep,
 /// @param maxLen  Length threshold (ROIs `<= maxLen` are dropped).
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        Filtered ROI matrix.
-Value removesigroi(const Value &roi, int64_t maxLen,
-                   std::pmr::memory_resource *mr = nullptr);
+Value removesigroi(const Value &roi, keel::i64 maxLen,
+                   keel::Allocator *mr = nullptr);
 
 /// @brief Extract signal slices indexed by ROIs
 /// (`y = extractsigroi(x, roi, concat)`).
@@ -103,7 +104,7 @@ Value removesigroi(const Value &roi, int64_t maxLen,
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        Cell or concatenated column.
 Value extractsigroi(const Value &x, const Value &roi, bool concat = false,
-                    std::pmr::memory_resource *mr = nullptr);
+                    keel::Allocator *mr = nullptr);
 
 /// @brief Range-based binary mask, single-threshold form
 /// (`m = sigrangebinmask(x, threshold)` ≡ `x > threshold`).
@@ -113,8 +114,8 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat = false,
 /// @param mr         Memory resource (nullptr → process default).
 /// @return           LOGICAL column, same length as `x`.
 /// @see binmask2sigroi
-Value sigrangebinmask(const Value &x, double threshold,
-                      std::pmr::memory_resource *mr = nullptr);
+Value sigrangebinmask(const Value &x, keel::f64 threshold,
+                      keel::Allocator *mr = nullptr);
 
 /// @brief Range-based binary mask, interval form
 /// (`m = sigrangebinmask(x, [lo, hi])` ≡ `lo <= x <= hi`).
@@ -125,8 +126,8 @@ Value sigrangebinmask(const Value &x, double threshold,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    LOGICAL column, same length as `x`.
 /// @see binmask2sigroi
-Value sigrangebinmask(const Value &x, double lo, double hi,
-                      std::pmr::memory_resource *mr = nullptr);
+Value sigrangebinmask(const Value &x, keel::f64 lo, keel::f64 hi,
+                      keel::Allocator *mr = nullptr);
 
 
 /// @}

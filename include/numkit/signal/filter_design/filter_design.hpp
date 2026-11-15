@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/filter_design/filter_design.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <string>
@@ -27,9 +28,9 @@ namespace numkit::signal {
 /// @code  auto [b, a] = butter(4, 0.3);  // 4th-order lowpass  @endcode
 std::tuple<Value, Value>
 butter(int                          N,
-       double                       Wn,
+       keel::f64                       Wn,
        const std::string &          type = "low",
-       std::pmr::memory_resource *  mr   = nullptr);
+       keel::Allocator *  mr   = nullptr);
 
 /// FIR filter design via windowed-sinc (Hamming window).
 /// Returns the impulse response coefficients b (row vector of length N+1).
@@ -39,16 +40,16 @@ butter(int                          N,
 /// @param type  "low" (default) or "high".
 /// @param mr    Memory resource (nullptr → process default).
 Value fir1(int                          N,
-           double                       Wn,
+           keel::f64                       Wn,
            const std::string &          type = "low",
-           std::pmr::memory_resource *  mr   = nullptr);
+           keel::Allocator *  mr   = nullptr);
 
 Value fir1(int                          N,
            const Value &                Wn,
            const std::string &          type,
            const Value &                window,
            bool                         scale,
-           std::pmr::memory_resource *  mr   = nullptr);
+           keel::Allocator *  mr   = nullptr);
 
 /// Least-squares FIR filter design (Type-I linear-phase only).
 /// Solves the weighted least-squares problem on a piecewise-linear
@@ -69,14 +70,14 @@ Value fir1(int                          N,
 Value firls(int                          N,
             const Value &                F,
             const Value &                A,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 Value firls(int                          N,
             const Value &                F,
             const Value &                A,
             const Value &                W,
             const std::string &          ftype,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 /// cell2sos(C) — convert cell array of {Bi, Ai} pairs to L×6 SOS matrix.
 /// 2-output form [S, G] = cell2sos(C) extracts the leading scalar gain
@@ -84,7 +85,7 @@ Value firls(int                          N,
 /// Linear (length-2) sections are zero-padded on the right to length 3.
 std::tuple<Value, Value>
 cell2sos(const Value &                C,
-         std::pmr::memory_resource *  mr = nullptr);
+         keel::Allocator *  mr = nullptr);
 
 /// Optional arguments for @ref fir2.
 struct Fir2Options {
@@ -126,7 +127,7 @@ Value fir2(int                          n,
            const Value &                f,
            const Value &                m,
            const Fir2Options &          opts = {},
-           std::pmr::memory_resource *  mr   = nullptr);
+           keel::Allocator *  mr   = nullptr);
 
 /// firpm(N, F, A [, W] [, ftype]) — Parks-McClellan optimal equiripple
 /// FIR (Remez exchange). Returns (b, err) — `b` is the row vector of
@@ -158,13 +159,13 @@ Value fir2(int                          n,
 /// auto [h, err] = firpm(30, {0,0.4,0.5,1}, {1,1,0,0}, {1, 10});   // weighted
 /// auto [h, err] = firpm(30, {0.05, 0.95}, {1, 1}, {}, "hilbert"); // Type III
 /// @endcode
-std::tuple<Value, double>
+std::tuple<Value, keel::f64>
 firpm(int                          N,
       const Value &                F,
       const Value &                A,
       const Value &                W      = Value::Empty,
       const std::string &          ftype  = "",
-      std::pmr::memory_resource *  mr     = nullptr);
+      keel::Allocator *  mr     = nullptr);
 
 
 /// @}

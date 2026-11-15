@@ -3,6 +3,8 @@
 // CallContext register half of transforms/dct.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/dct.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -11,13 +13,10 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -33,10 +32,10 @@ namespace detail {
 // is parsed separately (currently not implemented; explicit error to
 // surface the unsupported branch instead of silently doing Type-II).
 struct DctArgs { int n; int dim; bool hasType; double typeVal; };
-static DctArgs parseDctArgs(Span<const Value> args, const char *fn)
+static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
 {
     DctArgs a{0, 0, false, 2.0};
-    size_t pos = 1;
+    keel::usize pos = 1;
     while (pos < args.size()) {
         if (args[pos].isChar() || args[pos].isString()) {
             if (pos + 1 >= args.size())
@@ -65,11 +64,11 @@ static DctArgs parseDctArgs(Span<const Value> args, const char *fn)
     return a;
 }
 
-void dct_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void dct_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
              CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "dct");  // no max: name-value tail in the reference
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     if (args.size() == 1) {
         const auto &x = args[0];
         if (x.dims().rows() > 1 && x.dims().cols() > 1) {
@@ -88,11 +87,11 @@ void dct_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
     else          outs[0] = dctTyped(args[0], a.n, a.dim, t, /*inverse=*/false, mr);
 }
 
-void idct_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs,
+void idct_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
               CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "idct");  // no max: name-value tail in the reference
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
     if (args.size() == 1) {
         const auto &x = args[0];
         if (x.dims().rows() > 1 && x.dims().cols() > 1) {

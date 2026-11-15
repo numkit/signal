@@ -3,7 +3,7 @@
 // toolboxes/signal/include/numkit/signal/filter_analysis/unwrap.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -31,7 +31,7 @@ namespace numkit::signal {
 /// Value phi   = unwrap(angle(H));   // continuous phase response
 /// @endcode
 Value unwrap(const Value &                phase,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 
 /// @}

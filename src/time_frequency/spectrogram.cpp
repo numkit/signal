@@ -4,11 +4,16 @@
 // time-collapsed power-spectrum estimators periodogram / pwelch
 // live in spectral_analysis/periodogram_pwelch.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/time_frequency/spectrogram.hpp>
 #include <numkit/signal/transforms/fft.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"
@@ -16,9 +21,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
 #include <limits>
-#include <memory_resource>
 #include <string>
 #include <tuple>
 
@@ -28,9 +31,9 @@ namespace {
 
 // Fill caller-provided buffer with Hamming window coefficients, same
 // formula MATLAB uses.
-void iscola_argcheck(const Value &window, std::size_t noverlap, const std::string &method)
+void iscola_argcheck(const Value &window, keel::usize noverlap, const std::string &method)
 {
-    const std::size_t M = window.numel();
+    const keel::usize M = window.numel();
     if (M == 0)
         throw Error("iscola: window must be non-empty",
                      0, 0, "iscola", "", "numkit:iscola:badWindow");
@@ -42,48 +45,48 @@ void iscola_argcheck(const Value &window, std::size_t noverlap, const std::strin
                      0, 0, "iscola", "", "numkit:iscola:badMethod");
 }
 
-void fillHammingWindow(double *w, size_t N)
+void fillHammingWindow(double *w, keel::usize N)
 {
     if (N == 1) {
         w[0] = 1.0;
         return;
     }
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         w[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (N - 1));
 }
 
 // Periodic Hann window (MATLAB hann(N, 'periodic') — used as the stft
 // default. Note the divisor is N, NOT N-1 (that's the symmetric form).
-void fillHannPeriodic(double *w, size_t N)
+void fillHannPeriodic(double *w, keel::usize N)
 {
     if (N == 1) { w[0] = 1.0; return; }
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         w[i] = 0.5 * (1.0 - std::cos(2.0 * M_PI * i / N));
 }
 
 } // anonymous namespace
 
 std::tuple<Value, Value, Value>
-spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, std::pmr::memory_resource *mr)
+spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usize nfft, keel::Allocator *mr)
 {
     Value xD = detail::widenSingleToDouble(x, mr);
-    const size_t nx = xD.numel();
+    const keel::usize nx = xD.numel();
     const double *xd = xD.doubleData();
 
-    ScratchArena scratch(mr);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
 
-    size_t winLen;
-    ScratchVec<double> win(&scratch);
+    keel::usize winLen;
+    keel::Array<double> win(scratch.allocator());
     if (window.numel() > 0) {
         winLen = window.numel();
         win.resize(winLen);
-        for (size_t i = 0; i < winLen; ++i)
+        for (keel::usize i = 0; i < winLen; ++i)
             win[i] = window.elemAsDouble(i);
     } else {
         // MATLAB spectrogram default: 8 Hamming-windowed segments with
         // 50% overlap (winLen = floor(nx / 4.5)).
-        winLen = std::max<size_t>(1,
-            static_cast<size_t>(std::floor(static_cast<double>(nx) / 4.5)));
+        winLen = std::max<keel::usize>(1,
+            static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
@@ -95,13 +98,13 @@ spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, s
     if (noverlap == 0)
         noverlap = winLen / 2;
     if (nfft == 0)
-        nfft = std::max<size_t>(256, nextPow2(winLen));
+        nfft = std::max<keel::usize>(256, nextPow2(winLen));
 
-    const size_t nFreqs = nfft / 2 + 1;
-    const size_t step = winLen - noverlap;
+    const keel::usize nFreqs = nfft / 2 + 1;
+    const keel::usize step = winLen - noverlap;
 
-    size_t nSegments = 0;
-    for (size_t start = 0; start + winLen <= nx; start += step)
+    keel::usize nSegments = 0;
+    for (keel::usize start = 0; start + winLen <= nx; start += step)
         nSegments++;
 
     auto S = Value::complexMatrix(nFreqs, nSegments, mr);
@@ -111,25 +114,25 @@ spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, s
     // Per-segment FFT buffer hoisted: see pwelch for the rationale —
     // a fresh allocation per loop iteration would grow the arena to
     // O(nSegments × nfft) instead of O(nfft).
-    auto buf = ScratchVec<Complex>(nfft, &scratch);
+    auto buf = keel::Array<keel::c64>(nfft, scratch.allocator());
 
-    size_t seg = 0;
-    for (size_t start = 0; start + winLen <= nx; start += step) {
-        for (size_t i = 0; i < winLen; ++i)
-            buf[i] = Complex(xd[start + i] * win[i], 0.0);
-        for (size_t i = winLen; i < nfft; ++i)
-            buf[i] = Complex(0.0, 0.0);
+    keel::usize seg = 0;
+    for (keel::usize start = 0; start + winLen <= nx; start += step) {
+        for (keel::usize i = 0; i < winLen; ++i)
+            buf[i] = keel::c64(xd[start + i] * win[i], 0.0);
+        for (keel::usize i = winLen; i < nfft; ++i)
+            buf[i] = keel::c64(0.0, 0.0);
 
-        fftRadix2(&scratch, buf, -1);
+        fftRadix2(scratch.allocator(), buf, -1);
 
-        for (size_t i = 0; i < nFreqs; ++i)
+        for (keel::usize i = 0; i < nFreqs; ++i)
             S.complexDataMut()[i + seg * nFreqs] = buf[i];
 
         T.doubleDataMut()[seg] = static_cast<double>(start + winLen / 2);
         seg++;
     }
 
-    for (size_t i = 0; i < nFreqs; ++i)
+    for (keel::usize i = 0; i < nFreqs; ++i)
         F.doubleDataMut()[i] = M_PI * i / (nFreqs - 1);
 
     return std::make_tuple(std::move(S), std::move(F), std::move(T));
@@ -147,12 +150,12 @@ spectrogram(const Value &x, const Value &window, size_t noverlap, size_t nfft, s
 // round-trip is bit-exact within ulp.
 namespace {
 
-void resolveWindow(const Value &win, ScratchVec<double> &out, std::pmr::memory_resource *mr)
+void resolveWindow(const Value &win, keel::Array<double> &out, keel::Allocator *mr)
 {
     if (win.numel() > 0) {
-        const size_t n = win.numel();
+        const keel::usize n = win.numel();
         out.resize(n);
-        for (size_t i = 0; i < n; ++i) out[i] = win.elemAsDouble(i);
+        for (keel::usize i = 0; i < n; ++i) out[i] = win.elemAsDouble(i);
         return;
     }
     // Default: hann(128, 'periodic').
@@ -163,10 +166,9 @@ void resolveWindow(const Value &win, ScratchVec<double> &out, std::pmr::memory_r
 
 } // anonymous namespace
 
-Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t fftLength, const std::string &range, std::pmr::memory_resource *mr)
+Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize fftLength, const std::string &range, keel::Allocator *mr)
 {
-    using Cd = std::complex<double>;
-    // Contract (probed R2025b): x accepts double/single/complex; logical/integer
+// Contract (probed R2025b): x accepts double/single/complex; logical/integer
     // and 3-D+ arrays are rejected. Multi-channel 2-D matrices (N x C) frame
     // each column independently into a 3-D [outRows x K x C] complex array.
     detail::requireFloatInput(x, "stft");
@@ -174,15 +176,15 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
         throw Error("stft: X must be two-dimensional",
                      0, 0, "stft", "", "numkit:stft:expected2D");
     const bool isMatrix = (x.dims().rows() > 1 && x.dims().cols() > 1);
-    const size_t N   = isMatrix ? x.dims().rows() : x.numel();
-    const size_t nCh = isMatrix ? x.dims().cols() : 1;
+    const keel::usize N   = isMatrix ? x.dims().rows() : x.numel();
+    const keel::usize nCh = isMatrix ? x.dims().cols() : 1;
     if (N == 0 || x.numel() == 0)
         return Value::complexMatrix(0, 0, mr);
 
-    ScratchArena scratch(mr);
-    ScratchVec<double> win(&scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    keel::Array<double> win(scratch.allocator());
     resolveWindow(window, win, mr);
-    const size_t M = win.size();
+    const keel::usize M = win.size();
     if (M == 0)
         throw Error("stft: window must be non-empty",
                      0, 0, "stft", "", "numkit:stft:badWindow");
@@ -190,11 +192,11 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
         throw Error("stft: signal shorter than window length",
                      0, 0, "stft", "", "numkit:stft:shortSignal");
 
-    const size_t OL  = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
+    const keel::usize OL  = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
     if (OL >= M)
         throw Error("stft: OverlapLength must be < window length",
                      0, 0, "stft", "", "numkit:stft:badOverlap");
-    const size_t NFFT = (fftLength == 0) ? M : fftLength;
+    const keel::usize NFFT = (fftLength == 0) ? M : fftLength;
     if (NFFT < M)
         throw Error("stft: FFTLength must be >= window length",
                      0, 0, "stft", "", "numkit:stft:badNfft");
@@ -204,11 +206,11 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
                     "or 'onesided'",
                      0, 0, "stft", "", "numkit:stft:badRange");
 
-    const size_t hop = M - OL;
-    const size_t K   = (N - M) / hop + 1;
+    const keel::usize hop = M - OL;
+    const keel::usize K   = (N - M) / hop + 1;
     const bool   isOneSided = (range == "onesided");
     const bool   isCentered = (range == "centered");
-    const size_t outRows = isOneSided ? (NFFT / 2 + 1) : NFFT;
+    const keel::usize outRows = isOneSided ? (NFFT / 2 + 1) : NFFT;
     // Centered rotation: MATLAB places bins as [-N/2+1, ..., N/2] for
     // even N (Nyquist at the END), or [-(N-1)/2, ..., (N-1)/2] for odd
     // N. So DC sits at index N/2-1 (even) or (N-1)/2 (odd). To produce
@@ -216,49 +218,49 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
     // with Sd[DC_idx] = Fd[0], we need cShift = N - DC_idx:
     //   even N: cShift = N/2 + 1
     //   odd  N: cShift = (N + 1) / 2
-    const size_t cShift = (NFFT % 2 == 0) ? (NFFT / 2 + 1)
+    const keel::usize cShift = (NFFT % 2 == 0) ? (NFFT / 2 + 1)
                                           : ((NFFT + 1) / 2);
 
     // x as doubles. Complex input also supported via fft(complex frame).
     const bool xCplx = x.isComplex();
     Value xD = xCplx ? Value() : detail::widenSingleToDouble(x, mr);
     const double *xr = xCplx ? nullptr : xD.doubleData();
-    const Cd     *xc = xCplx ? x.complexData() : nullptr;
+    const keel::c64     *xc = xCplx ? x.complexData() : nullptr;
 
     Value S = (nCh > 1)
         ? Value::matrix3d(outRows, K, nCh, ValueType::COMPLEX, mr)
         : Value::complexMatrix(outRows, K, mr);
-    Cd *Sd = S.complexDataMut();
+    keel::c64 *Sd = S.complexDataMut();
 
     // Per-frame buffer reused across iterations.
     Value frameV = xCplx
         ? Value::complexMatrix(NFFT, 1, mr)
         : Value::matrix(NFFT, 1, ValueType::DOUBLE, mr);
-    Cd     *frameCd = xCplx ? frameV.complexDataMut() : nullptr;
+    keel::c64     *frameCd = xCplx ? frameV.complexDataMut() : nullptr;
     double *frameRd = xCplx ? nullptr               : frameV.doubleDataMut();
 
-    for (size_t ch = 0; ch < nCh; ++ch) {
-        const size_t chOff = ch * N;
-        Cd *SdCh = Sd + ch * (outRows * K);
-        for (size_t k = 0; k < K; ++k) {
-            const size_t start = chOff + k * hop;
+    for (keel::usize ch = 0; ch < nCh; ++ch) {
+        const keel::usize chOff = ch * N;
+        keel::c64 *SdCh = Sd + ch * (outRows * K);
+        for (keel::usize k = 0; k < K; ++k) {
+            const keel::usize start = chOff + k * hop;
             if (xCplx) {
-                for (size_t i = 0; i < M; ++i)
+                for (keel::usize i = 0; i < M; ++i)
                     frameCd[i] = xc[start + i] * win[i];
-                for (size_t i = M; i < NFFT; ++i) frameCd[i] = Cd(0, 0);
+                for (keel::usize i = M; i < NFFT; ++i) frameCd[i] = keel::c64(0, 0);
             } else {
-                for (size_t i = 0; i < M; ++i)
+                for (keel::usize i = 0; i < M; ++i)
                     frameRd[i] = xr[start + i] * win[i];
-                for (size_t i = M; i < NFFT; ++i) frameRd[i] = 0.0;
+                for (keel::usize i = M; i < NFFT; ++i) frameRd[i] = 0.0;
             }
             Value F = fft(frameV, static_cast<int>(NFFT), 1, mr);
-            const Cd *Fd = F.complexData();
+            const keel::c64 *Fd = F.complexData();
             if (isCentered) {
-                for (size_t r = 0; r < outRows; ++r)
+                for (keel::usize r = 0; r < outRows; ++r)
                     SdCh[k * outRows + r] = Fd[(r + cShift) % NFFT];
             } else {
                 // twosided / onesided: copy the first outRows bins as-is.
-                for (size_t r = 0; r < outRows; ++r)
+                for (keel::usize r = 0; r < outRows; ++r)
                     SdCh[k * outRows + r] = Fd[r];
             }
         }
@@ -266,25 +268,23 @@ Value stft(const Value &x, const Value &window, std::size_t overlap, std::size_t
     return S;
 }
 
-Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_t fftLength, const std::string &range, std::pmr::memory_resource *mr)
+Value istft(const Value &S, const Value &window, keel::usize overlap, keel::usize fftLength, const std::string &range, keel::Allocator *mr)
 {
-    using Cd = std::complex<double>;
-
-    const auto &d = S.dims();
-    const size_t inRows = d.rows();
-    const size_t K      = d.cols();
+const auto &d = S.dims();
+    const keel::usize inRows = d.rows();
+    const keel::usize K      = d.cols();
     if (K == 0 || inRows == 0)
         return Value::matrix(0, 0, ValueType::DOUBLE, mr);
 
-    ScratchArena scratch(mr);
-    ScratchVec<double> win(&scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    keel::Array<double> win(scratch.allocator());
     resolveWindow(window, win, mr);
-    const size_t M = win.size();
+    const keel::usize M = win.size();
     if (M == 0)
         throw Error("istft: window must be non-empty",
                      0, 0, "istft", "", "numkit:istft:badWindow");
 
-    const size_t OL  = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
+    const keel::usize OL  = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
     if (OL >= M)
         throw Error("istft: OverlapLength must be < window length",
                      0, 0, "istft", "", "numkit:istft:badOverlap");
@@ -296,14 +296,14 @@ Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_
 
     const bool   isOneSided = (range == "onesided");
     const bool   isCentered = (range == "centered");
-    size_t NFFT = (fftLength == 0)
+    keel::usize NFFT = (fftLength == 0)
                     ? (isOneSided ? 2 * (inRows - 1) : inRows)
                     : fftLength;
     // Inverse of the centered rotation (see stft above): the input
     // column came from twosided via Sd[k] = Fd[(k + cShift) mod N], so
     // we recover Fd[j] = Sd[(j - cShift + N) mod N]. Equivalent forward
     // shift = N - cShift.
-    const size_t invCShift = NFFT - ((NFFT % 2 == 0) ? (NFFT / 2 + 1)
+    const keel::usize invCShift = NFFT - ((NFFT % 2 == 0) ? (NFFT / 2 + 1)
                                                      : ((NFFT + 1) / 2));
     if (!isOneSided && inRows != NFFT)
         throw Error("istft: STFT row count does not match FFTLength",
@@ -316,44 +316,44 @@ Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_
         throw Error("istft: FFTLength must be >= window length",
                      0, 0, "istft", "", "numkit:istft:badNfft");
 
-    const size_t hop = M - OL;
-    const size_t Nout = (K - 1) * hop + M;
+    const keel::usize hop = M - OL;
+    const keel::usize Nout = (K - 1) * hop + M;
 
     Value out = Value::matrix(Nout, 1, ValueType::DOUBLE, mr);
     double *od = out.doubleDataMut();
     std::fill(od, od + Nout, 0.0);
 
     // Per-sample window-square accumulator for normalization.
-    ScratchVec<double> wnorm(Nout, 0.0, &scratch);
+    keel::Array<double> wnorm(Nout, 0.0, scratch.allocator());
 
     // Per-frame full spectrum (after undoing centered / onesided
     // packing) and ifft-result.
     Value Fcol = Value::complexMatrix(NFFT, 1, mr);
-    Cd *Fd = Fcol.complexDataMut();
-    const Cd *Sd = S.complexData();
+    keel::c64 *Fd = Fcol.complexDataMut();
+    const keel::c64 *Sd = S.complexData();
 
-    for (size_t k = 0; k < K; ++k) {
+    for (keel::usize k = 0; k < K; ++k) {
         // Repopulate Fcol from S column k according to range.
         if (isOneSided) {
             // Hermitian reflection: F[N-i] = conj(F[i]) for i=1..N/2-1.
-            for (size_t r = 0; r < inRows; ++r) Fd[r] = Sd[k * inRows + r];
-            for (size_t r = 1; r < NFFT - inRows + 1; ++r)
-                Fd[NFFT - r] = std::conj(Fd[r]);
+            for (keel::usize r = 0; r < inRows; ++r) Fd[r] = Sd[k * inRows + r];
+            for (keel::usize r = 1; r < NFFT - inRows + 1; ++r)
+                Fd[NFFT - r] = keel::conj(Fd[r]);
         } else if (isCentered) {
             // Undo the centered rotation.
-            for (size_t r = 0; r < NFFT; ++r)
+            for (keel::usize r = 0; r < NFFT; ++r)
                 Fd[r] = Sd[k * inRows + ((r + invCShift) % NFFT)];
         } else {
-            for (size_t r = 0; r < NFFT; ++r) Fd[r] = Sd[k * inRows + r];
+            for (keel::usize r = 0; r < NFFT; ++r) Fd[r] = Sd[k * inRows + r];
         }
 
         Value t = ifft(Fcol, static_cast<int>(NFFT), 1, mr);
         // ifft may return DOUBLE or COMPLEX.
-        const Cd     *tc = (t.type() == ValueType::COMPLEX) ? t.complexData() : nullptr;
+        const keel::c64     *tc = (t.type() == ValueType::COMPLEX) ? t.complexData() : nullptr;
         const double *tr = (t.type() == ValueType::COMPLEX) ? nullptr        : t.doubleData();
 
-        const size_t start = k * hop;
-        for (size_t i = 0; i < M; ++i) {
+        const keel::usize start = k * hop;
+        for (keel::usize i = 0; i < M; ++i) {
             const double real_i = tc ? tc[i].real() : tr[i];
             od[start + i]    += win[i] * real_i;
             wnorm[start + i] += win[i] * win[i];
@@ -363,7 +363,7 @@ Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_
     // Normalize sample-wise so COLA-compliant windows reach identity
     // reconstruction. The wnorm[n] = 0 case can only happen outside the
     // covered support (impossible by construction); guard anyway.
-    for (size_t i = 0; i < Nout; ++i)
+    for (keel::usize i = 0; i < Nout; ++i)
         if (wnorm[i] > 0.0) od[i] /= wnorm[i];
 
     return out;
@@ -383,10 +383,10 @@ Value istft(const Value &S, const Value &window, std::size_t overlap, std::size_
 // passes, dev ≥ 2·eps fails).
 
 std::tuple<Value, Value, Value>
-iscola(const Value &window, std::size_t noverlap, const std::string &method,
-       std::pmr::memory_resource *mr)
+iscola(const Value &window, keel::usize noverlap, const std::string &method,
+       keel::Allocator *mr)
 {
-    const std::size_t M = window.numel();
+    const keel::usize M = window.numel();
     if (M == 0)
         throw Error("iscola: window must be non-empty",
                      0, 0, "iscola", "", "numkit:iscola:badWindow");
@@ -398,16 +398,16 @@ iscola(const Value &window, std::size_t noverlap, const std::string &method,
         throw Error("iscola: method must be 'ola' or 'wola'",
                      0, 0, "iscola", "", "numkit:iscola:badMethod");
 
-    const std::size_t hop  = M - noverlap;
-    const std::size_t nOvw = (M + hop - 1) / hop;        // ceil(M/hop)
-    const std::size_t K    = nOvw + 2;
-    const std::size_t Ltot = (K - 1) * hop + M;
+    const keel::usize hop  = M - noverlap;
+    const keel::usize nOvw = (M + hop - 1) / hop;        // ceil(M/hop)
+    const keel::usize K    = nOvw + 2;
+    const keel::usize Ltot = (K - 1) * hop + M;
     const bool isWola      = (method == "wola");
 
-    ScratchArena scratch(mr);
-    ScratchVec<double> s(Ltot, 0.0, &scratch);
-    for (std::size_t k = 0; k < K; ++k)
-        for (std::size_t i = 0; i < M; ++i) {
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    keel::Array<double> s(Ltot, 0.0, scratch.allocator());
+    for (keel::usize k = 0; k < K; ++k)
+        for (keel::usize i = 0; i < M; ++i) {
             const double wi = window.elemAsDouble(i);
             s[k * hop + i] += isWola ? wi * wi : wi;
         }
@@ -415,14 +415,13 @@ iscola(const Value &window, std::size_t noverlap, const std::string &method,
     // Stable region: [(nOvw - 1)*hop, K*hop). Take the first `hop`-long
     // window of it — by periodicity within the stable region every
     // hop-sized slice has the same content (up to FP).
-    const std::size_t stableStart = (nOvw - 1) * hop;
-    ScratchVec<double> stable(s.begin() + stableStart,
-                               s.begin() + stableStart + hop, &scratch);
+    const keel::usize stableStart = (nOvw - 1) * hop;
+    keel::Array<double> stable(s.slice(stableStart, hop), scratch.allocator());
 
     // Median.
-    ScratchVec<double> sorted(stable.begin(), stable.end(), &scratch);
+    keel::Array<double> sorted = stable.clone(scratch.allocator());
     std::sort(sorted.begin(), sorted.end());
-    const std::size_t H = sorted.size();
+    const keel::usize H = sorted.size();
     const double median = (H % 2 == 0)
         ? 0.5 * (sorted[H / 2 - 1] + sorted[H / 2])
         : sorted[H / 2];
@@ -430,13 +429,13 @@ iscola(const Value &window, std::size_t noverlap, const std::string &method,
     // Max absolute deviation from the median.
     double maxDev = 0.0;
     for (double v : stable)
-        maxDev = std::max(maxDev, std::abs(v - median));
+        maxDev = std::max(maxDev, keel::abs(v - median));
 
     // MATLAB tolerance is relative to the median (probed): dev/|m| ≤ eps
     // passes, dev/|m| > eps fails. e.g. hann@48 'ola' has dev = 2·eps and
     // m = 2 → ratio = eps (exact boundary), tf = 1.
     const double eps = std::numeric_limits<double>::epsilon();
-    const double tol = (std::abs(median) > 0.0) ? std::abs(median) * eps : eps;
+    const double tol = (keel::abs(median) > 0.0) ? keel::abs(median) * eps : eps;
     const bool   tf  = (maxDev <= tol);
 
     Value out_tf  = Value::scalar(tf ? 1.0 : 0.0, mr);

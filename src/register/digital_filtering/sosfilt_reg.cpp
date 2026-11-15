@@ -6,13 +6,13 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/digital_filtering/sosfilt.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,18 +30,18 @@ namespace numkit::signal {
 
 namespace detail {
 
-void sosfilt_reg(Span<const Value> args, size_t /*nargout*/,
-                 Span<Value> outs, CallContext &ctx)
+void sosfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                 keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "sosfilt");
-    outs[0] = sosfilt(args[0], args[1], ctx.engine->resource());
+    outs[0] = sosfilt(args[0], args[1], ctx.engine->allocator());
 }
 
-void sosfiltfilt_reg(Span<const Value> args, size_t /*nargout*/,
-                     Span<Value> outs, CallContext &ctx)
+void sosfiltfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                     keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 2, "sosfiltfilt");  // absent from the R2025b reference build; historical signature
-    outs[0] = sosfiltfilt(args[0], args[1], ctx.engine->resource());
+    outs[0] = sosfiltfilt(args[0], args[1], ctx.engine->allocator());
 }
 
 } // namespace detail

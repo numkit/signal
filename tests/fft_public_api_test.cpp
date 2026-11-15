@@ -6,7 +6,10 @@
 // MATLAB calling glue. The Engine-routed tests live alongside in
 // toolboxes/signal/tests/signal_core_test.cpp and remain in place.
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/core/types.hpp>  // Error
 #include <numkit/value/value.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -23,7 +26,6 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
-#include <complex>
 #include <vector>
 
 #ifndef M_PI
@@ -32,26 +34,24 @@
 
 using numkit::ValueType;
 using numkit::Value;
-using Complex = std::complex<double>;
-
 namespace {
 
-Value makeRealRow(std::pmr::memory_resource *mr, std::initializer_list<double> vals)
+Value makeRealRow(keel::Allocator *mr, std::initializer_list<double> vals)
 {
     auto v = Value::matrix(1, vals.size(), ValueType::DOUBLE, mr);
     double *data = v.doubleDataMut();
-    size_t i = 0;
+    keel::usize i = 0;
     for (double x : vals)
         data[i++] = x;
     return v;
 }
 
-Value makeComplexRow(std::pmr::memory_resource *mr, std::initializer_list<Complex> vals)
+Value makeComplexRow(keel::Allocator *mr, std::initializer_list<keel::c64> vals)
 {
     auto v = Value::matrix(1, vals.size(), ValueType::COMPLEX, mr);
-    Complex *data = v.complexDataMut();
-    size_t i = 0;
-    for (Complex x : vals)
+    keel::c64 *data = v.complexDataMut();
+    keel::usize i = 0;
+    for (keel::c64 x : vals)
         data[i++] = x;
     return v;
 }
@@ -61,7 +61,7 @@ Value makeComplexRow(std::pmr::memory_resource *mr, std::initializer_list<Comple
 // Ã¢â€â‚¬Ã¢â€â‚¬ Basic round-trip: x -> fft -> ifft Ã¢â€°Ë† x Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, RoundTripRealVector)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0});
 
     Value X = numkit::signal::fft(x, -1, 0, mr);
@@ -71,12 +71,12 @@ TEST(DspFftPublicApi, RoundTripRealVector)
     const double *xData = x.doubleData();
     // ifft should restore the real vector within numerical tolerance
     if (y.isComplex()) {
-        const Complex *yData = y.complexData();
-        for (size_t i = 0; i < y.numel(); ++i)
+        const keel::c64 *yData = y.complexData();
+        for (keel::usize i = 0; i < y.numel(); ++i)
             EXPECT_NEAR(yData[i].real(), xData[i], 1e-10) << "at i=" << i;
     } else {
         const double *yData = y.doubleData();
-        for (size_t i = 0; i < y.numel(); ++i)
+        for (keel::usize i = 0; i < y.numel(); ++i)
             EXPECT_NEAR(yData[i], xData[i], 1e-10) << "at i=" << i;
     }
 }
@@ -88,7 +88,7 @@ TEST(DspFftPublicApi, RoundTripRealVector)
 // real. vs MATLAB R2025b. DEEP-PROBE 2026-05-31.
 TEST(DspFftPublicApi, IfftSymmetricVector)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value X = makeComplexRow(mr, {{1, 0}, {2, 1}, {3, 0}, {4, -1}});
     Value y = numkit::signal::ifftSymmetric(X, -1, 0, mr);
     ASSERT_FALSE(y.isComplex());          // exactly real
@@ -103,7 +103,7 @@ TEST(DspFftPublicApi, IfftSymmetricVector)
 
 TEST(DspFftPublicApi, IfftSymmetricZeroPad)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value X = makeComplexRow(mr, {{1, 0}, {2, 1}, {3, 0}, {4, -1}});
     Value y = numkit::signal::ifftSymmetric(X, /*n=*/6, /*dim=*/0, mr);
     ASSERT_FALSE(y.isComplex());
@@ -116,10 +116,10 @@ TEST(DspFftPublicApi, IfftSymmetricZeroPad)
 
 TEST(DspFftPublicApi, IfftSymmetricMatrixPerColumn)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     // M = [1 2+1i; 3+2i 4-1i] (2x2). ifft(M,'symmetric') over dim 1 = [2 3; -1 -1].
     Value M = Value::matrix(2, 2, ValueType::COMPLEX, mr);
-    Complex *md = M.complexDataMut();
+    keel::c64 *md = M.complexDataMut();
     md[0] = {1, 0}; md[1] = {3, 2}; md[2] = {2, 1}; md[3] = {4, -1};  // col-major
     Value y = numkit::signal::ifftSymmetric(M, -1, /*dim=*/1, mr);
     ASSERT_FALSE(y.isComplex());
@@ -137,11 +137,11 @@ TEST(DspFftPublicApi, IfftSymmetricMatrixPerColumn)
 // shapes (NOT real(ifft2), which differs for genuine 2-D). DEEP-PROBE 2026-05-31.
 TEST(DspFftPublicApi, Ifft2Symmetric)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     // X1 = [1+1i 2-3i 5; 4 5+2i 1-1i] (2x3). ifft2(X1,'symmetric') =
     //   [3.16667 -0.0446582 -0.622008; -1.5 1.44338 -1.44338].
     Value X = Value::matrix(2, 3, ValueType::COMPLEX, mr);
-    Complex *xd = X.complexDataMut();          // col-major
+    keel::c64 *xd = X.complexDataMut();          // col-major
     xd[0] = {1, 1};  xd[1] = {4, 0};
     xd[2] = {2, -3}; xd[3] = {5, 2};
     xd[4] = {5, 0};  xd[5] = {1, -1};
@@ -157,7 +157,7 @@ TEST(DspFftPublicApi, Ifft2Symmetric)
 
     // Column vector: ifft2 reduces to the 1-D symmetric over dim 1.
     Value C = Value::matrix(4, 1, ValueType::COMPLEX, mr);
-    Complex *cd = C.complexDataMut();
+    keel::c64 *cd = C.complexDataMut();
     cd[0] = {1, 2}; cd[1] = {3, -1}; cd[2] = {5, 0.5}; cd[3] = {0, 2};
     Value B = numkit::signal::ifft2Symmetric(C, mr);
     ASSERT_FALSE(B.isComplex());
@@ -172,16 +172,16 @@ TEST(DspFftPublicApi, Ifft2Symmetric)
 // Ã¢â€â‚¬Ã¢â€â‚¬ DC of a constant vector is N, everything else is ~0 Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, DcBinOfConstant)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
 
     Value X = numkit::signal::fft(x, -1, 0, mr);
     ASSERT_TRUE(X.isComplex());
-    const Complex *Xd = X.complexData();
+    const keel::c64 *Xd = X.complexData();
     EXPECT_NEAR(Xd[0].real(), 8.0, 1e-10);  // DC = sum = N
     EXPECT_NEAR(Xd[0].imag(), 0.0, 1e-10);
-    for (size_t i = 1; i < X.numel(); ++i) {
-        EXPECT_NEAR(std::abs(Xd[i]), 0.0, 1e-10) << "at i=" << i;
+    for (keel::usize i = 1; i < X.numel(); ++i) {
+        EXPECT_NEAR(keel::abs(Xd[i]), 0.0, 1e-10) << "at i=" << i;
     }
 }
 
@@ -192,11 +192,11 @@ TEST(DspFftPublicApi, DcBinOfConstant)
 // explicitly.
 TEST(DspFftPublicApi, ForwardSignsMatchMatlab)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 2.0, 3.0, 4.0});
     Value X = numkit::signal::fft(x, -1, 0, mr);
     ASSERT_TRUE(X.isComplex());
-    const Complex *Xd = X.complexData();
+    const keel::c64 *Xd = X.complexData();
     EXPECT_NEAR(Xd[0].real(), 10.0, 1e-12);
     EXPECT_NEAR(Xd[0].imag(),  0.0, 1e-12);
     EXPECT_NEAR(Xd[1].real(), -2.0, 1e-12);
@@ -212,17 +212,17 @@ TEST(DspFftPublicApi, ForwardSignsMatchMatlab)
 // the impulse at bin 2 (the conjugate of MATLAB's spatial position).
 TEST(DspFftPublicApi, IfftComplexImpulseSpectrumPosition)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     auto X = Value::complexMatrix(4, 1, mr);
-    Complex *Xd = X.complexDataMut();
-    Xd[0] = Complex( 1.0,  0.0);
-    Xd[1] = Complex( 0.0,  1.0);
-    Xd[2] = Complex(-1.0,  0.0);
-    Xd[3] = Complex( 0.0, -1.0);
+    keel::c64 *Xd = X.complexDataMut();
+    Xd[0] = keel::c64( 1.0,  0.0);
+    Xd[1] = keel::c64( 0.0,  1.0);
+    Xd[2] = keel::c64(-1.0,  0.0);
+    Xd[3] = keel::c64( 0.0, -1.0);
     Value y = numkit::signal::ifft(X, -1, 0, mr);
     // ifft auto-downgrades to DOUBLE when every imag is < 1e-10; that's
     // the case here ([0,0,0,1] is real). Handle either layout.
-    auto re = [&](size_t i) {
+    auto re = [&](keel::usize i) {
         return y.isComplex() ? y.complexData()[i].real()
                              : y.doubleData()[i];
     };
@@ -241,25 +241,25 @@ TEST(DspFftPublicApi, IfftComplexImpulseSpectrumPosition)
 // land at idx d+1 (1-based), not at -d (the pre-fix bug's symptom).
 TEST(DspFftPublicApi, IfftPhaseRampLocatesImpulse)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t N = 1024;
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize N = 1024;
     constexpr int d = 5;  // expected impulse position (0-based)
     auto H = Value::complexMatrix(N, 1, mr);
-    Complex *Hd = H.complexDataMut();
-    for (size_t k = 0; k < N; ++k) {
+    keel::c64 *Hd = H.complexDataMut();
+    for (keel::usize k = 0; k < N; ++k) {
         const double phase = -2.0 * M_PI * static_cast<double>(k)
                                   * static_cast<double>(d) / static_cast<double>(N);
-        Hd[k] = Complex(std::cos(phase), std::sin(phase));
+        Hd[k] = keel::c64(std::cos(phase), std::sin(phase));
     }
     Value h = numkit::signal::ifft(H, -1, 0, mr);
     // h is conjugate-symmetric so ifft auto-downgrades to real.
     ASSERT_FALSE(h.isComplex());
     const double *hd = h.doubleData();
-    size_t peakIdx = 0;
+    keel::usize peakIdx = 0;
     double peakVal = hd[0];
-    for (size_t i = 1; i < N; ++i)
+    for (keel::usize i = 1; i < N; ++i)
         if (hd[i] > peakVal) { peakVal = hd[i]; peakIdx = i; }
-    EXPECT_EQ(peakIdx, static_cast<size_t>(d))
+    EXPECT_EQ(peakIdx, static_cast<keel::usize>(d))
         << "Peak should be at delay sample d=" << d
         << ", got idx=" << peakIdx
         << " (sign-convention regression Ã¢â‚¬â€ see commit history)";
@@ -269,25 +269,25 @@ TEST(DspFftPublicApi, IfftPhaseRampLocatesImpulse)
 // Ã¢â€â‚¬Ã¢â€â‚¬ Single-frequency cosine: peak at known bin Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, CosinePeakBin)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t N = 16;
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize N = 16;
     constexpr int k = 3;  // frequency bin to test
     auto x = Value::matrix(1, N, ValueType::DOUBLE, mr);
     double *xd = x.doubleDataMut();
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         xd[i] = std::cos(2.0 * M_PI * k * i / static_cast<double>(N));
 
     Value X = numkit::signal::fft(x, -1, 0, mr);
-    const Complex *Xd = X.complexData();
+    const keel::c64 *Xd = X.complexData();
     // Peak of a real cosine at bin k should be N/2 in magnitude at both k and N-k
-    EXPECT_NEAR(std::abs(Xd[k]), N / 2.0, 1e-9);
-    EXPECT_NEAR(std::abs(Xd[N - k]), N / 2.0, 1e-9);
+    EXPECT_NEAR(keel::abs(Xd[k]), N / 2.0, 1e-9);
+    EXPECT_NEAR(keel::abs(Xd[N - k]), N / 2.0, 1e-9);
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ n argument: zero-pad extends output length Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, ZeroPadExtendsOutput)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 2.0, 3.0, 4.0});
 
     Value X = numkit::signal::fft(x, /*n=*/8, 0, mr);
@@ -297,7 +297,7 @@ TEST(DspFftPublicApi, ZeroPadExtendsOutput)
 // Ã¢â€â‚¬Ã¢â€â‚¬ n argument: truncate shortens output Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, TruncateShortensOutput)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0});
 
     Value X = numkit::signal::fft(x, /*n=*/4, 0, mr);
@@ -308,7 +308,7 @@ TEST(DspFftPublicApi, TruncateShortensOutput)
 // 0 now means "first non-singleton" (valid); 4+ and negative are invalid.
 TEST(DspFftPublicApi, InvalidDimThrows)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 2.0, 3.0, 4.0});
 
     EXPECT_THROW(numkit::signal::fft(x, /*n=*/-1, /*dim=*/4, mr),
@@ -322,7 +322,7 @@ TEST(DspFftPublicApi, InvalidDimThrows)
 // Ã¢â€â‚¬Ã¢â€â‚¬ fft(x, [], dim) on a singleton axis is identity Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Dim3OnVectorIsIdentity)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 2.0, 3.0, 4.0});
     // dim=3 on a 1x4 row vector: the page axis has length 1, so the
     // per-slice FFT is of length 1 (identity). Result shape matches input.
@@ -333,7 +333,7 @@ TEST(DspFftPublicApi, Dim3OnVectorIsIdentity)
     // Each "page slice" has length 1, so FFT is identity (forward
     // keeps complex; values reproduce the input).
     ASSERT_TRUE(X.isComplex());
-    for (size_t i = 0; i < 4; ++i) {
+    for (keel::usize i = 0; i < 4; ++i) {
         EXPECT_NEAR(X.complexData()[i].real(), double(i + 1), 1e-12);
         EXPECT_NEAR(X.complexData()[i].imag(), 0.0,           1e-12);
     }
@@ -342,23 +342,23 @@ TEST(DspFftPublicApi, Dim3OnVectorIsIdentity)
 // Ã¢â€â‚¬Ã¢â€â‚¬ dim=0 explicitly picks first non-singleton (auto) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Dim0AutoOnRowVector)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
+    keel::Allocator *mr = keel::default_allocator();
     Value x = makeRealRow(mr, {1.0, 1.0, 1.0, 1.0});
     Value X = numkit::signal::fft(x, /*n=*/-1, /*dim=*/0, mr);
     // Row vector: non-singleton is cols Ã¢â‚¬â€ FFT along the row Ã¢â€ â€™ DC = 4.
     ASSERT_TRUE(X.isComplex());
     EXPECT_NEAR(X.complexData()[0].real(), 4.0, 1e-10);
-    for (size_t i = 1; i < 4; ++i)
-        EXPECT_NEAR(std::abs(X.complexData()[i]), 0.0, 1e-10);
+    for (keel::usize i = 1; i < 4; ++i)
+        EXPECT_NEAR(keel::abs(X.complexData()[i]), 0.0, 1e-10);
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ 3-D input, dim=1: FFT along rows for every (col, page) slice Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Fft3DDim1PreservesShape)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t R = 4, C = 3, P = 2;
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize R = 4, C = 3, P = 2;
     Value x = Value::matrix3d(R, C, P, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < R * C * P; ++i)
+    for (keel::usize i = 0; i < R * C * P; ++i)
         x.doubleDataMut()[i] = double(i + 1);
 
     Value X = numkit::signal::fft(x, /*n=*/-1, /*dim=*/1, mr);
@@ -371,13 +371,13 @@ TEST(DspFftPublicApi, Fft3DDim1PreservesShape)
     // Spot-check: the DC bin of each column-per-page is the sum of that
     // column's input values (since FFT bin 0 = ÃŽÂ£ x[k]).
     ASSERT_TRUE(X.isComplex());
-    const Complex *Xd = X.complexData();
-    for (size_t p = 0; p < P; ++p)
-        for (size_t c = 0; c < C; ++c) {
+    const keel::c64 *Xd = X.complexData();
+    for (keel::usize p = 0; p < P; ++p)
+        for (keel::usize c = 0; c < C; ++c) {
             double sum = 0.0;
-            for (size_t r = 0; r < R; ++r)
+            for (keel::usize r = 0; r < R; ++r)
                 sum += x.doubleData()[c * R + p * R * C + r];
-            Complex dcBin = Xd[c * R + p * R * C];  // row 0
+            keel::c64 dcBin = Xd[c * R + p * R * C];  // row 0
             EXPECT_NEAR(dcBin.real(), sum, 1e-10);
             EXPECT_NEAR(dcBin.imag(), 0.0, 1e-10);
         }
@@ -386,10 +386,10 @@ TEST(DspFftPublicApi, Fft3DDim1PreservesShape)
 // Ã¢â€â‚¬Ã¢â€â‚¬ 3-D input, dim=2: FFT along cols for every (row, page) slice Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Fft3DDim2PreservesShape)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t R = 4, C = 4, P = 2;
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize R = 4, C = 4, P = 2;
     Value x = Value::matrix3d(R, C, P, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < R * C * P; ++i)
+    for (keel::usize i = 0; i < R * C * P; ++i)
         x.doubleDataMut()[i] = double(i + 1);
 
     Value X = numkit::signal::fft(x, /*n=*/-1, /*dim=*/2, mr);
@@ -400,13 +400,13 @@ TEST(DspFftPublicApi, Fft3DDim2PreservesShape)
 
     // DC bin of each row-per-page: sum of row values.
     ASSERT_TRUE(X.isComplex());
-    const Complex *Xd = X.complexData();
-    for (size_t p = 0; p < P; ++p)
-        for (size_t r = 0; r < R; ++r) {
+    const keel::c64 *Xd = X.complexData();
+    for (keel::usize p = 0; p < P; ++p)
+        for (keel::usize r = 0; r < R; ++r) {
             double sum = 0.0;
-            for (size_t c = 0; c < C; ++c)
+            for (keel::usize c = 0; c < C; ++c)
                 sum += x.doubleData()[c * R + p * R * C + r];
-            Complex dcBin = Xd[r + p * R * C];  // col 0 at this (row, page)
+            keel::c64 dcBin = Xd[r + p * R * C];  // col 0 at this (row, page)
             EXPECT_NEAR(dcBin.real(), sum, 1e-10);
             EXPECT_NEAR(dcBin.imag(), 0.0, 1e-10);
         }
@@ -415,10 +415,10 @@ TEST(DspFftPublicApi, Fft3DDim2PreservesShape)
 // Ã¢â€â‚¬Ã¢â€â‚¬ 3-D input, dim=3: FFT along pages for every (row, col) slice Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, Fft3DDim3PreservesShape)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t R = 3, C = 2, P = 4;
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize R = 3, C = 2, P = 4;
     Value x = Value::matrix3d(R, C, P, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < R * C * P; ++i)
+    for (keel::usize i = 0; i < R * C * P; ++i)
         x.doubleDataMut()[i] = double(i + 1);
 
     Value X = numkit::signal::fft(x, /*n=*/-1, /*dim=*/3, mr);
@@ -429,13 +429,13 @@ TEST(DspFftPublicApi, Fft3DDim3PreservesShape)
 
     // DC bin of each page-per-(row,col): sum across pages.
     ASSERT_TRUE(X.isComplex());
-    const Complex *Xd = X.complexData();
-    for (size_t c = 0; c < C; ++c)
-        for (size_t r = 0; r < R; ++r) {
+    const keel::c64 *Xd = X.complexData();
+    for (keel::usize c = 0; c < C; ++c)
+        for (keel::usize r = 0; r < R; ++r) {
             double sum = 0.0;
-            for (size_t p = 0; p < P; ++p)
+            for (keel::usize p = 0; p < P; ++p)
                 sum += x.doubleData()[r + c * R + p * R * C];
-            Complex dcBin = Xd[r + c * R];  // page 0
+            keel::c64 dcBin = Xd[r + c * R];  // page 0
             EXPECT_NEAR(dcBin.real(), sum, 1e-10);
             EXPECT_NEAR(dcBin.imag(), 0.0, 1e-10);
         }
@@ -456,23 +456,23 @@ TEST(DspFftPublicApi, Fft3DDim3PreservesShape)
 // small composite (15) and a prime (97).
 TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    const std::vector<size_t> sizes = {15u, 97u, 240u, 480u, 662u, 1323u};
-    for (size_t N : sizes) {
+    keel::Allocator *mr = keel::default_allocator();
+    const std::vector<keel::usize> sizes = {15u, 97u, 240u, 480u, 662u, 1323u};
+    for (keel::usize N : sizes) {
         // Deterministic test signal Ã¢â‚¬â€ two sinusoids + DC offset.
         auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         double *xd = x.doubleDataMut();
-        for (size_t n = 0; n < N; ++n)
+        for (keel::usize n = 0; n < N; ++n)
             xd[n] = std::sin(2.0 * M_PI * 0.07 * n)
                   + 0.5 * std::cos(2.0 * M_PI * 0.13 * n);
 
         Value X = numkit::signal::fft(x, -1, 0, mr);
         ASSERT_TRUE(X.isComplex()) << "N=" << N;
         ASSERT_EQ(X.numel(), N) << "N=" << N;
-        const Complex *Xd = X.complexData();
+        const keel::c64 *Xd = X.complexData();
 
         // Conjugate symmetry: real input Ã¢â€ â€™ X[k] = conj(X[N-k]).
-        for (size_t k = 1; k < N / 2; ++k) {
+        for (keel::usize k = 1; k < N / 2; ++k) {
             EXPECT_NEAR(Xd[k].real(),  Xd[N - k].real(), 1e-9)
                 << "N=" << N << " k=" << k;
             EXPECT_NEAR(Xd[k].imag(), -Xd[N - k].imag(), 1e-9)
@@ -480,11 +480,11 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
         }
 
         // Reference: naive O(NÃ‚Â²) DFT, value-for-value.
-        for (size_t k : {size_t{0}, size_t{1}, size_t{2}, N - 1, N / 3}) {
+        for (keel::usize k : {keel::usize{0}, keel::usize{1}, keel::usize{2}, N - 1, N / 3}) {
             double re = 0.0, im = 0.0;
             const double w = -2.0 * M_PI * static_cast<double>(k)
                                  / static_cast<double>(N);
-            for (size_t n = 0; n < N; ++n) {
+            for (keel::usize n = 0; n < N; ++n) {
                 const double a = w * static_cast<double>(n);
                 re += xd[n] * std::cos(a);
                 im += xd[n] * std::sin(a);
@@ -500,10 +500,10 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
 // ifft round-trip for non-pow2 N (Bluestein path, dir=-1).
 TEST(DspFftPublicApi, NonPow2RoundTrip)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    for (size_t N : {size_t{15}, size_t{97}, size_t{480}, size_t{1323}}) {
+    keel::Allocator *mr = keel::default_allocator();
+    for (keel::usize N : {keel::usize{15}, keel::usize{97}, keel::usize{480}, keel::usize{1323}}) {
         auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-        for (size_t n = 0; n < N; ++n)
+        for (keel::usize n = 0; n < N; ++n)
             x.doubleDataMut()[n] = std::sin(0.13 * double(n))
                                  + 0.4 * std::cos(0.21 * double(n));
 
@@ -511,7 +511,7 @@ TEST(DspFftPublicApi, NonPow2RoundTrip)
         Value y = numkit::signal::ifft(X, -1, 0, mr);
         ASSERT_EQ(y.numel(), N);
         const double *xd = x.doubleData();
-        for (size_t n = 0; n < N; ++n) {
+        for (keel::usize n = 0; n < N; ++n) {
             const double got = y.isComplex() ? y.complexData()[n].real()
                                              : y.doubleData()[n];
             EXPECT_NEAR(got, xd[n], 1e-9) << "N=" << N << " n=" << n;
@@ -530,13 +530,13 @@ TEST(DspFftPublicApi, NonPow2RoundTrip)
 // algorithm-specific.
 TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t N = 65536;  // = 4^8, well above current r4 threshold
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize N = 65536;  // = 4^8, well above current r4 threshold
 
     auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     double *xd = x.doubleDataMut();
     double sumX = 0.0, sumX2 = 0.0;
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         xd[i] = std::sin(0.0123 * double(i)) + 0.5 * std::cos(0.07 * double(i));
         sumX  += xd[i];
         sumX2 += xd[i] * xd[i];
@@ -545,7 +545,7 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
     Value X = numkit::signal::fft(x, -1, 0, mr);
     ASSERT_TRUE(X.isComplex());
     ASSERT_EQ(X.numel(), N);
-    const Complex *Xd = X.complexData();
+    const keel::c64 *Xd = X.complexData();
 
     // DC bin equals sum of inputs (within FP tolerance).
     EXPECT_NEAR(Xd[0].real(), sumX, 1e-6);
@@ -553,7 +553,7 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
 
     // Parseval: sum |X[k]|^2 == N * sum |x[k]|^2.
     double sumPow = 0.0;
-    for (size_t k = 0; k < N; ++k) sumPow += std::norm(Xd[k]);
+    for (keel::usize k = 0; k < N; ++k) sumPow += keel::norm(Xd[k]);
     EXPECT_NEAR(sumPow, double(N) * sumX2, 1e-3);
 
     // Round-trip restores input.
@@ -561,11 +561,11 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
     ASSERT_EQ(y.numel(), N);
     const double *yd = y.isComplex() ? nullptr : y.doubleData();
     if (y.isComplex()) {
-        const Complex *yc = y.complexData();
-        for (size_t i = 0; i < N; ++i)
+        const keel::c64 *yc = y.complexData();
+        for (keel::usize i = 0; i < N; ++i)
             EXPECT_NEAR(yc[i].real(), xd[i], 1e-9) << "at i=" << i;
     } else {
-        for (size_t i = 0; i < N; ++i)
+        for (keel::usize i = 0; i < N; ++i)
             EXPECT_NEAR(yd[i], xd[i], 1e-9) << "at i=" << i;
     }
 }
@@ -591,11 +591,11 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
 // Fill a complex test vector deterministically. Use values with
 // non-trivial real+imag parts so any sign/order error in the
 // butterfly shows up.
-static void fillTestSignal(Complex *out, size_t N)
+static void fillTestSignal(keel::c64 *out, keel::usize N)
 {
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double t = double(i) / double(N);
-        out[i] = Complex(std::sin(2.0 * M_PI * 3.0 * t)
+        out[i] = keel::c64(std::sin(2.0 * M_PI * 3.0 * t)
                        + 0.4 * std::cos(2.0 * M_PI * 7.0 * t),
                          0.5 * std::cos(2.0 * M_PI * 5.0 * t));
     }
@@ -604,9 +604,9 @@ static void fillTestSignal(Complex *out, size_t N)
 TEST(DspFftStockham, MatchesRadix2_SmallSizes)
 {
     // Cover the small sizes the dispatcher might reach: 4..1024.
-    for (size_t N : {size_t{4}, size_t{8}, size_t{16}, size_t{64},
-                     size_t{256}, size_t{1024}}) {
-        std::vector<Complex> ref(N), test(N), W(N / 2);
+    for (keel::usize N : {keel::usize{4}, keel::usize{8}, keel::usize{16}, keel::usize{64},
+                     keel::usize{256}, keel::usize{1024}}) {
+        std::vector<keel::c64> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
         // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
@@ -619,7 +619,7 @@ TEST(DspFftStockham, MatchesRadix2_SmallSizes)
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
         numkit::signal::detail::fftStockhamDispatch(test.data(), N, W.data());
 
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             EXPECT_NEAR(ref[i].real(), test[i].real(), 1e-10)
                 << "N=" << N << " i=" << i;
             EXPECT_NEAR(ref[i].imag(), test[i].imag(), 1e-10)
@@ -631,9 +631,9 @@ TEST(DspFftStockham, MatchesRadix2_SmallSizes)
 TEST(DspFftStockham, MatchesRadix2_LargeSizes)
 {
     // Sizes spanning the FFT cliff region the dispatcher cares about.
-    for (size_t N : {size_t{8192}, size_t{16384}, size_t{32768},
-                     size_t{65536}}) {
-        std::vector<Complex> ref(N), test(N), W(N / 2);
+    for (keel::usize N : {keel::usize{8192}, keel::usize{16384}, keel::usize{32768},
+                     keel::usize{65536}}) {
+        std::vector<keel::c64> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
         // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
@@ -646,7 +646,7 @@ TEST(DspFftStockham, MatchesRadix2_LargeSizes)
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
         numkit::signal::detail::fftStockhamDispatch(test.data(), N, W.data());
 
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             ASSERT_NEAR(ref[i].real(), test[i].real(), 1e-7)
                 << "N=" << N << " i=" << i;
             ASSERT_NEAR(ref[i].imag(), test[i].imag(), 1e-7)
@@ -661,10 +661,10 @@ TEST(DspFftR2SoA, MatchesRadix2_AllSizes)
     // SoA path goes through AoSÃ¢â€ â€SoA conversion, bit-reverse on SoA,
     // and butterflies on split re/im arrays Ã¢â‚¬â€ any error in any of
     // those phases shows up here.
-    for (size_t N : {size_t{4},   size_t{8},   size_t{16},   size_t{64},
-                     size_t{256}, size_t{1024}, size_t{8192}, size_t{16384},
-                     size_t{32768}, size_t{65536}}) {
-        std::vector<Complex> ref(N), test(N), W(N / 2);
+    for (keel::usize N : {keel::usize{4},   keel::usize{8},   keel::usize{16},   keel::usize{64},
+                     keel::usize{256}, keel::usize{1024}, keel::usize{8192}, keel::usize{16384},
+                     keel::usize{32768}, keel::usize{65536}}) {
+        std::vector<keel::c64> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
         // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
@@ -677,7 +677,7 @@ TEST(DspFftR2SoA, MatchesRadix2_AllSizes)
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
         numkit::signal::detail::fftRadix2SoaDispatch(test.data(), N, W.data());
 
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             ASSERT_NEAR(ref[i].real(), test[i].real(), 1e-7)
                 << "N=" << N << " i=" << i;
             ASSERT_NEAR(ref[i].imag(), test[i].imag(), 1e-7)
@@ -688,8 +688,8 @@ TEST(DspFftR2SoA, MatchesRadix2_AllSizes)
 
 TEST(DspFftR2SoA, EdgeCase_N1)
 {
-    std::vector<Complex> x = {Complex(7.0, -3.5)};
-    std::vector<Complex> W;
+    std::vector<keel::c64> x = {keel::c64(7.0, -3.5)};
+    std::vector<keel::c64> W;
     numkit::signal::detail::fftRadix2SoaDispatch(x.data(), 1, W.data());
     EXPECT_DOUBLE_EQ(x[0].real(), 7.0);
     EXPECT_DOUBLE_EQ(x[0].imag(), -3.5);
@@ -699,10 +699,10 @@ TEST(DspFftR4SoA, MatchesRadix2_PowerOfFourSizes)
 {
     // r4 SoA only handles powers of 4. Compare against AoS r2 which
     // handles arbitrary pow-of-2 (and is the established reference).
-    for (size_t N : {size_t{4}, size_t{16}, size_t{64}, size_t{256},
-                     size_t{1024}, size_t{4096}, size_t{16384},
-                     size_t{65536}}) {
-        std::vector<Complex> ref(N), test(N), W(N / 2);
+    for (keel::usize N : {keel::usize{4}, keel::usize{16}, keel::usize{64}, keel::usize{256},
+                     keel::usize{1024}, keel::usize{4096}, keel::usize{16384},
+                     keel::usize{65536}}) {
+        std::vector<keel::c64> ref(N), test(N), W(N / 2);
         fillTestSignal(ref.data(), N);
         std::copy(ref.begin(), ref.end(), test.begin());
         // Forward direction (dir=-1 Ã¢â€ â€™ exp(-2Ãâ‚¬iÃ‚Â·k/N)) Ã¢â‚¬â€ matches the
@@ -715,7 +715,7 @@ TEST(DspFftR4SoA, MatchesRadix2_PowerOfFourSizes)
         numkit::signal::detail::fftRadix2Impl(ref.data(), N, W.data());
         numkit::signal::detail::fftRadix4Pow4SoaDispatch(test.data(), N, W.data());
 
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             ASSERT_NEAR(ref[i].real(), test[i].real(), 1e-7)
                 << "N=" << N << " i=" << i;
             ASSERT_NEAR(ref[i].imag(), test[i].imag(), 1e-7)
@@ -727,8 +727,8 @@ TEST(DspFftR4SoA, MatchesRadix2_PowerOfFourSizes)
 TEST(DspFftStockham, EdgeCase_N1)
 {
     // N=1 is identity Ã¢â‚¬â€ should leave the input unchanged.
-    std::vector<Complex> x = {Complex(3.14, 2.71)};
-    std::vector<Complex> W;  // empty, not used at N<=1
+    std::vector<keel::c64> x = {keel::c64(3.14, 2.71)};
+    std::vector<keel::c64> W;  // empty, not used at N<=1
     numkit::signal::detail::fftStockhamDispatch(x.data(), 1, W.data());
     EXPECT_DOUBLE_EQ(x[0].real(), 3.14);
     EXPECT_DOUBLE_EQ(x[0].imag(), 2.71);
@@ -739,10 +739,10 @@ TEST(DspFftStockham, EdgeCase_N1)
 // Ã¢â€â‚¬Ã¢â€â‚¬ Round-trip: x Ã¢â€ â€™ fft Ã¢â€ â€™ ifft Ã¢â€°Ë† x for 3-D input on each dim Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(DspFftPublicApi, RoundTrip3DOnEachDim)
 {
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    constexpr size_t R = 4, C = 2, P = 8;
+    keel::Allocator *mr = keel::default_allocator();
+    constexpr keel::usize R = 4, C = 2, P = 8;
     Value x = Value::matrix3d(R, C, P, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < R * C * P; ++i)
+    for (keel::usize i = 0; i < R * C * P; ++i)
         x.doubleDataMut()[i] = std::sin(0.37 * double(i));
 
     for (int dim = 1; dim <= 3; ++dim) {
@@ -751,7 +751,7 @@ TEST(DspFftPublicApi, RoundTrip3DOnEachDim)
         ASSERT_EQ(y.numel(), R * C * P) << "dim=" << dim;
         ASSERT_TRUE(y.dims().is3D()) << "dim=" << dim;
         // ifft should downgrade to real (imag < 1e-10 everywhere).
-        for (size_t i = 0; i < y.numel(); ++i) {
+        for (keel::usize i = 0; i < y.numel(); ++i) {
             double ref = x.doubleData()[i];
             double got = y.isComplex() ? y.complexData()[i].real()
                                        : y.doubleData()[i];
@@ -764,7 +764,7 @@ TEST(DspFftPublicApi, RoundTrip3DOnEachDim)
 // Ã¢â€â‚¬Ã¢â€â‚¬ Pack 36: fft2 / ifft2 / interpft Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 TEST(SignalFftPublicApi, Fft2RoundTripIsIdentity)
 {
-    auto *mr = std::pmr::get_default_resource();
+    auto *mr = keel::default_allocator();
     auto x = numkit::Value::matrix(4, 4, numkit::ValueType::DOUBLE, mr);
     for (int i = 0; i < 16; ++i) x.doubleDataMut()[i] = i + 1;
     numkit::Value Y = numkit::signal::fft2(x, -1, -1, mr);
@@ -782,7 +782,7 @@ TEST(SignalFftPublicApi, Fft2RoundTripIsIdentity)
 
 TEST(SignalFftPublicApi, Fft2WithExplicitSizes)
 {
-    auto *mr = std::pmr::get_default_resource();
+    auto *mr = keel::default_allocator();
     auto x = numkit::Value::matrix(2, 3, numkit::ValueType::DOUBLE, mr);
     for (int i = 0; i < 6; ++i) x.doubleDataMut()[i] = i + 1;
     // Pad to 4Ãƒâ€”5 in frequency.
@@ -793,7 +793,7 @@ TEST(SignalFftPublicApi, Fft2WithExplicitSizes)
 
 TEST(SignalFftPublicApi, InterpftLengthMatches)
 {
-    auto *mr = std::pmr::get_default_resource();
+    auto *mr = keel::default_allocator();
     auto x = numkit::Value::matrix(1, 8, numkit::ValueType::DOUBLE, mr);
     for (int i = 0; i < 8; ++i)
         x.doubleDataMut()[i] = std::sin(2.0 * M_PI * i / 8.0);
@@ -808,15 +808,15 @@ TEST(SignalFftPublicApi, InterpftPureSinusoidExact)
 {
     // For a single bin sine at integer frequency, interpft should
     // reconstruct the underlying continuous waveform on the dense grid.
-    auto *mr = std::pmr::get_default_resource();
-    const size_t M = 16, N = 64;
+    auto *mr = keel::default_allocator();
+    const keel::usize M = 16, N = 64;
     auto x = numkit::Value::matrix(1, M, numkit::ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < M; ++i)
+    for (keel::usize i = 0; i < M; ++i)
         x.doubleDataMut()[i] = std::cos(2.0 * M_PI * 2.0 * i / M);  // freq=2
 
     numkit::Value y = numkit::signal::interpft(x, N, 0, mr);
     ASSERT_EQ(y.numel(), N);
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double ref = std::cos(2.0 * M_PI * 2.0 * i / N);
         const double got = y.isComplex() ? y.complexData()[i].real()
                                          : y.doubleData()[i];

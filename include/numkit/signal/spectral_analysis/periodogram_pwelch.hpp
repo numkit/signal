@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -40,9 +41,9 @@ namespace numkit::signal {
 std::tuple<Value, Value>
 periodogram(const Value &                x,
             const Value &                window,
-            size_t                       nfft,
-            double                       fs = 2.0 * 3.14159265358979323846,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::usize                       nfft,
+            keel::f64                       fs = 2.0 * 3.14159265358979323846,
+            keel::Allocator *  mr = nullptr);
 
 /// Chi-square confidence interval for a periodogram PSD estimate.
 ///
@@ -68,10 +69,10 @@ periodogram(const Value &                x,
 /// @see periodogram
 Value
 periodogramConf(const Value &                Pxx,
-                double                       confidenceLevel,
+                keel::f64                       confidenceLevel,
                 bool                         realInput,
                 bool                         nfftEven,
-                std::pmr::memory_resource *  mr = nullptr);
+                keel::Allocator *  mr = nullptr);
 
 /// Welch's averaged, modified periodogram PSD estimate.
 ///
@@ -91,10 +92,10 @@ periodogramConf(const Value &                Pxx,
 std::tuple<Value, Value>
 pwelch(const Value &                x,
        const Value &                window,
-       size_t                       noverlap,
-       size_t                       nfft,
-       double                       fs = 2.0 * 3.14159265358979323846,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::usize                       noverlap,
+       keel::usize                       nfft,
+       keel::f64                       fs = 2.0 * 3.14159265358979323846,
+       keel::Allocator *  mr = nullptr);
 
 /// Cross-PSD via Welch's method.
 ///
@@ -116,10 +117,10 @@ std::tuple<Value, Value>
 cpsd(const Value &                x,
      const Value &                y,
      const Value &                window,
-     size_t                       noverlap,
-     size_t                       nfft,
-     double                       fs = 2.0 * 3.14159265358979323846,
-     std::pmr::memory_resource *  mr = nullptr);
+     keel::usize                       noverlap,
+     keel::usize                       nfft,
+     keel::f64                       fs = 2.0 * 3.14159265358979323846,
+     keel::Allocator *  mr = nullptr);
 
 /// Magnitude-squared coherence via Welch's method.
 ///
@@ -141,10 +142,10 @@ std::tuple<Value, Value>
 mscohere(const Value &                x,
          const Value &                y,
          const Value &                window,
-         size_t                       noverlap,
-         size_t                       nfft,
-         double                       fs = 2.0 * 3.14159265358979323846,
-         std::pmr::memory_resource *  mr = nullptr);
+         keel::usize                       noverlap,
+         keel::usize                       nfft,
+         keel::f64                       fs = 2.0 * 3.14159265358979323846,
+         keel::Allocator *  mr = nullptr);
 
 /// Transfer-function estimate via Welch's method.
 ///
@@ -165,10 +166,10 @@ std::tuple<Value, Value>
 tfestimate(const Value &                x,
            const Value &                y,
            const Value &                window,
-           size_t                       noverlap,
-           size_t                       nfft,
-           double                       fs = 2.0 * 3.14159265358979323846,
-           std::pmr::memory_resource *  mr = nullptr);
+           keel::usize                       noverlap,
+           keel::usize                       nfft,
+           keel::f64                       fs = 2.0 * 3.14159265358979323846,
+           keel::Allocator *  mr = nullptr);
 
 /// Yule-Walker autoregressive PSD estimate.
 ///
@@ -187,8 +188,8 @@ tfestimate(const Value &                x,
 std::tuple<Value, Value>
 pyulear(const Value &                x,
         int                          p,
-        size_t                       nfft,
-        std::pmr::memory_resource *  mr = nullptr);
+        keel::usize                       nfft,
+        keel::Allocator *  mr = nullptr);
 
 /// @brief Burg's AR PSD estimate (`[Pxx, F] = pburg(x, p, nfft)`).
 ///
@@ -205,8 +206,8 @@ pyulear(const Value &                x,
 std::tuple<Value, Value>
 pburg(const Value &                x,
       int                          p,
-      size_t                       nfft,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::usize                       nfft,
+      keel::Allocator *  mr = nullptr);
 
 // `aryule` and `lpc` live in toolboxes/signal's signal_modeling header.
 

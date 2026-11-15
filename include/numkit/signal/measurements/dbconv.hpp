@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <string>
@@ -38,7 +38,7 @@ namespace numkit::signal {
 /// @see db2mag, db2pow, mag2db, pow2db
 Value db(const Value &                x,
          const std::string &          signalType = "voltage",
-         std::pmr::memory_resource *  mr         = nullptr);
+         keel::Allocator *  mr         = nullptr);
 
 /// Inverse of `db` in voltage form: \f$ y = 10^{d/20} \f$.
 ///
@@ -48,7 +48,7 @@ Value db(const Value &                x,
 ///
 /// @see db, mag2db
 Value db2mag(const Value &                d,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// Magnitude to decibels (voltage form): \f$ y = 20 \log_{10} x \f$.
 ///
@@ -61,7 +61,7 @@ Value db2mag(const Value &                d,
 ///
 /// @see db2mag, db
 Value mag2db(const Value &                x,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// Inverse of `pow2db`: \f$ y = 10^{d/10} \f$.
 ///
@@ -71,7 +71,7 @@ Value mag2db(const Value &                x,
 ///
 /// @see pow2db
 Value db2pow(const Value &                d,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// Power to decibels: \f$ y = 10 \log_{10} p \f$.
 ///
@@ -81,7 +81,7 @@ Value db2pow(const Value &                d,
 ///
 /// @see db2pow, mag2db
 Value pow2db(const Value &                p,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 
 /// @}

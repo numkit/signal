@@ -2,6 +2,10 @@
 //
 // db / db2mag / mag2db / pow2db / db2pow.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/measurements/dbconv.hpp>
 
 #include <numkit/value/value.hpp>
@@ -12,7 +16,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <string>
 
 namespace numkit::signal {
@@ -23,14 +26,14 @@ namespace {
 template <typename F>
 void forEachAsMag(const Value &x, double *dst, F &&f)
 {
-    const size_t n = x.numel();
+    const keel::usize n = x.numel();
     if (x.isComplex()) {
-        const Complex *src = x.complexData();
-        for (size_t i = 0; i < n; ++i)
-            dst[i] = f(std::abs(src[i]));
+        const keel::c64 *src = x.complexData();
+        for (keel::usize i = 0; i < n; ++i)
+            dst[i] = f(keel::abs(src[i]));
     } else {
         const double *src = x.doubleData();
-        for (size_t i = 0; i < n; ++i)
+        for (keel::usize i = 0; i < n; ++i)
             dst[i] = f(src[i]);
     }
 }
@@ -56,7 +59,7 @@ double db_argcheck(const std::string &signalType)
 } // namespace
 
 // ── db ─────────────────────────────────────────────────────────────────
-Value db(const Value &x, const std::string &signalType, std::pmr::memory_resource *mr)
+Value db(const Value &x, const std::string &signalType, keel::Allocator *mr)
 {
     const double scale = db_argcheck(signalType);
     auto out = createLike(x, ValueType::DOUBLE, mr);
@@ -66,7 +69,7 @@ Value db(const Value &x, const std::string &signalType, std::pmr::memory_resourc
 }
 
 // ── db2mag ─────────────────────────────────────────────────────────────
-Value db2mag(const Value &d, std::pmr::memory_resource *mr)
+Value db2mag(const Value &d, keel::Allocator *mr)
 {
     auto out = createLike(d, ValueType::DOUBLE, mr);
     forEachAsMag(d, out.doubleDataMut(),
@@ -75,7 +78,7 @@ Value db2mag(const Value &d, std::pmr::memory_resource *mr)
 }
 
 // ── mag2db ─────────────────────────────────────────────────────────────
-Value mag2db(const Value &x, std::pmr::memory_resource *mr)
+Value mag2db(const Value &x, keel::Allocator *mr)
 {
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
@@ -84,7 +87,7 @@ Value mag2db(const Value &x, std::pmr::memory_resource *mr)
 }
 
 // ── db2pow ─────────────────────────────────────────────────────────────
-Value db2pow(const Value &d, std::pmr::memory_resource *mr)
+Value db2pow(const Value &d, keel::Allocator *mr)
 {
     auto out = createLike(d, ValueType::DOUBLE, mr);
     forEachAsMag(d, out.doubleDataMut(),
@@ -93,7 +96,7 @@ Value db2pow(const Value &d, std::pmr::memory_resource *mr)
 }
 
 // ── pow2db ─────────────────────────────────────────────────────────────
-Value pow2db(const Value &p, std::pmr::memory_resource *mr)
+Value pow2db(const Value &p, keel::Allocator *mr)
 {
     auto out = createLike(p, ValueType::DOUBLE, mr);
     forEachAsMag(p, out.doubleDataMut(),

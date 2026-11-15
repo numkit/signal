@@ -11,7 +11,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -41,8 +42,8 @@ namespace numkit::signal {
 /// @code  Value c = cconv({1, 2, 3, 4}, {1, 1, 1});  // length 4 cyclic conv  @endcode
 Value cconv(const Value &                x,
             const Value &                y,
-            size_t                       n  = 0,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::usize                       n  = 0,
+            keel::Allocator *  mr = nullptr);
 
 /// Convolution matrix for an impulse response.
 ///
@@ -60,8 +61,8 @@ Value cconv(const Value &                x,
 /// @return    Convolution matrix per the shape rules above.
 /// @throws    numkit::Error  if `n == 0` or `h` is empty.
 Value convmtx(const Value &                h,
-              size_t                       n,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::usize                       n,
+              keel::Allocator *  mr = nullptr);
 
 /// 2-D cross-correlation of two real matrices.
 ///
@@ -76,7 +77,7 @@ Value convmtx(const Value &                h,
 /// @return    DOUBLE matrix of size (rA+rB-1) × (cA+cB-1).
 Value xcorr2(const Value &                A,
              const Value &                B,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// Estimate the integer delay between two signals.
 ///
@@ -93,7 +94,7 @@ Value xcorr2(const Value &                A,
 long finddelay(const Value &                x,
                const Value &                y,
                long                         max_lag = 0,
-               std::pmr::memory_resource *  mr      = nullptr);
+               keel::Allocator *  mr      = nullptr);
 
 /// Align two signals by zero-padding the leading one.
 ///
@@ -110,7 +111,7 @@ std::tuple<Value, Value>
 alignsignals(const Value &                x,
              const Value &                y,
              long                         max_lag = 0,
-             std::pmr::memory_resource *  mr      = nullptr);
+             keel::Allocator *  mr      = nullptr);
 
 
 /// @}

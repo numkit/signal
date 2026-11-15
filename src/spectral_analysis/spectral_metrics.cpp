@@ -8,6 +8,9 @@
 // power-band integrations yield rad/s. When fs is supplied, freqs run
 // [0, fs/2] and integrations yield Hz.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/complex.h>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -20,7 +23,6 @@
 #include "../signal_detail.hpp"     // shared argcheck cores
 
 #include <algorithm>
-#include <complex>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstring>
@@ -48,7 +50,7 @@ struct PsdPair {
     std::vector<double> F;
 };
 
-PsdPair computePsd(const Value &x, double fs, std::pmr::memory_resource *mr)
+PsdPair computePsd(const Value &x, double fs, keel::Allocator *mr)
 {
     // periodogram(x, [], nfft, effFs) returns Pxx already normalised by
     // 1/(winPower * effFs) with one-sided doubling on interior bins, so
@@ -58,13 +60,13 @@ PsdPair computePsd(const Value &x, double fs, std::pmr::memory_resource *mr)
     const double effFs = (fs > 0.0) ? fs : (2.0 * M_PI);
     Value xD = detail::widenSingleToDouble(x, mr);
     auto [Pxx, F] = periodogram(xD, win, xD.numel(), effFs, mr);
-    const size_t n = Pxx.numel();
+    const keel::usize n = Pxx.numel();
     PsdPair p;
     p.Pxx.resize(n);
     p.F.resize(n);
     const double *fd = F.doubleData();
     const double *pd = Pxx.doubleData();
-    for (size_t i = 0; i < n; ++i) {
+    for (keel::usize i = 0; i < n; ++i) {
         p.F[i]   = fd[i];
         p.Pxx[i] = pd[i];
     }
@@ -77,11 +79,11 @@ PsdPair computePsd(const Value &x, double fs, std::pmr::memory_resource *mr)
 double integrate(const std::vector<double> &P, const std::vector<double> &F,
                  double fLo, double fHi)
 {
-    const size_t n = P.size();
+    const keel::usize n = P.size();
     if (n < 2) return 0.0;
     if (fLo > fHi) std::swap(fLo, fHi);
     double s = 0.0;
-    for (size_t i = 0; i + 1 < n; ++i) {
+    for (keel::usize i = 0; i + 1 < n; ++i) {
         double a = F[i], b = F[i + 1];
         if (b <= fLo) continue;
         if (a >= fHi) break;
@@ -106,22 +108,22 @@ double integrate(const std::vector<double> &P, const std::vector<double> &F,
 
 // ── bandpower ──────────────────────────────────────────────────────
 
-Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pmr::memory_resource *mr)
+Value bandpower(const Value &x, const Value &fs, const Value &freqrange, keel::Allocator *mr)
 {
     const bool xSingle = (x.type() == ValueType::SINGLE);
     if (fs.isEmpty()) {
         detail::requireFloatInput(x, "bandpower");
         // 1-arg: total signal power = mean(|x|^2). Cheaper than going
         // through PSD (Parseval's theorem makes them equal anyway).
-        const size_t n = x.numel();
+        const keel::usize n = x.numel();
         if (n == 0) return detail::narrowDoubleToSingleIf(Value::scalar(0.0, mr), xSingle, mr);
         double s = 0.0;
         if (x.isComplex()) {
-            const Complex *xd = x.complexData();
-            for (size_t i = 0; i < n; ++i)
-                s += std::norm(xd[i]);
+            const keel::c64 *xd = x.complexData();
+            for (keel::usize i = 0; i < n; ++i)
+                s += keel::norm(xd[i]);
         } else {
-            for (size_t i = 0; i < n; ++i) {
+            for (keel::usize i = 0; i < n; ++i) {
                 const double v = x.elemAsDouble(i);
                 s += v * v;
             }
@@ -148,17 +150,17 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, std::pm
     return detail::narrowDoubleToSingleIf(Value::scalar(integrate(p.Pxx, p.F, fLo, fHi), mr), xSingle, mr);
 }
 
-Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std::pmr::memory_resource *mr)
+Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, keel::Allocator *mr)
 {
     detail::requireRealFloatInput(pxx, "bandpower", "pxx", 1);
     detail::requireRealFloatInput(f, "bandpower", "f", 2);
     const bool anySingle = (pxx.type() == ValueType::SINGLE) || (f.type() == ValueType::SINGLE);
-    const size_t n = pxx.numel();
+    const keel::usize n = pxx.numel();
     if (f.numel() != n || n < 2)
         throw Error("bandpower: frequency vector f must have the same length as pxx (>= 2)",
                     0, 0, "bandpower", "", "numkit:bandpower:freqVecLength");
     std::vector<double> P(n), F(n);
-    for (size_t i = 0; i < n; ++i) {
+    for (keel::usize i = 0; i < n; ++i) {
         P[i] = pxx.elemAsDouble(i);
         F[i] = f.elemAsDouble(i);
     }
@@ -167,7 +169,7 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std
         // each bin has width w_i = (F[1]-F[0]) at i=0, (F[i+1]-F[i-1])/2 interior,
         // and (F[n-1]-F[n-2]) at i=n-1 (on a uniform grid every bin has width df).
         double total = 0.0;
-        for (size_t i = 0; i < n; ++i) {
+        for (keel::usize i = 0; i < n; ++i) {
             double w = 0.0;
             if (i == 0) w = F[1] - F[0];
             else if (i + 1 == n) w = F[n - 1] - F[n - 2];
@@ -184,7 +186,7 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std
     const double fHi = freqrange.elemAsDouble(1);
     if (fLo <= F.front() && fHi >= F.back()) {
         double total = 0.0;
-        for (size_t i = 0; i < n; ++i) {
+        for (keel::usize i = 0; i < n; ++i) {
             double w = 0.0;
             if (i == 0) w = F[1] - F[0];
             else if (i + 1 == n) w = F[n - 1] - F[n - 2];
@@ -198,12 +200,12 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, std
 
 // ── meanfreq / medfreq ────────────────────────────────────────────
 
-Value meanfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value meanfreq(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
     double num = 0.0, den = 0.0;
-    for (size_t i = 0; i + 1 < p.F.size(); ++i) {
+    for (keel::usize i = 0; i + 1 < p.F.size(); ++i) {
         const double df = p.F[i + 1] - p.F[i];
         const double pmid = 0.5 * (p.Pxx[i] + p.Pxx[i + 1]);
         const double fmid = 0.5 * (p.F[i] + p.F[i + 1]);
@@ -213,21 +215,21 @@ Value meanfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return Value::scalar(den > 0 ? num / den : 0.0, mr);
 }
 
-Value medfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value medfreq(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
     if (p.F.size() < 2) return Value::scalar(0.0, mr);
     // Cumulative trapezoid of P over F.
     std::vector<double> cum(p.F.size(), 0.0);
-    for (size_t i = 1; i < p.F.size(); ++i) {
+    for (keel::usize i = 1; i < p.F.size(); ++i) {
         cum[i] = cum[i - 1]
                + 0.5 * (p.Pxx[i - 1] + p.Pxx[i]) * (p.F[i] - p.F[i - 1]);
     }
     const double half = 0.5 * cum.back();
     if (cum.back() <= 0.0) return Value::scalar(0.0, mr);
     // Linear-interp the frequency where cum == half.
-    for (size_t i = 1; i < cum.size(); ++i) {
+    for (keel::usize i = 1; i < cum.size(); ++i) {
         if (cum[i] >= half) {
             const double t = (half - cum[i - 1]) / (cum[i] - cum[i - 1]);
             return Value::scalar(p.F[i - 1] + t * (p.F[i] - p.F[i - 1]), mr);
@@ -238,12 +240,12 @@ Value medfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 
 // ── enbw ──────────────────────────────────────────────────────────
 
-Value enbw(const Value &window, const Value &fs, std::pmr::memory_resource *mr)
+Value enbw(const Value &window, const Value &fs, keel::Allocator *mr)
 {
-    const size_t n = window.numel();
+    const keel::usize n = window.numel();
     if (n == 0) return Value::scalar(0.0, mr);
     double sumsq = 0.0, sm = 0.0;
-    for (size_t i = 0; i < n; ++i) {
+    for (keel::usize i = 0; i < n; ++i) {
         const double w = window.elemAsDouble(i);
         sumsq += w * w;
         sm    += w;
@@ -256,10 +258,10 @@ Value enbw(const Value &window, const Value &fs, std::pmr::memory_resource *mr)
 // ── obw ───────────────────────────────────────────────────────────
 
 std::tuple<Value, Value, Value, Value>
-obw(const Value &x, const Value &fs, double p, std::pmr::memory_resource *mr)
+obw(const Value &x, const Value &fs, double p, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     auto zeros = [&]() {
         Value z = Value::scalar(0.0, mr);
         return std::make_tuple(z, z, z, z);
@@ -272,14 +274,14 @@ obw(const Value &x, const Value &fs, double p, std::pmr::memory_resource *mr)
     // form the one-sided PSD here: Pxx[k] = (2 if folded)·|X[k]|² / (fs·N),
     // which obeys Σ Pxx·df = mean(x²) (rectangular window power = N).
     Value          Xv = fft(x, static_cast<int>(N), /*dim=*/0, mr);
-    const Complex *X  = Xv.complexData();
-    const size_t   nOut = N / 2 + 1;
+    const keel::c64 *X  = Xv.complexData();
+    const keel::usize   nOut = N / 2 + 1;
     const double   fsHz = (fsv > 0.0) ? fsv : (2.0 * M_PI);  // rad/s when fs omitted
     const double   df   = fsHz / static_cast<double>(N);
 
     std::vector<double> P(nOut), F(nOut);
-    for (size_t k = 0; k < nOut; ++k) {
-        double mag2 = std::norm(X[k]);
+    for (keel::usize k = 0; k < nOut; ++k) {
+        double mag2 = keel::norm(X[k]);
         if (k > 0 && 2 * k != N) mag2 *= 2.0;   // one-sided fold (skip DC & Nyquist)
         P[k] = mag2 / (fsHz * static_cast<double>(N));
         F[k] = static_cast<double>(k) * df;
@@ -288,7 +290,7 @@ obw(const Value &x, const Value &fs, double p, std::pmr::memory_resource *mr)
     // Rectangle-rule cumulative power (MATLAB obw): cum[k] = Σ_{j≤k} P[j]·df.
     std::vector<double> cum(nOut, 0.0);
     cum[0] = P[0] * df;
-    for (size_t i = 1; i < nOut; ++i)
+    for (keel::usize i = 1; i < nOut; ++i)
         cum[i] = cum[i - 1] + P[i] * df;
     const double total = cum.back();
     if (total <= 0.0) return zeros();
@@ -298,7 +300,7 @@ obw(const Value &x, const Value &fs, double p, std::pmr::memory_resource *mr)
     // A band edge sits at the bin's UPPER edge (F + df/2) where the cumulative
     // power reaches the target — matches MATLAB exactly.
     auto findF = [&](double target) {
-        for (size_t i = 1; i < nOut; ++i) {
+        for (keel::usize i = 1; i < nOut; ++i) {
             if (cum[i] >= target) {
                 const double t = (target - cum[i - 1])
                                / std::max(cum[i] - cum[i - 1], 1e-300);
@@ -317,28 +319,28 @@ obw(const Value &x, const Value &fs, double p, std::pmr::memory_resource *mr)
 
 // ── powerbw ───────────────────────────────────────────────────────
 
-Value powerbw(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value powerbw(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
     if (p.F.size() < 2) return Value::scalar(0.0, mr);
     // Find dominant peak.
-    size_t pk = 0;
+    keel::usize pk = 0;
     double pkV = p.Pxx[0];
-    for (size_t i = 1; i < p.Pxx.size(); ++i)
+    for (keel::usize i = 1; i < p.Pxx.size(); ++i)
         if (p.Pxx[i] > pkV) { pkV = p.Pxx[i]; pk = i; }
     const double thresh = pkV * 0.5;
     // Walk left and right from pk to find the half-power crossings.
-    auto interpCross = [&](size_t i, size_t j) {
+    auto interpCross = [&](keel::usize i, keel::usize j) {
         const double a = p.Pxx[i], b = p.Pxx[j];
         if (a == b) return p.F[i];
         const double t = (thresh - a) / (b - a);
         return p.F[i] + t * (p.F[j] - p.F[i]);
     };
     double fLo = p.F.front(), fHi = p.F.back();
-    for (size_t i = pk; i > 0; --i)
+    for (keel::usize i = pk; i > 0; --i)
         if (p.Pxx[i - 1] < thresh) { fLo = interpCross(i - 1, i); break; }
-    for (size_t i = pk; i + 1 < p.Pxx.size(); ++i)
+    for (keel::usize i = pk; i + 1 < p.Pxx.size(); ++i)
         if (p.Pxx[i + 1] < thresh) { fHi = interpCross(i, i + 1); break; }
     return Value::scalar(fHi - fLo, mr);
 }
@@ -364,10 +366,10 @@ PsdMoments computePsdMoments(const std::vector<double> &P,
     for (double v : P) sumP += v;
     if (sumP <= 0.0) return {0.0, 0.0, 0.0, 0.0, 0.0};
     double mean = 0.0;
-    for (size_t i = 0; i < P.size(); ++i) mean += F[i] * P[i];
+    for (keel::usize i = 0; i < P.size(); ++i) mean += F[i] * P[i];
     mean /= sumP;
     double var = 0.0, m3 = 0.0, m4 = 0.0;
-    for (size_t i = 0; i < P.size(); ++i) {
+    for (keel::usize i = 0; i < P.size(); ++i) {
         const double d = F[i] - mean;
         var += d * d * P[i];
         m3  += d * d * d * P[i];
@@ -381,7 +383,7 @@ PsdMoments computePsdMoments(const std::vector<double> &P,
 
 } // anonymous
 
-Value spectralcrest(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value spectralcrest(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
@@ -392,13 +394,13 @@ Value spectralcrest(const Value &x, const Value &fs, std::pmr::memory_resource *
     return Value::scalar(mean > 0 ? mx / mean : 0.0, mr);
 }
 
-Value spectralflatness(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value spectralflatness(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
     if (p.Pxx.empty()) return Value::scalar(0.0, mr);
     double logSum = 0.0, sm = 0.0;
-    size_t valid = 0;
+    keel::usize valid = 0;
     for (double v : p.Pxx) {
         sm += v;
         if (v > 0) { logSum += std::log(v); ++valid; }
@@ -409,7 +411,7 @@ Value spectralflatness(const Value &x, const Value &fs, std::pmr::memory_resourc
     return Value::scalar(geom / arith, mr);
 }
 
-Value spectralentropy(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value spectralentropy(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
@@ -426,7 +428,7 @@ Value spectralentropy(const Value &x, const Value &fs, std::pmr::memory_resource
     return Value::scalar(H / std::log(static_cast<double>(p.Pxx.size())), mr);
 }
 
-Value spectralkurtosis(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value spectralkurtosis(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
@@ -435,7 +437,7 @@ Value spectralkurtosis(const Value &x, const Value &fs, std::pmr::memory_resourc
     return Value::scalar(m.m4 / (m.var * m.var), mr);
 }
 
-Value spectralskewness(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value spectralskewness(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsd(x, fsv, mr);
@@ -456,26 +458,26 @@ Value spectralskewness(const Value &x, const Value &fs, std::pmr::memory_resourc
 
 namespace {
 
-PsdPair computePsdKaiser(const Value &x, double fs, std::pmr::memory_resource *mr)
+PsdPair computePsdKaiser(const Value &x, double fs, keel::Allocator *mr)
 {
     // Build Kaiser(beta=38) window of length numel(x).
     Value win = kaiser(x.numel(), 38.0, mr);
     auto [Pxx, F] = periodogram(x, win, /*nfft=*/0, /*fs=*/2.0*3.14159265358979323846, mr);
-    const size_t n = Pxx.numel();
+    const keel::usize n = Pxx.numel();
     PsdPair p;
     p.Pxx.resize(n);
     p.F.resize(n);
-    const size_t nfft = (n > 1) ? 2 * (n - 1) : 1;
+    const keel::usize nfft = (n > 1) ? 2 * (n - 1) : 1;
     if (fs > 0.0) {
         const double fScale = fs / (2.0 * M_PI);
         const double pScale = static_cast<double>(nfft) / fs;
-        for (size_t i = 0; i < n; ++i) {
+        for (keel::usize i = 0; i < n; ++i) {
             p.F[i]   = F.doubleData()[i] * fScale;
             p.Pxx[i] = Pxx.doubleData()[i] * pScale;
         }
     } else {
         const double pScale = static_cast<double>(nfft) / (2.0 * M_PI);
-        for (size_t i = 0; i < n; ++i) {
+        for (keel::usize i = 0; i < n; ++i) {
             p.F[i]   = F.doubleData()[i];
             p.Pxx[i] = Pxx.doubleData()[i] * pScale;
         }
@@ -530,7 +532,7 @@ HarmonicAnalysis analyseHarmonics(const std::vector<double> &P)
     // Mark which bins belong to the fundamental skirt or a harmonic
     // skirt. Everything else contributes to noise (after skipping DC
     // bins at the start).
-    std::vector<uint8_t> mark(nbins, 0); // 1=fund, 2=harm
+    std::vector<keel::u8> mark(nbins, 0); // 1=fund, 2=harm
     for (int j = std::max(0, f0 - kSkirtBins);
          j < std::min(nbins, f0 + kSkirtBins + 1); ++j) mark[j] = 1;
     for (int n = 2; n <= kHarmonics; ++n) {
@@ -570,7 +572,7 @@ double safeDb(double num, double den)
 
 } // anonymous
 
-Value snr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value snr(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsdKaiser(x, fsv, mr);
@@ -578,7 +580,7 @@ Value snr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return Value::scalar(safeDb(h.pSig, h.pNoise), mr);
 }
 
-Value sinad(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value sinad(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsdKaiser(x, fsv, mr);
@@ -586,7 +588,7 @@ Value sinad(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return Value::scalar(safeDb(h.pSig, h.pNoise + h.pHarm), mr);
 }
 
-Value thd(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value thd(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const double fsv = scalarOr(fs, 0.0);
     auto p = computePsdKaiser(x, fsv, mr);
@@ -594,9 +596,9 @@ Value thd(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     return Value::scalar(safeDb(h.pHarm, h.pSig), mr);
 }
 
-Value sfdr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
 {
-    const size_t n = x.numel();
+    const keel::usize n = x.numel();
     if (n < 2)
         return Value::scalar(std::numeric_limits<double>::quiet_NaN(), mr);
     const double fsScalar = (!fs.isEmpty()) ? fs.toScalar() : 1.0;
@@ -605,7 +607,7 @@ Value sfdr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     double sumW = 0.0, sumW2 = 0.0;
     Value xw = Value::matrix(n, 1, ValueType::DOUBLE, mr);
     double *xwd = xw.doubleDataMut();
-    for (size_t i = 0; i < n; ++i) {
+    for (keel::usize i = 0; i < n; ++i) {
         double wi = wd[i];
         sumW += wi;
         sumW2 += wi * wi;
@@ -613,12 +615,12 @@ Value sfdr(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     }
     const double rbw = (sumW > 0.0) ? (fsScalar * sumW2 / (sumW * sumW)) : 0.0;
     Value Xv = fft(xw, static_cast<int>(n), 0, mr);
-    const Complex *X = Xv.complexData();
-    const size_t nBins = n / 2 + 1;
+    const keel::c64 *X = Xv.complexData();
+    const keel::usize nBins = n / 2 + 1;
     const double df = fsScalar / static_cast<double>(n);
     std::vector<double> Pxx(nBins), F(nBins);
-    for (size_t k = 0; k < nBins; ++k) {
-        double mag2 = std::norm(X[k]);
+    for (keel::usize k = 0; k < nBins; ++k) {
+        double mag2 = keel::norm(X[k]);
         if (k > 0 && 2 * k != n)
             mag2 *= 2.0;
         Pxx[k] = mag2 / (fsScalar * sumW2);
@@ -686,13 +688,13 @@ namespace {
 // Read complex Value (output of hilbert) into separate re/im vectors.
 void readComplex(const Value &z, std::vector<double> &re, std::vector<double> &im)
 {
-    const size_t n = z.numel();
+    const keel::usize n = z.numel();
     re.resize(n); im.resize(n);
     if (z.type() == ValueType::COMPLEX) {
-        const Complex *c = z.complexData();
-        for (size_t i = 0; i < n; ++i) { re[i] = c[i].real(); im[i] = c[i].imag(); }
+        const keel::c64 *c = z.complexData();
+        for (keel::usize i = 0; i < n; ++i) { re[i] = c[i].real(); im[i] = c[i].imag(); }
     } else {
-        for (size_t i = 0; i < n; ++i) {
+        for (keel::usize i = 0; i < n; ++i) {
             re[i] = z.elemAsDouble(i);
             im[i] = 0.0;
         }
@@ -729,11 +731,11 @@ void pspectrum_argcheck(const Value &x, const Value &fsOrT,
                 throw Error(std::string(caller) + ": sample rate Fs must be finite and positive",
                             0, 0, caller, "", std::string("numkit:") + caller + ":invalidFs");
         } else {
-            const size_t N = x.dims().isVector() ? x.numel() : x.dims().rows();
+            const keel::usize N = x.dims().isVector() ? x.numel() : x.dims().rows();
             if (!fsOrT.dims().isVector() || fsOrT.numel() != N)
                 throw Error(std::string(caller) + ": time vector T must match signal length",
                             0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeVector");
-            for (size_t i = 0; i < N; ++i) {
+            for (keel::usize i = 0; i < N; ++i) {
                 const double ti = fsOrT.elemAsDouble(i);
                 if (!std::isfinite(ti) || (i > 0 && ti <= fsOrT.elemAsDouble(i - 1)))
                     throw Error(std::string(caller) + ": time vector T must be finite and strictly increasing",
@@ -754,77 +756,77 @@ double leakageToOverlapRatio(double leakage)
     };
     const double clamped = std::max(0.0, std::min(1.0, leakage));
     const double pos = clamped * 20.0;
-    const size_t idx = std::min<size_t>(19, static_cast<size_t>( std::floor(pos) ));
+    const keel::usize idx = std::min<keel::usize>(19, static_cast<keel::usize>( std::floor(pos) ));
     const double frac = pos - static_cast<double>(idx);
     return kTable[idx] * (1.0 - frac) + kTable[idx + 1] * frac;
 }
 
-double kaiserEnbwFactor(double beta, std::pmr::memory_resource *mr)
+double kaiserEnbwFactor(double beta, keel::Allocator *mr)
 {
     if (beta <= 0.0) return 1.0;
-    constexpr size_t kRefLen = 1000;
+    constexpr keel::usize kRefLen = 1000;
     Value w = kaiser(kRefLen, beta, mr);
     const double *wd = w.doubleData();
     double sumW = 0.0, sumW2 = 0.0;
-    for (size_t i = 0; i < kRefLen; ++i) {
+    for (keel::usize i = 0; i < kRefLen; ++i) {
         sumW += wd[i];
         sumW2 += wd[i] * wd[i];
     }
     return (sumW > 0.0) ? (static_cast<double>(kRefLen) * sumW2 / (sumW * sumW)) : 1.0;
 }
 
-std::vector<double> normalizedKaiser(size_t len, double beta, std::pmr::memory_resource *mr)
+std::vector<double> normalizedKaiser(keel::usize len, double beta, keel::Allocator *mr)
 {
     if (len == 0) return {};
     if (len == 1) return {1.0};
     Value w = kaiser(len, beta, mr);
     const double *wd = w.doubleData();
     double sumW = 0.0;
-    for (size_t i = 0; i < len; ++i) sumW += wd[i];
+    for (keel::usize i = 0; i < len; ++i) sumW += wd[i];
     std::vector<double> out(len);
     const double inv = (sumW > 0.0) ? (1.0 / sumW) : (1.0 / static_cast<double>(len));
-    for (size_t i = 0; i < len; ++i) out[i] = wd[i] * inv;
+    for (keel::usize i = 0; i < len; ++i) out[i] = wd[i] * inv;
     return out;
 }
 
 // Evaluate zoom CZT on a matrix of column segments `segMat` (len x nSegs),
 // writing `scale * |X(k, s)|^2` into `powerOut` (nF x nSegs).
-void evalSegmentsCztPower(const Value &segMat, size_t len, size_t nSegs,
-                          size_t nF, Complex W, Complex A, double scale,
-                          double *powerOut, std::pmr::memory_resource *mr)
+void evalSegmentsCztPower(const Value &segMat, keel::usize len, keel::usize nSegs,
+                          keel::usize nF, keel::c64 W, keel::c64 A, double scale,
+                          double *powerOut, keel::Allocator *mr)
 {
     if (nSegs == 0 || len == 0) return;
     if (len == 1) {
-        for (size_t s = 0; s < nSegs; ++s) {
+        for (keel::usize s = 0; s < nSegs; ++s) {
             double p0 = 0.0;
             if (segMat.isComplex()) {
-                p0 = scale * std::norm(segMat.complexData()[s]);
+                p0 = scale * keel::norm(segMat.complexData()[s]);
             } else {
                 const double v = segMat.doubleData()[s];
                 p0 = scale * v * v;
             }
-            for (size_t k = 0; k < nF; ++k)
+            for (keel::usize k = 0; k < nF; ++k)
                 powerOut[s * nF + k] = p0;
         }
         return;
     }
     Value X = czt(segMat, static_cast<int>(nF), W, A, mr);
-    const Complex *xd = X.complexData();
-    for (size_t s = 0; s < nSegs; ++s) {
-        for (size_t k = 0; k < nF; ++k) {
-            powerOut[s * nF + k] = scale * std::norm(xd[s * nF + k]);
+    const keel::c64 *xd = X.complexData();
+    for (keel::usize s = 0; s < nSegs; ++s) {
+        for (keel::usize k = 0; k < nF; ++k) {
+            powerOut[s * nF + k] = scale * keel::norm(xd[s * nF + k]);
         }
     }
 }
 
 PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
                               const PspectrumOptions &opts, const char *caller,
-                              std::pmr::memory_resource *mr)
+                              keel::Allocator *mr)
 {
     pspectrum_argcheck(x, fsOrT, opts, caller);
     const bool isVec = x.dims().isVector();
-    const size_t N = isVec ? x.numel() : x.dims().rows();
-    const size_t nCh = isVec ? 1 : x.dims().cols();
+    const keel::usize N = isVec ? x.numel() : x.dims().rows();
+    const keel::usize nCh = isVec ? 1 : x.dims().cols();
     const bool isComplex = x.isComplex();
 
     double fs = 2.0 * M_PI;
@@ -861,40 +863,40 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     }
 
     const bool isSpectrogram = (opts.type == "spectrogram");
-    const size_t nF = isSpectrogram ? 1024 : 4096;
+    const keel::usize nF = isSpectrogram ? 1024 : 4096;
     const double scale = twoSided ? 1.0 : 2.0;
 
     Value F = Value::matrix(nF, 1, ValueType::DOUBLE, mr);
     double *fd = F.doubleDataMut();
-    for (size_t k = 0; k < nF; ++k) {
+    for (keel::usize k = 0; k < nF; ++k) {
         fd[k] = fmin + (fmax - fmin) * static_cast<double>(k) / static_cast<double>(nF - 1);
     }
 
-    const Complex A = std::polar(1.0, 2.0 * M_PI * fmin / fs);
-    const Complex W = std::polar(1.0, -2.0 * M_PI * (fmax - fmin) / (static_cast<double>(nF - 1) * fs));
+    const keel::c64 A = keel::polar(1.0, 2.0 * M_PI * fmin / fs);
+    const keel::c64 W = keel::polar(1.0, -2.0 * M_PI * (fmax - fmin) / (static_cast<double>(nF - 1) * fs));
 
     if (isSpectrogram) {
         if (nCh > 1)
             throw Error(std::string(caller) + ": 'spectrogram' mode requires a 1-D vector input",
                         0, 0, caller, "", std::string("numkit:") + caller + ":expectedVector");
-        size_t wlen = 0;
+        keel::usize wlen = 0;
         if (opts.timeResolution > 0.0) {
-            wlen = std::min(N, static_cast<size_t>(std::max(1.0, std::round(opts.timeResolution * fs))));
+            wlen = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
         } else {
-            size_t D = 2;
+            keel::usize D = 2;
             if (N >= 64) {
                 const int exp2 = static_cast<int>(std::floor(std::log2(static_cast<double>(N)))) - 7;
                 if (exp2 <= 3)      D = 8;
                 else if (exp2 >= 7) D = 128;
-                else                D = size_t(1) << exp2;
+                else                D = keel::usize(1) << exp2;
             }
             wlen = (N + D - 1) / D;
         }
-        wlen = std::max<size_t>(1, std::min(N, wlen));
-        size_t nov = static_cast<size_t>(std::floor(r * static_cast<double>(wlen)));
+        wlen = std::max<keel::usize>(1, std::min(N, wlen));
+        keel::usize nov = static_cast<keel::usize>(std::floor(r * static_cast<double>(wlen)));
         if (nov >= wlen) nov = wlen - 1;
-        const size_t hop = std::max<size_t>(1, wlen - nov);
-        const size_t nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
+        const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
+        const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
 
         Value P = Value::matrix(nF, nT, ValueType::DOUBLE, mr);
         Value T = Value::matrix(nT, 1, ValueType::DOUBLE, mr);
@@ -902,23 +904,23 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
         double *td = T.doubleDataMut();
 
         const double timeStepScale = isNormFreq ? 1.0 : (1.0 / fs);
-        for (size_t m = 0; m < nT; ++m) {
+        for (keel::usize m = 0; m < nT; ++m) {
             td[m] = t0 + (0.5 * static_cast<double>(wlen) + static_cast<double>(m * hop)) * timeStepScale;
         }
 
-        const size_t lastStart = (nT - 1) * hop;
-        const size_t lastLen   = N - lastStart;
-        const size_t nFull     = (lastLen == wlen) ? nT : (nT - 1);
+        const keel::usize lastStart = (nT - 1) * hop;
+        const keel::usize lastLen   = N - lastStart;
+        const keel::usize nFull     = (lastLen == wlen) ? nT : (nT - 1);
 
         if (nFull > 0) {
             const auto wFull = normalizedKaiser(wlen, beta, mr);
             if (isComplex) {
-                const Complex *xc = x.complexData();
+                const keel::c64 *xc = x.complexData();
                 Value segMat = Value::complexMatrix(wlen, nFull, mr);
-                Complex *sd = segMat.complexDataMut();
-                for (size_t m = 0; m < nFull; ++m) {
-                    const size_t s = m * hop;
-                    for (size_t i = 0; i < wlen; ++i)
+                keel::c64 *sd = segMat.complexDataMut();
+                for (keel::usize m = 0; m < nFull; ++m) {
+                    const keel::usize s = m * hop;
+                    for (keel::usize i = 0; i < wlen; ++i)
                         sd[m * wlen + i] = xc[s + i] * wFull[i];
                 }
                 evalSegmentsCztPower(segMat, wlen, nFull, nF, W, A, scale, pd, mr);
@@ -927,9 +929,9 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
                 const double *xd = xD.doubleData();
                 Value segMat = Value::matrix(wlen, nFull, ValueType::DOUBLE, mr);
                 double *sd = segMat.doubleDataMut();
-                for (size_t m = 0; m < nFull; ++m) {
-                    const size_t s = m * hop;
-                    for (size_t i = 0; i < wlen; ++i)
+                for (keel::usize m = 0; m < nFull; ++m) {
+                    const keel::usize s = m * hop;
+                    for (keel::usize i = 0; i < wlen; ++i)
                         sd[m * wlen + i] = xd[s + i] * wFull[i];
                 }
                 evalSegmentsCztPower(segMat, wlen, nFull, nF, W, A, scale, pd, mr);
@@ -939,10 +941,10 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
         if (nFull < nT) {
             const auto wLast = normalizedKaiser(lastLen, beta, mr);
             if (isComplex) {
-                const Complex *xc = x.complexData();
+                const keel::c64 *xc = x.complexData();
                 Value segLast = Value::complexMatrix(lastLen, 1, mr);
-                Complex *sd = segLast.complexDataMut();
-                for (size_t i = 0; i < lastLen; ++i)
+                keel::c64 *sd = segLast.complexDataMut();
+                for (keel::usize i = 0; i < lastLen; ++i)
                     sd[i] = xc[lastStart + i] * wLast[i];
                 evalSegmentsCztPower(segLast, lastLen, 1, nF, W, A, scale, pd + nFull * nF, mr);
             } else {
@@ -950,7 +952,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
                 const double *xd = xD.doubleData();
                 Value segLast = Value::matrix(lastLen, 1, ValueType::DOUBLE, mr);
                 double *sd = segLast.doubleDataMut();
-                for (size_t i = 0; i < lastLen; ++i)
+                for (keel::usize i = 0; i < lastLen; ++i)
                     sd[i] = xd[lastStart + i] * wLast[i];
                 evalSegmentsCztPower(segLast, lastLen, 1, nF, W, A, scale, pd + nFull * nF, mr);
             }
@@ -960,24 +962,24 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     }
 
     // 'power' mode
-    size_t wlen = 0;
+    keel::usize wlen = 0;
     if (opts.timeResolution > 0.0) {
-        wlen = std::min(N, static_cast<size_t>(std::max(1.0, std::round(opts.timeResolution * fs))));
+        wlen = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
     } else {
-        const size_t target = static_cast<size_t>(std::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
-        wlen = std::min(N, std::max<size_t>(2, target));
+        const keel::usize target = static_cast<keel::usize>(std::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
+        wlen = std::min(N, std::max<keel::usize>(2, target));
     }
-    wlen = std::max<size_t>(1, std::min(N, wlen));
-    size_t nov = static_cast<size_t>(std::floor(r * static_cast<double>(wlen)));
+    wlen = std::max<keel::usize>(1, std::min(N, wlen));
+    keel::usize nov = static_cast<keel::usize>(std::floor(r * static_cast<double>(wlen)));
     if (nov >= wlen) nov = wlen - 1;
-    const size_t hop = std::max<size_t>(1, wlen - nov);
-    const size_t nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
+    const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
+    const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
 
     const auto wFull = normalizedKaiser(wlen, beta, mr);
-    std::vector<size_t> starts(nT, 0);
+    std::vector<keel::usize> starts(nT, 0);
     if (nT > 1) {
-        for (size_t m = 0; m < nT; ++m) {
-            starts[m] = static_cast<size_t>(std::llround(
+        for (keel::usize m = 0; m < nT; ++m) {
+            starts[m] = static_cast<keel::usize>(std::llround(
                 static_cast<double>(m) * static_cast<double>(N - wlen) / static_cast<double>(nT - 1)));
         }
     }
@@ -987,39 +989,39 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     std::vector<double> segPow(nF * nT, 0.0);
 
     if (isComplex) {
-        const Complex *xc = x.complexData();
-        for (size_t ch = 0; ch < nCh; ++ch) {
-            const Complex *col = xc + ch * N;
+        const keel::c64 *xc = x.complexData();
+        for (keel::usize ch = 0; ch < nCh; ++ch) {
+            const keel::c64 *col = xc + ch * N;
             Value segMat = Value::complexMatrix(wlen, nT, mr);
-            Complex *sd = segMat.complexDataMut();
-            for (size_t m = 0; m < nT; ++m) {
-                const size_t s = starts[m];
-                for (size_t i = 0; i < wlen; ++i)
+            keel::c64 *sd = segMat.complexDataMut();
+            for (keel::usize m = 0; m < nT; ++m) {
+                const keel::usize s = starts[m];
+                for (keel::usize i = 0; i < wlen; ++i)
                     sd[m * wlen + i] = col[s + i] * wFull[i];
             }
             evalSegmentsCztPower(segMat, wlen, nT, nF, W, A, scale, segPow.data(), mr);
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 double acc = 0.0;
-                for (size_t m = 0; m < nT; ++m) acc += segPow[m * nF + k];
+                for (keel::usize m = 0; m < nT; ++m) acc += segPow[m * nF + k];
                 pd[ch * nF + k] = acc / static_cast<double>(nT);
             }
         }
     } else {
         Value xD = detail::widenSingleToDouble(x, mr);
         const double *xd = xD.doubleData();
-        for (size_t ch = 0; ch < nCh; ++ch) {
+        for (keel::usize ch = 0; ch < nCh; ++ch) {
             const double *col = xd + ch * N;
             Value segMat = Value::matrix(wlen, nT, ValueType::DOUBLE, mr);
             double *sd = segMat.doubleDataMut();
-            for (size_t m = 0; m < nT; ++m) {
-                const size_t s = starts[m];
-                for (size_t i = 0; i < wlen; ++i)
+            for (keel::usize m = 0; m < nT; ++m) {
+                const keel::usize s = starts[m];
+                for (keel::usize i = 0; i < wlen; ++i)
                     sd[m * wlen + i] = col[s + i] * wFull[i];
             }
             evalSegmentsCztPower(segMat, wlen, nT, nF, W, A, scale, segPow.data(), mr);
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 double acc = 0.0;
-                for (size_t m = 0; m < nT; ++m) acc += segPow[m * nF + k];
+                for (keel::usize m = 0; m < nT; ++m) acc += segPow[m * nF + k];
                 pd[ch * nF + k] = acc / static_cast<double>(nT);
             }
         }
@@ -1028,12 +1030,12 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     return {std::move(P), std::move(F), Value::Empty};
 }
 
-Value extractColumnValue(const Value &mat, size_t colIdx, std::pmr::memory_resource *mr)
+Value extractColumnValue(const Value &mat, keel::usize colIdx, keel::Allocator *mr)
 {
-    const size_t R = mat.dims().rows();
+    const keel::usize R = mat.dims().rows();
     if (mat.isComplex()) {
         Value out = Value::complexMatrix(R, 1, mr);
-        std::memcpy(out.complexDataMut(), mat.complexData() + colIdx * R, R * sizeof(Complex));
+        std::memcpy(out.complexDataMut(), mat.complexData() + colIdx * R, R * sizeof(keel::c64));
         return out;
     }
     Value xD = detail::widenSingleToDouble(mat, mr);
@@ -1046,13 +1048,13 @@ Value extractColumnValue(const Value &mat, size_t colIdx, std::pmr::memory_resou
 
 PspectrumResult pspectrum(const Value &x, const Value &fsOrT,
                           const PspectrumOptions &opts,
-                          std::pmr::memory_resource *mr)
+                          keel::Allocator *mr)
 {
     return pspectrumImpl(x, fsOrT, opts, "pspectrum", mr);
 }
 
 std::tuple<Value, Value>
-instfreqHilbert(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     detail::requireFloatInput(x, "instfreq");
     double fsv = 1.0;
@@ -1065,7 +1067,7 @@ instfreqHilbert(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
                 throw Error("instfreq: sample rate Fs must be finite and positive",
                             0, 0, "instfreq", "", "numkit:instfreq:invalidFs");
         } else {
-            const size_t N = x.dims().isVector() ? x.numel() : x.dims().rows();
+            const keel::usize N = x.dims().isVector() ? x.numel() : x.dims().rows();
             if (!fs.dims().isVector() || fs.numel() != N)
                 throw Error("instfreq: time vector T must match signal length",
                             0, 0, "instfreq", "", "numkit:instfreq:invalidTimeVector");
@@ -1080,7 +1082,7 @@ instfreqHilbert(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     Value z = hilbert(x, mr);
     std::vector<double> re, im;
     readComplex(z, re, im);
-    const size_t n = re.size();
+    const keel::usize n = re.size();
     if (n < 2) {
         return {Value::matrix(0, 1, ValueType::DOUBLE, mr),
                 Value::matrix(0, 1, ValueType::DOUBLE, mr)};
@@ -1091,7 +1093,7 @@ instfreqHilbert(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
     double *d = out.doubleDataMut();
     double *td = tOut.doubleDataMut();
     constexpr double kPi = 3.14159265358979323846;
-    for (size_t i = 0; i + 1 < n; ++i) {
+    for (keel::usize i = 0; i + 1 < n; ++i) {
         const double p1 = std::atan2(im[i + 1], re[i + 1]);
         const double p0 = std::atan2(im[i], re[i]);
         double dp = p1 - p0;
@@ -1106,28 +1108,28 @@ instfreqHilbert(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 std::tuple<Value, Value>
 instfreqWithTime(const Value &x, const Value &fs,
                  const PspectrumOptions &inOpts,
-                 std::pmr::memory_resource *mr)
+                 keel::Allocator *mr)
 {
     PspectrumOptions opts = inOpts;
     opts.type = "spectrogram";
     const Value effFs = fs.isEmpty() ? Value::scalar(1.0, mr) : fs;
 
     const bool isVec = x.dims().isVector();
-    const size_t nCh = isVec ? 1 : x.dims().cols();
+    const keel::usize nCh = isVec ? 1 : x.dims().cols();
 
     if (nCh == 1) {
         auto spec = pspectrumImpl(x, effFs, opts, "instfreq", mr);
-        const size_t nF = spec.p.dims().rows();
-        const size_t nT = spec.p.dims().cols();
+        const keel::usize nF = spec.p.dims().rows();
+        const keel::usize nT = spec.p.dims().cols();
         const double *pd = spec.p.doubleData();
         const double *fd = spec.f.doubleData();
 
         Value ifr = Value::matrix(nT, 1, ValueType::DOUBLE, mr);
         double *ifd = ifr.doubleDataMut();
-        for (size_t m = 0; m < nT; ++m) {
+        for (keel::usize m = 0; m < nT; ++m) {
             const double *col = pd + m * nF;
             double num = 0.0, den = 0.0;
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 num += fd[k] * col[k];
                 den += col[k];
             }
@@ -1138,11 +1140,11 @@ instfreqWithTime(const Value &x, const Value &fs,
 
     Value ifrMat;
     Value tVec;
-    for (size_t ch = 0; ch < nCh; ++ch) {
+    for (keel::usize ch = 0; ch < nCh; ++ch) {
         Value colVal = extractColumnValue(x, ch, mr);
         auto spec = pspectrumImpl(colVal, effFs, opts, "instfreq", mr);
-        const size_t nF = spec.p.dims().rows();
-        const size_t nT = spec.p.dims().cols();
+        const keel::usize nF = spec.p.dims().rows();
+        const keel::usize nT = spec.p.dims().cols();
         if (ch == 0) {
             ifrMat = Value::matrix(nT, nCh, ValueType::DOUBLE, mr);
             tVec = std::move(spec.t);
@@ -1150,10 +1152,10 @@ instfreqWithTime(const Value &x, const Value &fs,
         const double *pd = spec.p.doubleData();
         const double *fd = spec.f.doubleData();
         double *ifd = ifrMat.doubleDataMut() + ch * nT;
-        for (size_t m = 0; m < nT; ++m) {
+        for (keel::usize m = 0; m < nT; ++m) {
             const double *col = pd + m * nF;
             double num = 0.0, den = 0.0;
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 num += fd[k] * col[k];
                 den += col[k];
             }
@@ -1163,7 +1165,7 @@ instfreqWithTime(const Value &x, const Value &fs,
     return {std::move(ifrMat), std::move(tVec)};
 }
 
-Value instfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value instfreq(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto [ifr, t] = instfreqWithTime(x, fs, PspectrumOptions{}, mr);
     (void)t;
@@ -1173,29 +1175,29 @@ Value instfreq(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
 std::tuple<Value, Value>
 instbwWithTime(const Value &x, const Value &fs,
                const PspectrumOptions &inOpts,
-               std::pmr::memory_resource *mr)
+               keel::Allocator *mr)
 {
     PspectrumOptions opts = inOpts;
     opts.type = "spectrogram";
     const Value effFs = fs.isEmpty() ? Value::scalar(1.0, mr) : fs;
 
     const bool isVec = x.dims().isVector();
-    const size_t nCh = isVec ? 1 : x.dims().cols();
+    const keel::usize nCh = isVec ? 1 : x.dims().cols();
     const double scale = 2.0 * std::sqrt(M_PI);
 
     if (nCh == 1) {
         auto spec = pspectrumImpl(x, effFs, opts, "instbw", mr);
-        const size_t nF = spec.p.dims().rows();
-        const size_t nT = spec.p.dims().cols();
+        const keel::usize nF = spec.p.dims().rows();
+        const keel::usize nT = spec.p.dims().cols();
         const double *pd = spec.p.doubleData();
         const double *fd = spec.f.doubleData();
 
         Value ibw = Value::matrix(nT, 1, ValueType::DOUBLE, mr);
         double *ibd = ibw.doubleDataMut();
-        for (size_t m = 0; m < nT; ++m) {
+        for (keel::usize m = 0; m < nT; ++m) {
             const double *col = pd + m * nF;
             double num = 0.0, den = 0.0;
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 num += fd[k] * col[k];
                 den += col[k];
             }
@@ -1205,7 +1207,7 @@ instbwWithTime(const Value &x, const Value &fs,
             }
             const double mu = num / den;
             double varNum = 0.0;
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 const double df = fd[k] - mu;
                 varNum += col[k] * df * df;
             }
@@ -1216,11 +1218,11 @@ instbwWithTime(const Value &x, const Value &fs,
 
     Value ibwMat;
     Value tVec;
-    for (size_t ch = 0; ch < nCh; ++ch) {
+    for (keel::usize ch = 0; ch < nCh; ++ch) {
         Value colVal = extractColumnValue(x, ch, mr);
         auto spec = pspectrumImpl(colVal, effFs, opts, "instbw", mr);
-        const size_t nF = spec.p.dims().rows();
-        const size_t nT = spec.p.dims().cols();
+        const keel::usize nF = spec.p.dims().rows();
+        const keel::usize nT = spec.p.dims().cols();
         if (ch == 0) {
             ibwMat = Value::matrix(nT, nCh, ValueType::DOUBLE, mr);
             tVec = std::move(spec.t);
@@ -1228,10 +1230,10 @@ instbwWithTime(const Value &x, const Value &fs,
         const double *pd = spec.p.doubleData();
         const double *fd = spec.f.doubleData();
         double *ibd = ibwMat.doubleDataMut() + ch * nT;
-        for (size_t m = 0; m < nT; ++m) {
+        for (keel::usize m = 0; m < nT; ++m) {
             const double *col = pd + m * nF;
             double num = 0.0, den = 0.0;
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 num += fd[k] * col[k];
                 den += col[k];
             }
@@ -1241,7 +1243,7 @@ instbwWithTime(const Value &x, const Value &fs,
             }
             const double mu = num / den;
             double varNum = 0.0;
-            for (size_t k = 0; k < nF; ++k) {
+            for (keel::usize k = 0; k < nF; ++k) {
                 const double df = fd[k] - mu;
                 varNum += col[k] * df * df;
             }
@@ -1251,7 +1253,7 @@ instbwWithTime(const Value &x, const Value &fs,
     return {std::move(ibwMat), std::move(tVec)};
 }
 
-Value instbw(const Value &x, const Value &fs, std::pmr::memory_resource *mr)
+Value instbw(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto [ibw, t] = instbwWithTime(x, fs, PspectrumOptions{}, mr);
     (void)t;

@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -28,9 +29,9 @@ namespace numkit::signal {
 /// @param mr            Memory resource (nullptr → process default).
 /// @return              Integer-typed Value, same shape as `u`.
 /// @see udecode
-Value uencode(const Value &u, int N, double V = 1.0,
+Value uencode(const Value &u, int N, keel::f64 V = 1.0,
               bool signedOutput = false,
-              std::pmr::memory_resource *mr = nullptr);
+              keel::Allocator *mr = nullptr);
 
 /// @brief Decode integer data back to double with peak ±V
 /// (`y = udecode(u, N, V, overflow)`).
@@ -42,9 +43,9 @@ Value uencode(const Value &u, int N, double V = 1.0,
 /// @param mr              Memory resource (nullptr → process default).
 /// @return                DOUBLE Value, same shape as `u`.
 /// @see uencode
-Value udecode(const Value &u, int N, double V = 1.0,
+Value udecode(const Value &u, int N, keel::f64 V = 1.0,
               bool wrapOnOverflow = false,
-              std::pmr::memory_resource *mr = nullptr);
+              keel::Allocator *mr = nullptr);
 
 
 /// @}

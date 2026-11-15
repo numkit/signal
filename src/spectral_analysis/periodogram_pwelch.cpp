@@ -3,10 +3,14 @@
 // periodogram + pwelch. Split from spectral_analysis/. spectrogram lives in
 // time_frequency/spectrogram.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -15,8 +19,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
-#include <memory_resource>
 
 namespace numkit::signal {
 
@@ -25,68 +27,68 @@ namespace {
 // Fill caller-provided buffer with Hamming window coefficients, same
 // formula MATLAB uses. Buffer must have N elements; works with both
 // std::vector and std::pmr::vector data().
-void fillHammingWindow(double *w, size_t N)
+void fillHammingWindow(double *w, keel::usize N)
 {
     if (N == 1) {
         w[0] = 1.0;
         return;
     }
-    for (size_t i = 0; i < N; ++i)
+    for (keel::usize i = 0; i < N; ++i)
         w[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (N - 1));
 }
 
 } // anonymous namespace
 
 std::tuple<Value, Value>
-periodogram(const Value &x, const Value &window, size_t nfft, double fs, std::pmr::memory_resource *mr)
+periodogram(const Value &x, const Value &window, keel::usize nfft, double fs, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     const bool isCplx = x.isComplex();
 
-    ScratchArena scratch(mr);
-    auto win = ScratchVec<double>(N, &scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto win = keel::Array<double>(N, scratch.allocator());
     if (window.numel() == N) {
         const double *w = window.doubleData();
-        for (size_t i = 0; i < N; ++i)
+        for (keel::usize i = 0; i < N; ++i)
             win[i] = w[i];
     } else {
         std::fill(win.begin(), win.end(), 1.0);
     }
 
     if (nfft == 0)
-        nfft = std::max<size_t>(256, nextPow2(N));
+        nfft = std::max<keel::usize>(256, nextPow2(N));
 
-    auto buf = ScratchVec<Complex>(nfft, &scratch);
+    auto buf = keel::Array<keel::c64>(nfft, scratch.allocator());
     double winPower = 0.0;
     if (isCplx) {
-        const Complex *xd = x.complexData();
-        for (size_t i = 0; i < N; ++i) {
+        const keel::c64 *xd = x.complexData();
+        for (keel::usize i = 0; i < N; ++i) {
             buf[i] = xd[i] * win[i];
             winPower += win[i] * win[i];
         }
     } else {
         const double *xd = x.doubleData();
-        for (size_t i = 0; i < N; ++i) {
-            buf[i] = Complex(xd[i] * win[i], 0.0);
+        for (keel::usize i = 0; i < N; ++i) {
+            buf[i] = keel::c64(xd[i] * win[i], 0.0);
             winPower += win[i] * win[i];
         }
     }
 
-    const Complex *spec;
+    const keel::c64 *spec;
     Value          Xv;
     if ((nfft & (nfft - 1)) == 0) {
-        fftRadix2(&scratch, buf, 1);
+        fftRadix2(scratch.allocator(), buf, 1);
         spec = buf.data();
     } else {
         Value xwin = Value::matrix(N, 1, isCplx ? ValueType::COMPLEX : ValueType::DOUBLE, mr);
         if (isCplx) {
-            Complex *xw = xwin.complexDataMut();
-            const Complex *xd = x.complexData();
-            for (size_t i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
+            keel::c64 *xw = xwin.complexDataMut();
+            const keel::c64 *xd = x.complexData();
+            for (keel::usize i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
         } else {
             double *xw = xwin.doubleDataMut();
             const double *xd = x.doubleData();
-            for (size_t i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
+            for (keel::usize i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
         }
         Xv   = fft(xwin, static_cast<int>(nfft), /*dim=*/0, mr);
         spec = Xv.complexData();
@@ -96,19 +98,19 @@ periodogram(const Value &x, const Value &window, size_t nfft, double fs, std::pm
     if (isCplx) {
         auto Pxx = Value::matrix(nfft, 1, ValueType::DOUBLE, mr);
         auto F   = Value::matrix(nfft, 1, ValueType::DOUBLE, mr);
-        for (size_t i = 0; i < nfft; ++i) {
-            Pxx.doubleDataMut()[i] = std::norm(spec[i]) * scale;
+        for (keel::usize i = 0; i < nfft; ++i) {
+            Pxx.doubleDataMut()[i] = keel::norm(spec[i]) * scale;
             F.doubleDataMut()[i]   = fs * static_cast<double>(i) / static_cast<double>(nfft);
         }
         return std::make_tuple(std::move(Pxx), std::move(F));
     }
 
-    const size_t nOut = nfft / 2 + 1;
+    const keel::usize nOut = nfft / 2 + 1;
     auto Pxx = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     auto F = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
 
-    for (size_t i = 0; i < nOut; ++i) {
-        double mag2 = std::norm(spec[i]);
+    for (keel::usize i = 0; i < nOut; ++i) {
+        double mag2 = keel::norm(spec[i]);
         if (i > 0 && i < nfft / 2)
             mag2 *= 2.0;
         Pxx.doubleDataMut()[i] = mag2 * scale;
@@ -121,9 +123,9 @@ periodogram(const Value &x, const Value &window, size_t nfft, double fs, std::pm
 
 Value
 periodogramConf(const Value &Pxx, double confidenceLevel, bool realInput, bool nfftEven,
-                std::pmr::memory_resource *mr)
+                keel::Allocator *mr)
 {
-    const size_t  nf = Pxx.numel();
+    const keel::usize  nf = Pxx.numel();
     const double *p  = Pxx.doubleData();
 
     const double alpha = 1.0 - confidenceLevel;
@@ -146,7 +148,7 @@ periodogramConf(const Value &Pxx, double confidenceLevel, bool realInput, bool n
 
     Value   out = Value::matrix(nf, 2, ValueType::DOUBLE, mr);
     double *o   = out.doubleDataMut();
-    for (size_t i = 0; i < nf; ++i) {
+    for (keel::usize i = 0; i < nf; ++i) {
         const bool oneDof = realInput && (i == 0 || (nfftEven && i + 1 == nf));
         o[i]      = p[i] * (oneDof ? r1Lo : r2Lo);   // column 0 — lower bound
         o[nf + i] = p[i] * (oneDof ? r1Hi : r2Hi);   // column 1 — upper bound
@@ -155,30 +157,30 @@ periodogramConf(const Value &Pxx, double confidenceLevel, bool realInput, bool n
 }
 
 std::tuple<Value, Value>
-pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double fs, std::pmr::memory_resource *mr)
+pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nfft, double fs, keel::Allocator *mr)
 {
-    const size_t nx = x.numel();
+    const keel::usize nx = x.numel();
     const bool isCplx = x.isComplex();
     const double *xd = isCplx ? nullptr : x.doubleData();
-    const Complex *xcd = isCplx ? x.complexData() : nullptr;
+    const keel::c64 *xcd = isCplx ? x.complexData() : nullptr;
 
-    ScratchArena scratch(mr);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
 
-    size_t winLen;
-    ScratchVec<double> win(&scratch);
+    keel::usize winLen;
+    keel::Array<double> win(scratch.allocator());
     if (window.numel() > 0) {
         winLen = window.numel();
         win.resize(winLen);
         const double *w = window.doubleData();
-        for (size_t i = 0; i < winLen; ++i)
+        for (keel::usize i = 0; i < winLen; ++i)
             win[i] = w[i];
     } else {
         // MATLAB pwelch default: divide x into 8 segments with 50%
         // overlap. Solving:
         //   nx = (winLen - noverlap)*8 + noverlap = 8*winLen - 7*noverlap
         // with noverlap = floor(winLen/2) gives winLen = floor(nx / 4.5).
-        winLen = std::max<size_t>(1,
-            static_cast<size_t>(std::floor(static_cast<double>(nx) / 4.5)));
+        winLen = std::max<keel::usize>(1,
+            static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
@@ -187,40 +189,40 @@ pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double
     if (noverlap == 0)
         noverlap = winLen / 2;
     if (nfft == 0)
-        nfft = std::max<size_t>(256, nextPow2(winLen));
+        nfft = std::max<keel::usize>(256, nextPow2(winLen));
 
     double winPower = 0.0;
-    for (size_t i = 0; i < winLen; ++i)
+    for (keel::usize i = 0; i < winLen; ++i)
         winPower += win[i] * win[i];
 
-    const size_t nOut = nfft / 2 + 1;
-    auto psd = ScratchVec<double>(nOut, &scratch);
-    size_t nSegments = 0;
-    const size_t step = winLen - noverlap;
+    const keel::usize nOut = nfft / 2 + 1;
+    auto psd = keel::Array<double>(nOut, scratch.allocator());
+    keel::usize nSegments = 0;
+    const keel::usize step = winLen - noverlap;
 
     // Per-segment FFT buffer hoisted out of the loop: under arena
     // semantics a fresh `vec<Complex>(nfft)` per iteration would bump-
     // allocate without reuse, growing the arena footprint to
     // O(nSegments × nfft). Reusing one buffer keeps it at O(nfft).
-    auto buf = ScratchVec<Complex>(nfft, &scratch);
+    auto buf = keel::Array<keel::c64>(nfft, scratch.allocator());
 
-    const size_t nOutReal = isCplx ? nfft : nOut;
+    const keel::usize nOutReal = isCplx ? nfft : nOut;
     if (isCplx) psd.resize(nOutReal);
-    for (size_t start = 0; start + winLen <= nx; start += step) {
+    for (keel::usize start = 0; start + winLen <= nx; start += step) {
         if (isCplx) {
-            for (size_t i = 0; i < winLen; ++i)
+            for (keel::usize i = 0; i < winLen; ++i)
                 buf[i] = xcd[start + i] * win[i];
         } else {
-            for (size_t i = 0; i < winLen; ++i)
-                buf[i] = Complex(xd[start + i] * win[i], 0.0);
+            for (keel::usize i = 0; i < winLen; ++i)
+                buf[i] = keel::c64(xd[start + i] * win[i], 0.0);
         }
-        for (size_t i = winLen; i < nfft; ++i)
-            buf[i] = Complex(0.0, 0.0);
+        for (keel::usize i = winLen; i < nfft; ++i)
+            buf[i] = keel::c64(0.0, 0.0);
 
-        fftRadix2(&scratch, buf, 1);
+        fftRadix2(scratch.allocator(), buf, 1);
 
-        for (size_t i = 0; i < nOutReal; ++i) {
-            double mag2 = std::norm(buf[i]);
+        for (keel::usize i = 0; i < nOutReal; ++i) {
+            double mag2 = keel::norm(buf[i]);
             if (!isCplx && i > 0 && i < nfft / 2)
                 mag2 *= 2.0;
             psd[i] += mag2;
@@ -234,7 +236,7 @@ pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double
     const double scale = 1.0 / (winPower * fs * nSegments);
     auto Pxx = Value::matrix(nOutReal, 1, ValueType::DOUBLE, mr);
     auto F = Value::matrix(nOutReal, 1, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < nOutReal; ++i) {
+    for (keel::usize i = 0; i < nOutReal; ++i) {
         Pxx.doubleDataMut()[i] = psd[i] * scale;
         F.doubleDataMut()[i] = isCplx
             ? (fs * static_cast<double>(i) / static_cast<double>(nfft))
@@ -261,12 +263,12 @@ pwelch(const Value &x, const Value &window, size_t noverlap, size_t nfft, double
 namespace {
 
 struct CrossWelchOut {
-    std::vector<std::complex<double>> Sxy;
+    std::vector<keel::c64> Sxy;
     std::vector<double> Sxx, Syy;
     std::vector<double> F;
     double winPower = 0.0;
-    size_t nSegments = 0;
-    size_t nfft = 0;
+    keel::usize nSegments = 0;
+    keel::usize nfft = 0;
 };
 
 void crossWelch_argcheck(const Value &x, const Value &y)
@@ -276,65 +278,65 @@ void crossWelch_argcheck(const Value &x, const Value &y)
                     0, 0, "cpsd", "", "numkit:cpsd:size");
 }
 
-CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, size_t noverlap, size_t nfft, std::pmr::memory_resource *mr)
+CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, keel::usize noverlap, keel::usize nfft, keel::Allocator *mr)
 {
-    const size_t nx = x.numel();
+    const keel::usize nx = x.numel();
     crossWelch_argcheck(x, y);
-    const size_t ny = y.numel();
+    const keel::usize ny = y.numel();
     if (nx != ny)
         throw Error("cpsd/mscohere: x and y must have the same length",
                     0, 0, "cpsd", "", "numkit:cpsd:size");
     const double *xd = x.doubleData();
     const double *yd = y.doubleData();
 
-    ScratchArena scratch(mr);
-    size_t winLen;
-    ScratchVec<double> win(&scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    keel::usize winLen;
+    keel::Array<double> win(scratch.allocator());
     if (window.numel() > 0) {
         winLen = window.numel();
         win.resize(winLen);
         const double *w = window.doubleData();
-        for (size_t i = 0; i < winLen; ++i) win[i] = w[i];
+        for (keel::usize i = 0; i < winLen; ++i) win[i] = w[i];
     } else {
         // MATLAB cpsd / mscohere / tfestimate default: 8 Hamming-windowed
         // segments with 50% overlap (winLen = floor(nx / 4.5)).
-        winLen = std::max<size_t>(1,
-            static_cast<size_t>(std::floor(static_cast<double>(nx) / 4.5)));
+        winLen = std::max<keel::usize>(1,
+            static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
     }
     if (noverlap == 0) noverlap = winLen / 2;
-    if (nfft == 0)     nfft = std::max<size_t>(256, nextPow2(winLen));
+    if (nfft == 0)     nfft = std::max<keel::usize>(256, nextPow2(winLen));
 
     double winPower = 0.0;
-    for (size_t i = 0; i < winLen; ++i) winPower += win[i] * win[i];
+    for (keel::usize i = 0; i < winLen; ++i) winPower += win[i] * win[i];
 
-    const size_t nOut = nfft / 2 + 1;
-    auto bufX = ScratchVec<Complex>(nfft, &scratch);
-    auto bufY = ScratchVec<Complex>(nfft, &scratch);
+    const keel::usize nOut = nfft / 2 + 1;
+    auto bufX = keel::Array<keel::c64>(nfft, scratch.allocator());
+    auto bufY = keel::Array<keel::c64>(nfft, scratch.allocator());
 
     CrossWelchOut o;
     o.Sxx.assign(nOut, 0.0);
     o.Syy.assign(nOut, 0.0);
-    o.Sxy.assign(nOut, std::complex<double>(0.0, 0.0));
+    o.Sxy.assign(nOut, keel::c64(0.0, 0.0));
 
-    const size_t step = winLen - noverlap;
-    for (size_t start = 0; start + winLen <= nx; start += step) {
-        for (size_t i = 0; i < winLen; ++i) {
-            bufX[i] = Complex(xd[start + i] * win[i], 0.0);
-            bufY[i] = Complex(yd[start + i] * win[i], 0.0);
+    const keel::usize step = winLen - noverlap;
+    for (keel::usize start = 0; start + winLen <= nx; start += step) {
+        for (keel::usize i = 0; i < winLen; ++i) {
+            bufX[i] = keel::c64(xd[start + i] * win[i], 0.0);
+            bufY[i] = keel::c64(yd[start + i] * win[i], 0.0);
         }
-        for (size_t i = winLen; i < nfft; ++i) {
-            bufX[i] = Complex(0.0, 0.0);
-            bufY[i] = Complex(0.0, 0.0);
+        for (keel::usize i = winLen; i < nfft; ++i) {
+            bufX[i] = keel::c64(0.0, 0.0);
+            bufY[i] = keel::c64(0.0, 0.0);
         }
-        fftRadix2(&scratch, bufX, 1);
-        fftRadix2(&scratch, bufY, 1);
-        for (size_t i = 0; i < nOut; ++i) {
-            const double sx = std::norm(bufX[i]);
-            const double sy = std::norm(bufY[i]);
-            const std::complex<double> sxy = bufX[i] * std::conj(bufY[i]);
+        fftRadix2(scratch.allocator(), bufX, 1);
+        fftRadix2(scratch.allocator(), bufY, 1);
+        for (keel::usize i = 0; i < nOut; ++i) {
+            const double sx = keel::norm(bufX[i]);
+            const double sy = keel::norm(bufY[i]);
+            const keel::c64 sxy = bufX[i] * keel::conj(bufY[i]);
             o.Sxx[i] += sx;
             o.Syy[i] += sy;
             o.Sxy[i] += sxy;
@@ -344,7 +346,7 @@ CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, si
     o.winPower = winPower;
     o.nfft = nfft;
     o.F.assign(nOut, 0.0);
-    for (size_t i = 0; i < nOut; ++i)
+    for (keel::usize i = 0; i < nOut; ++i)
         o.F[i] = M_PI * static_cast<double>(i) / static_cast<double>(nOut - 1);
     return o;
 }
@@ -352,13 +354,13 @@ CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, si
 } // anonymous
 
 std::tuple<Value, Value>
-cpsd(const Value &x, const Value &y, const Value &window, size_t noverlap, size_t nfft, double fs, std::pmr::memory_resource *mr)
+cpsd(const Value &x, const Value &y, const Value &window, keel::usize noverlap, keel::usize nfft, double fs, keel::Allocator *mr)
 {
     auto o = crossWelch(x, y, window, noverlap, nfft, mr);
-    const size_t nOut = o.Sxx.size();
+    const keel::usize nOut = o.Sxx.size();
     // Rescale frequency vector to [0, fs/2] (crossWelch uses [0, pi]).
     auto rescaleF = [&]() {
-        for (size_t i = 0; i < nOut; ++i)
+        for (keel::usize i = 0; i < nOut; ++i)
             o.F[i] = (fs / 2.0) * static_cast<double>(i)
                      / static_cast<double>(nOut - 1);
     };
@@ -377,8 +379,8 @@ cpsd(const Value &x, const Value &y, const Value &window, size_t noverlap, size_
     Value F   = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     auto *cd = Pxy.complexDataMut();
     auto *fd = F.doubleDataMut();
-    for (size_t i = 0; i < nOut; ++i) {
-        std::complex<double> s = o.Sxy[i] * scale;
+    for (keel::usize i = 0; i < nOut; ++i) {
+        keel::c64 s = o.Sxy[i] * scale;
         if (i > 0 && i < o.nfft / 2) s *= 2.0;
         cd[i] = s;
         fd[i] = o.F[i];
@@ -387,17 +389,17 @@ cpsd(const Value &x, const Value &y, const Value &window, size_t noverlap, size_
 }
 
 std::tuple<Value, Value>
-mscohere(const Value &x, const Value &y, const Value &window, size_t noverlap, size_t nfft, double fs, std::pmr::memory_resource *mr)
+mscohere(const Value &x, const Value &y, const Value &window, keel::usize noverlap, keel::usize nfft, double fs, keel::Allocator *mr)
 {
     auto o = crossWelch(x, y, window, noverlap, nfft, mr);
-    const size_t nOut = o.Sxx.size();
+    const keel::usize nOut = o.Sxx.size();
     Value Cxy = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     Value F   = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     auto *cd = Cxy.doubleDataMut();
     auto *fd = F.doubleDataMut();
-    for (size_t i = 0; i < nOut; ++i) {
+    for (keel::usize i = 0; i < nOut; ++i) {
         const double denom = o.Sxx[i] * o.Syy[i];
-        const double num   = std::norm(o.Sxy[i]);
+        const double num   = keel::norm(o.Sxy[i]);
         cd[i] = (denom > 0.0) ? num / denom : 0.0;
         fd[i] = (fs / 2.0) * static_cast<double>(i)
                 / static_cast<double>(nOut - 1);
@@ -406,10 +408,10 @@ mscohere(const Value &x, const Value &y, const Value &window, size_t noverlap, s
 }
 
 std::tuple<Value, Value>
-tfestimate(const Value &x, const Value &y, const Value &window, size_t noverlap, size_t nfft, double fs, std::pmr::memory_resource *mr)
+tfestimate(const Value &x, const Value &y, const Value &window, keel::usize noverlap, keel::usize nfft, double fs, keel::Allocator *mr)
 {
     auto o = crossWelch(x, y, window, noverlap, nfft, mr);
-    const size_t nOut = o.Sxx.size();
+    const keel::usize nOut = o.Sxx.size();
     Value Txy = Value::matrix(nOut, 1, ValueType::COMPLEX, mr);
     Value F   = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     auto *td = Txy.complexDataMut();
@@ -417,11 +419,11 @@ tfestimate(const Value &x, const Value &y, const Value &window, size_t noverlap,
     // MATLAB convention: Txy = Pyx / Pxx where Pyx = E[Y · conj(X)]
     // = conj(Pxy). The per-segment scaling factor cancels in the
     // ratio, so the raw accumulators are sufficient.
-    for (size_t i = 0; i < nOut; ++i) {
-        const std::complex<double> Syx = std::conj(o.Sxy[i]);
+    for (keel::usize i = 0; i < nOut; ++i) {
+        const keel::c64 Syx = keel::conj(o.Sxy[i]);
         td[i] = (o.Sxx[i] > 0.0)
                 ? Syx / o.Sxx[i]
-                : std::complex<double>(0.0, 0.0);
+                : keel::c64(0.0, 0.0);
         fd[i] = (fs / 2.0) * static_cast<double>(i)
                 / static_cast<double>(nOut - 1);
     }

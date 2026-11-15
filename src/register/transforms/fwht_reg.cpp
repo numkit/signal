@@ -3,20 +3,18 @@
 // CallContext register half of transforms/fwht.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/fwht.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -27,8 +25,8 @@ namespace numkit::signal {
 
 namespace detail {
 
-static void parseFwhtArgs(Span<const Value> args,
-                           std::size_t &n, std::string &ordering)
+static void parseFwhtArgs(keel::ArrayRef<Value> args,
+                           keel::usize &n, std::string &ordering)
 {
     n = 0;
     ordering = "sequency";
@@ -49,22 +47,22 @@ static void parseFwhtArgs(Span<const Value> args,
     }
 }
 
-void fwht_reg(Span<const Value> args, size_t /*nargout*/,
-              Span<Value> outs, CallContext &ctx)
+void fwht_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+              keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "fwht");
-    std::size_t n; std::string ordering;
+    keel::usize n; std::string ordering;
     parseFwhtArgs(args, n, ordering);
-    outs[0] = fwht(args[0], n, ordering, ctx.engine->resource());
+    outs[0] = fwht(args[0], n, ordering, ctx.engine->allocator());
 }
 
-void ifwht_reg(Span<const Value> args, size_t /*nargout*/,
-               Span<Value> outs, CallContext &ctx)
+void ifwht_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+               keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "ifwht");
-    std::size_t n; std::string ordering;
+    keel::usize n; std::string ordering;
     parseFwhtArgs(args, n, ordering);
-    outs[0] = ifwht(args[0], n, ordering, ctx.engine->resource());
+    outs[0] = ifwht(args[0], n, ordering, ctx.engine->allocator());
 }
 
 } // namespace detail

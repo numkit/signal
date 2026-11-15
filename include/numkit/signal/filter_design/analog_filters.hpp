@@ -9,7 +9,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -39,7 +40,7 @@ namespace numkit::signal {
 ///
 /// @see cheb1ap, cheb2ap, besselap, ellipap
 std::tuple<Value, Value, Value>
-buttap(int N, std::pmr::memory_resource *mr = nullptr);
+buttap(int N, keel::Allocator *mr = nullptr);
 
 /// Chebyshev type-I analog lowpass prototype.
 ///
@@ -50,7 +51,7 @@ buttap(int N, std::pmr::memory_resource *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
 std::tuple<Value, Value, Value>
-cheb1ap(int N, double Rp, std::pmr::memory_resource *mr = nullptr);
+cheb1ap(int N, keel::f64 Rp, keel::Allocator *mr = nullptr);
 
 /// Chebyshev type-II analog lowpass prototype.
 ///
@@ -62,7 +63,7 @@ cheb1ap(int N, double Rp, std::pmr::memory_resource *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
 std::tuple<Value, Value, Value>
-cheb2ap(int N, double Rs, std::pmr::memory_resource *mr = nullptr);
+cheb2ap(int N, keel::f64 Rs, keel::Allocator *mr = nullptr);
 
 /// Bessel-Thompson analog lowpass prototype.
 ///
@@ -75,7 +76,7 @@ cheb2ap(int N, double Rs, std::pmr::memory_resource *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)` — empty zeros, N poles, scalar gain.
 std::tuple<Value, Value, Value>
-besselap(int N, std::pmr::memory_resource *mr = nullptr);
+besselap(int N, keel::Allocator *mr = nullptr);
 
 /// Elliptic (Cauer) analog lowpass prototype.
 ///
@@ -90,7 +91,7 @@ besselap(int N, std::pmr::memory_resource *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
 std::tuple<Value, Value, Value>
-ellipap(int N, double Rp, double Rs, std::pmr::memory_resource *mr = nullptr);
+ellipap(int N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Lowpass → X frequency transformations on (z, p, k)
@@ -110,9 +111,9 @@ ellipap(int N, double Rp, double Rs, std::pmr::memory_resource *mr = nullptr);
 std::tuple<Value, Value, Value>
 lp2lp(const Value &                z,
       const Value &                p,
-      double                       k,
-      double                       Wo,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::f64                       k,
+      keel::f64                       Wo,
+      keel::Allocator *  mr = nullptr);
 
 /// Lowpass → highpass frequency transformation.
 ///
@@ -128,9 +129,9 @@ lp2lp(const Value &                z,
 std::tuple<Value, Value, Value>
 lp2hp(const Value &                z,
       const Value &                p,
-      double                       k,
-      double                       Wo,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::f64                       k,
+      keel::f64                       Wo,
+      keel::Allocator *  mr = nullptr);
 
 /// Lowpass → bandpass frequency transformation.
 ///
@@ -146,10 +147,10 @@ lp2hp(const Value &                z,
 std::tuple<Value, Value, Value>
 lp2bp(const Value &                z,
       const Value &                p,
-      double                       k,
-      double                       Wo,
-      double                       Bw,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::f64                       k,
+      keel::f64                       Wo,
+      keel::f64                       Bw,
+      keel::Allocator *  mr = nullptr);
 
 /// @brief Lowpass → bandstop frequency transformation
 /// (`[z', p', k'] = lp2bs(z, p, k, Wo, Bw)`).
@@ -165,9 +166,9 @@ lp2bp(const Value &                z,
 /// @return    Tuple `(z', p', k')` of the bandstop filter.
 /// @see lp2bp
 std::tuple<Value, Value, Value>
-lp2bs(const Value &z, const Value &p, double k,
-      double Wo, double Bw,
-      std::pmr::memory_resource *mr = nullptr);
+lp2bs(const Value &z, const Value &p, keel::f64 k,
+      keel::f64 Wo, keel::f64 Bw,
+      keel::Allocator *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Analog → digital
@@ -190,9 +191,9 @@ lp2bs(const Value &z, const Value &p, double k,
 std::tuple<Value, Value>
 bilinear(const Value &                b,
          const Value &                a,
-         double                       fs,
-         double                       fp = 0.0,
-         std::pmr::memory_resource *  mr = nullptr);
+         keel::f64                       fs,
+         keel::f64                       fp = 0.0,
+         keel::Allocator *  mr = nullptr);
 
 /// Impulse-invariance design: digital filter with the same impulse-response
 /// samples as the analog filter sampled at rate `fs`.
@@ -212,9 +213,9 @@ bilinear(const Value &                b,
 std::tuple<Value, Value>
 impinvar(const Value &                b,
          const Value &                a,
-         double                       fs,
-         double                       tol = 1e-3,
-         std::pmr::memory_resource *  mr  = nullptr);
+         keel::f64                       fs,
+         keel::f64                       tol = 1e-3,
+         keel::Allocator *  mr  = nullptr);
 
 /// Frequency response of an analog filter b(s)/a(s).
 ///
@@ -230,7 +231,7 @@ impinvar(const Value &                b,
 Value freqs(const Value &                b,
             const Value &                a,
             const Value &                w,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 
 /// @}

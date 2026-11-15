@@ -3,7 +3,7 @@
 // toolboxes/signal/include/numkit/signal/measurements/findpeaks.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -34,7 +34,7 @@ namespace numkit::signal {
 /// @endcode
 std::tuple<Value, Value>
 findpeaks(const Value &                x,
-          std::pmr::memory_resource *  mr = nullptr);
+          keel::Allocator *  mr = nullptr);
 
 
 /// @}

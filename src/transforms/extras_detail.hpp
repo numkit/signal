@@ -8,11 +8,12 @@
 // Phase 2b compute/register split — see project_layering_refactor memory.
 #pragma once
 
+#include <keel/core.h>
 #include <cstddef>
 
 namespace numkit::signal {
 
 // Reverse the low `bits` bits of `v` (the bit-reversal permutation index).
-std::size_t bitReverse(std::size_t v, std::size_t bits);
+keel::usize bitReverse(keel::usize v, keel::usize bits);
 
 } // namespace numkit::signal

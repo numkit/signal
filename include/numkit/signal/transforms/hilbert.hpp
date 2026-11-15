@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/transforms/hilbert.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <utility>
 #include <numkit/value/value.hpp>
 
@@ -35,7 +36,7 @@ namespace numkit::signal {
 ///
 /// @see envelope, envelope_full
 Value hilbert(const Value &                x,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::Allocator *  mr = nullptr);
 
 /// Amplitude envelope of a real signal: `|hilbert(x)|`.
 ///
@@ -45,7 +46,7 @@ Value hilbert(const Value &                x,
 ///
 /// @see hilbert, envelope_full
 Value envelope(const Value &                x,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// 2-output envelope (DC-symmetric form).
 ///
@@ -58,7 +59,7 @@ Value envelope(const Value &                x,
 /// @return    `(yupper, ylower)` — bind with `auto [up, lo] = envelope_pair(x);`.
 std::pair<Value, Value>
 envelope_pair(const Value &                x,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::Allocator *  mr = nullptr);
 
 /// Full multi-mode envelope computation.
 ///
@@ -78,8 +79,8 @@ envelope_pair(const Value &                x,
 std::pair<Value, Value>
 envelope_full(const Value &                x,
               int                          mode,
-              std::size_t                  n,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::usize                  n,
+              keel::Allocator *  mr = nullptr);
 
 
 /// @}

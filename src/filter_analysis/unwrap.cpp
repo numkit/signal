@@ -3,6 +3,8 @@
 // unwrap — split out from transforms/.cpp. The hilbert/envelope
 // pair lives in transforms/hilbert.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/signal/filter_analysis/unwrap.hpp>
 
 #include <numkit/value/value.hpp>
@@ -27,10 +29,10 @@ void unwrap_argcheck(const Value &phase)
 
 } // namespace
 
-Value unwrap(const Value &phase, std::pmr::memory_resource *mr)
+Value unwrap(const Value &phase, keel::Allocator *mr)
 {
     unwrap_argcheck(phase);
-    const size_t n = phase.numel();
+    const keel::usize n = phase.numel();
     const double *p = phase.doubleData();
 
     auto r = createLike(phase, ValueType::DOUBLE, mr);
@@ -38,7 +40,7 @@ Value unwrap(const Value &phase, std::pmr::memory_resource *mr)
     if (n == 0)
         return r;
     out[0] = p[0];
-    for (size_t i = 1; i < n; ++i) {
+    for (keel::usize i = 1; i < n; ++i) {
         double d = p[i] - p[i - 1];
         d = d - 2.0 * M_PI * std::round(d / (2.0 * M_PI));
         out[i] = out[i - 1] + d;

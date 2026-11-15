@@ -3,6 +3,12 @@
 // CallContext register half of filter_design/analog_filters.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/ref.h>
+#include <keel/arena.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/ops/poly_helpers.hpp>
@@ -12,13 +18,10 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -32,27 +35,27 @@ namespace numkit::signal {
 namespace detail {
 
 #define NUMKIT_PROTO0_REG(name)                                                     \
-    void name##_reg(Span<const Value> args, size_t nargout,                    \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize nargout,                    \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 1, 1, #name);                          \
         const int N = argcheck::expectedPositiveInteger(                     \
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
-        auto [z, p, k] = name(N, ctx.engine->resource());                       \
+        auto [z, p, k] = name(N, ctx.engine->allocator());                       \
         outs[0] = std::move(z);                                                  \
         if (nargout > 1) outs[1] = std::move(p);                                 \
         if (nargout > 2) outs[2] = std::move(k);                                 \
     }
 
 #define NUMKIT_PROTO1_REG(name)                                                     \
-    void name##_reg(Span<const Value> args, size_t nargout,                    \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize nargout,                    \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 2, 2, #name);                          \
         const int N = argcheck::expectedPositiveInteger(                     \
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
         const double r = args[1].toScalar();                                    \
-        auto [z, p, k] = name(N, r, ctx.engine->resource());                    \
+        auto [z, p, k] = name(N, r, ctx.engine->allocator());                    \
         outs[0] = std::move(z);                                                  \
         if (nargout > 1) outs[1] = std::move(p);                                 \
         if (nargout > 2) outs[2] = std::move(k);                                 \
@@ -64,14 +67,14 @@ NUMKIT_PROTO1_REG(cheb1ap)
 NUMKIT_PROTO1_REG(cheb2ap)
 
 // ellipap takes 3 args (N, Rp, Rs).
-void ellipap_reg(Span<const Value> args, size_t nargout,
-                 Span<Value> outs, CallContext &ctx)
+void ellipap_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                 keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 3, "ellipap");
     const int N     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "ellipap"), 1, "N", "ellipap");
     const double Rp = args[1].toScalar();
     const double Rs = args[2].toScalar();
-    auto [z, p, k] = ellipap(N, Rp, Rs, ctx.engine->resource());
+    auto [z, p, k] = ellipap(N, Rp, Rs, ctx.engine->allocator());
     outs[0] = std::move(z);
     if (nargout > 1) outs[1] = std::move(p);
     if (nargout > 2) outs[2] = std::move(k);
@@ -86,15 +89,15 @@ void ellipap_reg(Span<const Value> args, size_t nargout,
 // bt = [Wo^N] (length 1), while zp2tf would give [0 â€¦ 0 Wo^N]. Strip the
 // leading exact-zeros that zp2tf inserted so the TF form matches MATLAB.
 // (No-op for lp2hp/lp2bs, whose numerators are already full length.)
-static Value lp2StripLeadingZeros(const Value &b, std::pmr::memory_resource *mr)
+static Value lp2StripLeadingZeros(const Value &b, keel::Allocator *mr)
 {
-    const size_t n = b.numel();
-    size_t s = 0;
+    const keel::usize n = b.numel();
+    keel::usize s = 0;
     while (s + 1 < n && b.elemAsDouble(s) == 0.0) ++s;
     if (s == 0) return b;
     auto r = Value::matrix(1, n - s, ValueType::DOUBLE, mr);
     double *d = r.doubleDataMut();
-    for (size_t i = s; i < n; ++i) d[i - s] = b.elemAsDouble(i);
+    for (keel::usize i = s; i < n; ++i) d[i - s] = b.elemAsDouble(i);
     return r;
 }
 
@@ -104,11 +107,11 @@ static Value lp2StripLeadingZeros(const Value &b, std::pmr::memory_resource *mr)
 // Same for lp2hp. The TF form is identified by the 3-arg call and
 // dispatches via tf2zpk -> ZPK lp2lp -> zp2tf.
 #define NUMKIT_LP2X1_REG(name, fn)                                                  \
-    void name##_reg(Span<const Value> args, size_t nargout,                    \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize nargout,                    \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 3, 5, #name);                          \
-        auto *mr = ctx.engine->resource();                                       \
+        auto *mr = ctx.engine->allocator();                                       \
         if (args.size() == 3) {                                                  \
             /* TF form: (b, a, Wo) -> (bt, at). */                               \
             const double Wo = args[2].toScalar();                                \
@@ -136,11 +139,11 @@ NUMKIT_LP2X1_REG(lp2hp, lp2hp)
 //   [zt, pt, kt] = lp2bp(z, p, k, Wo, Bw)   -- ZPK form (5 args)
 //   [bt, at]     = lp2bp(b, a, Wo, Bw)      -- TF form  (4 args)
 #define NUMKIT_LP2X2_REG(name, fn)                                                  \
-    void name##_reg(Span<const Value> args, size_t nargout,                    \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize nargout,                    \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 4, 6, #name);                          \
-        auto *mr = ctx.engine->resource();                                       \
+        auto *mr = ctx.engine->allocator();                                       \
         if (args.size() == 4) {                                                  \
             /* TF form: (b, a, Wo, Bw) -> (bt, at). */                           \
             const double Wo = args[2].toScalar();                                \
@@ -169,22 +172,22 @@ NUMKIT_LP2X2_REG(lp2bs, lp2bs)
 
 #undef NUMKIT_LP2X2_REG
 
-void bilinear_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void bilinear_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "bilinear");
     const double fs = args[2].toScalar();
     const double fp = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 0.0;
-    auto [bd, ad] = bilinear(args[0], args[1], fs, fp, ctx.engine->resource());
+    auto [bd, ad] = bilinear(args[0], args[1], fs, fp, ctx.engine->allocator());
     outs[0] = std::move(bd);
     if (nargout > 1) outs[1] = std::move(ad);
 }
 
-void impinvar_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void impinvar_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "impinvar");
     const double fs  = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
     const double tol = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 1e-3;
-    auto [bd, ad] = impinvar(args[0], args[1], fs, tol, ctx.engine->resource());
+    auto [bd, ad] = impinvar(args[0], args[1], fs, tol, ctx.engine->allocator());
     outs[0] = std::move(bd);
     if (nargout > 1) outs[1] = std::move(ad);
 }
@@ -223,13 +226,13 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
 {
     using numkit::ops::polyRootsDurandKerner;
     constexpr double kEps = 2.220446049250313e-16;
-    std::pmr::memory_resource *mr = std::pmr::get_default_resource();
-    ScratchArena scratch(mr);
+    keel::Allocator *mr = keel::default_allocator();
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
 
     auto rootsOf = [&](const Value &p) -> std::vector<FreqsRoot> {
         std::vector<FreqsRoot> out;
         if (!p.isComplex() && p.numel() >= 1) {
-            auto r = polyRootsDurandKerner(p.doubleData(), p.numel(), &scratch);
+            auto r = polyRootsDurandKerner(p.doubleData(), p.numel(), scratch.allocator());
             for (const auto &z : r)
                 out.push_back({z.real(), z.imag()});
         }
@@ -246,15 +249,15 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         if (r.im >= 0.0)
             ez.push_back(r);
     for (auto &r : tz)
-        if (std::abs(std::complex<double>(r.re, r.im)) < 1e5 && r.im >= 0.0)
+        if (keel::abs(keel::c64(r.re, r.im)) < 1e5 && r.im >= 0.0)
             ez.push_back(r);
 
     auto log10v = [](double x) { return std::log10(x); };
     double loNum = 1e300, hiNum = 0.0;
     for (auto &r : ez) {
-        const bool integ = std::abs(std::complex<double>(r.re, r.im)) < 1e-10;
-        loNum = std::min(loNum, std::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
-        hiNum = std::max(hiNum, 3.0 * std::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
+        const bool integ = keel::abs(keel::c64(r.re, r.im)) < 1e-10;
+        loNum = std::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
+        hiNum = std::max(hiNum, 3.0 * keel::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
     }
     const int low = static_cast<int>(std::round(log10v(0.1 * loNum) - 0.5));
     const int high = static_cast<int>(std::round(log10v(hiNum) + 0.5));
@@ -262,7 +265,7 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     const int diffzp = static_cast<int>(ep.size()) - static_cast<int>(tz.size());
     bool anyRealDomZero = false;
     for (auto &r : tz)
-        if (std::abs(r.im) < std::abs(r.re))
+        if (keel::abs(r.im) < keel::abs(r.re))
             anyRealDomZero = true;
     const int nLong = 200 + diffzp + (anyRealDomZero ? 10 : 0);
 
@@ -278,18 +281,18 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
 
     // Oscillatory refinement (Im > |Re|), descending |Re| (stable).
     std::vector<int> osc;
-    for (size_t k = 0; k < ez.size(); ++k)
-        if (ez[k].im > std::abs(ez[k].re))
+    for (keel::usize k = 0; k < ez.size(); ++k)
+        if (ez[k].im > keel::abs(ez[k].re))
             osc.push_back(static_cast<int>(k));
     std::stable_sort(osc.begin(), osc.end(),
-                     [&](int x, int y) { return std::abs(ez[x].re) > std::abs(ez[y].re); });
-    const double npts2 = 2.0 + 8.0 / std::ceil(std::abs((diffzp + kEps) / 10.0));
+                     [&](int x, int y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
+    const double npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
 
     std::vector<double> f = w, z;
     for (int k : osc) {
-        const double r1 = std::max(0.8 * ez[k].im - 3.0 * std::abs(ez[k].re),
+        const double r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
                                    std::pow(10.0, static_cast<double>(low)));
-        const double r2 = 1.2 * ez[k].im + 4.0 * std::abs(ez[k].re);
+        const double r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
         auto outside = [&](double x) { return x > r2 || x < r1; };
         z.erase(std::remove_if(z.begin(), z.end(), [&](double x) { return !outside(x); }), z.end());
         f.erase(std::remove_if(f.begin(), f.end(), [&](double x) { return !outside(x); }), f.end());
@@ -306,7 +309,7 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     // Resample to exactly 200 points at evenly spaced INDEX positions,
     // linear in log10 (the caller-side interp1 of the classic code).
     std::vector<double> lw(f.size());
-    for (size_t i = 0; i < f.size(); ++i)
+    for (keel::usize i = 0; i < f.size(); ++i)
         lw[i] = std::log10(f[i]);
     const double dxi = static_cast<double>(f.size() - 1) / (npts - 1);
     std::vector<double> out(npts);
@@ -315,21 +318,21 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         // (linspace-forced), where interp1 returns log10(w_long(end)) as-is
         // and the pow round-trip gives back the exact decade endpoint.
         const double x = (i == npts - 1) ? static_cast<double>(f.size()) : 1.0 + i * dxi;
-        const size_t j = static_cast<size_t>(x) - 1;
+        const keel::usize j = static_cast<keel::usize>(x) - 1;
         const double t = x - (j + 1);
         // At the last sample (x == f.size(), t == 0) the upper knot j+1
         // is one past the end â€” clamp it so the read stays in bounds
         // (the value is unchanged: t == 0 kills the difference). The
         // unclamped read was benign in Release but tripped the MSVC
         // Debug iterator assert (bugs/closed/signal/freqs-autogrid-debug-oob).
-        const size_t j2 = std::min(j + 1, lw.size() - 1);
+        const keel::usize j2 = std::min(j + 1, lw.size() - 1);
         const double lv = lw[j] + t * (lw[j2] - lw[j]);
         out[i] = std::pow(10.0, lv);
     }
     return out;
 }
 
-Value freqsAutoGrid(const Value &b, const Value &a, std::pmr::memory_resource *mr,
+Value freqsAutoGrid(const Value &b, const Value &a, keel::Allocator *mr,
                     int npts = 200)
 {
     auto v = freqsAutoGridVec(b, a, npts);
@@ -342,13 +345,13 @@ Value freqsAutoGrid(const Value &b, const Value &a, std::pmr::memory_resource *m
 
 } // namespace
 
-void freqs_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void freqs_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     if (args.size() == 2) {
         // freqs(b, a): auto grid; the no-output PLOT form is a separate
         // piece of the same filed gap.
-        auto w = freqsAutoGrid(args[0], args[1], ctx.engine->resource());
-        outs[0] = freqs(args[0], args[1], w, ctx.engine->resource());
+        auto w = freqsAutoGrid(args[0], args[1], ctx.engine->allocator());
+        outs[0] = freqs(args[0], args[1], w, ctx.engine->allocator());
         if (nargout > 1)
             outs[1] = std::move(w);
         return;
@@ -360,13 +363,13 @@ void freqs_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCon
     // frequencies" (bugs/closed/signal/freqs-scalar-w).
     if (args[2].numel() == 1 && !args[2].isChar() && !args[2].isString()) {
         const int npts = std::max(2, argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "freqs"), 3, "n", "freqs"));
-        auto w = freqsAutoGrid(args[0], args[1], ctx.engine->resource(), npts);
-        outs[0] = freqs(args[0], args[1], w, ctx.engine->resource());
+        auto w = freqsAutoGrid(args[0], args[1], ctx.engine->allocator(), npts);
+        outs[0] = freqs(args[0], args[1], w, ctx.engine->allocator());
         if (nargout > 1)
             outs[1] = std::move(w);
         return;
     }
-    outs[0] = freqs(args[0], args[1], args[2], ctx.engine->resource());
+    outs[0] = freqs(args[0], args[1], args[2], ctx.engine->allocator());
     if (nargout > 1)
         outs[1] = args[2];
 }

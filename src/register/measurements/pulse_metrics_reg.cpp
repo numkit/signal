@@ -3,19 +3,18 @@
 // CallContext register half of measurements/pulse_metrics.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/pulse_metrics.hpp>
 #include "measurements/pulse_metrics_detail.hpp"
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -28,47 +27,47 @@ namespace numkit::signal {
 namespace detail {
 
 #define NUMKIT_PULSE_REG(name, fn)  /* no max: name-value tail in the reference */\
-    void name##_reg(Span<const Value> args, size_t /*nargout*/,                \
-                    Span<Value> outs, CallContext &ctx)                        \
+    void name##_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,                \
+                    keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 1, #name);                           \
         const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;         \
-        outs[0] = fn(args[0], fs, ctx.engine->resource());                      \
+        outs[0] = fn(args[0], fs, ctx.engine->allocator());                      \
     }
 
-void statelevels_reg(Span<const Value> args, size_t /*nargout*/,
-                     Span<Value> outs, CallContext &ctx)
+void statelevels_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                     keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 4, "statelevels");
-    outs[0] = statelevels(args[0], ctx.engine->resource());
+    outs[0] = statelevels(args[0], ctx.engine->allocator());
 }
 
-void settlingtime_reg(Span<const Value> args, size_t /*nargout*/,
-                      Span<Value> outs, CallContext &ctx)
+void settlingtime_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                      keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "settlingtime");  // no max: name-value tail in the reference
     const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
     double tol = 0.02;
     if (args.size() >= 3 && !args[2].isEmpty()) tol = args[2].toScalar();
-    outs[0] = settlingtime(args[0], fs, tol, ctx.engine->resource());
+    outs[0] = settlingtime(args[0], fs, tol, ctx.engine->allocator());
 }
 
 // risetime / falltime forward to the compute worker pulseRiseFall
 // (declared in pulse_metrics_detail.hpp), which emits up to 5 outputs:
 //   [R, LT, UT, LL, UL] â€” duration, lower(10%) crossing time, upper(90%)
 //   crossing time, and the lower/upper reference LEVELS (scalars).
-void risetime_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+void risetime_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "risetime");  // no max: name-value tail in the reference
-    pulseRiseFall(args, nargout, outs, /*rising=*/true, "risetime", ctx.engine->resource());
+    pulseRiseFall(args, nargout, outs, /*rising=*/true, "risetime", ctx.engine->allocator());
 }
 
-void falltime_reg(Span<const Value> args, size_t nargout, Span<Value> outs,
+void falltime_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "falltime");  // no max: name-value tail in the reference
-    pulseRiseFall(args, nargout, outs, /*rising=*/false, "falltime", ctx.engine->resource());
+    pulseRiseFall(args, nargout, outs, /*rising=*/false, "falltime", ctx.engine->allocator());
 }
 
 NUMKIT_PULSE_REG(midcross,    midcross)

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -28,7 +28,7 @@ namespace numkit::signal {
 /// @see rssq, peak2rms
 Value rms(const Value &                x,
           int                          dim = 0,
-          std::pmr::memory_resource *  mr  = nullptr);
+          keel::Allocator *  mr  = nullptr);
 
 /// Root-sum-of-squares along a dimension.
 ///
@@ -42,7 +42,7 @@ Value rms(const Value &                x,
 /// @see rms
 Value rssq(const Value &                x,
            int                          dim = 0,
-           std::pmr::memory_resource *  mr  = nullptr);
+           keel::Allocator *  mr  = nullptr);
 
 /// Peak-to-peak amplitude along a dimension.
 ///
@@ -55,7 +55,7 @@ Value rssq(const Value &                x,
 /// @return     Reduced array.
 Value peak2peak(const Value &                x,
                 int                          dim = 0,
-                std::pmr::memory_resource *  mr  = nullptr);
+                keel::Allocator *  mr  = nullptr);
 
 /// Peak-to-RMS ratio along a dimension.
 ///
@@ -70,7 +70,7 @@ Value peak2peak(const Value &                x,
 /// @see rms, peak2peak
 Value peak2rms(const Value &                x,
                int                          dim = 0,
-               std::pmr::memory_resource *  mr  = nullptr);
+               keel::Allocator *  mr  = nullptr);
 
 
 /// @}

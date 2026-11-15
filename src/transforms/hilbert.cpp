@@ -3,6 +3,12 @@
 // FFT-based Hilbert transform + envelope. unwrap moved to
 // filter_analysis/unwrap.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/transforms/hilbert.hpp>
 
 #include <numkit/signal/transforms/fft.hpp>  // general fft/ifft for non-pow2 N
@@ -10,7 +16,6 @@
 #include <numkit/signal/windows/windows.hpp>          // kaiser
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 
 #include "../dsp_helpers.hpp"  // Complex, FFT helpers
@@ -18,8 +23,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
-#include <memory_resource>
 #include <vector>
 
 namespace numkit::signal {
@@ -30,10 +33,10 @@ namespace {
 // envelope(). Returns a buffer of length fftLen holding the analytic
 // signal (possibly zero-padded beyond N). Caller slices to the first N
 // samples. Backed by the caller's scratch arena.
-ScratchVec<Complex> hilbertBuf(const Value &x, std::pmr::memory_resource *mr)
+keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
-    ScratchVec<Complex> buf(N, mr);
+    const keel::usize N = x.numel();
+    keel::Array<keel::c64> buf(N, mr);
     if (N == 0) return buf;
 
     // The analytic signal must be computed at the SIGNAL length N — NOT a
@@ -48,28 +51,28 @@ ScratchVec<Complex> hilbertBuf(const Value &x, std::pmr::memory_resource *mr)
         // Non-power-of-two → general (mixed-radix / Bluestein) length-N FFT.
         Value xcol = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         double *xd = xcol.doubleDataMut();
-        for (size_t i = 0; i < N; ++i) xd[i] = x.elemAsDouble(i);
+        for (keel::usize i = 0; i < N; ++i) xd[i] = x.elemAsDouble(i);
         Value X = fft(xcol, static_cast<int>(N), /*dim=*/0, mr);
-        const Complex *Xc = X.complexData();
+        const keel::c64 *Xc = X.complexData();
         std::copy(Xc, Xc + N, buf.begin());
     }
 
     // Analytic mask at length N: double the positive frequencies, keep DC
     // (and the Nyquist bin when N is even), zero the negative frequencies.
-    for (size_t i = 1; i < (N + 1) / 2; ++i) buf[i] *= 2.0;
-    for (size_t i = N / 2 + 1; i < N; ++i) buf[i] = Complex(0.0, 0.0);
+    for (keel::usize i = 1; i < (N + 1) / 2; ++i) buf[i] *= 2.0;
+    for (keel::usize i = N / 2 + 1; i < N; ++i) buf[i] = keel::c64(0.0, 0.0);
 
     if (pow2) {
         // IFFT via conjugate trick: ifft(X) = conj(fft(conj(X)))/N.
-        for (auto &v : buf) v = std::conj(v);
+        for (auto &v : buf) v = keel::conj(v);
         fftRadix2(mr, buf, -1);
         const double invN = 1.0 / static_cast<double>(N);
-        for (auto &v : buf) v = std::conj(v) * invN;
+        for (auto &v : buf) v = keel::conj(v) * invN;
     } else {
         Value Xm = Value::matrix(N, 1, ValueType::COMPLEX, mr);
         std::copy(buf.begin(), buf.end(), Xm.complexDataMut());
         Value zt = ifft(Xm, static_cast<int>(N), /*dim=*/0, mr);
-        const Complex *zc = zt.complexData();
+        const keel::c64 *zc = zt.complexData();
         std::copy(zc, zc + N, buf.begin());
     }
     return buf;
@@ -86,12 +89,12 @@ void hilbert_argcheck(const Value &x)
 
 } // namespace
 
-Value hilbert(const Value &x, std::pmr::memory_resource *mr)
+Value hilbert(const Value &x, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
-    ScratchArena scratch(mr);
+    const keel::usize N = x.numel();
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
     hilbert_argcheck(x);
-    auto buf = hilbertBuf(x, &scratch);
+    auto buf = hilbertBuf(x, scratch.allocator());
     return packComplexResult(buf.data(), N, mr);
 }
 
@@ -99,21 +102,21 @@ Value hilbert(const Value &x, std::pmr::memory_resource *mr)
 namespace {
 
 // Read x into a flat scratch buffer.
-ScratchVec<double> read_real(const Value &x, std::pmr::memory_resource *mr)
+keel::Array<double> read_real(const Value &x, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
-    ScratchVec<double> v(N, mr);
-    for (size_t i = 0; i < N; ++i) v[i] = x.elemAsDouble(i);
+    const keel::usize N = x.numel();
+    keel::Array<double> v(N, mr);
+    for (keel::usize i = 0; i < N; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
 // |hilbert(x)| amplitude — used by the default and 'analytic' (no n) paths.
-ScratchVec<double> ampl_fft_hilbert(const Value &x, std::pmr::memory_resource *mr)
+keel::Array<double> ampl_fft_hilbert(const Value &x, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     auto buf = hilbertBuf(x, mr);
-    ScratchVec<double> a(N, mr);
-    for (size_t i = 0; i < N; ++i) a[i] = std::abs(buf[i]);
+    keel::Array<double> a(N, mr);
+    for (keel::usize i = 0; i < N; ++i) a[i] = keel::abs(buf[i]);
     return a;
 }
 
@@ -124,9 +127,9 @@ ScratchVec<double> ampl_fft_hilbert(const Value &x, std::pmr::memory_resource *m
 //   firFilter = hfilt .* kaiser(n, 8)
 //   firFilter /= sum(real(firFilter))
 //   y = abs(conv2(x, firFilter, 'same'))
-ScratchVec<double> ampl_fir(const Value &x_centered, size_t n, std::pmr::memory_resource *mr)
+keel::Array<double> ampl_fir(const Value &x_centered, keel::usize n, keel::Allocator *mr)
 {
-    const size_t N = x_centered.numel();
+    const keel::usize N = x_centered.numel();
     auto x = read_real(x_centered, mr);
 
     // Kaiser window via numkit::signal::kaiser (returns Value 1×n).
@@ -134,18 +137,18 @@ ScratchVec<double> ampl_fir(const Value &x_centered, size_t n, std::pmr::memory_
     const double *kd = kw.doubleData();
 
     // hfilt[k] = sinc(t_k) · exp(iπ·t_k), windowed.
-    ScratchVec<Complex> filt(n, mr);
-    Complex normR(0.0, 0.0);
-    for (size_t k = 0; k < n; ++k) {
+    keel::Array<keel::c64> filt(n, mr);
+    keel::c64 normR(0.0, 0.0);
+    for (keel::usize k = 0; k < n; ++k) {
         const double t = 0.5 * (double(k) - 0.5 * (double(n) - 1.0));
         const double s = (std::fabs(t) < 1e-15)
                          ? 1.0
                          : std::sin(M_PI * t) / (M_PI * t);
         const double w = kd[k];
-        const Complex h = Complex(s * w * std::cos(M_PI * t),
+        const keel::c64 h = keel::c64(s * w * std::cos(M_PI * t),
                                   s * w * std::sin(M_PI * t));
         filt[k] = h;
-        normR += Complex(h.real(), 0.0);
+        normR += keel::c64(h.real(), 0.0);
     }
     const double inv_norm = 1.0 / normR.real();
     for (auto &c : filt) c *= inv_norm;
@@ -153,26 +156,26 @@ ScratchVec<double> ampl_fir(const Value &x_centered, size_t n, std::pmr::memory_
     // 'same' complex conv of length-N real signal with length-n complex
     // filter. Output length = N. MATLAB's conv2 'same' centers using
     // floor(n/2) for the leading offset (verified vs R2025b on n=8).
-    const size_t pad = n / 2;
-    ScratchVec<double> out(N, mr);
-    for (size_t i = 0; i < N; ++i) {
-        Complex acc(0.0, 0.0);
+    const keel::usize pad = n / 2;
+    keel::Array<double> out(N, mr);
+    for (keel::usize i = 0; i < N; ++i) {
+        keel::c64 acc(0.0, 0.0);
         // y[i] = sum_k x[i+pad-k] · filt[k] (matching conv 'same').
-        for (size_t k = 0; k < n; ++k) {
+        for (keel::usize k = 0; k < n; ++k) {
             const long long src = (long long)i + (long long)pad
                                   - (long long)k;
-            if (src >= 0 && (size_t)src < N)
-                acc += filt[k] * x[(size_t)src];
+            if (src >= 0 && (keel::usize)src < N)
+                acc += filt[k] * x[(keel::usize)src];
         }
-        out[i] = std::abs(acc);
+        out[i] = keel::abs(acc);
     }
     return out;
 }
 
 // envRMS — sliding-window RMS. y = sqrt(movmean(x², n)).
-ScratchVec<double> ampl_rms(const Value &x_centered, size_t n, std::pmr::memory_resource *mr)
+keel::Array<double> ampl_rms(const Value &x_centered, keel::usize n, keel::Allocator *mr)
 {
-    const size_t N = x_centered.numel();
+    const keel::usize N = x_centered.numel();
     auto x = read_real(x_centered, mr);
 
     // movmean with 'centered' window of length n. MATLAB's movmean by
@@ -181,13 +184,13 @@ ScratchVec<double> ampl_rms(const Value &x_centered, size_t n, std::pmr::memory_
     // window to available samples.
     const long long left  = (long long)(n / 2);
     const long long right = (long long)(n - 1) - left;  // for even n: left = n/2, right = n/2-1
-    ScratchVec<double> out(N, mr);
-    for (size_t i = 0; i < N; ++i) {
+    keel::Array<double> out(N, mr);
+    for (keel::usize i = 0; i < N; ++i) {
         const long long lo = std::max((long long)0, (long long)i - left);
         const long long hi = std::min((long long)N - 1, (long long)i + right);
         double s = 0.0;
         long long cnt = 0;
-        for (long long j = lo; j <= hi; ++j) { s += x[(size_t)j] * x[(size_t)j]; ++cnt; }
+        for (long long j = lo; j <= hi; ++j) { s += x[(keel::usize)j] * x[(keel::usize)j]; ++cnt; }
         out[i] = std::sqrt(s / double(cnt));
     }
     return out;
@@ -196,66 +199,66 @@ ScratchVec<double> ampl_rms(const Value &x_centered, size_t n, std::pmr::memory_
 // findpeaks with MinPeakDistance ≥ n. Greedy: sort indices by value
 // descending, accept peak if no already-accepted peak is within n samples.
 // Returns indices (0-based) in ascending order.
-ScratchVec<size_t> findpeaks_mindist(const ScratchVec<double> &x, size_t n, std::pmr::memory_resource *mr)
+keel::Array<keel::usize> findpeaks_mindist(const keel::Array<double> &x, keel::usize n, keel::Allocator *mr)
 {
-    const size_t N = x.size();
-    ScratchVec<size_t> peaks(mr);
+    const keel::usize N = x.size();
+    keel::Array<keel::usize> peaks(mr);
     if (N < 3) return peaks;
     // Strict local maxima.
-    ScratchVec<size_t> cand(mr);
-    for (size_t i = 1; i + 1 < N; ++i)
+    keel::Array<keel::usize> cand(mr);
+    for (keel::usize i = 1; i + 1 < N; ++i)
         if (x[i] > x[i - 1] && x[i] > x[i + 1]) cand.push_back(i);
     if (cand.empty()) return peaks;
     if (n <= 1) {
-        peaks.assign(cand.begin(), cand.end());
+        peaks.assign(cand);
         return peaks;
     }
     // Sort by value descending.
-    ScratchVec<size_t> order(cand.begin(), cand.end(), mr);
+    keel::Array<keel::usize> order = cand.clone(mr);
     std::sort(order.begin(), order.end(),
-              [&](size_t a, size_t b) { return x[a] > x[b]; });
-    ScratchVec<uint8_t> accepted(N, 0, mr);
-    for (size_t idx : order) {
+              [&](keel::usize a, keel::usize b) { return x[a] > x[b]; });
+    keel::Array<keel::u8> accepted(N, 0, mr);
+    for (keel::usize idx : order) {
         bool ok = true;
         const long long lo = (long long)idx - (long long)n;
         const long long hi = (long long)idx + (long long)n;
         for (long long j = std::max((long long)0, lo);
              j <= std::min((long long)N - 1, hi); ++j)
-            if (accepted[(size_t)j]) { ok = false; break; }
+            if (accepted[(keel::usize)j]) { ok = false; break; }
         if (ok) accepted[idx] = 1;
     }
-    for (size_t i = 0; i < N; ++i) if (accepted[i]) peaks.push_back(i);
+    for (keel::usize i = 0; i < N; ++i) if (accepted[i]) peaks.push_back(i);
     return peaks;
 }
 
 // envPeak — spline through local maxima/minima with MinPeakDistance n.
 // MATLAB convention: if <2 peaks found, fallback to including endpoints.
 // No DC removal in peak mode.
-void env_peak(const Value &x, size_t n, ScratchVec<double> &up, ScratchVec<double> &lo, std::pmr::memory_resource *mr)
+void env_peak(const Value &x, keel::usize n, keel::Array<double> &up, keel::Array<double> &lo, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     auto v = read_real(x, mr);
-    ScratchVec<double> neg(N, mr);
-    for (size_t i = 0; i < N; ++i) neg[i] = -v[i];
+    keel::Array<double> neg(N, mr);
+    for (keel::usize i = 0; i < N; ++i) neg[i] = -v[i];
 
-    auto build_envelope = [&](const ScratchVec<double> &sig,
-                              ScratchVec<double> &out) {
-        ScratchVec<size_t> peaks(mr);
+    auto build_envelope = [&](const keel::Array<double> &sig,
+                              keel::Array<double> &out) {
+        keel::Array<keel::usize> peaks(mr);
         if (N > n + 1)
             peaks = findpeaks_mindist(sig, n, mr);
         // If <2 peaks, fall back to endpoints + any peaks.
-        ScratchVec<size_t> locs(mr);
+        keel::Array<keel::usize> locs(mr);
         if (peaks.size() < 2) {
-            ScratchVec<size_t> draft(mr);
+            keel::Array<keel::usize> draft(mr);
             draft.push_back(0);
-            for (size_t p : peaks) draft.push_back(p);
+            for (keel::usize p : peaks) draft.push_back(p);
             draft.push_back(N - 1);
             // De-dup if endpoints coincide with peaks.
-            for (size_t l : draft) {
+            for (keel::usize l : draft) {
                 if (locs.empty() || locs.back() != l) locs.push_back(l);
             }
         } else {
-            locs.assign(peaks.begin(), peaks.end());
+            locs.assign(peaks);
         }
         // MATLAB's `spline` fits a PARABOLA when given exactly 3
         // knots (not-a-knot is degenerate). nk's general spline
@@ -279,7 +282,7 @@ void env_peak(const Value &x, size_t n, ScratchVec<double> &up, ScratchVec<doubl
             const double c = (y1 * (x2 * x2 * x3 - x2 * x3 * x3)
                               - y2 * (x1 * x1 * x3 - x1 * x3 * x3)
                               + y3 * (x1 * x1 * x2 - x1 * x2 * x2)) / det;
-            for (size_t i = 0; i < N; ++i) {
+            for (keel::usize i = 0; i < N; ++i) {
                 const double xi = double(i + 1);
                 out[i] = a * xi * xi + b * xi + c;
             }
@@ -292,13 +295,13 @@ void env_peak(const Value &x, size_t n, ScratchVec<double> &up, ScratchVec<doubl
         double *xd = x_loc.doubleDataMut();
         double *yd = y_loc.doubleDataMut();
         double *qd = xq.doubleDataMut();
-        for (size_t i = 0; i < locs.size(); ++i) {
+        for (keel::usize i = 0; i < locs.size(); ++i) {
             xd[i] = double(locs[i] + 1);
             yd[i] = sig[locs[i]];
         }
-        for (size_t i = 0; i < N; ++i) qd[i] = double(i + 1);
+        for (keel::usize i = 0; i < N; ++i) qd[i] = double(i + 1);
         Value yi = numkit::builtin::interp1(x_loc, y_loc, xq, "spline", mr);
-        for (size_t i = 0; i < N; ++i) out[i] = yi.elemAsDouble(i);
+        for (keel::usize i = 0; i < N; ++i) out[i] = yi.elemAsDouble(i);
     };
     build_envelope(v, up);
     build_envelope(neg, lo);
@@ -307,23 +310,23 @@ void env_peak(const Value &x, size_t n, ScratchVec<double> &up, ScratchVec<doubl
 
 } // anonymous
 
-Value envelope(const Value &x, std::pmr::memory_resource *mr)
+Value envelope(const Value &x, keel::Allocator *mr)
 {
     // Default: mean + |hilbert(x - mean)|.
-    const size_t N = x.numel();
-    ScratchArena scratch(mr);
-    auto v = read_real(x, &scratch);
+    const keel::usize N = x.numel();
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto v = read_real(x, scratch.allocator());
     double xmean = 0.0;
     for (double d : v) xmean += d;
     xmean /= double(N);
-    Value xc = Value::matrix(N, 1, ValueType::DOUBLE, &scratch);
+    Value xc = Value::matrix(N, 1, ValueType::DOUBLE, scratch.allocator());
     {
         double *cd = xc.doubleDataMut();
-        for (size_t i = 0; i < N; ++i) cd[i] = v[i] - xmean;
+        for (keel::usize i = 0; i < N; ++i) cd[i] = v[i] - xmean;
     }
-    auto a = ampl_fft_hilbert(xc, &scratch);
+    auto a = ampl_fft_hilbert(xc, scratch.allocator());
     auto r = createLike(x, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < N; ++i) r.doubleDataMut()[i] = xmean + a[i];
+    for (keel::usize i = 0; i < N; ++i) r.doubleDataMut()[i] = xmean + a[i];
     return r;
 }
 
@@ -333,48 +336,48 @@ Value envelope(const Value &x, std::pmr::memory_resource *mr)
 //   mode = 2 'rms'      (sliding RMS over n samples)
 //   mode = 3 'peak'     (spline through extrema with MinPeakDistance n)
 std::pair<Value, Value>
-envelope_full(const Value &x, int mode, size_t n, std::pmr::memory_resource *mr)
+envelope_full(const Value &x, int mode, keel::usize n, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
-    ScratchArena scratch(mr);
+    const keel::usize N = x.numel();
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
 
     if (mode == 3) {
         // Peak mode — no DC removal.
-        ScratchVec<double> up(&scratch), lo(&scratch);
-        env_peak(x, n, up, lo, &scratch);
+        keel::Array<double> up(scratch.allocator()), lo(scratch.allocator());
+        env_peak(x, n, up, lo, scratch.allocator());
         Value yupper = createLike(x, ValueType::DOUBLE, mr);
         Value ylower = createLike(x, ValueType::DOUBLE, mr);
-        for (size_t i = 0; i < N; ++i) yupper.doubleDataMut()[i] = up[i];
-        for (size_t i = 0; i < N; ++i) ylower.doubleDataMut()[i] = lo[i];
+        for (keel::usize i = 0; i < N; ++i) yupper.doubleDataMut()[i] = up[i];
+        for (keel::usize i = 0; i < N; ++i) ylower.doubleDataMut()[i] = lo[i];
         return {std::move(yupper), std::move(ylower)};
     }
 
     // Modes 0/1/2: remove DC, compute amplitude, restore.
-    auto v = read_real(x, &scratch);
+    auto v = read_real(x, scratch.allocator());
     double xmean = 0.0;
     for (double d : v) xmean += d;
     xmean /= double(N);
-    Value xc = Value::matrix(N, 1, ValueType::DOUBLE, &scratch);
+    Value xc = Value::matrix(N, 1, ValueType::DOUBLE, scratch.allocator());
     {
         double *cd = xc.doubleDataMut();
-        for (size_t i = 0; i < N; ++i) cd[i] = v[i] - xmean;
+        for (keel::usize i = 0; i < N; ++i) cd[i] = v[i] - xmean;
     }
 
-    ScratchVec<double> a(&scratch);
-    if      (mode == 0) a = ampl_fft_hilbert(xc, &scratch);
-    else if (mode == 1) a = ampl_fir(xc, n, &scratch);
-    else                a = ampl_rms(xc, n, &scratch);
+    keel::Array<double> a(scratch.allocator());
+    if      (mode == 0) a = ampl_fft_hilbert(xc, scratch.allocator());
+    else if (mode == 1) a = ampl_fir(xc, n, scratch.allocator());
+    else                a = ampl_rms(xc, n, scratch.allocator());
 
     Value yupper = createLike(x, ValueType::DOUBLE, mr);
     Value ylower = createLike(x, ValueType::DOUBLE, mr);
-    for (size_t i = 0; i < N; ++i) yupper.doubleDataMut()[i] = xmean + a[i];
-    for (size_t i = 0; i < N; ++i) ylower.doubleDataMut()[i] = xmean - a[i];
+    for (keel::usize i = 0; i < N; ++i) yupper.doubleDataMut()[i] = xmean + a[i];
+    for (keel::usize i = 0; i < N; ++i) ylower.doubleDataMut()[i] = xmean - a[i];
     return {std::move(yupper), std::move(ylower)};
 }
 
 // Back-compat 2-output adapter: dispatches to default mode.
 std::pair<Value, Value>
-envelope_pair(const Value &x, std::pmr::memory_resource *mr)
+envelope_pair(const Value &x, keel::Allocator *mr)
 {
     return envelope_full(x, 0, 0, mr);
 }

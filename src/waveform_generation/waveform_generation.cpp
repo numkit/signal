@@ -4,6 +4,11 @@
 // Split from library.cpp (transform-domain helpers nextpow2 /
 // fftshift / ifftshift moved to transforms/transform_helpers.cpp).
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/ref.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/waveform_generation/waveform_generation.hpp>
 #include <numkit/signal/filter_design/filter_design.hpp>     // butter
 #include <numkit/signal/digital_filtering/filter.hpp>        // filtfilt
@@ -38,7 +43,7 @@ double gauspulsAlpha(double fc, double bw)
 double rectpulsScalar(double tv, double w)
 {
     const double half = 0.5 * w;
-    const double a = std::abs(tv);
+    const double a = keel::abs(tv);
     if (a < half) return 1.0;
     return 0.0;  // boundary and outside
 }
@@ -46,7 +51,7 @@ double rectpulsScalar(double tv, double w)
 double tripulsScalar(double tv, double w)
 {
     const double half = 0.5 * w;
-    const double a = std::abs(tv);
+    const double a = keel::abs(tv);
     if (a >= half) return 0.0;
     return 1.0 - a / half;
 }
@@ -80,45 +85,45 @@ void gauspuls_argcheck(double fc, double bw)
 
 } // namespace
 
-Value rectpuls(const Value &t, double w, std::pmr::memory_resource *mr)
+Value rectpuls(const Value &t, double w, keel::Allocator *mr)
 {
     rectpuls_argcheck(w);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i)
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i)
         dst[i] = rectpulsScalar(t.elemAsDouble(i), w);
     return out;
 }
 
-Value tripuls(const Value &t, double w, std::pmr::memory_resource *mr)
+Value tripuls(const Value &t, double w, keel::Allocator *mr)
 {
     tripuls_argcheck(w);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i)
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i)
         dst[i] = tripulsScalar(t.elemAsDouble(i), w);
     return out;
 }
 
-Value gauspuls(const Value &t, double fc, double bw, std::pmr::memory_resource *mr)
+Value gauspuls(const Value &t, double fc, double bw, keel::Allocator *mr)
 {
     gauspuls_argcheck(fc, bw);
     const double alpha = gauspulsAlpha(fc, bw);
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i)
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i)
         dst[i] = gauspulsScalar(t.elemAsDouble(i), fc, alpha);
     return out;
 }
 
-Value pulstranHandle(Span<const double> t, Span<const double> d,
-                     FnHandle fn, std::pmr::memory_resource *mr)
+Value pulstranHandle(keel::ArrayRef<double> t, keel::ArrayRef<double> d,
+                     FnHandle fn, keel::Allocator *mr)
 {
-    const size_t n  = t.size();
-    const size_t nd = d.size();
+    const keel::usize n  = t.size();
+    const keel::usize nd = d.size();
 
     Value out = Value::matrix(n, 1, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -128,30 +133,30 @@ Value pulstranHandle(Span<const double> t, Span<const double> d,
     // convention for the callback input).
     Value shifted = Value::matrix(1, n, ValueType::DOUBLE, mr);
     double *sh = shifted.doubleDataMut();
-    for (size_t k = 0; k < nd; ++k) {
+    for (keel::usize k = 0; k < nd; ++k) {
         const double dk = d[k];
-        for (size_t i = 0; i < n; ++i)
+        for (keel::usize i = 0; i < n; ++i)
             sh[i] = t[i] - dk;
         Value r;
         Value args[1] = { shifted };
-        Span<const Value> ar(args, 1);
-        Span<Value>       ou(&r, 1);
+        keel::ArrayRef<Value> ar(args, 1);
+        keel::MutArrayRef<Value>       ou(&r, 1);
         fn(ar, ou, mr);
         if (r.numel() != n)
             throw Error("pulstran: handle must return a vector of the same "
                          "length as t",
                          0, 0, "pulstran", "", "numkit:pulstran:badHandleOutput");
-        for (size_t i = 0; i < n; ++i)
+        for (keel::usize i = 0; i < n; ++i)
             dst[i] += r.elemAsDouble(i);
     }
     return out;
 }
 
 Value pulstran(const Value &t, const Value &d, const std::string &fnName,
-               double fcOrW, double bw, std::pmr::memory_resource *mr)
+               double fcOrW, double bw, keel::Allocator *mr)
 {
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    const size_t n = t.numel();
+    const keel::usize n = t.numel();
     std::memset(out.doubleDataMut(), 0, n * sizeof(double));
     double *dst = out.doubleDataMut();
 
@@ -162,10 +167,10 @@ Value pulstran(const Value &t, const Value &d, const std::string &fnName,
 
     auto applyKernel = [&](double (*kernel)(double, double, double),
                            double a, double b) {
-        const size_t nd = d.numel();
-        for (size_t k = 0; k < nd; ++k) {
+        const keel::usize nd = d.numel();
+        for (keel::usize k = 0; k < nd; ++k) {
             const double dk = d.elemAsDouble(k);
-            for (size_t i = 0; i < n; ++i)
+            for (keel::usize i = 0; i < n; ++i)
                 dst[i] += kernel(t.elemAsDouble(i) - dk, a, b);
         }
     };
@@ -189,7 +194,7 @@ Value pulstran(const Value &t, const Value &d, const std::string &fnName,
     return out;
 }
 
-Value square(const Value &t, double duty, std::pmr::memory_resource *mr)
+Value square(const Value &t, double duty, keel::Allocator *mr)
 {
     if (duty < 0.0 || duty > 100.0)
         throw Error("square: duty cycle must be in [0, 100]",
@@ -198,8 +203,8 @@ Value square(const Value &t, double duty, std::pmr::memory_resource *mr)
     const double threshold = duty / 100.0;
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i) {
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i) {
         const double tv = t.elemAsDouble(i);
         // Wrap to [0, 1) within one period.
         double frac = tv / kTwoPi;
@@ -209,7 +214,7 @@ Value square(const Value &t, double duty, std::pmr::memory_resource *mr)
     return out;
 }
 
-Value sawtooth(const Value &t, double width, std::pmr::memory_resource *mr)
+Value sawtooth(const Value &t, double width, keel::Allocator *mr)
 {
     if (width < 0.0 || width > 1.0)
         throw Error("sawtooth: width must be in [0, 1]",
@@ -217,8 +222,8 @@ Value sawtooth(const Value &t, double width, std::pmr::memory_resource *mr)
     constexpr double kTwoPi = 6.28318530717958647692;
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i) {
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i) {
         double frac = t.elemAsDouble(i) / kTwoPi;
         frac -= std::floor(frac);   // [0, 1)
         // Rising portion: [0, width) → linear from -1 to +1.
@@ -236,13 +241,13 @@ Value sawtooth(const Value &t, double width, std::pmr::memory_resource *mr)
     return out;
 }
 
-Value sinc(const Value &t, std::pmr::memory_resource *mr)
+Value sinc(const Value &t, keel::Allocator *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i) {
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i) {
         const double tv = t.elemAsDouble(i);
         if (tv == 0.0) {
             dst[i] = 1.0;
@@ -254,7 +259,7 @@ Value sinc(const Value &t, std::pmr::memory_resource *mr)
     return out;
 }
 
-Value gmonopuls(const Value &t, double fc, std::pmr::memory_resource *mr)
+Value gmonopuls(const Value &t, double fc, keel::Allocator *mr)
 {
     if (fc <= 0)
         throw Error("gmonopuls: fc must be positive",
@@ -266,8 +271,8 @@ Value gmonopuls(const Value &t, double fc, std::pmr::memory_resource *mr)
     const double k = 2.0 * sqrtE * kPi * fc;
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t n = t.numel();
-    for (size_t i = 0; i < n; ++i) {
+    const keel::usize n = t.numel();
+    for (keel::usize i = 0; i < n; ++i) {
         const double tv = t.elemAsDouble(i);
         const double pft = kPi * fc * tv;
         dst[i] = k * tv * std::exp(-2.0 * pft * pft);
@@ -275,7 +280,7 @@ Value gmonopuls(const Value &t, double fc, std::pmr::memory_resource *mr)
     return out;
 }
 
-Value diric(const Value &x, int n, std::pmr::memory_resource *mr)
+Value diric(const Value &x, int n, keel::Allocator *mr)
 {
     if (n < 1)
         throw Error("diric: n must be a positive integer",
@@ -283,12 +288,12 @@ Value diric(const Value &x, int n, std::pmr::memory_resource *mr)
     constexpr double kTwoPi = 6.28318530717958647692;
     auto out = createLike(x, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t N = x.numel();
-    for (size_t i = 0; i < N; ++i) {
+    const keel::usize N = x.numel();
+    for (keel::usize i = 0; i < N; ++i) {
         const double xv = x.elemAsDouble(i);
         // Detect xv ≈ 2π·k by checking sin(x/2) ≈ 0.
         const double s = std::sin(xv * 0.5);
-        if (std::abs(s) < 1e-12) {
+        if (keel::abs(s) < 1e-12) {
             const long k = std::lround(xv / kTwoPi);
             // Sign: (-1)^(k·(n-1))
             const long sign = ((k * (n - 1)) & 1) ? -1 : 1;
@@ -301,7 +306,7 @@ Value diric(const Value &x, int n, std::pmr::memory_resource *mr)
 }
 
 Value chirp(const Value &t, double f0, double t1, double f1,
-            const std::string &method, std::pmr::memory_resource *mr)
+            const std::string &method, keel::Allocator *mr)
 {
     if (t1 <= 0)
         throw Error("chirp: t1 must be positive",
@@ -330,16 +335,16 @@ Value chirp(const Value &t, double f0, double t1, double f1,
 
     auto out = createLike(t, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
-    const size_t N = t.numel();
+    const keel::usize N = t.numel();
 
     constexpr double kTwoPi = 6.28318530717958647692;
 
-    auto readT = [&](size_t i) -> double { return t.elemAsDouble(i); };
+    auto readT = [&](keel::usize i) -> double { return t.elemAsDouble(i); };
 
     switch (mode) {
     case Mode::Linear: {
         const double k = (f1 - f0) / t1;
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             const double tv = readT(i);
             const double phase = kTwoPi * (f0 * tv + 0.5 * k * tv * tv);
             dst[i] = std::cos(phase);
@@ -348,7 +353,7 @@ Value chirp(const Value &t, double f0, double t1, double f1,
     }
     case Mode::Quadratic: {
         const double k = (f1 - f0) / (t1 * t1);
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             const double tv = readT(i);
             const double phase = kTwoPi * (f0 * tv + (k / 3.0) * tv * tv * tv);
             dst[i] = std::cos(phase);
@@ -358,7 +363,7 @@ Value chirp(const Value &t, double f0, double t1, double f1,
     case Mode::Logarithmic: {
         const double beta = std::pow(f1 / f0, 1.0 / t1);
         const double logBeta = std::log(beta);
-        for (size_t i = 0; i < N; ++i) {
+        for (keel::usize i = 0; i < N; ++i) {
             const double tv = readT(i);
             const double phase = kTwoPi * f0 * (std::pow(beta, tv) - 1.0) / logBeta;
             dst[i] = std::cos(phase);
@@ -383,7 +388,7 @@ Value chirp(const Value &t, double f0, double t1, double f1,
 // amssb / pwm / ptm/ppm / qam similarly deferred.
 Value demod(const Value &y, double Fc, double Fs,
             const std::string &method, const Value &opt,
-            std::pmr::memory_resource *mr)
+            keel::Allocator *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
     const ValueType vt = y.type();
@@ -395,7 +400,7 @@ Value demod(const Value &y, double Fc, double Fs,
         throw Error("demod: Fs must be positive",
                     0, 0, "demod", "", "numkit:demod:BadFs");
 
-    const std::size_t N = y.numel();
+    const keel::usize N = y.numel();
     if (N == 0)
         return Value::matrix(0, 0, ySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
@@ -412,8 +417,8 @@ Value demod(const Value &y, double Fc, double Fs,
 
     // Convert row vector to column for processing.
     const bool isRowVec = (y.dims().rows() == 1 && y.dims().cols() > 1);
-    const std::size_t len = isRowVec ? y.dims().cols() : y.dims().rows();
-    const std::size_t cols = isRowVec ? 1 : y.dims().cols();
+    const keel::usize len = isRowVec ? y.dims().cols() : y.dims().rows();
+    const keel::usize cols = isRowVec ? 1 : y.dims().cols();
 
     if (isFmPm) {
         // FM/PM share most: yq = hilbert(y) .* exp(-j·2π·Fc·t)
@@ -425,48 +430,48 @@ Value demod(const Value &y, double Fc, double Fs,
         // Compute hilbert on y.
         Value yVal = Value::matrix(len, cols, ValueType::DOUBLE, mr);
         double *yvd = yVal.doubleDataMut();
-        for (std::size_t c = 0; c < cols; ++c) {
-            for (std::size_t r = 0; r < len; ++r) {
+        for (keel::usize c = 0; c < cols; ++c) {
+            for (keel::usize r = 0; r < len; ++r) {
                 yvd[r + c * len] = isRowVec ? y.elemAsDouble(r)
                                               : y.elemAsDouble(r + c * len);
             }
         }
         Value h = numkit::signal::hilbert(yVal, mr);
-        const Complex *hd = h.complexData();
+        const keel::c64 *hd = h.complexData();
 
         Value out = Value::matrix(len, cols, ValueType::DOUBLE, mr);
         double *od = out.doubleDataMut();
 
         if (m == "fm") {
             // FM: angle(yq) and unwrap, then differentiate
-            for (std::size_t c = 0; c < cols; ++c) {
+            for (keel::usize c = 0; c < cols; ++c) {
                 // yq[r] = hilbert(y)[r] · exp(-j·2π·Fc·t)
                 // angle(yq) = angle(hilbert(y)) - 2π·Fc·t
                 std::vector<double> ang(len);
-                for (std::size_t r = 0; r < len; ++r) {
-                    const Complex hh = hd[r + c * len];
+                for (keel::usize r = 0; r < len; ++r) {
+                    const keel::c64 hh = hd[r + c * len];
                     const double t = static_cast<double>(r) / Fs;
-                    const Complex yq = hh * std::polar(1.0, -2.0 * kPi * Fc * t);
-                    ang[r] = std::arg(yq);
+                    const keel::c64 yq = hh * keel::polar(1.0, -2.0 * kPi * Fc * t);
+                    ang[r] = keel::arg(yq);
                 }
                 // Unwrap (jump > π implies 2π wrap)
-                for (std::size_t r = 1; r < len; ++r) {
+                for (keel::usize r = 1; r < len; ++r) {
                     while (ang[r] - ang[r - 1] > kPi) ang[r] -= 2.0 * kPi;
                     while (ang[r] - ang[r - 1] < -kPi) ang[r] += 2.0 * kPi;
                 }
                 // diff prepended with 0
                 od[0 + c * len] = 0.0;
-                for (std::size_t r = 1; r < len; ++r) {
+                for (keel::usize r = 1; r < len; ++r) {
                     od[r + c * len] = (1.0 / P1) * (ang[r] - ang[r - 1]);
                 }
             }
         } else {  // pm
-            for (std::size_t c = 0; c < cols; ++c) {
-                for (std::size_t r = 0; r < len; ++r) {
-                    const Complex hh = hd[r + c * len];
+            for (keel::usize c = 0; c < cols; ++c) {
+                for (keel::usize r = 0; r < len; ++r) {
+                    const keel::c64 hh = hd[r + c * len];
                     const double t = static_cast<double>(r) / Fs;
-                    const Complex yq = hh * std::polar(1.0, -2.0 * kPi * Fc * t);
-                    od[r + c * len] = (1.0 / P1) * std::arg(yq);
+                    const keel::c64 yq = hh * keel::polar(1.0, -2.0 * kPi * Fc * t);
+                    od[r + c * len] = (1.0 / P1) * keel::arg(yq);
                 }
             }
         }
@@ -481,8 +486,8 @@ Value demod(const Value &y, double Fc, double Fs,
     // Step 1: x = y .* cos(2π Fc t)
     Value mixed = Value::matrix(len, cols, ValueType::DOUBLE, mr);
     double *md = mixed.doubleDataMut();
-    for (std::size_t c = 0; c < cols; ++c) {
-        for (std::size_t r = 0; r < len; ++r) {
+    for (keel::usize c = 0; c < cols; ++c) {
+        for (keel::usize r = 0; r < len; ++r) {
             const double t = static_cast<double>(r) / Fs;
             const double yi = isRowVec ? y.elemAsDouble(r)
                                         : y.elemAsDouble(r + c * len);
@@ -508,7 +513,7 @@ Value demod(const Value &y, double Fc, double Fs,
         if (!opt.isEmpty()) offset = opt.toScalar();
         if (offset != 0.0) {
             double *od = out.doubleDataMut();
-            for (std::size_t i = 0; i < len * cols; ++i) od[i] -= offset;
+            for (keel::usize i = 0; i < len * cols; ++i) od[i] -= offset;
         }
     }
 
@@ -528,7 +533,7 @@ Value demod(const Value &y, double Fc, double Fs,
 // amssb (uses hilbert), pwm/ptm/ppm/qam deferred — KNOWN GAPs.
 Value modulate(const Value &x, double Fc, double Fs,
                const std::string &method, const Value &opt,
-               std::pmr::memory_resource *mr)
+               keel::Allocator *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
     const ValueType vt = x.type();
@@ -540,7 +545,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         throw Error("modulate: Fs must be positive",
                     0, 0, "modulate", "", "numkit:modulate:BadFs");
 
-    const std::size_t N = x.numel();
+    const keel::usize N = x.numel();
     if (N == 0)
         return Value::matrix(0, 0, xSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
@@ -549,19 +554,19 @@ Value modulate(const Value &x, double Fc, double Fs,
                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     const bool isRowVec = (x.dims().rows() == 1 && x.dims().cols() > 1);
-    const std::size_t len = isRowVec ? x.dims().cols() : x.dims().rows();
-    const std::size_t cols = isRowVec ? 1 : x.dims().cols();
+    const keel::usize len = isRowVec ? x.dims().cols() : x.dims().rows();
+    const keel::usize cols = isRowVec ? 1 : x.dims().cols();
     Value out = Value::matrix(len, cols, ValueType::DOUBLE, mr);
     double *od = out.doubleDataMut();
 
-    auto getX = [&](std::size_t r, std::size_t c) -> double {
+    auto getX = [&](keel::usize r, keel::usize c) -> double {
         if (isRowVec) return x.elemAsDouble(r);
         return x.elemAsDouble(r + c * len);
     };
 
     if (m == "am" || m == "amdsb-sc") {
-        for (std::size_t c = 0; c < cols; ++c) {
-            for (std::size_t r = 0; r < len; ++r) {
+        for (keel::usize c = 0; c < cols; ++c) {
+            for (keel::usize r = 0; r < len; ++r) {
                 const double t = static_cast<double>(r) / Fs;
                 od[r + c * len] = getX(r, c) * std::cos(2.0 * kPi * Fc * t);
             }
@@ -571,13 +576,13 @@ Value modulate(const Value &x, double Fc, double Fs,
         // Compute hilbert of full signal first.
         Value xVal = Value::matrix(len, cols, ValueType::DOUBLE, mr);
         double *xd = xVal.doubleDataMut();
-        for (std::size_t c = 0; c < cols; ++c)
-            for (std::size_t r = 0; r < len; ++r)
+        for (keel::usize c = 0; c < cols; ++c)
+            for (keel::usize r = 0; r < len; ++r)
                 xd[r + c * len] = getX(r, c);
         Value h = numkit::signal::hilbert(xVal, mr);
-        const Complex *hd = h.complexData();
-        for (std::size_t c = 0; c < cols; ++c) {
-            for (std::size_t r = 0; r < len; ++r) {
+        const keel::c64 *hd = h.complexData();
+        for (keel::usize c = 0; c < cols; ++c) {
+            for (keel::usize r = 0; r < len; ++r) {
                 const double t = static_cast<double>(r) / Fs;
                 const double cosT = std::cos(2.0 * kPi * Fc * t);
                 const double sinT = std::sin(2.0 * kPi * Fc * t);
@@ -592,13 +597,13 @@ Value modulate(const Value &x, double Fc, double Fs,
             offset = opt.toScalar();
         } else {
             offset = x.elemAsDouble(0);
-            for (std::size_t i = 1; i < N; ++i) {
+            for (keel::usize i = 1; i < N; ++i) {
                 const double v = x.elemAsDouble(i);
                 if (v < offset) offset = v;
             }
         }
-        for (std::size_t c = 0; c < cols; ++c) {
-            for (std::size_t r = 0; r < len; ++r) {
+        for (keel::usize c = 0; c < cols; ++c) {
+            for (keel::usize r = 0; r < len; ++r) {
                 const double t = static_cast<double>(r) / Fs;
                 od[r + c * len] = (getX(r, c) - offset) * std::cos(2.0 * kPi * Fc * t);
             }
@@ -609,15 +614,15 @@ Value modulate(const Value &x, double Fc, double Fs,
             kf = opt.toScalar();
         } else {
             double xMax = 0.0;
-            for (std::size_t i = 0; i < N; ++i) {
-                const double v = std::abs(x.elemAsDouble(i));
+            for (keel::usize i = 0; i < N; ++i) {
+                const double v = keel::abs(x.elemAsDouble(i));
                 if (v > xMax) xMax = v;
             }
             kf = (xMax > 0.0) ? (Fc / Fs) * 2.0 * kPi / xMax : 0.0;
         }
-        for (std::size_t c = 0; c < cols; ++c) {
+        for (keel::usize c = 0; c < cols; ++c) {
             double cum = 0.0;
-            for (std::size_t r = 0; r < len; ++r) {
+            for (keel::usize r = 0; r < len; ++r) {
                 cum += getX(r, c);
                 const double t = static_cast<double>(r) / Fs;
                 od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kf * cum);
@@ -629,14 +634,14 @@ Value modulate(const Value &x, double Fc, double Fs,
             kp = opt.toScalar();
         } else {
             double xMax = 0.0;
-            for (std::size_t i = 0; i < N; ++i) {
-                const double v = std::abs(x.elemAsDouble(i));
+            for (keel::usize i = 0; i < N; ++i) {
+                const double v = keel::abs(x.elemAsDouble(i));
                 if (v > xMax) xMax = v;
             }
             kp = (xMax > 0.0) ? kPi / xMax : 0.0;
         }
-        for (std::size_t c = 0; c < cols; ++c) {
-            for (std::size_t r = 0; r < len; ++r) {
+        for (keel::usize c = 0; c < cols; ++c) {
+            for (keel::usize r = 0; r < len; ++r) {
                 const double t = static_cast<double>(r) / Fs;
                 od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kp * getX(r, c));
             }
@@ -667,15 +672,15 @@ namespace {
 // Shared body: `Fc` is the centre frequency, `range1` is the
 // instantaneous-modulation factor (rad / sample / unit-x).
 Value vcoImpl(const Value &x, double Fc, double range1, double fs,
-              std::pmr::memory_resource *mr)
+              keel::Allocator *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
     if (fs <= 0.0)
         throw Error("vco: fs must be positive",
                     0, 0, "vco", "", "numkit:vco:BadFs");
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     // Range check: x ∈ [-1, 1].
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double v = x.elemAsDouble(i);
         if (v > 1.0 || v < -1.0)
             throw Error("vco: x values must be in [-1, 1]",
@@ -697,19 +702,19 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
     // Determine "rows" axis (along which integration runs):
     // - If x is column vector (or Nx1): integrate along rows (single channel).
     // - If matrix: each column is a channel.
-    const size_t R = (x.dims().rows() == 1 && x.dims().cols() > 1)
+    const keel::usize R = (x.dims().rows() == 1 && x.dims().cols() > 1)
                       ? x.dims().cols()
                       : x.dims().rows();
-    const size_t C = (x.dims().rows() == 1 && x.dims().cols() > 1)
+    const keel::usize C = (x.dims().rows() == 1 && x.dims().cols() > 1)
                       ? 1
                       : x.dims().cols();
     const bool rowVec = (x.dims().rows() == 1 && x.dims().cols() > 1);
 
-    for (size_t c = 0; c < C; ++c) {
+    for (keel::usize c = 0; c < C; ++c) {
         double cum = 0.0;
-        for (size_t n = 0; n < R; ++n) {
+        for (keel::usize n = 0; n < R; ++n) {
             // Index into x: row vec → x[n]; column-major matrix → x[n + c*R].
-            const size_t srcIdx = rowVec ? n : (n + c * R);
+            const keel::usize srcIdx = rowVec ? n : (n + c * R);
             cum += x.elemAsDouble(srcIdx);
             const double t = static_cast<double>(n) / fs;
             od[srcIdx] = std::cos(2.0 * kPi * Fc * t + range1 * cum);
@@ -720,7 +725,7 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
 } // anon
 
 Value vco(const Value &x, double fc, double fs,
-          std::pmr::memory_resource *mr)
+          keel::Allocator *mr)
 {
     // Centre-form: Fc = fc, range1 = (Fc / fs) * 2π.
     constexpr double kPi = 3.14159265358979323846;
@@ -729,7 +734,7 @@ Value vco(const Value &x, double fc, double fs,
 }
 
 Value vco(const Value &x, double fmin, double fmax, double fs,
-          std::pmr::memory_resource *mr)
+          keel::Allocator *mr)
 {
     // Range-form: Fc = mean(fmin, fmax), range1 = (fmax - Fc)/fs * 2π.
     constexpr double kPi = 3.14159265358979323846;

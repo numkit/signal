@@ -2,8 +2,8 @@
 // Standalone specfun header for numkit modules
 #pragma once
 
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
-#include <memory_resource>
 
 namespace numkit::builtin {
 
@@ -12,7 +12,7 @@ struct EllipKE {
     Value E;
 };
 
-Value erfinv(const Value &x, std::pmr::memory_resource *mr = nullptr);
-EllipKE ellipke(const Value &m, std::pmr::memory_resource *mr = nullptr);
+Value erfinv(const Value &x, keel::Allocator *mr = nullptr);
+EllipKE ellipke(const Value &m, keel::Allocator *mr = nullptr);
 
 } // namespace numkit::builtin

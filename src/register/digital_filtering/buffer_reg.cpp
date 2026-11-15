@@ -6,14 +6,14 @@
 //
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/digital_filtering/buffer.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
 #include <numkit/value/value.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
-#include <numkit/value/scratch.hpp>
-#include <numkit/value/span.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,8 +30,8 @@ namespace numkit::signal {
 
 namespace detail {
 
-void buffer_reg(Span<const Value> args, size_t nargout,
-                Span<Value> outs, CallContext &ctx)
+void buffer_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+                keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "buffer");
     const int n = argcheck::expectedPositiveInteger(
@@ -42,11 +42,11 @@ void buffer_reg(Span<const Value> args, size_t nargout,
             argcheck::expectedReal(args[2], 3, "p", "buffer"), 3, "p", "buffer");
     const Value &opt = (args.size() >= 4) ? args[3] : Value::Empty;
     if (nargout >= 2 && outs.size() >= 2) {
-        auto [Y, Z] = buffer2(args[0], n, p, opt, ctx.engine->resource());
+        auto [Y, Z] = buffer2(args[0], n, p, opt, ctx.engine->allocator());
         outs[0] = Y;
         outs[1] = Z;
     } else {
-        outs[0] = buffer(args[0], n, p, opt, ctx.engine->resource());
+        outs[0] = buffer(args[0], n, p, opt, ctx.engine->allocator());
     }
 }
 

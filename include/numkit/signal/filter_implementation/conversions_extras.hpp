@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -38,8 +39,8 @@ namespace numkit::signal {
 /// @see zp2sos, tf2sos
 std::tuple<Value, Value>
 sos2tf(const Value &                sos,
-       double                       g  = 1.0,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::f64                       g  = 1.0,
+       keel::Allocator *  mr = nullptr);
 
 /// Second-order sections to zero / pole / gain.
 ///
@@ -52,10 +53,10 @@ sos2tf(const Value &                sos,
 /// @return     Tuple `(zeros, poles, gain)`.
 ///
 /// @see sos2tf, zp2sos
-std::tuple<Value, Value, double>
+std::tuple<Value, Value, keel::f64>
 sos2zp(const Value &                sos,
-       double                       g  = 1.0,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::f64                       g  = 1.0,
+       keel::Allocator *  mr = nullptr);
 
 /// Transfer function to zero / pole / gain.
 ///
@@ -66,10 +67,10 @@ sos2zp(const Value &                sos,
 /// @param a   Denominator polynomial.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(zeros, poles, gain)`.
-std::tuple<Value, Value, double>
+std::tuple<Value, Value, keel::f64>
 tf2zpk(const Value &                b,
        const Value &                a,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::Allocator *  mr = nullptr);
 
 /// Cascaded transfer function to zero / pole / gain.
 ///
@@ -84,11 +85,11 @@ tf2zpk(const Value &                b,
 /// @return      Tuple `(Z, P, K_gain)`.
 ///
 /// @see scaleFilterSections
-std::tuple<Value, Value, double>
+std::tuple<Value, Value, keel::f64>
 ctf2zp(const Value &                NUM,
        const Value &                DEN,
        const Value &                SV = Value::Empty,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::Allocator *  mr = nullptr);
 
 /// Scale numerator coefficients of a cascaded transfer function.
 ///
@@ -102,7 +103,7 @@ ctf2zp(const Value &                NUM,
 /// @return        Scaled K × (Q+1) numerator matrix.
 Value scaleFilterSections(const Value &                CTFNum,
                           const Value &                SV,
-                          std::pmr::memory_resource *  mr = nullptr);
+                          keel::Allocator *  mr = nullptr);
 
 /// Transfer function to state space (controllable canonical form).
 ///
@@ -119,7 +120,7 @@ Value scaleFilterSections(const Value &                CTFNum,
 std::tuple<Value, Value, Value, Value>
 tf2ss(const Value &                b,
       const Value &                a,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::Allocator *  mr = nullptr);
 
 /// State space to transfer function (SISO only).
 ///
@@ -134,8 +135,8 @@ std::tuple<Value, Value>
 ss2tf(const Value &                A,
       const Value &                B,
       const Value &                C,
-      double                       D  = 0.0,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::f64                       D  = 0.0,
+      keel::Allocator *  mr = nullptr);
 
 /// @brief State space → zero / pole / gain
 /// (`[z, p, k] = ss2zp(A, B, C, D)`).
@@ -149,9 +150,9 @@ ss2tf(const Value &                A,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)` — zeros, poles, gain.
 /// @see ss2tf, zp2ss
-std::tuple<Value, Value, double>
-ss2zp(const Value &A, const Value &B, const Value &C, double D = 0.0,
-      std::pmr::memory_resource *mr = nullptr);
+std::tuple<Value, Value, keel::f64>
+ss2zp(const Value &A, const Value &B, const Value &C, keel::f64 D = 0.0,
+      keel::Allocator *mr = nullptr);
 
 /// Zero / pole / gain to state space (via `zp2tf` then `tf2ss`).
 ///
@@ -163,8 +164,8 @@ ss2zp(const Value &A, const Value &B, const Value &C, double D = 0.0,
 std::tuple<Value, Value, Value, Value>
 zp2ss(const Value &                z,
       const Value &                p,
-      double                       k,
-      std::pmr::memory_resource *  mr = nullptr);
+      keel::f64                       k,
+      keel::Allocator *  mr = nullptr);
 
 /// Second-order sections to state space (via `sos2tf` then `tf2ss`).
 ///
@@ -174,8 +175,8 @@ zp2ss(const Value &                z,
 /// @return     Tuple `(A, B, C, D)`.
 std::tuple<Value, Value, Value, Value>
 sos2ss(const Value &                sos,
-       double                       g  = 1.0,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::f64                       g  = 1.0,
+       keel::Allocator *  mr = nullptr);
 
 /// @brief State space → second-order sections
 /// (`sos = ss2sos(A, B, C, D)`).
@@ -189,8 +190,8 @@ sos2ss(const Value &                sos,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    `L × 6` SOS matrix.
 /// @see ss2tf, sos2ss
-Value ss2sos(const Value &A, const Value &B, const Value &C, double D = 0.0,
-             std::pmr::memory_resource *mr = nullptr);
+Value ss2sos(const Value &A, const Value &B, const Value &C, keel::f64 D = 0.0,
+             keel::Allocator *mr = nullptr);
 
 
 /// @}

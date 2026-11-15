@@ -6,9 +6,10 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/ref.h>
 #include <numkit/value/fn_handle.hpp>
-#include <numkit/value/span.hpp>
 #include <numkit/value/value.hpp>
 
 #include <string>
@@ -29,8 +30,8 @@ namespace numkit::signal {
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE array.
 Value rectpuls(const Value &                t,
-               double                       w  = 1.0,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::f64                       w  = 1.0,
+               keel::Allocator *  mr = nullptr);
 
 /// Triangular pulse of unit amplitude on `|t| ≤ w/2`.
 ///
@@ -41,8 +42,8 @@ Value rectpuls(const Value &                t,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE array.
 Value tripuls(const Value &                t,
-              double                       w  = 1.0,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::f64                       w  = 1.0,
+              keel::Allocator *  mr = nullptr);
 
 /// Gaussian-modulated sinusoid.
 ///
@@ -56,9 +57,9 @@ Value tripuls(const Value &                t,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE array.
 Value gauspuls(const Value &                t,
-               double                       fc,
-               double                       bw = 0.5,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::f64                       fc,
+               keel::f64                       bw = 0.5,
+               keel::Allocator *  mr = nullptr);
 
 /// Pulse train: `Σ_i fn(t - d_i)` for a named pulse type.
 ///
@@ -76,9 +77,9 @@ Value gauspuls(const Value &                t,
 Value pulstran(const Value &                t,
                const Value &                d,
                const std::string &          fnName,
-               double                       fcOrW = 1.0,
-               double                       bw    = 0.5,
-               std::pmr::memory_resource *  mr    = nullptr);
+               keel::f64                       fcOrW = 1.0,
+               keel::f64                       bw    = 0.5,
+               keel::Allocator *  mr    = nullptr);
 
 /// Pulse train with a callback-based pulse generator.
 ///
@@ -94,10 +95,10 @@ Value pulstran(const Value &                t,
 /// @return    `n × 1` column-vector DOUBLE Value containing
 ///            `Σ_i fn(t - d_i)`.
 /// @see pulstran
-Value pulstranHandle(Span<const double>           t,
-                     Span<const double>           d,
+Value pulstranHandle(keel::ArrayRef<keel::f64>           t,
+                     keel::ArrayRef<keel::f64>           d,
                      FnHandle                     fn,
-                     std::pmr::memory_resource *  mr = nullptr);
+                     keel::Allocator *  mr = nullptr);
 
 /// Frequency-modulated cosine (chirp).
 ///
@@ -116,11 +117,11 @@ Value pulstranHandle(Span<const double>           t,
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        Same-shape DOUBLE array.
 Value chirp(const Value &                t,
-            double                       f0,
-            double                       t1,
-            double                       f1,
+            keel::f64                       f0,
+            keel::f64                       t1,
+            keel::f64                       f1,
             const std::string &          method = "linear",
-            std::pmr::memory_resource *  mr     = nullptr);
+            keel::Allocator *  mr     = nullptr);
 
 /// Square wave with period 2π.
 ///
@@ -132,8 +133,8 @@ Value chirp(const Value &                t,
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      Same-shape DOUBLE array.
 Value square(const Value &                t,
-             double                       duty = 50.0,
-             std::pmr::memory_resource *  mr   = nullptr);
+             keel::f64                       duty = 50.0,
+             keel::Allocator *  mr   = nullptr);
 
 /// Sawtooth wave on period 2π.
 ///
@@ -147,8 +148,8 @@ Value square(const Value &                t,
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Same-shape DOUBLE array.
 Value sawtooth(const Value &                t,
-               double                       width = 1.0,
-               std::pmr::memory_resource *  mr    = nullptr);
+               keel::f64                       width = 1.0,
+               keel::Allocator *  mr    = nullptr);
 
 /// Normalised cardinal sine: `sinc(0) = 1`, otherwise `sin(πt)/(πt)`.
 ///
@@ -156,7 +157,7 @@ Value sawtooth(const Value &                t,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE array.
 Value sinc(const Value &                t,
-           std::pmr::memory_resource *  mr = nullptr);
+           keel::Allocator *  mr = nullptr);
 
 /// Gaussian monopulse at centre frequency `fc`.
 ///
@@ -168,8 +169,8 @@ Value sinc(const Value &                t,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE array.
 Value gmonopuls(const Value &                t,
-                double                       fc,
-                std::pmr::memory_resource *  mr = nullptr);
+                keel::f64                       fc,
+                keel::Allocator *  mr = nullptr);
 
 /// Dirichlet (periodic-sinc) function of order `n`.
 ///
@@ -182,7 +183,7 @@ Value gmonopuls(const Value &                t,
 /// @return    Same-shape DOUBLE array.
 Value diric(const Value &                x,
             int                          n,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 /// Analog modulation: AM / FM / PM family.
 ///
@@ -208,11 +209,11 @@ Value diric(const Value &                x,
 /// @note KNOWN GAPs: `"amssb"`, `"pwm"`, `"ptm"`, `"ppm"`, `"qam"` deferred.
 /// @see demod, vco
 Value modulate(const Value &                x,
-               double                       Fc,
-               double                       Fs,
+               keel::f64                       Fc,
+               keel::f64                       Fs,
                const std::string &          method,
                const Value &                opt = Value::Empty,
-               std::pmr::memory_resource *  mr  = nullptr);
+               keel::Allocator *  mr  = nullptr);
 
 /// Analog demodulation (AM family).
 ///
@@ -236,11 +237,11 @@ Value modulate(const Value &                x,
 ///       `"qam"`.
 /// @see modulate
 Value demod(const Value &                y,
-            double                       Fc,
-            double                       Fs,
+            keel::f64                       Fc,
+            keel::f64                       Fs,
             const std::string &          method,
             const Value &                opt = Value::Empty,
-            std::pmr::memory_resource *  mr  = nullptr);
+            keel::Allocator *  mr  = nullptr);
 
 /// Voltage-controlled (frequency-modulated) oscillator.
 ///
@@ -254,8 +255,8 @@ Value demod(const Value &                y,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    `y = cos(...)` of the same shape as `x`.
 /// @see modulate
-Value vco(const Value &x, double fc, double fs,
-          std::pmr::memory_resource *mr = nullptr);
+Value vco(const Value &x, keel::f64 fc, keel::f64 fs,
+          keel::Allocator *mr = nullptr);
 
 /// @brief Voltage-controlled oscillator, explicit `[Fmin, Fmax]`
 /// range form (`y = vco(x, [fmin fmax], fs)`).
@@ -269,8 +270,8 @@ Value vco(const Value &x, double fc, double fs,
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      `y = cos(...)` of the same shape as `x`.
 /// @see modulate
-Value vco(const Value &x, double fmin, double fmax, double fs,
-          std::pmr::memory_resource *mr = nullptr);
+Value vco(const Value &x, keel::f64 fmin, keel::f64 fmax, keel::f64 fs,
+          keel::Allocator *mr = nullptr);
 
 
 /// @}

@@ -12,6 +12,8 @@
 // eigendecomposition-sensitive (peaks are 1/near-zero), so it is NOT bit-matched.
 // bugs/signal/pmusic-peig.
 
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>   // corrmtx, pmusic, peig
 
 #include <numkit/value/value.hpp>
@@ -42,17 +44,17 @@ void pseudospectrum_argcheck(const Value &x, int p, int nfft, double fs)
     (void)fs;
 }
 
-void jacobiEig(std::vector<double> &A, std::vector<double> &V, size_t D)
+void jacobiEig(std::vector<double> &A, std::vector<double> &V, keel::usize D)
 {
     V.assign(D * D, 0.0);
-    for (size_t i = 0; i < D; ++i) V[i * D + i] = 1.0;
+    for (keel::usize i = 0; i < D; ++i) V[i * D + i] = 1.0;
     for (int sweep = 0; sweep < 60; ++sweep) {
         double off = 0.0;
-        for (size_t p = 0; p < D; ++p)
-            for (size_t q = p + 1; q < D; ++q) off += A[p * D + q] * A[p * D + q];
+        for (keel::usize p = 0; p < D; ++p)
+            for (keel::usize q = p + 1; q < D; ++q) off += A[p * D + q] * A[p * D + q];
         if (off < 1e-18) break;
-        for (size_t p = 0; p + 1 < D; ++p)
-            for (size_t q = p + 1; q < D; ++q) {
+        for (keel::usize p = 0; p + 1 < D; ++p)
+            for (keel::usize q = p + 1; q < D; ++q) {
                 const double apq = A[p * D + q];
                 if (std::fabs(apq) < 1e-300) continue;
                 const double app = A[p * D + p], aqq = A[q * D + q];
@@ -66,7 +68,7 @@ void jacobiEig(std::vector<double> &A, std::vector<double> &V, size_t D)
                 A[q * D + q] = aqq + t * apq;
                 A[p * D + q] = 0.0;
                 A[q * D + p] = 0.0;
-                for (size_t r = 0; r < D; ++r) {
+                for (keel::usize r = 0; r < D; ++r) {
                     if (r == p || r == q) continue;
                     const double arp = A[r * D + p], arq = A[r * D + q];
                     A[r * D + p] = c * arp - s * arq;
@@ -74,7 +76,7 @@ void jacobiEig(std::vector<double> &A, std::vector<double> &V, size_t D)
                     A[r * D + q] = c * arq + s * arp;
                     A[q * D + r] = A[r * D + q];
                 }
-                for (size_t r = 0; r < D; ++r) {
+                for (keel::usize r = 0; r < D; ++r) {
                     const double vrp = V[r * D + p], vrq = V[r * D + q];
                     V[r * D + p] = c * vrp - s * vrq;
                     V[r * D + q] = c * vrq + s * vrp;
@@ -85,7 +87,7 @@ void jacobiEig(std::vector<double> &A, std::vector<double> &V, size_t D)
 
 std::tuple<Value, Value>
 pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
-               std::pmr::memory_resource *mr)
+               keel::Allocator *mr)
 {
     pseudospectrum_argcheck(x, p, nfft, fs);
     if (p < 1) p = 1;
@@ -96,7 +98,7 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
     const int     rows = static_cast<int>(Xc.dims().rows());
     const double *Xd   = Xc.doubleData();         // column-major
 
-    std::vector<double> R(static_cast<size_t>(M) * M, 0.0);
+    std::vector<double> R(static_cast<keel::usize>(M) * M, 0.0);
     for (int i = 0; i < M; ++i)
         for (int j = 0; j < M; ++j) {
             double s = 0.0;
@@ -105,7 +107,7 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
         }
 
     std::vector<double> V;
-    jacobiEig(R, V, static_cast<size_t>(M));
+    jacobiEig(R, V, static_cast<keel::usize>(M));
     std::vector<double> lam(M);
     for (int i = 0; i < M; ++i) lam[i] = R[i * M + i];
 
@@ -127,7 +129,7 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
             const int col = ord[t];
             double    re = 0.0, im = 0.0;
             for (int m = 0; m < M; ++m) {
-                const double v = V[static_cast<size_t>(m) * M + col];
+                const double v = V[static_cast<keel::usize>(m) * M + col];
                 re += v * std::cos(w * m);
                 im += v * std::sin(w * m);
             }
@@ -144,13 +146,13 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
 } // namespace
 
 std::tuple<Value, Value>
-pmusic(const Value &x, int p, int nfft, double fs, std::pmr::memory_resource *mr)
+pmusic(const Value &x, int p, int nfft, double fs, keel::Allocator *mr)
 {
     return pseudospectrum(x, p, nfft, fs, /*eigWeight=*/false, mr);
 }
 
 std::tuple<Value, Value>
-peig(const Value &x, int p, int nfft, double fs, std::pmr::memory_resource *mr)
+peig(const Value &x, int p, int nfft, double fs, keel::Allocator *mr)
 {
     return pseudospectrum(x, p, nfft, fs, /*eigWeight=*/true, mr);
 }

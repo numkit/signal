@@ -9,6 +9,8 @@
 // lives in compute behind filter_argcheck/runFilter (argcheck-separation
 // pattern, dev-docs/todo/argcheck_separation.md).
 
+#include <keel/core.h>
+#include <keel/ref.h>
 #include <numkit/signal/digital_filtering/filter.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -20,7 +22,7 @@ namespace numkit::signal {
 
 namespace detail {
 
-void filter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallContext &ctx)
+void filter_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "filter");
     // zi is the 4th argument when present and value-like; char/string
@@ -28,7 +30,7 @@ void filter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
     // so they are treated as absent (previous behaviour).
     const bool hasZi = (args.size() >= 4 && !args[3].isEmpty()
                         && !args[3].isChar() && !args[3].isString());
-    auto *mr = ctx.engine->resource();
+    auto *mr = ctx.engine->allocator();
 
     // Fast path: plain filter(b,a,x) with one output.
     if (!hasZi && nargout <= 1) {
@@ -44,10 +46,10 @@ void filter_reg(Span<const Value> args, size_t nargout, Span<Value> outs, CallCo
         outs[1] = std::move(st.zf);
 }
 
-void filtfilt_reg(Span<const Value> args, size_t /*nargout*/, Span<Value> outs, CallContext &ctx)
+void filtfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 3, "filtfilt");
-    outs[0] = filtfilt(args[0], args[1], args[2], ctx.engine->resource());
+    outs[0] = filtfilt(args[0], args[1], args[2], ctx.engine->allocator());
 }
 
 } // namespace detail

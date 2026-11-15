@@ -7,7 +7,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -44,8 +45,8 @@ namespace numkit::signal {
 /// @see zp2sosWithGain, sosfilt, tf2sos
 Value zp2sos(const Value &                zeros,
              const Value &                poles,
-             double                       gain,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::f64                       gain,
+             keel::Allocator *  mr = nullptr);
 
 /// Convert zeros / poles / gain to (SOS, gain) — the two-output form.
 ///
@@ -64,12 +65,12 @@ Value zp2sos(const Value &                zeros,
 ///   at the ORIGIN (true, MATLAB's zp2sos convention — empty biquad
 ///   sections become [0 0 g]) or leave them at infinity (false — empty
 ///   sections stay [g 0 0], used by tf2sos to reproduce the input b).
-std::tuple<Value, double>
+std::tuple<Value, keel::f64>
 zp2sosWithGain(const Value &                zeros,
                const Value &                poles,
-               double                       gain,
+               keel::f64                       gain,
                bool                         surplusAtOrigin = true,
-               std::pmr::memory_resource *  mr = nullptr);
+               keel::Allocator *  mr = nullptr);
 
 /// Convert a transfer-function pair (b, a) to an SOS matrix.
 ///
@@ -84,7 +85,7 @@ zp2sosWithGain(const Value &                zeros,
 /// @see tf2sosWithGain, zp2sos
 Value tf2sos(const Value &                b,
              const Value &                a,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// @brief Two-output form of @ref tf2sos: returns `(sos, g)`.
 ///
@@ -98,9 +99,9 @@ Value tf2sos(const Value &                b,
 /// @return    Tuple `(sos, g)` — SOS matrix (without gain) and the
 ///            residual scalar gain.
 /// @see tf2sos, zp2sosWithGain
-std::tuple<Value, double>
+std::tuple<Value, keel::f64>
 tf2sosWithGain(const Value &b, const Value &a,
-               std::pmr::memory_resource *mr = nullptr);
+               keel::Allocator *mr = nullptr);
 
 
 /// @}

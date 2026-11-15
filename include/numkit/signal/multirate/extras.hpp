@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -32,9 +33,9 @@ namespace numkit::signal {
 /// @see resample, interp
 Value upfirdn(const Value &                x,
               const Value &                h,
-              size_t                       p,
-              size_t                       q  = 1,
-              std::pmr::memory_resource *  mr = nullptr);
+              keel::usize                       p,
+              keel::usize                       q  = 1,
+              keel::Allocator *  mr = nullptr);
 
 /// Integer-factor interpolation with a low-pass FIR kernel.
 ///
@@ -51,10 +52,10 @@ Value upfirdn(const Value &                x,
 ///
 /// @see intfilt, resample
 Value interp(const Value &                x,
-             size_t                       r,
-             size_t                       n     = 4,
-             double                       alpha = 0.5,
-             std::pmr::memory_resource *  mr    = nullptr);
+             keel::usize                       r,
+             keel::usize                       n     = 4,
+             keel::f64                       alpha = 0.5,
+             keel::Allocator *  mr    = nullptr);
 
 /// Design an FIR interpolation kernel.
 ///
@@ -70,10 +71,10 @@ Value interp(const Value &                x,
 /// @return       1 × (2·n·r + 1) DOUBLE FIR kernel.
 ///
 /// @see interp, upfirdn
-Value intfilt(size_t                       r,
-              size_t                       n     = 4,
-              double                       alpha = 0.5,
-              std::pmr::memory_resource *  mr    = nullptr);
+Value intfilt(keel::usize                       r,
+              keel::usize                       n     = 4,
+              keel::f64                       alpha = 0.5,
+              keel::Allocator *  mr    = nullptr);
 
 /// Overlap-add FFT-based FIR filtering.
 ///
@@ -91,8 +92,8 @@ Value intfilt(size_t                       r,
 /// @see filter, conv
 Value fftfilt(const Value &                b,
               const Value &                x,
-              size_t                       nfft = 0,
-              std::pmr::memory_resource *  mr   = nullptr);
+              keel::usize                       nfft = 0,
+              keel::Allocator *  mr   = nullptr);
 
 
 /// @}

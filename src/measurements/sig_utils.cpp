@@ -27,10 +27,12 @@
 //   * seqperiod: matrix/N-D operates column-wise — only vector
 //     supported in v1.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/math.h>
 #include <numkit/signal/measurements/sig_utils.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
@@ -54,18 +56,18 @@ void cusum_argcheck(const Value &x, double climit, double mshift)
 
 // ── seqperiod ─────────────────────────────────────────────────────────
 std::pair<Value, Value>
-seqperiod(const Value &x, double tol, std::pmr::memory_resource *mr)
+seqperiod(const Value &x, double tol, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     if (N == 0) {
         return {Value::scalar(0.0, mr), Value::scalar(0.0, mr)};
     }
     // Find smallest d such that |x(i) - x(((i-1) mod d) + 1)| ≤ tol for all i.
-    size_t period = N;
-    for (size_t d = 1; d <= N; ++d) {
+    keel::usize period = N;
+    for (keel::usize d = 1; d <= N; ++d) {
         bool ok = true;
-        for (size_t i = d; i < N; ++i) {
-            const double dv = std::abs(x.elemAsDouble(i) - x.elemAsDouble(i % d));
+        for (keel::usize i = d; i < N; ++i) {
+            const double dv = keel::abs(x.elemAsDouble(i) - x.elemAsDouble(i % d));
             if (dv > tol) { ok = false; break; }
         }
         if (ok) { period = d; break; }
@@ -78,9 +80,9 @@ seqperiod(const Value &x, double tol, std::pmr::memory_resource *mr)
 // Count sign changes relative to `level` (default 0); add 0.5 boundary
 // half-credit (matches MATLAB R2025b default ZeroPositive=false).
 std::pair<Value, Value>
-zerocrossrate(const Value &x, double level, std::pmr::memory_resource *mr)
+zerocrossrate(const Value &x, double level, keel::Allocator *mr)
 {
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     if (N <= 1) {
         // Edge: no transitions possible; rate = 0.5 / N (boundary credit).
         const double cnt = (N == 0) ? 0.0 : 0.5;
@@ -90,7 +92,7 @@ zerocrossrate(const Value &x, double level, std::pmr::memory_resource *mr)
     long long crossings = 0;
     double prev = x.elemAsDouble(0) - level;
     int prev_sign = (prev > 0.0) ? 1 : (prev < 0.0 ? -1 : 0);
-    for (size_t i = 1; i < N; ++i) {
+    for (keel::usize i = 1; i < N; ++i) {
         const double v = x.elemAsDouble(i) - level;
         const int s = (v > 0.0) ? 1 : (v < 0.0 ? -1 : 0);
         // Count any flip including via zero (treat zero as continuation,
@@ -110,14 +112,14 @@ zerocrossrate(const Value &x, double level, std::pmr::memory_resource *mr)
 
 CusumResult cusum(const Value &x, double climit, double mshift,
                   const Value &tmean, const Value &tdev,
-                  std::pmr::memory_resource *mr)
+                  keel::Allocator *mr)
 {
     cusum_argcheck(x, climit, mshift);
     const bool have_tmean   = !tmean.isEmpty();
     const bool have_tdev    = !tdev.isEmpty();
     const double tmean_user = have_tmean ? tmean.toScalar() : 0.0;
     const double tdev_user  = have_tdev  ? tdev.toScalar()  : 0.0;
-    const size_t N = x.numel();
+    const keel::usize N = x.numel();
     CusumResult R;
     R.uppersum = Value::matrix(N, N == 0 ? 0 : 1, ValueType::DOUBLE, mr);
     R.lowersum = Value::matrix(N, N == 0 ? 0 : 1, ValueType::DOUBLE, mr);
@@ -126,17 +128,17 @@ CusumResult cusum(const Value &x, double climit, double mshift,
     if (N == 0) return R;
 
     // Defaults: tmean = mean(x(1:25)), tdev = std(x(1:25)).
-    const size_t baseN = std::min<size_t>(25, N);
+    const keel::usize baseN = std::min<keel::usize>(25, N);
     double tmeanEff = tmean_user;
     double tdevEff  = tdev_user;
     if (!have_tmean) {
         double sum = 0.0;
-        for (size_t i = 0; i < baseN; ++i) sum += x.elemAsDouble(i);
+        for (keel::usize i = 0; i < baseN; ++i) sum += x.elemAsDouble(i);
         tmeanEff = sum / static_cast<double>(baseN);
     }
     if (!have_tdev) {
         double sum = 0.0, sumsq = 0.0;
-        for (size_t i = 0; i < baseN; ++i) {
+        for (keel::usize i = 0; i < baseN; ++i) {
             const double v = x.elemAsDouble(i);
             sum += v; sumsq += v * v;
         }
@@ -152,7 +154,7 @@ CusumResult cusum(const Value &x, double climit, double mshift,
     double up = 0.0, lo = 0.0;
     long long iup_first = -1, ilo_first = -1;
     const double half_shift = 0.5 * mshift;
-    for (size_t i = 0; i < N; ++i) {
+    for (keel::usize i = 0; i < N; ++i) {
         const double z = (x.elemAsDouble(i) - tmeanEff) / tdevEff;
         up = std::max(0.0, up + z - half_shift);
         lo = std::max(0.0, lo - z - half_shift);

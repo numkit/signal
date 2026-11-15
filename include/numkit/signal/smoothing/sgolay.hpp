@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -32,7 +32,7 @@ namespace numkit::signal {
 /// @see sgolayfilt
 Value sgolay(int                          order,
              int                          framelen,
-             std::pmr::memory_resource *  mr = nullptr);
+             keel::Allocator *  mr = nullptr);
 
 /// Savitzky-Golay differentiation-filter matrix (the second output `G` of
 /// MATLAB's `[B,G] = sgolay(order,framelen)`).
@@ -53,7 +53,7 @@ Value sgolay(int                          order,
 /// @see sgolay
 Value sgolayDiff(int                          order,
                  int                          framelen,
-                 std::pmr::memory_resource *  mr = nullptr);
+                 keel::Allocator *  mr = nullptr);
 
 /// Savitzky-Golay smoothing of a 1-D signal.
 ///
@@ -81,7 +81,7 @@ Value sgolayDiff(int                          order,
 Value sgolayfilt(const Value &                x,
                  int                          order,
                  int                          framelen,
-                 std::pmr::memory_resource *  mr = nullptr);
+                 keel::Allocator *  mr = nullptr);
 
 /// Savitzky-Golay smoothing with optional weighting and dimension.
 ///
@@ -106,7 +106,7 @@ Value sgolayfilt(const Value &                x,
                  int                          framelen,
                  const Value &                weights,
                  int                          dim,
-                 std::pmr::memory_resource *  mr = nullptr);
+                 keel::Allocator *  mr = nullptr);
 
 
 /// @}

@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/transforms/fwht.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 #include <string>
 
@@ -39,9 +40,9 @@ namespace numkit::signal {
 /// @return          Walsh-Hadamard coefficients.
 /// @see ifwht
 Value fwht(const Value &              x,
-           std::size_t                n,
+           keel::usize                n,
            const std::string &        ordering,
-           std::pmr::memory_resource *mr = nullptr);
+           keel::Allocator *mr = nullptr);
 
 /// @brief Inverse fast Walsh-Hadamard transform
 /// (`x = ifwht(y[, n[, ordering]])`).
@@ -59,9 +60,9 @@ Value fwht(const Value &              x,
 /// @return          Reconstructed signal.
 /// @see fwht
 Value ifwht(const Value &              y,
-            std::size_t                n,
+            keel::usize                n,
             const std::string &        ordering,
-            std::pmr::memory_resource *mr = nullptr);
+            keel::Allocator *mr = nullptr);
 
 
 /// @}

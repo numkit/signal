@@ -3,7 +3,8 @@
 // toolboxes/signal/include/numkit/signal/windows/windows.hpp
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -28,7 +29,7 @@ namespace numkit::signal {
 /// @return    N×1 DOUBLE column vector.
 ///
 /// @code  Value w = hamming(64);  @endcode
-Value hamming(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value hamming(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Hann (Hanning) window of length N.
 ///
@@ -38,7 +39,7 @@ Value hamming(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value hann(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value hann(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Blackman window of length N — classic 3-term cosine sum.
 ///
@@ -48,7 +49,7 @@ Value hann(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value blackman(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value blackman(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Kaiser window of length N with shape parameter β.
 ///
@@ -65,14 +66,14 @@ Value blackman(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @return      N×1 DOUBLE column vector.
 ///
 /// @code  Value w = kaiser(128, 8.0);  // Blackman-like sidelobes  @endcode
-Value kaiser(size_t N, double beta, std::pmr::memory_resource *mr = nullptr);
+Value kaiser(keel::usize N, keel::f64 beta, keel::Allocator *mr = nullptr);
 
 /// Rectangular window of length N — all ones.
 ///
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector of 1.0.
-Value rectwin(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value rectwin(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Bartlett window of length N — triangular with zero endpoints.
 ///
@@ -82,7 +83,7 @@ Value rectwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value bartlett(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value bartlett(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Triangular window of length N — non-zero endpoints variant of Bartlett.
 ///
@@ -94,7 +95,7 @@ Value bartlett(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value triang(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value triang(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Tukey (cosine-tapered) window of length N.
 ///
@@ -105,8 +106,8 @@ Value triang(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param r   Cosine-fraction in [0, 1]. Default 0.5.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value tukeywin(size_t N, double r = 0.5,
-               std::pmr::memory_resource *mr = nullptr);
+Value tukeywin(keel::usize N, keel::f64 r = 0.5,
+               keel::Allocator *mr = nullptr);
 
 /// Flat-top window of length N — 5-term cosine sum, optimised for
 /// amplitude accuracy (not frequency resolution).
@@ -118,7 +119,7 @@ Value tukeywin(size_t N, double r = 0.5,
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value flattopwin(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value flattopwin(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Gaussian window of length N.
 ///
@@ -131,8 +132,8 @@ Value flattopwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       N×1 DOUBLE column vector.
 /// @throws       numkit::Error if α ≤ 0.
-Value gausswin(size_t N, double alpha = 2.5,
-               std::pmr::memory_resource *mr = nullptr);
+Value gausswin(keel::usize N, keel::f64 alpha = 2.5,
+               keel::Allocator *mr = nullptr);
 
 /// Dolph-Chebyshev window of length N — equiripple sidelobes at given
 /// attenuation.
@@ -146,8 +147,8 @@ Value gausswin(size_t N, double alpha = 2.5,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
 /// @throws    numkit::Error if `at` ≤ 0.
-Value chebwin(size_t N, double at = 100.0,
-              std::pmr::memory_resource *mr = nullptr);
+Value chebwin(keel::usize N, keel::f64 at = 100.0,
+              keel::Allocator *mr = nullptr);
 
 /// Parzen (de la Vallée Poussin) window of length N — piecewise cubic.
 ///
@@ -157,7 +158,7 @@ Value chebwin(size_t N, double at = 100.0,
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value parzenwin(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value parzenwin(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Nuttall window of length N — 4-term, continuous-first-derivative.
 ///
@@ -167,7 +168,7 @@ Value parzenwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value nuttallwin(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value nuttallwin(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Taylor window of length N — radar / antenna design.
 ///
@@ -181,8 +182,8 @@ Value nuttallwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      N×1 DOUBLE column vector.
 /// @throws      numkit::Error if `sll ≥ 0` or `nbar < 2`.
-Value taylorwin(size_t N, int nbar = 4, double sll = -30.0,
-                std::pmr::memory_resource *mr = nullptr);
+Value taylorwin(keel::usize N, int nbar = 4, keel::f64 sll = -30.0,
+                keel::Allocator *mr = nullptr);
 
 /// Blackman-Harris window of length N — 4-term, minimum-sidelobe.
 ///
@@ -192,7 +193,7 @@ Value taylorwin(size_t N, int nbar = 4, double sll = -30.0,
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value blackmanharris(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value blackmanharris(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Bohman window of length N — convolution of two half-cosine pulses.
 ///
@@ -201,7 +202,7 @@ Value blackmanharris(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value bohmanwin(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value bohmanwin(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Modified Bartlett-Hann window of length N.
 ///
@@ -211,10 +212,10 @@ Value bohmanwin(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @param N   Window length, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    N×1 DOUBLE column vector.
-Value barthannwin(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value barthannwin(keel::usize N, keel::Allocator *mr = nullptr);
 
-std::pair<Value, Value> dpss(size_t N, double nw, size_t k,
-                             std::pmr::memory_resource *mr = nullptr);
+std::pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
+                             keel::Allocator *mr = nullptr);
 
 /// @}
 } // namespace numkit::signal

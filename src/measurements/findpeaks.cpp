@@ -4,11 +4,14 @@
 // options (MinPeakHeight, Threshold, MinPeakDistance, NPeaks, SortStr)
 // plus the location form findpeaks(Y,X) / findpeaks(Y,Fs).
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
 #include <numkit/signal/measurements/findpeaks.hpp>
 #include "findpeaks_detail.hpp"
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
@@ -25,18 +28,18 @@ namespace {
 // outward until a strictly-higher sample (or the signal end) bounds the
 // peak on each side; the base is the higher of the two interval minima.
 // Fills lb/rb with the (inclusive) interval bounds for the width search.
-double peakProminence(const double *x, std::size_t n, std::size_t pi, double h,
-                      std::size_t &lb, std::size_t &rb)
+double peakProminence(const double *x, keel::usize n, keel::usize pi, double h,
+                      keel::usize &lb, keel::usize &rb)
 {
     double leftMin = std::numeric_limits<double>::infinity();
     lb = 0;
-    for (std::size_t j = pi; j-- > 0;) {
+    for (keel::usize j = pi; j-- > 0;) {
         if (x[j] > h) { lb = j; break; }
         leftMin = std::min(leftMin, x[j]);
     }
     double rightMin = std::numeric_limits<double>::infinity();
     rb = n - 1;
-    for (std::size_t j = pi + 1; j < n; ++j) {
+    for (keel::usize j = pi + 1; j < n; ++j) {
         if (x[j] > h) { rb = j; break; }
         rightMin = std::min(rightMin, x[j]);
     }
@@ -62,11 +65,11 @@ double peakProminence(const double *x, std::size_t n, std::size_t pi, double h,
 //    the first floor plateau: on the right the first flat sample, on the
 //    left the far end of the flat — the reference's asymmetric
 //    no-crossing width (its pedestal width 6, not the naive span 8).
-double peakWidth(const double *x, std::size_t n, std::size_t pi, double h,
-                 double prom, std::size_t lb, std::size_t rb,
+double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
+                 double prom, keel::usize lb, keel::usize rb,
                  const double *locArr, int widthRef)
 {
-    auto pos = [&](std::size_t i) {
+    auto pos = [&](keel::usize i) {
         return locArr ? locArr[i] : static_cast<double>(i + 1);
     };
 
@@ -77,9 +80,9 @@ double peakWidth(const double *x, std::size_t n, std::size_t pi, double h,
         // so it extends across the flat to its far end).
         double lcross = pos(pi);
         {
-            std::size_t plateau = pi;
+            keel::usize plateau = pi;
             bool crossed = false;
-            for (std::size_t k = pi; k-- > 0;) {
+            for (keel::usize k = pi; k-- > 0;) {
                 if (x[k] > x[k + 1])
                     break; // strict rise — walk ends
                 if (x[k] <= ref) {
@@ -97,9 +100,9 @@ double peakWidth(const double *x, std::size_t n, std::size_t pi, double h,
         // it stays at the FIRST flat sample.
         double rcross = pos(pi);
         {
-            std::size_t plateau = pi;
+            keel::usize plateau = pi;
             bool crossed = false;
-            for (std::size_t k = pi + 1; k < n; ++k) {
+            for (keel::usize k = pi + 1; k < n; ++k) {
                 if (x[k] > x[k - 1])
                     break; // strict rise — walk ends
                 if (x[k] <= ref) {
@@ -120,7 +123,7 @@ double peakWidth(const double *x, std::size_t n, std::size_t pi, double h,
     const double ref = h - prom / 2.0;
 
     double lcross = pos(lb);
-    for (std::size_t j = pi; j > lb; --j) {
+    for (keel::usize j = pi; j > lb; --j) {
         if (x[j - 1] < ref && x[j] >= ref) {
             const double f = (ref - x[j - 1]) / (x[j] - x[j - 1]);
             lcross = pos(j - 1) + f * (pos(j) - pos(j - 1));
@@ -128,7 +131,7 @@ double peakWidth(const double *x, std::size_t n, std::size_t pi, double h,
         }
     }
     double rcross = pos(rb);
-    for (std::size_t j = pi; j < rb; ++j) {
+    for (keel::usize j = pi; j < rb; ++j) {
         if (x[j] >= ref && x[j + 1] < ref) {
             const double f = (x[j] - ref) / (x[j] - x[j + 1]);
             rcross = pos(j) + f * (pos(j + 1) - pos(j));
@@ -153,18 +156,18 @@ void findpeaks_argcheck(const Value &x, const PeakOpts &opt)
 // after parsing Name-Value options into a PeakOpts.
 std::tuple<Value, Value, Value, Value>
 findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
-              std::pmr::memory_resource *mr)
+              keel::Allocator *mr)
 {
     findpeaks_argcheck(x, opt);
-    ScratchArena scratch(mr);
-    auto val  = ScratchVec<double>(&scratch);      // peak heights
-    auto loc  = ScratchVec<double>(&scratch);      // peak locations
-    auto sidx = ScratchVec<std::size_t>(&scratch); // peak sample indices
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto val  = keel::Array<double>(scratch.allocator());      // peak heights
+    auto loc  = keel::Array<double>(scratch.allocator());      // peak locations
+    auto sidx = keel::Array<keel::usize>(scratch.allocator()); // peak sample indices
 
-    const std::size_t n = x.numel();
+    const keel::usize n = x.numel();
     const double *p = (n > 0) ? x.doubleData() : nullptr;
     if (n >= 3) {
-        for (std::size_t i = 1; i + 1 < n; ++i) {
+        for (keel::usize i = 1; i + 1 < n; ++i) {
             const double v = p[i];
             if (std::isnan(v) || std::isnan(p[i - 1]) || std::isnan(p[i + 1]))
                 continue;
@@ -181,15 +184,15 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
         }
     }
 
-    std::size_t m = val.size();
+    keel::usize m = val.size();
 
     // Prominence and width per raw peak.
-    auto prom = ScratchVec<double>(&scratch);      prom.assign(m, 0.0);
-    auto wid  = ScratchVec<double>(&scratch);      wid.assign(m, 0.0);
-    auto lbnd = ScratchVec<std::size_t>(&scratch); lbnd.assign(m, 0);
-    auto rbnd = ScratchVec<std::size_t>(&scratch); rbnd.assign(m, 0);
-    for (std::size_t k = 0; k < m; ++k) {
-        std::size_t lb = 0, rb = 0;
+    auto prom = keel::Array<double>(scratch.allocator());      prom.assign(m, 0.0);
+    auto wid  = keel::Array<double>(scratch.allocator());      wid.assign(m, 0.0);
+    auto lbnd = keel::Array<keel::usize>(scratch.allocator()); lbnd.assign(m, 0);
+    auto rbnd = keel::Array<keel::usize>(scratch.allocator()); rbnd.assign(m, 0);
+    for (keel::usize k = 0; k < m; ++k) {
+        keel::usize lb = 0, rb = 0;
         prom[k] = peakProminence(p, n, sidx[k], val[k], lb, rb);
         lbnd[k] = lb;
         rbnd[k] = rb;
@@ -197,33 +200,33 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
                            locArr, opt.widthRef);
     }
 
-    auto keep = ScratchVec<unsigned char>(&scratch);
+    auto keep = keel::Array<unsigned char>(scratch.allocator());
     keep.assign(m, 1u);
 
     // MinPeakProminence: drop peaks below the prominence threshold.
     if (opt.useMinProm)
-        for (std::size_t k = 0; k < m; ++k)
+        for (keel::usize k = 0; k < m; ++k)
             if (!(prom[k] >= opt.minProm)) keep[k] = 0u;
 
     // MinPeakWidth / MaxPeakWidth: filter on the selected WidthReference width.
     if (opt.useWidthFilter)
-        for (std::size_t k = 0; k < m; ++k)
+        for (keel::usize k = 0; k < m; ++k)
             if (!(wid[k] >= opt.minWidth && wid[k] <= opt.maxWidth)) keep[k] = 0u;
 
     // MinPeakDistance: greedy, tallest-first, remove peaks within the distance.
     if (opt.useMinDist && opt.minDist > 0.0 && m > 1) {
-        auto order = ScratchVec<std::size_t>(&scratch);
-        for (std::size_t k = 0; k < m; ++k) order.push_back(k);
-        std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+        auto order = keel::Array<keel::usize>(scratch.allocator());
+        for (keel::usize k = 0; k < m; ++k) order.push_back(k);
+        std::stable_sort(order.begin(), order.end(), [&](keel::usize a, keel::usize b) {
             if (val[a] < val[b]) return false;
             if (val[b] < val[a]) return true;
             return loc[a] < loc[b];               // ties: lower location first
         });
-        for (std::size_t oi = 0; oi < m; ++oi) {
-            const std::size_t a = order[oi];
+        for (keel::usize oi = 0; oi < m; ++oi) {
+            const keel::usize a = order[oi];
             if (!keep[a]) continue;
-            for (std::size_t oj = oi + 1; oj < m; ++oj) {
-                const std::size_t b = order[oj];
+            for (keel::usize oj = oi + 1; oj < m; ++oj) {
+                const keel::usize b = order[oj];
                 if (keep[b] && std::fabs(loc[a] - loc[b]) < opt.minDist)
                     keep[b] = 0u;
             }
@@ -231,19 +234,19 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
     }
 
     // Survivors, still in ascending-location order.
-    auto surv = ScratchVec<std::size_t>(&scratch);
-    for (std::size_t k = 0; k < m; ++k)
+    auto surv = keel::Array<keel::usize>(scratch.allocator());
+    for (keel::usize k = 0; k < m; ++k)
         if (keep[k]) surv.push_back(k);
 
     // SortStr: reorder by height (ties keep ascending location).
     if (opt.sortMode == 1) {
-        std::stable_sort(surv.begin(), surv.end(), [&](std::size_t a, std::size_t b) {
+        std::stable_sort(surv.begin(), surv.end(), [&](keel::usize a, keel::usize b) {
             if (val[a] < val[b]) return true;
             if (val[b] < val[a]) return false;
             return loc[a] < loc[b];
         });
     } else if (opt.sortMode == 2) {
-        std::stable_sort(surv.begin(), surv.end(), [&](std::size_t a, std::size_t b) {
+        std::stable_sort(surv.begin(), surv.end(), [&](keel::usize a, keel::usize b) {
             if (val[a] < val[b]) return false;
             if (val[b] < val[a]) return true;
             return loc[a] < loc[b];
@@ -251,13 +254,13 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
     }
 
     // NPeaks truncation (after sorting).
-    std::size_t keepN = surv.size();
-    if (opt.nPeaks >= 0 && static_cast<std::size_t>(opt.nPeaks) < keepN)
-        keepN = static_cast<std::size_t>(opt.nPeaks);
+    keel::usize keepN = surv.size();
+    if (opt.nPeaks >= 0 && static_cast<keel::usize>(opt.nPeaks) < keepN)
+        keepN = static_cast<keel::usize>(opt.nPeaks);
 
     // Output orientation matches input column-vector orientation.
     const bool col = (x.dims().ndim() == 2 && x.dims().dim(0) > 1 && x.dims().dim(1) == 1);
-    auto makeRowOrCol = [&](std::size_t len) {
+    auto makeRowOrCol = [&](keel::usize len) {
         return col ? Value::matrix(len, 1, ValueType::DOUBLE, mr)
                    : Value::matrix(1, len, ValueType::DOUBLE, mr);
     };
@@ -269,8 +272,8 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
     double *lp = locs.doubleDataMut();
     double *wp = wids.doubleDataMut();
     double *pp = proms.doubleDataMut();
-    for (std::size_t k = 0; k < keepN; ++k) {
-        const std::size_t s = surv[k];
+    for (keel::usize k = 0; k < keepN; ++k) {
+        const keel::usize s = surv[k];
         vp[k] = val[s];
         lp[k] = loc[s];
         pp[k] = prom[s];
@@ -282,7 +285,7 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
 
 // Public no-option entry point (strict local maxima, 1-based indices).
 std::tuple<Value, Value>
-findpeaks(const Value &x, std::pmr::memory_resource *mr)
+findpeaks(const Value &x, keel::Allocator *mr)
 {
     auto [v, l, w, p] = findpeaksImpl(x, nullptr, PeakOpts{}, mr);
     (void)w;

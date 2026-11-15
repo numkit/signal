@@ -1,5 +1,6 @@
 // tests/signal_core_test.cpp
 
+#include <keel/core.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -179,7 +180,7 @@ TEST_F(SignalCoreTest, FftEmptyN)
     auto r1 = eval("fft([1 2 3 4])");
     auto r2 = eval("fft([1 2 3 4], [])");
     EXPECT_EQ(r1.numel(), r2.numel());
-    for (size_t i = 0; i < r1.numel(); ++i) {
+    for (keel::usize i = 0; i < r1.numel(); ++i) {
         EXPECT_NEAR(r1.complexData()[i].real(), r2.complexData()[i].real(), 1e-10);
         EXPECT_NEAR(r1.complexData()[i].imag(), r2.complexData()[i].imag(), 1e-10);
     }

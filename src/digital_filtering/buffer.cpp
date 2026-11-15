@@ -17,10 +17,11 @@
 //
 // PMR HARD RULE.
 
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/signal/digital_filtering/buffer.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <tuple>
 #include <cctype>
@@ -54,11 +55,11 @@ bool isStringLikeNoDelay(const Value &v)
 // startIndexOfPartial (relative to original x).
 struct BufferResult {
     Value Y;
-    size_t partialStart;  // index into x where partial-frame Z starts (incl)
-    size_t partialEnd;    // index into x where partial-frame Z ends (excl)
+    keel::usize partialStart;  // index into x where partial-frame Z starts (incl)
+    keel::usize partialEnd;    // index into x where partial-frame Z ends (excl)
 };
 
-BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool forceCompleteOnly /* true if [Y, Z] form */, std::pmr::memory_resource *mr)
+BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool forceCompleteOnly /* true if [Y, Z] form */, keel::Allocator *mr)
 {
     if (n <= 0) {
         BufferResult r;
@@ -67,25 +68,25 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
         r.partialEnd = 0;
         return r;
     }
-    const size_t N = x.numel();
-    const size_t Nn = static_cast<size_t>(n);
+    const keel::usize N = x.numel();
+    const keel::usize Nn = static_cast<keel::usize>(n);
     const int hop = n - p;  // can be negative when p > n (invalid)
 
     // Underlap branch (p < 0): skip |p| samples per frame.
     if (p < 0) {
         // Initial offset in [0, -p].
-        size_t offset = 0;
+        keel::usize offset = 0;
         if (!opt.isEmpty()) {
             const double v = opt.toScalar();
             if (v < 0.0 || v > -p)
                 throw Error("buffer: OPT (offset) for underlap must be in [0, -P]",
                             0, 0, "buffer", "", "numkit:buffer:BadOpt");
-            offset = static_cast<size_t>(v);
+            offset = static_cast<keel::usize>(v);
         }
-        const size_t startN = (offset < N) ? (N - offset) : 0;
-        const size_t step = static_cast<size_t>(hop);  // n + |p|
+        const keel::usize startN = (offset < N) ? (N - offset) : 0;
+        const keel::usize step = static_cast<keel::usize>(hop);  // n + |p|
         // Number of frames that fit
-        size_t numFrames = 0;
+        keel::usize numFrames = 0;
         if (startN >= Nn) numFrames = (startN - Nn) / step + 1;
         else if (!forceCompleteOnly && startN > 0) numFrames = 1;  // partial → padded
         BufferResult r;
@@ -98,28 +99,28 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
         }
         double *yd = r.Y.doubleDataMut();
         std::fill(yd, yd + Nn * numFrames, 0.0);
-        for (size_t f = 0; f < numFrames; ++f) {
-            const size_t base = offset + f * step;
-            for (size_t i = 0; i < Nn; ++i) {
+        for (keel::usize f = 0; f < numFrames; ++f) {
+            const keel::usize base = offset + f * step;
+            for (keel::usize i = 0; i < Nn; ++i) {
                 if (base + i < N) yd[i + f * Nn] = x.elemAsDouble(base + i);
             }
         }
         // Trailing partial samples for [Y, Z] form
-        const size_t lastConsumed = offset + (numFrames - 1) * step + Nn;
+        const keel::usize lastConsumed = offset + (numFrames - 1) * step + Nn;
         r.partialStart = (lastConsumed < N) ? lastConsumed : N;
         r.partialEnd = N;
         return r;
     }
 
     // Overlap (p > 0) and zero-overlap (p == 0) branches.
-    const size_t hopP = static_cast<size_t>(hop);  // = n - p, must be > 0
+    const keel::usize hopP = static_cast<keel::usize>(hop);  // = n - p, must be > 0
     if (hopP == 0)
         throw Error("buffer: P must be < N (overlap < frame length)",
                     0, 0, "buffer", "", "numkit:buffer:BadOverlap");
 
     // Decide whether to apply initial-condition prepend (p > 0 only).
     bool prependZeros = (p > 0);
-    size_t initLen = (p > 0) ? static_cast<size_t>(p) : 0;
+    keel::usize initLen = (p > 0) ? static_cast<keel::usize>(p) : 0;
     std::vector<double> initVec(initLen, 0.0);  // initial condition (zeros default)
 
     if (p > 0 && !opt.isEmpty()) {
@@ -129,20 +130,20 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
             initVec.clear();
         } else {
             // Numeric initial-condition vector of length p.
-            if (opt.numel() != static_cast<size_t>(p))
+            if (opt.numel() != static_cast<keel::usize>(p))
                 throw Error("buffer: initial-condition OPT must have length P",
                             0, 0, "buffer", "", "numkit:buffer:BadInitLen");
             initVec.resize(p);
-            for (size_t i = 0; i < static_cast<size_t>(p); ++i)
+            for (keel::usize i = 0; i < static_cast<keel::usize>(p); ++i)
                 initVec[i] = opt.elemAsDouble(i);
         }
     }
 
     // Effective input length includes the prepended initial samples.
-    const size_t effN = N + initLen;
+    const keel::usize effN = N + initLen;
 
     // Number of complete frames: floor((effN - n) / hop) + 1
-    size_t numComplete = 0;
+    keel::usize numComplete = 0;
     if (effN >= Nn) numComplete = (effN - Nn) / hopP + 1;
 
     // Number of frames in 1-output form (with zero-pad) — total frames
@@ -150,37 +151,37 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     // MATLAB: numFrames = ceil((effN - p) / hop) when p > 0,
     //         else ceil(effN / n)
     // Simpler: if effN > lastConsumed, add one frame.
-    size_t numFramesOneOut = numComplete;
-    const size_t lastConsumed = numComplete * hopP + (numComplete > 0 ? p : 0);
+    keel::usize numFramesOneOut = numComplete;
+    const keel::usize lastConsumed = numComplete * hopP + (numComplete > 0 ? p : 0);
     // If there's leftover input, one more frame (zero-padded).
     if (lastConsumed < effN) ++numFramesOneOut;
     // Edge case: effN > 0 but no complete frames yet → still one (padded).
     if (numComplete == 0 && effN > 0) numFramesOneOut = 1;
 
-    const size_t numFramesOut = forceCompleteOnly ? numComplete : numFramesOneOut;
+    const keel::usize numFramesOut = forceCompleteOnly ? numComplete : numFramesOneOut;
     BufferResult r;
     r.Y = Value::matrix(Nn, numFramesOut, ValueType::DOUBLE, mr);
     double *yd = r.Y.doubleDataMut();
     std::fill(yd, yd + Nn * numFramesOut, 0.0);
 
     // Index helper into "effective" input (initVec || x).
-    auto effGet = [&](size_t idx) -> double {
+    auto effGet = [&](keel::usize idx) -> double {
         if (idx < initLen) return initVec[idx];
-        const size_t xi = idx - initLen;
+        const keel::usize xi = idx - initLen;
         return (xi < N) ? x.elemAsDouble(xi) : 0.0;
     };
 
-    for (size_t f = 0; f < numFramesOut; ++f) {
-        const size_t base = f * hopP;
-        for (size_t i = 0; i < Nn; ++i)
+    for (keel::usize f = 0; f < numFramesOut; ++f) {
+        const keel::usize base = f * hopP;
+        for (keel::usize i = 0; i < Nn; ++i)
             yd[i + f * Nn] = effGet(base + i);
     }
 
     // Z (partial) = x samples beyond what numComplete frames consumed.
-    const size_t lastConsumedComplete =
+    const keel::usize lastConsumedComplete =
         (numComplete > 0) ? (numComplete - 1) * hopP + Nn : 0;
     // Convert to original-x index: subtract initLen if positive.
-    size_t zStart = (lastConsumedComplete > initLen)
+    keel::usize zStart = (lastConsumedComplete > initLen)
                      ? (lastConsumedComplete - initLen)
                      : 0;
     if (numComplete == 0) zStart = 0;  // all of x is partial
@@ -189,15 +190,15 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     return r;
 }
 
-Value makePartialZ(const Value &x, size_t startIdx, size_t endIdx, int xOrient, std::pmr::memory_resource *mr)
+Value makePartialZ(const Value &x, keel::usize startIdx, keel::usize endIdx, int xOrient, keel::Allocator *mr)
 {
-    const size_t len = (endIdx > startIdx) ? (endIdx - startIdx) : 0;
-    const size_t rows = (xOrient == 1) ? 1 : len;
-    const size_t cols = (xOrient == 1) ? len : (len == 0 ? 0 : 1);
+    const keel::usize len = (endIdx > startIdx) ? (endIdx - startIdx) : 0;
+    const keel::usize rows = (xOrient == 1) ? 1 : len;
+    const keel::usize cols = (xOrient == 1) ? len : (len == 0 ? 0 : 1);
     Value z = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
     if (len == 0) return z;
     double *zd = z.doubleDataMut();
-    for (size_t i = 0; i < len; ++i)
+    for (keel::usize i = 0; i < len; ++i)
         zd[i] = x.elemAsDouble(startIdx + i);
     return z;
 }
@@ -219,7 +220,7 @@ void buffer_argcheck(int n, int p, const Value &opt)
         throw Error("buffer: P must be < N (overlap < frame length)",
                     0, 0, "buffer", "", "numkit:buffer:BadOverlap");
     if (p > 0 && !opt.isEmpty() && !isStringLikeNoDelay(opt)) {
-        if (opt.numel() != static_cast<size_t>(p))
+        if (opt.numel() != static_cast<keel::usize>(p))
             throw Error("buffer: initial-condition OPT must have length P",
                         0, 0, "buffer", "", "numkit:buffer:BadInitLen");
     }
@@ -227,7 +228,7 @@ void buffer_argcheck(int n, int p, const Value &opt)
 
 } // anon
 
-Value buffer(const Value &x, int n, int p, const Value &opt, std::pmr::memory_resource *mr)
+Value buffer(const Value &x, int n, int p, const Value &opt, keel::Allocator *mr)
 {
     buffer_argcheck(n, p, opt);
     BufferResult r = bufferCore(x, n, p, opt, /*forceCompleteOnly=*/false, mr);
@@ -235,7 +236,7 @@ Value buffer(const Value &x, int n, int p, const Value &opt, std::pmr::memory_re
 }
 
 std::tuple<Value, Value>
-buffer2(const Value &x, int n, int p, const Value &opt, std::pmr::memory_resource *mr)
+buffer2(const Value &x, int n, int p, const Value &opt, keel::Allocator *mr)
 {
     buffer_argcheck(n, p, opt);
     BufferResult r = bufferCore(x, n, p, opt, /*forceCompleteOnly=*/true, mr);

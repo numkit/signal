@@ -1,16 +1,19 @@
 // toolboxes/signal/src/smoothing/sgolay.cpp
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/math.h>
 #include <numkit/signal/smoothing/sgolay.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 
 #include <numkit/ops/helpers.hpp>
 
 #include <cmath>
 #include <cstring>
-#include <memory_resource>
 
 namespace numkit::signal {
 
@@ -23,9 +26,9 @@ void gaussJordan(double *A, double *B, int N, int M)
     for (int k = 0; k < N; ++k) {
         // Pivot.
         int piv = k;
-        double maxAbs = std::abs(A[k * N + k]);
+        double maxAbs = keel::abs(A[k * N + k]);
         for (int r = k + 1; r < N; ++r) {
-            const double v = std::abs(A[r * N + k]);
+            const double v = keel::abs(A[r * N + k]);
             if (v > maxAbs) { maxAbs = v; piv = r; }
         }
         if (maxAbs < 1e-300)
@@ -53,11 +56,11 @@ void gaussJordan(double *A, double *B, int N, int M)
 
 // Build the (framelen × (order+1)) Vandermonde matrix V where
 // V[i, k] = (i - center)^k for i = 0..framelen-1 and k = 0..order.
-ScratchVec<double> buildVandermonde(int order, int framelen, std::pmr::memory_resource *mr)
+keel::Array<double> buildVandermonde(int order, int framelen, keel::Allocator *mr)
 {
     const int n = framelen;
     const int p = order + 1;
-    ScratchVec<double> V(static_cast<std::size_t>(n * p), mr);
+    keel::Array<double> V(static_cast<keel::usize>(n * p), mr);
     const double half = static_cast<double>(framelen / 2);
     for (int i = 0; i < n; ++i) {
         double v = 1.0;
@@ -75,8 +78,8 @@ ScratchVec<double> buildVandermonde(int order, int framelen, std::pmr::memory_re
 // row r of B gives the filter coefficients for sample r in the window:
 // y_r = B[r, :] · x_window. `w` is nullptr (unweighted, W = I) or a
 // framelen-length vector of positive weights.
-ScratchVec<double> buildProjection(int order, int framelen,
-                                   std::pmr::memory_resource *mr,
+keel::Array<double> buildProjection(int order, int framelen,
+                                   keel::Allocator *mr,
                                    const double *w = nullptr)
 {
     const int n = framelen;
@@ -85,8 +88,8 @@ ScratchVec<double> buildProjection(int order, int framelen,
 
     // Form V'·W·V  (p × p) and V'·W  (p × n) on the side. With w == nullptr
     // the weight factor is 1.0 and this reduces to the ordinary V'V / V'.
-    ScratchVec<double> VtV(static_cast<std::size_t>(p * p), mr);
-    ScratchVec<double> Vt (static_cast<std::size_t>(p * n), mr);
+    keel::Array<double> VtV(static_cast<keel::usize>(p * p), mr);
+    keel::Array<double> Vt (static_cast<keel::usize>(p * n), mr);
     for (int k = 0; k < p; ++k)
         for (int i = 0; i < n; ++i)
             Vt[k * n + i] = V[i * p + k] * (w ? w[i] : 1.0);
@@ -99,10 +102,10 @@ ScratchVec<double> buildProjection(int order, int framelen,
         }
 
     // Solve VtV · X = Vt → X is p × n; then B = V · X (n × n).
-    ScratchVec<double> X(Vt, mr);
+    keel::Array<double> X(Vt, mr);
     gaussJordan(VtV.data(), X.data(), p, n);
 
-    ScratchVec<double> B(static_cast<std::size_t>(n * n), mr);
+    keel::Array<double> B(static_cast<keel::usize>(n * n), mr);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j) {
             double s = 0.0;
@@ -118,14 +121,14 @@ ScratchVec<double> buildProjection(int order, int framelen,
 // the polynomial coefficient a_j (a_1 = value, a_2 = 1st-deriv term, …) at
 // the central point. This is the unweighted second output of MATLAB's
 // [B,G] = sgolay(order,framelen).
-ScratchVec<double> buildDiffMatrix(int order, int framelen, std::pmr::memory_resource *mr)
+keel::Array<double> buildDiffMatrix(int order, int framelen, keel::Allocator *mr)
 {
     const int n = framelen;
     const int p = order + 1;
     auto V = buildVandermonde(order, framelen, mr);      // n × p
 
     // VtV = V'·V (p × p).
-    ScratchVec<double> VtV(static_cast<std::size_t>(p * p), mr);
+    keel::Array<double> VtV(static_cast<keel::usize>(p * p), mr);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j) {
             double s = 0.0;
@@ -135,14 +138,14 @@ ScratchVec<double> buildDiffMatrix(int order, int framelen, std::pmr::memory_res
         }
 
     // Invert VtV: solve VtV · inv = I.
-    ScratchVec<double> inv(static_cast<std::size_t>(p * p), mr);
+    keel::Array<double> inv(static_cast<keel::usize>(p * p), mr);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j)
             inv[i * p + j] = (i == j) ? 1.0 : 0.0;
     gaussJordan(VtV.data(), inv.data(), p, p);           // inv := (V'V)^-1
 
     // G = V · inv (n × p).
-    ScratchVec<double> G(static_cast<std::size_t>(n * p), mr);
+    keel::Array<double> G(static_cast<keel::usize>(n * p), mr);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < p; ++j) {
             double s = 0.0;
@@ -172,12 +175,12 @@ void sgolay_argcheck(int order, int framelen)
 
 } // namespace
 
-Value sgolay(int order, int framelen, std::pmr::memory_resource *mr)
+Value sgolay(int order, int framelen, keel::Allocator *mr)
 {
     sgolay_argcheck(order, framelen);
 
-    ScratchArena scratch(mr);
-    auto B = buildProjection(order, framelen, &scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto B = buildProjection(order, framelen, scratch.allocator());
     // Convert row-major B to column-major Value (R = framelen, C = framelen).
     auto out = Value::matrix(framelen, framelen, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -187,13 +190,13 @@ Value sgolay(int order, int framelen, std::pmr::memory_resource *mr)
     return out;
 }
 
-Value sgolayDiff(int order, int framelen, std::pmr::memory_resource *mr)
+Value sgolayDiff(int order, int framelen, keel::Allocator *mr)
 {
     sgolay_argcheck(order, framelen);
 
     const int p = order + 1;
-    ScratchArena scratch(mr);
-    auto G = buildDiffMatrix(order, framelen, &scratch);   // row-major n × p
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto G = buildDiffMatrix(order, framelen, scratch.allocator());   // row-major n × p
     // Convert row-major G to column-major Value (R = framelen, C = order+1).
     auto out = Value::matrix(framelen, p, ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -241,7 +244,7 @@ void sgolayfiltSlice(const double *src, double *dst, int n,
 // 0 = auto = first non-singleton dimension, matching MATLAB), with an
 // optional framelen-length weight vector `w` (nullptr = unweighted).
 Value sgolayfiltImpl(const Value &x, int order, int framelen,
-                     const double *w, int dim, std::pmr::memory_resource *mr)
+                     const double *w, int dim, keel::Allocator *mr)
 {
     if (x.type() == ValueType::COMPLEX)
         throw Error("sgolayfilt: complex inputs are not supported",
@@ -251,7 +254,7 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
         throw Error("sgolayfilt: N-D (>2) inputs are not supported",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:ndims");
 
-    const size_t R = d.rows(), C = d.cols();
+    const keel::usize R = d.rows(), C = d.cols();
     int useDim = dim;
     if (useDim <= 0) useDim = (R > 1) ? 1 : 2;       // first non-singleton
     if (useDim != 1 && useDim != 2)
@@ -263,31 +266,31 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
         throw Error("sgolayfilt: signal length along dim must be >= framelen",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:tooShort");
 
-    ScratchArena scratch(mr);
-    auto B = buildProjection(order, framelen, &scratch, w);  // throws if shape invalid
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto B = buildProjection(order, framelen, scratch.allocator(), w);  // throws if shape invalid
 
     auto out = createLike(x, ValueType::DOUBLE, mr);
     if (x.numel() == 0) return out;
     double *dst = out.doubleDataMut();
 
     // Gather source as DOUBLE (column-major).
-    auto src = ScratchVec<double>(x.numel(), &scratch);
-    for (size_t i = 0; i < x.numel(); ++i) src[i] = x.elemAsDouble(i);
+    auto src = keel::Array<double>(x.numel(), scratch.allocator());
+    for (keel::usize i = 0; i < x.numel(); ++i) src[i] = x.elemAsDouble(i);
 
     if (useDim == 1) {
         // Each column is contiguous (length R) in column-major storage.
-        for (size_t c = 0; c < C; ++c)
+        for (keel::usize c = 0; c < C; ++c)
             sgolayfiltSlice(src.data() + c * R, dst + c * R,
                             static_cast<int>(R), B.data(), framelen);
     } else {
         // Each row is strided by R: gather → filter → scatter.
-        auto rbuf = ScratchVec<double>(C, &scratch);
-        auto obuf = ScratchVec<double>(C, &scratch);
-        for (size_t r = 0; r < R; ++r) {
-            for (size_t c = 0; c < C; ++c) rbuf[c] = src[r + c * R];
+        auto rbuf = keel::Array<double>(C, scratch.allocator());
+        auto obuf = keel::Array<double>(C, scratch.allocator());
+        for (keel::usize r = 0; r < R; ++r) {
+            for (keel::usize c = 0; c < C; ++c) rbuf[c] = src[r + c * R];
             sgolayfiltSlice(rbuf.data(), obuf.data(),
                             static_cast<int>(C), B.data(), framelen);
-            for (size_t c = 0; c < C; ++c) dst[r + c * R] = obuf[c];
+            for (keel::usize c = 0; c < C; ++c) dst[r + c * R] = obuf[c];
         }
     }
     return out;
@@ -295,13 +298,13 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
 
 } // namespace
 
-Value sgolayfilt(const Value &x, int order, int framelen, std::pmr::memory_resource *mr)
+Value sgolayfilt(const Value &x, int order, int framelen, keel::Allocator *mr)
 {
     return sgolayfiltImpl(x, order, framelen, nullptr, 0, mr);
 }
 
 Value sgolayfilt(const Value &x, int order, int framelen,
-                 const Value &weights, int dim, std::pmr::memory_resource *mr)
+                 const Value &weights, int dim, keel::Allocator *mr)
 {
     if (weights.isEmpty())
         return sgolayfiltImpl(x, order, framelen, nullptr, dim, mr);
@@ -311,8 +314,8 @@ Value sgolayfilt(const Value &x, int order, int framelen,
     if (static_cast<int>(weights.numel()) != framelen)
         throw Error("sgolayfilt: weights must have length framelen",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:weightsLen");
-    ScratchArena wa(mr);
-    auto w = ScratchVec<double>(static_cast<std::size_t>(framelen), &wa);
+    keel::ArenaTemp wa = keel::get_scratch(mr);
+    auto w = keel::Array<double>(static_cast<keel::usize>(framelen), wa.allocator());
     for (int i = 0; i < framelen; ++i) {
         const double wi = weights.elemAsDouble(i);
         if (!(wi > 0.0))

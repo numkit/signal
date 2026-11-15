@@ -3,10 +3,15 @@
 // Apply an SOS biquad cascade to a signal. Conversions
 // zp2sos / tf2sos live in filter_implementation/conversions.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/digital_filtering/sosfilt.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
@@ -41,13 +46,13 @@ BiquadZi biquadZi(double b0, double b1, double b2,
                   double a1, double a2)
 {
     const double denom = 1.0 + a1 + a2;
-    if (std::abs(denom) < 1e-300) return {0.0, 0.0};
+    if (keel::abs(denom) < 1e-300) return {0.0, 0.0};
     const double s1 = (b1 + b2 - b0 * (a1 + a2)) / denom;
     const double s2 = (b2 + a1 * b2 - a2 * b0 - a2 * b1) / denom;
     return {s1, s2};
 }
 
-size_t validateSosMatrix(const Value &sos, std::string_view fn)
+keel::usize validateSosMatrix(const Value &sos, std::string_view fn)
 {
     if (sos.dims().ndim() != 2 || sos.dims().cols() != 6 || sos.dims().rows() == 0)
         throw Error(std::string(fn) + ": sos matrix must be L×6 with L >= 1",
@@ -60,12 +65,12 @@ size_t validateSosMatrix(const Value &sos, std::string_view fn)
                  "numkit:" + std::string(fn) + ":sosType");
 }
 
-void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
-                  ScratchVec<double> &scratch)
+void applyCascade(const Value &sos, const double *xs, double *out, keel::usize n,
+                  keel::Array<double> &scratch)
 {
-    const size_t L = sos.dims().rows();
+    const keel::usize L = sos.dims().rows();
     const double *p = sos.doubleData();
-    auto readSection = [&](size_t r) {
+    auto readSection = [&](keel::usize r) {
         const double a0 = p[3 * L + r];
         if (a0 == 0.0)
             throw Error("sosfilt: section a0 is zero",
@@ -80,7 +85,7 @@ void applyCascade(const Value &sos, const double *xs, double *out, size_t n,
     };
     const double *src = xs;
     double *dst = out;
-    for (size_t s = 0; s < L; ++s) {
+    for (keel::usize s = 0; s < L; ++s) {
         const auto c = readSection(s);
         biquadDf2t(c[0], c[1], c[2], c[3], c[4], src, dst, n);
         if (s + 1 < L) {
@@ -119,7 +124,7 @@ void sosfiltfilt_argcheck(const Value &sos, const Value &x)
 
 } // namespace
 
-Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
+Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
 {
     sosfilt_argcheck(sos, x);
     const bool anySingle = (sos.type() == ValueType::SINGLE) || (x.type() == ValueType::SINGLE);
@@ -127,24 +132,24 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
     if (x.type() == ValueType::COMPLEX) {
         if (x.isEmpty())
             return createLike(x, ValueType::COMPLEX, mr);
-        const size_t N = x.numel();
+        const keel::usize N = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
         Value xi = createLike(x, ValueType::DOUBLE, mr);
         double *xrd = xr.doubleDataMut();
         double *xid = xi.doubleDataMut();
-        const Complex *xcd = x.complexData();
-        for (size_t i = 0; i < N; ++i) {
+        const keel::c64 *xcd = x.complexData();
+        for (keel::usize i = 0; i < N; ++i) {
             xrd[i] = xcd[i].real();
             xid[i] = xcd[i].imag();
         }
         Value yr = sosfilt(sosD, xr, mr);
         Value yi = sosfilt(sosD, xi, mr);
         Value out = createLike(x, ValueType::COMPLEX, mr);
-        Complex *od = out.complexDataMut();
+        keel::c64 *od = out.complexDataMut();
         const double *yrd = yr.doubleData();
         const double *yid = yi.doubleData();
-        for (size_t i = 0; i < N; ++i)
-            od[i] = Complex(yrd[i], yid[i]);
+        for (keel::usize i = 0; i < N; ++i)
+            od[i] = keel::c64(yrd[i], yid[i]);
         return out;
     }
     if (x.isEmpty())
@@ -152,19 +157,19 @@ Value sosfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
 
     Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
-    ScratchArena scratch(mr);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
     if (xD.dims().isVector() || xD.isScalar()) {
-        const size_t n = xD.numel();
-        auto buf = ScratchVec<double>(n, &scratch);
+        const keel::usize n = xD.numel();
+        auto buf = keel::Array<double>(n, scratch.allocator());
         applyCascade(sosD, xD.doubleData(), out.doubleDataMut(), n, buf);
         return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
-    const size_t rows = xD.dims().rows();
-    const size_t cols = xD.dims().cols();
-    auto buf = ScratchVec<double>(rows, &scratch);
+    const keel::usize rows = xD.dims().rows();
+    const keel::usize cols = xD.dims().cols();
+    auto buf = keel::Array<double>(rows, scratch.allocator());
     const double *src = xD.doubleData();
     double *dst = out.doubleDataMut();
-    for (size_t c = 0; c < cols; ++c)
+    for (keel::usize c = 0; c < cols; ++c)
         applyCascade(sosD, src + c * rows, dst + c * rows, rows, buf);
     return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
 }
@@ -199,12 +204,12 @@ namespace {
 // initialisation per section. zi has length 2*L (interleaved: section
 // 0's s1, s2; section 1's s1, s2; ...). If zi is null, zero-state.
 void applyCascadeWithZi(const Value &sos, const double *src, double *dst,
-                        size_t n, ScratchVec<double> &scratch,
+                        keel::usize n, keel::Array<double> &scratch,
                         const double *zi /* may be null */)
 {
-    const size_t L = sos.dims().rows();
+    const keel::usize L = sos.dims().rows();
     const double *p = sos.doubleData();
-    auto readSection = [&](size_t r) {
+    auto readSection = [&](keel::usize r) {
         const double a0 = p[3 * L + r];
         if (a0 == 0.0)
             throw Error("sosfiltfilt: section a0 is zero",
@@ -216,7 +221,7 @@ void applyCascadeWithZi(const Value &sos, const double *src, double *dst,
     };
     const double *currentSrc = src;
     double *currentDst = dst;
-    for (size_t s = 0; s < L; ++s) {
+    for (keel::usize s = 0; s < L; ++s) {
         const auto c = readSection(s);
         if (zi) {
             biquadDf2tWithState(c[0], c[1], c[2], c[3], c[4],
@@ -239,21 +244,21 @@ void applyCascadeWithZi(const Value &sos, const double *src, double *dst,
 }
 
 void sosfiltfiltColumn(const Value &sos, const double *xs, double *out,
-                       size_t n, std::pmr::memory_resource *mr)
+                       keel::usize n, keel::Allocator *mr)
 {
-    const size_t L = sos.dims().rows();
+    const keel::usize L = sos.dims().rows();
     if (n == 0) return;
     if (L == 0) {
         std::memcpy(out, xs, n * sizeof(double));
         return;
     }
 
-    ScratchArena local(mr);
-    auto cascadeBuf = ScratchVec<double>(n, &local);
-    auto ziVec      = ScratchVec<double>(2 * L, &local);
+    keel::ArenaTemp local = keel::get_scratch(mr);
+    auto cascadeBuf = keel::Array<double>(n, local.allocator());
+    auto ziVec      = keel::Array<double>(2 * L, local.allocator());
 
     const double *p = sos.doubleData();
-    auto readNorm = [&](size_t s, double &b0, double &b1, double &b2,
+    auto readNorm = [&](keel::usize s, double &b0, double &b1, double &b2,
                                   double &a1, double &a2) {
         const double a0 = p[3 * L + s];
         b0 = p[0 * L + s] / a0;
@@ -264,7 +269,7 @@ void sosfiltfiltColumn(const Value &sos, const double *xs, double *out,
     };
 
     // Compute per-section unit-input zi (independent of x).
-    for (size_t s = 0; s < L; ++s) {
+    for (keel::usize s = 0; s < L; ++s) {
         double b0, b1, b2, a1, a2;
         readNorm(s, b0, b1, b2, a1, a2);
         const auto z = biquadZi(b0, b1, b2, a1, a2);
@@ -273,43 +278,43 @@ void sosfiltfiltColumn(const Value &sos, const double *xs, double *out,
     }
 
     // Edge-reflect padding length: 6*L (matches scipy default).
-    size_t edge = 6 * L;
+    keel::usize edge = 6 * L;
     if (edge >= n) edge = (n > 0) ? n - 1 : 0;
 
-    const size_t extLen = n + 2 * edge;
-    auto ext = ScratchVec<double>(extLen, &local);
+    const keel::usize extLen = n + 2 * edge;
+    auto ext = keel::Array<double>(extLen, local.allocator());
     // Reflect across each endpoint, MATLAB convention:
     //   left  pad: 2*x[0]   - x[edge - i]    for i = 0..edge-1
     //   right pad: 2*x[n-1] - x[n-2 - i]     for i = 0..edge-1
-    for (size_t i = 0; i < edge; ++i)
+    for (keel::usize i = 0; i < edge; ++i)
         ext[i] = 2.0 * xs[0] - xs[edge - i];
     std::memcpy(ext.data() + edge, xs, n * sizeof(double));
-    for (size_t i = 0; i < edge; ++i)
+    for (keel::usize i = 0; i < edge; ++i)
         ext[edge + n + i] = 2.0 * xs[n - 1] - xs[n - 2 - i];
 
-    auto fwd = ScratchVec<double>(extLen, &local);
-    auto bwd = ScratchVec<double>(extLen, &local);
-    auto cascadeScratch = ScratchVec<double>(extLen, &local);
+    auto fwd = keel::Array<double>(extLen, local.allocator());
+    auto bwd = keel::Array<double>(extLen, local.allocator());
+    auto cascadeScratch = keel::Array<double>(extLen, local.allocator());
 
     // Per-section input scale for steady state. Section s sees an
     // input whose DC level equals
     //   x_input * prod_{j < s} dcGain[j]
     // where dcGain[j] = sum(b)/sum(a) of section j. So zi for
     // section s must be scaled by that accumulated DC level.
-    auto dcGain = ScratchVec<double>(L, &local);
-    for (size_t s = 0; s < L; ++s) {
+    auto dcGain = keel::Array<double>(L, local.allocator());
+    for (keel::usize s = 0; s < L; ++s) {
         double b0, b1, b2, a1, a2;
         readNorm(s, b0, b1, b2, a1, a2);
         const double num = b0 + b1 + b2;
         const double den = 1.0 + a1 + a2;
-        dcGain[s] = (std::abs(den) > 1e-300) ? (num / den) : 1.0;
+        dcGain[s] = (keel::abs(den) > 1e-300) ? (num / den) : 1.0;
     }
 
-    auto ziForward  = ScratchVec<double>(2 * L, &local);
-    auto ziBackward = ScratchVec<double>(2 * L, &local);
-    auto scaleZi = [&](double cascadeInput, ScratchVec<double> &out_zi) {
+    auto ziForward  = keel::Array<double>(2 * L, local.allocator());
+    auto ziBackward = keel::Array<double>(2 * L, local.allocator());
+    auto scaleZi = [&](double cascadeInput, keel::Array<double> &out_zi) {
         double scale = cascadeInput;
-        for (size_t s = 0; s < L; ++s) {
+        for (keel::usize s = 0; s < L; ++s) {
             out_zi[2 * s + 0] = ziVec[2 * s + 0] * scale;
             out_zi[2 * s + 1] = ziVec[2 * s + 1] * scale;
             scale *= dcGain[s];   // input to next section is this section's output
@@ -334,7 +339,7 @@ void sosfiltfiltColumn(const Value &sos, const double *xs, double *out,
 
 } // namespace
 
-Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *mr)
+Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
 {
     sosfiltfilt_argcheck(sos, x);
     const bool anySingle = (sos.type() == ValueType::SINGLE) || (x.type() == ValueType::SINGLE);
@@ -349,11 +354,11 @@ Value sosfiltfilt(const Value &sos, const Value &x, std::pmr::memory_resource *m
                           xD.numel(), mr);
         return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
-    const size_t rows = xD.dims().rows();
-    const size_t cols = xD.dims().cols();
+    const keel::usize rows = xD.dims().rows();
+    const keel::usize cols = xD.dims().cols();
     const double *src = xD.doubleData();
     double *dst = out.doubleDataMut();
-    for (size_t c = 0; c < cols; ++c)
+    for (keel::usize c = 0; c < cols; ++c)
         sosfiltfiltColumn(sosD, src + c * rows, dst + c * rows, rows, mr);
     return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
 }

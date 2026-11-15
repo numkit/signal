@@ -3,10 +3,15 @@
 // zp2sos / tf2sos — convert filter representations to SOS form. The
 // cascade applicator sosfilt lives in digital_filtering/sosfilt.cpp.
 
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/arena.h>
+#include <keel/array.h>
+#include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/filter_implementation/conversions.hpp>
 
 #include <numkit/value/value.hpp>
-#include <numkit/value/scratch.hpp>
 #include <numkit/value/error.hpp>
 #include <tuple>
 
@@ -16,16 +21,12 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <memory_resource>
 #include <utility>
 
 namespace numkit::signal {
-
-using numkit::Complex;
 
 namespace {
 
@@ -33,14 +34,14 @@ using numkit::ops::polyRootsDurandKerner;
 
 constexpr double kImagThresh = 1e-10;  // |Im(r)| below this → treat as real
 
-inline bool isReal(Complex r)
+inline bool isReal(keel::c64 r)
 {
-    return std::abs(r.imag()) <= kImagThresh;
+    return keel::abs(r.imag()) <= kImagThresh;
 }
 
-struct RootPair { Complex a, b; bool isPair; };
+struct RootPair { keel::c64 a, b; bool isPair; };
 
-bool popPair(ScratchVec<Complex> &pool, RootPair &out)
+bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
 {
     if (pool.empty()) return false;
     // Section order (MATLAB R2025b, probed on buttap N=4/6, cheb1/cheb2/
@@ -48,50 +49,50 @@ bool popPair(ScratchVec<Complex> &pool, RootPair &out)
     // ascending |Re(p)| (buttap's equal-radius pairs → the pair nearest
     // the imaginary axis first). The old max-|p| pick emitted the
     // opposite order (bugs/closed/signal/zp2sos-section-order).
-    size_t pickIdx = 0;
-    auto key = [&](size_t i) {
-        return std::make_pair(std::abs(pool[i]), std::abs(pool[i].real()));
+    keel::usize pickIdx = 0;
+    auto key = [&](keel::usize i) {
+        return std::make_pair(keel::abs(pool[i]), keel::abs(pool[i].real()));
     };
-    for (size_t i = 1; i < pool.size(); ++i) {
+    for (keel::usize i = 1; i < pool.size(); ++i) {
         if (key(i) < key(pickIdx)) pickIdx = i;
     }
-    const Complex pick = pool[pickIdx];
+    const keel::c64 pick = pool[pickIdx];
     if (isReal(pick)) {
-        size_t mateIdx = pool.size();
+        keel::usize mateIdx = pool.size();
         double bestDist = std::numeric_limits<double>::infinity();
-        for (size_t i = 0; i < pool.size(); ++i) {
+        for (keel::usize i = 0; i < pool.size(); ++i) {
             if (i == pickIdx) continue;
             if (!isReal(pool[i])) continue;
-            const double d = std::abs(pool[i] - pick);
+            const double d = keel::abs(pool[i] - pick);
             if (d < bestDist) { bestDist = d; mateIdx = i; }
         }
         if (mateIdx < pool.size()) {
-            out = { Complex(pick.real(), 0.0), Complex(pool[mateIdx].real(), 0.0), true };
-            const size_t hi = std::max(pickIdx, mateIdx);
-            const size_t lo = std::min(pickIdx, mateIdx);
-            pool.erase(pool.begin() + hi);
-            pool.erase(pool.begin() + lo);
+            out = { keel::c64(pick.real(), 0.0), keel::c64(pool[mateIdx].real(), 0.0), true };
+            const keel::usize hi = std::max(pickIdx, mateIdx);
+            const keel::usize lo = std::min(pickIdx, mateIdx);
+            pool.erase(hi);
+            pool.erase(lo);
         } else {
-            out = { Complex(pick.real(), 0.0), Complex(0.0, 0.0), false };
-            pool.erase(pool.begin() + pickIdx);
+            out = { keel::c64(pick.real(), 0.0), keel::c64(0.0, 0.0), false };
+            pool.erase(pickIdx);
         }
     } else {
-        const Complex conjP = std::conj(pick);
-        size_t mateIdx = pool.size();
+        const keel::c64 conjP = keel::conj(pick);
+        keel::usize mateIdx = pool.size();
         double bestDist = std::numeric_limits<double>::infinity();
-        for (size_t i = 0; i < pool.size(); ++i) {
+        for (keel::usize i = 0; i < pool.size(); ++i) {
             if (i == pickIdx) continue;
-            const double d = std::abs(pool[i] - conjP);
+            const double d = keel::abs(pool[i] - conjP);
             if (d < bestDist) { bestDist = d; mateIdx = i; }
         }
         if (mateIdx >= pool.size())
             throw Error("zp2sos: complex root has no conjugate in input",
                          0, 0, "zp2sos", "", "numkit:zp2sos:noConj");
         out = { pick, pool[mateIdx], true };
-        const size_t hi = std::max(pickIdx, mateIdx);
-        const size_t lo = std::min(pickIdx, mateIdx);
-        pool.erase(pool.begin() + hi);
-        pool.erase(pool.begin() + lo);
+        const keel::usize hi = std::max(pickIdx, mateIdx);
+        const keel::usize lo = std::min(pickIdx, mateIdx);
+        pool.erase(hi);
+        pool.erase(lo);
     }
     return true;
 }
@@ -111,87 +112,87 @@ QuadCoeffs pairToQuad(const RootPair &p)
              p.a.real() * p.b.real() };
 }
 
-inline Complex pairCentroid(const RootPair &p)
+inline keel::c64 pairCentroid(const RootPair &p)
 {
     if (!p.isPair) return p.a;
     return (p.a + p.b) * 0.5;
 }
 
-bool popClosestZeroPair(ScratchVec<Complex> &zeros, Complex target,
+bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
                         RootPair &out)
 {
     if (zeros.empty()) return false;
-    size_t pickIdx = 0;
-    double bestDist = std::abs(zeros[0] - target);
-    for (size_t i = 1; i < zeros.size(); ++i) {
-        const double d = std::abs(zeros[i] - target);
+    keel::usize pickIdx = 0;
+    double bestDist = keel::abs(zeros[0] - target);
+    for (keel::usize i = 1; i < zeros.size(); ++i) {
+        const double d = keel::abs(zeros[i] - target);
         if (d < bestDist) { bestDist = d; pickIdx = i; }
     }
-    const Complex pick = zeros[pickIdx];
+    const keel::c64 pick = zeros[pickIdx];
     if (isReal(pick)) {
-        size_t mateIdx = zeros.size();
+        keel::usize mateIdx = zeros.size();
         double bestMate = std::numeric_limits<double>::infinity();
-        for (size_t i = 0; i < zeros.size(); ++i) {
+        for (keel::usize i = 0; i < zeros.size(); ++i) {
             if (i == pickIdx) continue;
             if (!isReal(zeros[i])) continue;
-            const double d = std::abs(zeros[i] - target);
+            const double d = keel::abs(zeros[i] - target);
             if (d < bestMate) { bestMate = d; mateIdx = i; }
         }
         if (mateIdx < zeros.size()) {
-            out = { Complex(pick.real(), 0.0),
-                    Complex(zeros[mateIdx].real(), 0.0), true };
-            const size_t hi = std::max(pickIdx, mateIdx);
-            const size_t lo = std::min(pickIdx, mateIdx);
-            zeros.erase(zeros.begin() + hi);
-            zeros.erase(zeros.begin() + lo);
+            out = { keel::c64(pick.real(), 0.0),
+                    keel::c64(zeros[mateIdx].real(), 0.0), true };
+            const keel::usize hi = std::max(pickIdx, mateIdx);
+            const keel::usize lo = std::min(pickIdx, mateIdx);
+            zeros.erase(hi);
+            zeros.erase(lo);
         } else {
-            out = { Complex(pick.real(), 0.0), Complex(0.0, 0.0), false };
-            zeros.erase(zeros.begin() + pickIdx);
+            out = { keel::c64(pick.real(), 0.0), keel::c64(0.0, 0.0), false };
+            zeros.erase(pickIdx);
         }
     } else {
-        const Complex conjP = std::conj(pick);
-        size_t mateIdx = zeros.size();
+        const keel::c64 conjP = keel::conj(pick);
+        keel::usize mateIdx = zeros.size();
         double bestDist2 = std::numeric_limits<double>::infinity();
-        for (size_t i = 0; i < zeros.size(); ++i) {
+        for (keel::usize i = 0; i < zeros.size(); ++i) {
             if (i == pickIdx) continue;
-            const double d = std::abs(zeros[i] - conjP);
+            const double d = keel::abs(zeros[i] - conjP);
             if (d < bestDist2) { bestDist2 = d; mateIdx = i; }
         }
         if (mateIdx >= zeros.size())
             throw Error("zp2sos: complex zero has no conjugate in input",
                          0, 0, "zp2sos", "", "numkit:zp2sos:noConj");
         out = { pick, zeros[mateIdx], true };
-        const size_t hi = std::max(pickIdx, mateIdx);
-        const size_t lo = std::min(pickIdx, mateIdx);
-        zeros.erase(zeros.begin() + hi);
-        zeros.erase(zeros.begin() + lo);
+        const keel::usize hi = std::max(pickIdx, mateIdx);
+        const keel::usize lo = std::min(pickIdx, mateIdx);
+        zeros.erase(hi);
+        zeros.erase(lo);
     }
     return true;
 }
 
-ScratchVec<Complex> readComplexVec(const Value &v, const char *fn, std::pmr::memory_resource *mr)
+keel::Array<keel::c64> readComplexVec(const Value &v, const char *fn, keel::Allocator *mr)
 {
-    if (v.isEmpty()) return ScratchVec<Complex>(mr);
+    if (v.isEmpty()) return keel::Array<keel::c64>(mr);
     if (v.type() != ValueType::COMPLEX && v.type() != ValueType::DOUBLE && v.type() != ValueType::SINGLE)
         throw Error(std::string(fn) + ": zeros/poles must be double, single, or "
                     "complex vectors",
                     0, 0, fn, "", std::string("numkit:") + fn + ":inputType");
-    ScratchVec<Complex> out(mr);
+    keel::Array<keel::c64> out(mr);
     out.reserve(v.numel());
     if (v.type() == ValueType::COMPLEX) {
-        const Complex *p = v.complexData();
-        for (size_t i = 0; i < v.numel(); ++i) out.push_back(p[i]);
+        const keel::c64 *p = v.complexData();
+        for (keel::usize i = 0; i < v.numel(); ++i) out.push_back(p[i]);
     } else {
-        for (size_t i = 0; i < v.numel(); ++i) out.push_back(Complex(v.elemAsDouble(i), 0.0));
+        for (keel::usize i = 0; i < v.numel(); ++i) out.push_back(keel::c64(v.elemAsDouble(i), 0.0));
     }
     return out;
 }
 
-Value buildSosMatrix(const double *b1s, const double *b2s, const double *a1s, const double *a2s, const std::uint8_t *noZeros, bool surplusAtOrigin, std::size_t L, double leadingGain, std::pmr::memory_resource *mr)
+Value buildSosMatrix(const double *b1s, const double *b2s, const double *a1s, const double *a2s, const keel::u8 *noZeros, bool surplusAtOrigin, keel::usize L, double leadingGain, keel::Allocator *mr)
 {
     auto sos = Value::matrix(L, 6, ValueType::DOUBLE, mr);
     double *p = sos.doubleDataMut();
-    for (size_t r = 0; r < L; ++r) {
+    for (keel::usize r = 0; r < L; ++r) {
         const double scale = (r == 0) ? leadingGain : 1.0;
         if (noZeros && noZeros[r] && surplusAtOrigin) {
             // zp2sos: a section carrying no finite zeros gets MATLAB's
@@ -217,18 +218,18 @@ Value buildSosMatrix(const double *b1s, const double *b2s, const double *a1s, co
     return sos;
 }
 
-inline ScratchVec<Complex> coeffsAsVector(const Value &v, std::pmr::memory_resource *mr)
+inline keel::Array<keel::c64> coeffsAsVector(const Value &v, keel::Allocator *mr)
 {
     if ((v.type() != ValueType::DOUBLE && v.type() != ValueType::SINGLE && v.type() != ValueType::COMPLEX) || !v.dims().isVector())
         throw Error("tf2sos: b/a must be DOUBLE, SINGLE, or COMPLEX row/column vectors",
                     0, 0, "tf2sos", "", "numkit:tf2sos:type");
-    const size_t n = v.numel();
-    ScratchVec<Complex> out(n, mr);
+    const keel::usize n = v.numel();
+    keel::Array<keel::c64> out(n, mr);
     if (v.type() == ValueType::COMPLEX) {
-        const Complex *p = v.complexData();
-        for (size_t i = 0; i < n; ++i) out[i] = p[i];
+        const keel::c64 *p = v.complexData();
+        for (keel::usize i = 0; i < n; ++i) out[i] = p[i];
     } else {
-        for (size_t i = 0; i < n; ++i) out[i] = Complex(v.elemAsDouble(i), 0.0);
+        for (keel::usize i = 0; i < n; ++i) out[i] = keel::c64(v.elemAsDouble(i), 0.0);
     }
     return out;
 }
@@ -251,23 +252,23 @@ void zp2sos_argcheck(const Value &zerosV, const Value &polesV)
 } // namespace
 
 std::tuple<Value, double>
-zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surplusAtOrigin, std::pmr::memory_resource *mr)
+zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surplusAtOrigin, keel::Allocator *mr)
 {
     zp2sos_argcheck(zerosV, polesV);
 
     const bool anySingle = (zerosV.type() == ValueType::SINGLE) || (polesV.type() == ValueType::SINGLE);
-    ScratchArena scratch(mr);
-    auto zeros = readComplexVec(zerosV, "zp2sos", &scratch);
-    auto poles = readComplexVec(polesV, "zp2sos", &scratch);
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto zeros = readComplexVec(zerosV, "zp2sos", scratch.allocator());
+    auto poles = readComplexVec(polesV, "zp2sos", scratch.allocator());
 
-    const size_t L = (poles.size() + 1) / 2;
+    const keel::usize L = (poles.size() + 1) / 2;
 
-    auto b1s = ScratchVec<double>(L, &scratch);
-    auto b2s = ScratchVec<double>(L, &scratch);
-    auto a1s = ScratchVec<double>(L, &scratch);
-    auto a2s = ScratchVec<double>(L, &scratch);
-    auto noZeros = ScratchVec<std::uint8_t>(L, &scratch);
-    for (size_t s = 0; s < L; ++s) {
+    auto b1s = keel::Array<double>(L, scratch.allocator());
+    auto b2s = keel::Array<double>(L, scratch.allocator());
+    auto a1s = keel::Array<double>(L, scratch.allocator());
+    auto a2s = keel::Array<double>(L, scratch.allocator());
+    auto noZeros = keel::Array<keel::u8>(L, scratch.allocator());
+    for (keel::usize s = 0; s < L; ++s) {
         RootPair polePair;
         if (!popPair(poles, polePair))
             throw Error("zp2sos: internal — ran out of poles",
@@ -298,10 +299,10 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surpl
                            gain);
 }
 
-Value zp2sos(const Value &zerosV, const Value &polesV, double gain, std::pmr::memory_resource *mr)
+Value zp2sos(const Value &zerosV, const Value &polesV, double gain, keel::Allocator *mr)
 {
     auto [sos, g] = zp2sosWithGain(zerosV, polesV, gain, /*surplusAtOrigin=*/true, mr);
-    const size_t L = sos.dims().rows();
+    const keel::usize L = sos.dims().rows();
     if (sos.type() == ValueType::SINGLE) {
         float *p = sos.singleDataMut();
         const float gf = static_cast<float>(g);
@@ -318,13 +319,13 @@ Value zp2sos(const Value &zerosV, const Value &polesV, double gain, std::pmr::me
 }
 
 std::tuple<Value, double>
-tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
+tf2sosWithGain(const Value &b, const Value &a, keel::Allocator *mr)
 {
     const bool anySingle = (b.type() == ValueType::SINGLE) || (a.type() == ValueType::SINGLE);
-    ScratchArena scratch(mr);
-    auto bv = coeffsAsVector(b, &scratch);
-    auto av = coeffsAsVector(a, &scratch);
-    if (av.empty() || av[0] == Complex(0.0, 0.0))
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto bv = coeffsAsVector(b, scratch.allocator());
+    auto av = coeffsAsVector(a, scratch.allocator());
+    if (av.empty() || av[0] == keel::c64(0.0, 0.0))
         throw Error("tf2sos: a(1) must be nonzero",
                      0, 0, "tf2sos", "", "numkit:tf2sos:zeroLead");
     if (bv.empty())
@@ -332,15 +333,15 @@ tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
                      0, 0, "tf2sos", "", "numkit:tf2sos:emptyB");
 
     const double gain = (bv[0] / av[0]).real();
-    auto zeros = polyRootsDurandKerner(bv.data(), bv.size(), &scratch);
-    auto poles = polyRootsDurandKerner(av.data(), av.size(), &scratch);
+    auto zeros = polyRootsDurandKerner(bv.data(), bv.size(), scratch.allocator());
+    auto poles = polyRootsDurandKerner(av.data(), av.size(), scratch.allocator());
 
-    auto toCplxVec = [&](const ScratchVec<Complex> &v) -> Value {
+    auto toCplxVec = [&](const keel::Array<keel::c64> &v) -> Value {
         if (v.empty())
             return Value::matrix(0, 0, ValueType::COMPLEX, mr);
         auto r = Value::matrix(v.size(), 1, ValueType::COMPLEX, mr);
-        Complex *p = r.complexDataMut();
-        for (size_t i = 0; i < v.size(); ++i) p[i] = v[i];
+        keel::c64 *p = r.complexDataMut();
+        for (keel::usize i = 0; i < v.size(); ++i) p[i] = v[i];
         return r;
     };
     // tf2sos must reproduce the ORIGINAL b polynomial: surplus zeros stay
@@ -349,10 +350,10 @@ tf2sosWithGain(const Value &b, const Value &a, std::pmr::memory_resource *mr)
     return std::make_tuple(detail::narrowDoubleToSingleIf(std::move(sos), anySingle, mr), g);
 }
 
-Value tf2sos(const Value &b, const Value &a, std::pmr::memory_resource *mr)
+Value tf2sos(const Value &b, const Value &a, keel::Allocator *mr)
 {
     auto [sos, g] = tf2sosWithGain(b, a, mr);
-    const size_t L = sos.dims().rows();
+    const keel::usize L = sos.dims().rows();
     if (sos.type() == ValueType::SINGLE) {
         float *p = sos.singleDataMut();
         const float gf = static_cast<float>(g);

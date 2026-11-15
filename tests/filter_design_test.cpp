@@ -1,5 +1,6 @@
 // tests/filter_design_test.cpp
 
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -200,7 +201,7 @@ TEST_F(FilterDesignTest, PhasezUnwrappedIsContinuous)
     for (int i = 2; i <= 128; ++i) {
         double d = evalScalar("phi(" + std::to_string(i) + ") - phi("
                               + std::to_string(i - 1) + ");");
-        EXPECT_LT(std::abs(d), M_PI);
+        EXPECT_LT(keel::abs(d), M_PI);
     }
 }
 

@@ -6,6 +6,7 @@
 // bugs/closed/signal/findpeaks-widthreference.md). Dual-engine: the width
 // computation runs inside findpeaksImpl for both backends.
 
+#include <keel/core.h>
 #include "dual_engine_fixture.hpp"
 #include <numkit/value/error.hpp>
 
@@ -18,13 +19,13 @@ class FindpeaksWidthTest : public DualEngineTest
 {
 public:
     // w(i) of the third output of findpeaks(y, ...)
-    double wOf(const std::string &y, const std::string &opts, size_t i)
+    double wOf(const std::string &y, const std::string &opts, keel::usize i)
     {
         eval("[~,~,w] = findpeaks(" + y + opts + ");");
         auto *w = getVarPtr("w");
         return w->doubleData()[i];
     }
-    size_t wNumel(const std::string &y, const std::string &opts)
+    keel::usize wNumel(const std::string &y, const std::string &opts)
     {
         eval("[~,~,w] = findpeaks(" + y + opts + ");");
         return getVarPtr("w")->numel();

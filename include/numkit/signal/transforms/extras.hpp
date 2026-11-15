@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -29,7 +30,7 @@ namespace numkit::signal {
 /// @return    N×N COMPLEX matrix.
 ///
 /// @code  Value F = dftmtx(8);  Value X = F * x;  // FFT via matmul  @endcode
-Value dftmtx(size_t N, std::pmr::memory_resource *mr = nullptr);
+Value dftmtx(keel::usize N, keel::Allocator *mr = nullptr);
 
 /// Re-order a sequence by bit-reversed indices.
 ///
@@ -43,7 +44,7 @@ Value dftmtx(size_t N, std::pmr::memory_resource *mr = nullptr);
 /// @return    Same-shape Value with elements permuted.
 /// @throws    numkit::Error  if `numel(x)` is not a power of 2.
 Value bitrevorder(const Value &                x,
-                  std::pmr::memory_resource *  mr = nullptr);
+                  keel::Allocator *  mr = nullptr);
 
 /// Type-II Discrete Sine Transform.
 ///
@@ -56,7 +57,7 @@ Value bitrevorder(const Value &                x,
 /// @return    Same-length DOUBLE vector.
 ///
 /// @see idst, dct
-Value dst(const Value &x, std::pmr::memory_resource *mr = nullptr);
+Value dst(const Value &x, keel::Allocator *mr = nullptr);
 
 /// Inverse Type-II DST.
 ///
@@ -68,7 +69,7 @@ Value dst(const Value &x, std::pmr::memory_resource *mr = nullptr);
 /// @return    Same-length DOUBLE vector.
 ///
 /// @see dst
-Value idst(const Value &y, std::pmr::memory_resource *mr = nullptr);
+Value idst(const Value &y, keel::Allocator *mr = nullptr);
 
 /// Real cepstrum: `real(ifft(log(abs(fft(x)))))`.
 ///
@@ -80,7 +81,7 @@ Value idst(const Value &y, std::pmr::memory_resource *mr = nullptr);
 /// @return    Same-length DOUBLE vector.
 ///
 /// @see cceps, icceps
-Value rceps(const Value &x, std::pmr::memory_resource *mr = nullptr);
+Value rceps(const Value &x, keel::Allocator *mr = nullptr);
 
 /// Real cepstrum and its minimum-phase reconstruction
 /// (`[y, ym] = rceps(x)`).
@@ -95,7 +96,7 @@ Value rceps(const Value &x, std::pmr::memory_resource *mr = nullptr);
 /// @return    `(y, ym)` pair, each the same length/orientation as `x`.
 /// @see rceps, cceps
 std::pair<Value, Value> rcepsMinPhase(const Value &x,
-                                      std::pmr::memory_resource *mr = nullptr);
+                                      keel::Allocator *mr = nullptr);
 
 /// Complex cepstrum: `ifft(log(fft(x)))` with phase unwrapping.
 ///
@@ -110,8 +111,8 @@ std::pair<Value, Value> rcepsMinPhase(const Value &x,
 /// @return    Same-length DOUBLE vector.
 ///
 /// @see icceps, rceps
-Value cceps(const Value &x, double *ndOut = nullptr,
-            std::pmr::memory_resource *mr = nullptr);
+Value cceps(const Value &x, keel::f64 *ndOut = nullptr,
+            keel::Allocator *mr = nullptr);
 
 /// Inverse complex cepstrum: `real(ifft(exp(fft(c))))`.
 ///
@@ -123,7 +124,7 @@ Value cceps(const Value &x, double *ndOut = nullptr,
 /// @return    Same-length DOUBLE vector.
 ///
 /// @see cceps
-Value icceps(const Value &c, std::pmr::memory_resource *mr = nullptr);
+Value icceps(const Value &c, keel::Allocator *mr = nullptr);
 
 
 /// @}

@@ -7,7 +7,8 @@
 
 #pragma once
 
-#include <memory_resource>
+#include <keel/core.h>
+#include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -43,9 +44,9 @@ namespace numkit::signal {
 std::tuple<Value, Value, Value>
 spectrogram(const Value &                x,
             const Value &                window,
-            size_t                       noverlap,
-            size_t                       nfft,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::usize                       noverlap,
+            keel::usize                       nfft,
+            keel::Allocator *  mr = nullptr);
 
 /// Full two-sided / centred / one-sided STFT.
 ///
@@ -71,10 +72,10 @@ spectrogram(const Value &                x,
 /// @see istft, spectrogram
 Value stft(const Value &                x,
            const Value &                window,
-           std::size_t                  overlap,
-           std::size_t                  fftLength,
+           keel::usize                  overlap,
+           keel::usize                  fftLength,
            const std::string &          range,
-           std::pmr::memory_resource *  mr = nullptr);
+           keel::Allocator *  mr = nullptr);
 
 /// Inverse STFT via overlap-add.
 ///
@@ -96,10 +97,10 @@ Value stft(const Value &                x,
 /// @see stft
 Value istft(const Value &                S,
             const Value &                window,
-            std::size_t                  overlap,
-            std::size_t                  fftLength,
+            keel::usize                  overlap,
+            keel::usize                  fftLength,
             const std::string &          range,
-            std::pmr::memory_resource *  mr = nullptr);
+            keel::Allocator *  mr = nullptr);
 
 /// @brief Constant OverLap-Add (COLA) compliance check
 /// (`tf = iscola(window, noverlap[, method])`).
@@ -120,9 +121,9 @@ Value istft(const Value &                S,
 /// @see stft, istft
 std::tuple<Value, Value, Value>
 iscola(const Value &                window,
-       std::size_t                  noverlap,
+       keel::usize                  noverlap,
        const std::string &          method,
-       std::pmr::memory_resource *  mr = nullptr);
+       keel::Allocator *  mr = nullptr);
 
 
 /// @}
