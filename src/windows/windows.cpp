@@ -39,7 +39,7 @@ double besseli0(double x)
 }
 
 // Chebyshev polynomial T_n(x) — uses cos for |x|<=1, cosh for |x|>1.
-double chebyT(int n, double x)
+[[maybe_unused]] double chebyT(int n, double x)
 {
     if (keel::abs(x) <= 1.0)
         return std::cos(n * std::acos(x));
@@ -403,7 +403,7 @@ Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
                           (A * A + (nbar - 0.5) * (nbar - 0.5));
 
     // Coefficients F_m, m = 1..nbar-1.
-    auto Fm = keel::Array<double>(static_cast<keel::usize>(nbar - 1), 0.0, mr);
+    auto Fm = keel::Array<double>(nbar - 1, 0.0, mr);
     for (int m = 1; m < nbar; ++m) {
         double num = 1.0, den = 1.0;
         for (int k = 1; k < nbar; ++k) {

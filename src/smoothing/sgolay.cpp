@@ -60,7 +60,7 @@ keel::Array<double> buildVandermonde(int order, int framelen, keel::Allocator *m
 {
     const int n = framelen;
     const int p = order + 1;
-    keel::Array<double> V(static_cast<keel::usize>(n * p), mr);
+    keel::Array<double> V(n * p, mr);
     const double half = static_cast<double>(framelen / 2);
     for (int i = 0; i < n; ++i) {
         double v = 1.0;
@@ -88,8 +88,8 @@ keel::Array<double> buildProjection(int order, int framelen,
 
     // Form V'·W·V  (p × p) and V'·W  (p × n) on the side. With w == nullptr
     // the weight factor is 1.0 and this reduces to the ordinary V'V / V'.
-    keel::Array<double> VtV(static_cast<keel::usize>(p * p), mr);
-    keel::Array<double> Vt (static_cast<keel::usize>(p * n), mr);
+    keel::Array<double> VtV(p * p, mr);
+    keel::Array<double> Vt (p * n, mr);
     for (int k = 0; k < p; ++k)
         for (int i = 0; i < n; ++i)
             Vt[k * n + i] = V[i * p + k] * (w ? w[i] : 1.0);
@@ -105,7 +105,7 @@ keel::Array<double> buildProjection(int order, int framelen,
     keel::Array<double> X(Vt, mr);
     gaussJordan(VtV.data(), X.data(), p, n);
 
-    keel::Array<double> B(static_cast<keel::usize>(n * n), mr);
+    keel::Array<double> B(n * n, mr);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j) {
             double s = 0.0;
@@ -128,7 +128,7 @@ keel::Array<double> buildDiffMatrix(int order, int framelen, keel::Allocator *mr
     auto V = buildVandermonde(order, framelen, mr);      // n × p
 
     // VtV = V'·V (p × p).
-    keel::Array<double> VtV(static_cast<keel::usize>(p * p), mr);
+    keel::Array<double> VtV(p * p, mr);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j) {
             double s = 0.0;
@@ -138,14 +138,14 @@ keel::Array<double> buildDiffMatrix(int order, int framelen, keel::Allocator *mr
         }
 
     // Invert VtV: solve VtV · inv = I.
-    keel::Array<double> inv(static_cast<keel::usize>(p * p), mr);
+    keel::Array<double> inv(p * p, mr);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j)
             inv[i * p + j] = (i == j) ? 1.0 : 0.0;
     gaussJordan(VtV.data(), inv.data(), p, p);           // inv := (V'V)^-1
 
     // G = V · inv (n × p).
-    keel::Array<double> G(static_cast<keel::usize>(n * p), mr);
+    keel::Array<double> G(n * p, mr);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < p; ++j) {
             double s = 0.0;
@@ -315,7 +315,7 @@ Value sgolayfilt(const Value &x, int order, int framelen,
         throw Error("sgolayfilt: weights must have length framelen",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:weightsLen");
     keel::ArenaTemp wa = keel::get_scratch(mr);
-    auto w = keel::Array<double>(static_cast<keel::usize>(framelen), wa.allocator());
+    auto w = keel::Array<double>(framelen, wa.allocator());
     for (int i = 0; i < framelen; ++i) {
         const double wi = weights.elemAsDouble(i);
         if (!(wi > 0.0))

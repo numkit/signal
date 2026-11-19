@@ -128,14 +128,14 @@ butter(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
     // the bilinear map. For LP: s_k = sp_k * Wa, no finite zeros. For
     // HP: s_k = Wa / sp_k, plus N zeros at s = 0 (which map to z = 1
     // through the bilinear).
-    keel::Array<keel::c64> sP(static_cast<keel::usize>(N), scratch.allocator());
+    keel::Array<keel::c64> sP(N, scratch.allocator());
     keel::Array<keel::c64> sZ(scratch.allocator());
     if (type == "low") {
         for (int i = 0; i < N; ++i) sP[i] = sPoles[i] * Wa;
         // sZ stays empty — Butterworth LP has all zeros at infinity.
     } else {
         for (int i = 0; i < N; ++i) sP[i] = Wa / sPoles[i];
-        sZ.assign(static_cast<keel::usize>(N), keel::c64(0.0, 0.0));
+        sZ.assign(N, keel::c64(0.0, 0.0));
     }
 
     keel::Array<double> b(scratch.allocator()), a(scratch.allocator());
@@ -244,7 +244,7 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
 // Antiderivative of cos(k·ω):
 //   k == 0: ω
 //   k != 0: sin(k·ω)/k
-inline double Ic(int k, double w)
+[[maybe_unused]] inline double Ic(int k, double w)
 {
     return (k == 0) ? w : std::sin(k * w) / k;
 }
@@ -252,7 +252,7 @@ inline double Ic(int k, double w)
 // Antiderivative of (ω - ω0)·cos(k·ω) (for the linear-amp segment):
 //   k == 0: (ω - ω0)²/2
 //   k != 0: (ω - ω0)·sin(k·ω)/k + cos(k·ω)/k²
-inline double Iclin(int k, double w, double w0)
+[[maybe_unused]] inline double Iclin(int k, double w, double w0)
 {
     if (k == 0) {
         const double d = w - w0;
@@ -790,7 +790,7 @@ Value fir2(int n, const Value &f, const Value &m,
     // H has npt+1 points covering DC..Nyquist; grid point j (1-based)
     // is normalised frequency (j-1)/npt.
     const int npt1 = npt + 1;
-    keel::Array<keel::c64> H(static_cast<keel::usize>(npt1), arena.allocator());
+    keel::Array<keel::c64> H(npt1, arena.allocator());
     for (int k = 0; k < npt1; ++k)
         H[k] = keel::c64(0.0, 0.0);
 
@@ -869,7 +869,7 @@ Value fir2(int n, const Value &f, const Value &m,
                                 0, 0, "fir2", "", "numkit:fir2:BadWindow");
         readVec(opts.window, win);
     } else {
-        win.resize(static_cast<keel::usize>(nn));
+        win.resize(nn);
         if (nn == 1) {
             win[0] = 1.0;
         } else {

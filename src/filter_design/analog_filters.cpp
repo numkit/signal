@@ -130,7 +130,7 @@ buttap(int N, keel::Allocator *mr)
     // Butterworth poles: equally-spaced on the left half of the unit
     // circle. p_k = exp(j π (2k - 1) / (2N) + j π/2) for k = 1..N.
     keel::Array<keel::c64> z;  // no zeros
-    keel::Array<keel::c64> p(static_cast<keel::usize>(N));
+    keel::Array<keel::c64> p(N);
     for (int k = 1; k <= N; ++k) {
         const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N) + 0.5 * M_PI;
         p[k - 1] = keel::exp(keel::c64(0.0, theta));
@@ -152,7 +152,7 @@ cheb1ap(int N, double Rp, keel::Allocator *mr)
     const double eps = std::sqrt(std::pow(10.0, Rp / 10.0) - 1.0);
     const double mu = std::asinh(1.0 / eps) / static_cast<double>(N);
     keel::Array<keel::c64> z;
-    keel::Array<keel::c64> p(static_cast<keel::usize>(N));
+    keel::Array<keel::c64> p(N);
     for (int k = 1; k <= N; ++k) {
         const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
         p[k - 1] = keel::c64(-std::sinh(mu) * std::sin(theta),
@@ -408,7 +408,7 @@ cheb2ap(int N, double Rs, keel::Allocator *mr)
     const double delta = 1.0 / std::sqrt(std::pow(10.0, Rs / 10.0) - 1.0);
     const double mu = std::asinh(1.0 / delta) / static_cast<double>(N);
 
-    keel::Array<keel::c64> p(static_cast<keel::usize>(N)), z;
+    keel::Array<keel::c64> p(N), z;
     for (int k = 1; k <= N; ++k) {
         const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
         // Type-I pole, then invert.
@@ -656,7 +656,7 @@ bilinear(const Value &b, const Value &a, double fs, double fp, keel::Allocator *
         // Build poly in z. deg = original degree of c.
         // (z+1)^order is multiplied out, then for each c[i] we add
         // c[i] * K^i * (z-1)^i * (z+1)^(order-i).
-        keel::Array<double> r(static_cast<keel::usize>(order + 1), 0.0, mr);
+        keel::Array<double> r(order + 1, 0.0, mr);
         // Helper: polynomial power (z+a)^p where a = ±1.
         auto polyPow = [mr](double a, int p) {
             keel::Array<double> r({1.0}, mr);
@@ -670,7 +670,7 @@ bilinear(const Value &b, const Value &a, double fs, double fp, keel::Allocator *
             }
             return r;
         };
-        keel::Array<double> Kpow(static_cast<keel::usize>(deg + 1), mr);
+        keel::Array<double> Kpow(deg + 1, mr);
         Kpow[0] = 1.0;
         for (int i = 1; i <= deg; ++i) Kpow[i] = Kpow[i - 1] * K;
         for (int i = 0; i <= deg; ++i) {
@@ -721,7 +721,7 @@ namespace {
 
 // Horner evaluation of a real polynomial p (coefficients high → low) at
 // a complex point.
-inline keel::c64 hornerReal(keel::ArrayRef<double> p, keel::c64 x) {
+[[maybe_unused]] inline keel::c64 hornerReal(keel::ArrayRef<double> p, keel::c64 x) {
     keel::c64 r(0.0, 0.0);
     for (auto c : p) r = r * x + keel::c64(c, 0.0);
     return r;
@@ -729,7 +729,7 @@ inline keel::c64 hornerReal(keel::ArrayRef<double> p, keel::c64 x) {
 
 // poly(roots) for complex roots — returns coefficients high → low,
 // length roots.size() + 1.
-keel::Array<keel::c64> polyFromRootsComplex(keel::ArrayRef<keel::c64> roots) {
+[[maybe_unused]] keel::Array<keel::c64> polyFromRootsComplex(keel::ArrayRef<keel::c64> roots) {
     keel::Array<keel::c64> p = { keel::c64(1.0, 0.0) };
     for (auto rk : roots) {
         keel::Array<keel::c64> np(p.size() + 1, keel::c64(0.0, 0.0));
@@ -810,7 +810,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
     keel::Array<keel::c64> distinct(mr);
     keel::Array<int> mult(mr);
     {
-        keel::Array<char> used(static_cast<keel::usize>(N), 0, mr);
+        keel::Array<char> used(N, 0, mr);
         for (int k = 0; k < N; ++k) {
             if (used[k]) continue;
             keel::c64 sum = pv[k]; int m = 1; used[k] = 1;
@@ -866,7 +866,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
 
     // 6) b_d(z⁻¹) = Σ over distinct poles & orders of the impulse-invariant
     //    z-kernel: r_m · T^m/(m-1)! · N_m(α z⁻¹) · (1-α z⁻¹)^{M-m} · ∏_{q∉grp}(1-α_q z⁻¹).
-    keel::Array<keel::c64> bd(static_cast<keel::usize>(N), keel::c64(0.0, 0.0), mr);   // degree N-1, low→high z⁻¹
+    keel::Array<keel::c64> bd(N, keel::c64(0.0, 0.0), mr);   // degree N-1, low→high z⁻¹
     for (keel::usize di = 0; di < distinct.size(); ++di) {
         const keel::c64 p = distinct[di];
         const int M = mult[di];
@@ -877,7 +877,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
         const keel::Array<keel::c64> tA = taylorAbout(av, p);   // length N+1
         const keel::Array<keel::c64> tB = taylorAbout(bv, p);
         auto Atil = [&](int i) { return (M + i < (int)tA.size()) ? tA[M + i] : keel::c64(0.0, 0.0); };
-        keel::Array<keel::c64> cc(static_cast<keel::usize>(M), keel::c64(0.0, 0.0), mr);
+        keel::Array<keel::c64> cc(M, keel::c64(0.0, 0.0), mr);
         for (int j = 0; j < M; ++j) {
             keel::c64 acc = (j < (int)tB.size()) ? tB[j] : keel::c64(0.0, 0.0);
             for (int i = 1; i <= j; ++i) acc -= Atil(i) * cc[j - i];
@@ -912,7 +912,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
     }
 
     // 7) Real row vectors (imag parts cancel for a real analog filter).
-    keel::Array<double> ad_d(static_cast<keel::usize>(N + 1), mr), bd_d(static_cast<keel::usize>(N), mr);
+    keel::Array<double> ad_d(N + 1, mr), bd_d(static_cast<keel::usize>(N), mr);
     for (int i = 0; i <= N; ++i) ad_d[i] = ad[i].real();
     for (int i = 0; i < N; ++i)  bd_d[i] = bd[i].real();
     return std::make_tuple(packDoubleRow(bd_d, mr), packDoubleRow(ad_d, mr));

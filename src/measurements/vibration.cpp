@@ -264,8 +264,8 @@ tsa(const Value &x, double fs,
     // 2. Re-sample onto a uniform angle grid by accumulating into
     //    n_per_rev bins per revolution.
     const double twoPi = 2.0 * M_PI;
-    keel::Array<double> sumBin(static_cast<keel::usize>(n_per_rev), 0.0, mr);
-    keel::Array<int> cntBin(static_cast<keel::usize>(n_per_rev), 0, mr);
+    keel::Array<double> sumBin(n_per_rev, 0.0, mr);
+    keel::Array<int> cntBin(n_per_rev, 0, mr);
     for (keel::usize i = 0; i < N; ++i) {
         double ang = std::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
@@ -274,11 +274,11 @@ tsa(const Value &x, double fs,
         sumBin[b] += signal_v[i];
         cntBin[b]++;
     }
-    keel::Array<double> avg(static_cast<keel::usize>(n_per_rev), mr);
+    keel::Array<double> avg(n_per_rev, mr);
     for (int b = 0; b < n_per_rev; ++b)
         avg[b] = (cntBin[b] > 0) ? sumBin[b] / cntBin[b] : 0.0;
 
-    keel::Array<double> th(static_cast<keel::usize>(n_per_rev), mr);
+    keel::Array<double> th(n_per_rev, mr);
     for (int b = 0; b < n_per_rev; ++b)
         th[b] = twoPi * b / n_per_rev;
 

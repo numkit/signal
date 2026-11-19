@@ -87,7 +87,7 @@ Value allocMultirateOut(const Value &x, const GatherShape &gs, keel::usize outRo
     const int nd = x.dims().ndim();
     if (nd <= 2)
         return Value::matrix(outRows, gs.cols, t, mr);
-    keel::Array<keel::usize> od(static_cast<keel::usize>(nd), mr);
+    keel::Array<keel::usize> od(nd, mr);
     od[0] = outRows;
     for (int d = 1; d < nd; ++d)
         od[static_cast<keel::usize>(d)] = x.dims().dim(d);
@@ -100,7 +100,7 @@ namespace {
 
 // Windowed-sinc lowpass FIR, Hamming window, cutoff wc (radians).
 // Normalized so DC gain is 1. Order is filtLen - 1; filtLen must be >= 2.
-keel::Array<double> designLowpassFir(keel::usize filtLen, double wc, keel::Allocator *mr)
+[[maybe_unused]] keel::Array<double> designLowpassFir(keel::usize filtLen, double wc, keel::Allocator *mr)
 {
     const keel::usize filtOrder = filtLen - 1;
     const double half = filtOrder / 2.0;
@@ -123,7 +123,7 @@ keel::Array<double> designLowpassFir(keel::usize filtLen, double wc, keel::Alloc
 
 // Direct Form II transposed FIR apply — matches filter.cpp's core for
 // the a = [1] denominator case. Used by decimate and resample.
-keel::Array<double> applyFirDf2t(const double *h, keel::usize filtLen, const double *x, keel::usize nx, keel::Allocator *mr)
+[[maybe_unused]] keel::Array<double> applyFirDf2t(const double *h, keel::usize filtLen, const double *x, keel::usize nx, keel::Allocator *mr)
 {
     keel::Array<double> out(nx, mr);
     keel::Array<double> z(filtLen, mr);
@@ -326,7 +326,7 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double
     const double *kwd = kw.doubleData();
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    auto fk = keel::Array<double>(static_cast<keel::usize>(L), scratch.allocator());
+    auto fk = keel::Array<double>(L, scratch.allocator());
     double sumfk = 0.0;
     for (int i = 0; i < L; ++i) { fk[i] = fbd[i] * kwd[i]; sumfk += fk[i]; }
 

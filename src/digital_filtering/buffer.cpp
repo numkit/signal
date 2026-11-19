@@ -120,13 +120,11 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
                     0, 0, "buffer", "", "numkit:buffer:BadOverlap");
 
     // Decide whether to apply initial-condition prepend (p > 0 only).
-    bool prependZeros = (p > 0);
     keel::usize initLen = (p > 0) ? static_cast<keel::usize>(p) : 0;
     keel::Array<double> initVec(initLen, 0.0, mr);  // initial condition (zeros default)
 
     if (p > 0 && !opt.isEmpty()) {
         if (isStringLikeNoDelay(opt)) {
-            prependZeros = false;
             initLen = 0;
             initVec.clear();
         } else {

@@ -108,11 +108,11 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
 
     keel::Array<double> V(mr);
     jacobiEig(R, V, static_cast<keel::usize>(M));
-    keel::Array<double> lam(static_cast<keel::usize>(M), mr);
+    keel::Array<double> lam(M, mr);
     for (int i = 0; i < M; ++i) lam[i] = R[i * M + i];
 
     // Ascending eigenvalue order; noise subspace = the smallest (M-p) vectors.
-    keel::Array<int> ord(static_cast<keel::usize>(M), mr);
+    keel::Array<int> ord(M, mr);
     std::iota(ord.begin(), ord.end(), 0);
     std::sort(ord.begin(), ord.end(), [&](int a, int b) { return lam[a] < lam[b]; });
     const int nNoise = M - p;

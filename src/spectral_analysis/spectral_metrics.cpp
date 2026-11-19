@@ -492,7 +492,7 @@ constexpr int kDcBins     = 8;   // DC bins to ignore when finding peak
 // values; for narrow peaks this is close to the trapezoidal estimate
 // times df, scaled identically across all sums so the ratio in dB is
 // unchanged).
-double sumBins(keel::ArrayRef<double> P, int lo, int hi)
+[[maybe_unused]] double sumBins(keel::ArrayRef<double> P, int lo, int hi)
 {
     if (lo < 0) lo = 0;
     if (hi > static_cast<int>(P.size())) hi = static_cast<int>(P.size());
@@ -531,7 +531,7 @@ HarmonicAnalysis analyseHarmonics(keel::ArrayRef<double> P)
     // Mark which bins belong to the fundamental skirt or a harmonic
     // skirt. Everything else contributes to noise (after skipping DC
     // bins at the start).
-    keel::Array<keel::u8> mark(static_cast<keel::usize>(nbins), 0); // 1=fund, 2=harm
+    keel::Array<keel::u8> mark(nbins, 0); // 1=fund, 2=harm
     for (int j = std::max(0, f0 - kSkirtBins);
          j < std::min(nbins, f0 + kSkirtBins + 1); ++j) mark[j] = 1;
     for (int n = 2; n <= kHarmonics; ++n) {
