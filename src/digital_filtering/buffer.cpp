@@ -21,13 +21,12 @@
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/signal/digital_filtering/buffer.hpp>
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 #include <tuple>
-#include <cctype>
-
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -49,7 +48,7 @@ bool isStringLikeNoDelay(const Value &v)
     if (v.type() != ValueType::CHAR && v.type() != ValueType::STRING) return false;
     keel::String s = v.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    [](unsigned char c) { return keel::to_ascii_lower(c); });
     return s == "nodelay";
 }
 

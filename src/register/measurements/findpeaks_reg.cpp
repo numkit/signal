@@ -9,6 +9,7 @@
 #include <keel/string.h>
 #include <keel/arena.h>
 #include <keel/array.h>
+#include <keel/utf8.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/findpeaks.hpp>
 #include "measurements/findpeaks_detail.hpp"
@@ -17,7 +18,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <tuple>
@@ -76,7 +76,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
         keel::String rawName = args[argi].toString();
         keel::String name = rawName.clone();
         for (char &c : name)
-            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            c = keel::to_ascii_lower(c);
         if (argi + 1 >= args.size())
             throw Error(keel::format("findpeaks: option '{}' needs a value", rawName),
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
@@ -100,7 +100,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
         } else if (name == "sortstr") {
             keel::String s = v.toString();
             for (char &c : s)
-                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                c = keel::to_ascii_lower(c);
             if      (s == "none")    opt.sortMode = 0;
             else if (s == "ascend")  opt.sortMode = 1;
             else if (s == "descend") opt.sortMode = 2;

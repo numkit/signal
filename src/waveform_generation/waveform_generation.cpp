@@ -12,6 +12,7 @@
 #include <keel/string.h>
 #include <keel/complex.h>
 #include <keel/math.h>
+#include <keel/utf8.h>
 #include <numkit/signal/waveform_generation/waveform_generation.hpp>
 #include <numkit/signal/filter_design/filter_design.hpp>     // butter
 #include <numkit/signal/digital_filtering/filter.hpp>        // filtfilt
@@ -23,8 +24,6 @@
 #include <numkit/ops/helpers.hpp>  // createLike
 
 #include "../signal_detail.hpp"     // shared argcheck cores
-
-#include <cctype>
 #include <cmath>
 #include <cstring>
 
@@ -165,7 +164,7 @@ Value pulstran(const Value &t, const Value &d, keel::StringRef fnName,
     keel::String lower;
     lower.reserve(fnName.size());
     for (char c : fnName)
-        lower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        lower.push_back(keel::to_ascii_lower(c));
 
     auto applyKernel = [&](double (*kernel)(double, double, double),
                            double a, double b) {
@@ -313,7 +312,7 @@ Value chirp(const Value &t, double f0, double t1, double f1,
                      0, 0, "chirp", "", "numkit:chirp:badT1");
 
     keel::String m = keel::String::from(method);
-    for (auto &c : m) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (auto &c : m) c = keel::to_ascii_lower(c);
 
     enum class Mode { Linear, Quadratic, Logarithmic };
     Mode mode;
@@ -406,7 +405,7 @@ Value demod(const Value &y, double Fc, double Fs,
 
     keel::String m = keel::String::from(method);
     std::transform(m.begin(), m.end(), m.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    [](unsigned char c) { return keel::to_ascii_lower(c); });
 
     const bool isAmFamily = (m == "am" || m == "amdsb-sc" || m == "amdsb-tc");
     const bool isFmPm = (m == "fm" || m == "pm");
@@ -551,7 +550,7 @@ Value modulate(const Value &x, double Fc, double Fs,
 
     keel::String m = keel::String::from(method);
     std::transform(m.begin(), m.end(), m.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    [](unsigned char c) { return keel::to_ascii_lower(c); });
 
     const bool isRowVec = (x.dims().rows() == 1 && x.dims().cols() > 1);
     const keel::usize len = isRowVec ? x.dims().cols() : x.dims().rows();

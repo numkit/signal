@@ -27,8 +27,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/argcheck.hpp>
-
-#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <stdexcept>

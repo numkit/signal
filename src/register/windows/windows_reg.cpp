@@ -11,6 +11,7 @@
 #include <keel/memory.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/signal/windows/windows.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -19,7 +20,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -44,7 +44,7 @@ keel::usize parseSflag(keel::ArrayRef<Value> args, bool &periodic)
     if (!last.isChar() && !last.isString()) return args.size();
     keel::String s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                   [](unsigned char c) { return keel::to_ascii_lower(c); });
     if (s == "symmetric") return args.size() - 1;
     if (s == "periodic") { periodic = true; return args.size() - 1; }
     return args.size();   // not an sflag â€” leave for caller
@@ -76,7 +76,7 @@ void parseTypeNameOnly(keel::ArrayRef<Value> args, const char *fn)
     if (!last.isChar() && !last.isString()) return;
     keel::String s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                   [](unsigned char c) { return keel::to_ascii_lower(c); });
     if (s != "double" && s != "single")
         throw Error(keel::format("{}: Expected TYPENAME to match one of these values: 'double', 'single' (got '{}')", fn, s),
                     0, 0, fn, "", keel::format("numkit:{}:typeName", fn));

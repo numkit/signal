@@ -15,6 +15,7 @@
 #include <keel/ref.h>
 #include <keel/complex.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -27,7 +28,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <tuple>
@@ -64,7 +64,7 @@ void ifft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
         keel::String rawFlag = args[nargs - 1].toString();
         keel::String flag = rawFlag.clone();
-        for (char &c : flag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        for (char &c : flag) c = keel::to_ascii_lower(c);
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
@@ -117,7 +117,7 @@ void ifft2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
         keel::String rawFlag = args[nargs - 1].toString();
         keel::String flag = rawFlag.clone();
-        for (char &c : flag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        for (char &c : flag) c = keel::to_ascii_lower(c);
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")

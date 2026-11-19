@@ -8,6 +8,7 @@
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
@@ -19,7 +20,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
@@ -68,7 +68,7 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
             keel::String s = args[i].toString();
             keel::String sl = s.clone();
             for (char &ch : sl)
-                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                ch = keel::to_ascii_lower(ch);
             if (sl == "noscale")
                 scale = false;
             else if (sl == "scale")

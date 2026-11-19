@@ -6,6 +6,7 @@
 #include <keel/core.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/value/argcheck.hpp>
@@ -13,7 +14,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <tuple>
@@ -51,7 +51,7 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         if (!args[i].isChar()) continue;
         keel::String opt = args[i].toString();
         std::transform(opt.begin(), opt.end(), opt.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                       [](unsigned char c) { return keel::to_ascii_lower(c); });
         if (opt == "confidencelevel")
             conf = args[i + 1].toScalar();
     }
@@ -91,7 +91,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     for (keel::usize i = 1; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
             keel::String s = args[i].toString();
-            for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            for (char &c : s) c = keel::to_ascii_lower(c);
             if (s == "twosided" || s == "centered") twoSided = true;
         }
     }

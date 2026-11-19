@@ -8,6 +8,7 @@
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
@@ -19,7 +20,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
@@ -38,7 +38,7 @@ inline FilterType parseFtype(const Value &v) {
     auto eq = [&](const char *t) {
         if (s.size() != std::strlen(t)) return false;
         for (keel::usize i = 0; i < s.size(); ++i)
-            if (std::tolower((unsigned char)s[i]) != (unsigned char)t[i]) return false;
+            if (keel::to_ascii_lower(s[i]) != (unsigned char)t[i]) return false;
         return true;
     };
     if (eq("low"))      return FilterType::Lowpass;

@@ -9,6 +9,7 @@
 #include <keel/core.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/signal/digital_filtering/quantizers.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -17,7 +18,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -44,7 +44,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     if (args.size() >= 4 && !args[3].isEmpty()) {
         keel::String s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
-                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                        [](unsigned char c) { return keel::to_ascii_lower(c); });
         if (s == "signed")        signedOut = true;
         else if (s == "unsigned") signedOut = false;
         else throw Error("uencode: 4th arg must be 'signed' or 'unsigned'",
@@ -68,7 +68,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     if (args.size() >= 4 && !args[3].isEmpty()) {
         keel::String s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
-                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                        [](unsigned char c) { return keel::to_ascii_lower(c); });
         if (s == "wrap")          wrap = true;
         else if (s == "saturate") wrap = false;
         else throw Error("udecode: 4th arg must be 'saturate' or 'wrap'",

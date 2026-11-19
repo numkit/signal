@@ -12,6 +12,7 @@
 #include <keel/array.h>
 #include <keel/complex.h>
 #include <keel/math.h>
+#include <keel/utf8.h>
 #include <numkit/signal/filter_design/filter_design.hpp>
 #include <numkit/signal/transforms/fft.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>  // tf2zp (ZPK 3-output)
@@ -302,7 +303,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
     if (!ftype.empty()) {
         keel::String fl;
         fl.reserve(ftype.size());
-        for (char c : ftype) fl.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        for (char c : ftype) fl.push_back(keel::to_ascii_lower(c));
         if (fl == "hilbert" || fl == "h" || fl == "differentiator" || fl == "d")
             antiSym = true;
         else
@@ -525,7 +526,7 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
     const keel::usize nw = Wn.numel();
     keel::String type = keel::String::from(typeIn);
     for (char &ch : type)
-        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        ch = keel::to_ascii_lower(ch);
     if (type.empty())
         type.assign((nw == 1) ? "low" : (nw == 2 ? "bandpass" : "dc-0"));
 
@@ -990,7 +991,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     auto lower_eq = [](keel::StringRef s, const char *t) {
         if (s.size() != keel::StringRef(t).size()) return false;
         for (keel::usize i = 0; i < s.size(); ++i)
-            if (std::tolower(static_cast<unsigned char>(s[i])) != std::tolower(static_cast<unsigned char>(t[i]))) return false;
+            if (keel::to_ascii_lower(s[i]) != keel::to_ascii_lower(t[i])) return false;
         return true;
     };
     const bool isHilbert   = lower_eq(ftype, "hilbert");

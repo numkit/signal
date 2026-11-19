@@ -10,6 +10,7 @@
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/signal/smoothing/medfilt.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -18,7 +19,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -55,7 +55,7 @@ void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     for (keel::usize a = args.size(); a-- > 1;) {
         if (args[a].isChar() || args[a].isString()) {
             keel::String s = args[a].toString();
-            for (char &c : s) c = static_cast<char>(std::tolower((unsigned char)c));
+            for (char &c : s) c = keel::to_ascii_lower(c);
             if (s == "truncate") zeropad = false;
             else if (s == "zeropad") zeropad = true;
             break;
@@ -84,7 +84,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         if (args[2].isChar() || args[2].isString()) {
             keel::String raw = args[2].toString();
             keel::String s = raw.clone();
-            for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            for (char &c : s) c = keel::to_ascii_lower(c);
             if (s != "aic")
                 throw Error(keel::format("fillgaps: ORDER string must be 'aic' (got '{}')", raw),
                             0, 0, "fillgaps", "", "numkit:fillgaps:invalidOrder");

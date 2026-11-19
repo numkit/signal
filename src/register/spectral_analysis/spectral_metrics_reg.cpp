@@ -7,6 +7,7 @@
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
@@ -16,7 +17,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <tuple>
@@ -35,7 +35,7 @@ void bandpower_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     if (args.size() >= 3 && (args[args.size() - 1].isChar() || args[args.size() - 1].isString())) {
         keel::String rawOpt = args[args.size() - 1].toString();
         keel::String opt = rawOpt.clone();
-        for (char &c : opt) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        for (char &c : opt) c = keel::to_ascii_lower(c);
         if (opt != "psd")
             throw Error(keel::format("bandpower: unrecognized option '{}' ('psd' is the only supported option)", rawOpt),
                         0, 0, "bandpower", "", "numkit:bandpower:badOption");
@@ -100,7 +100,7 @@ NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
 static keel::String toLowerCopy(keel::StringRef sv)
 {
     keel::String s = keel::String::from(sv);
-    for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (char &c : s) c = keel::to_ascii_lower(c);
     return s;
 }
 

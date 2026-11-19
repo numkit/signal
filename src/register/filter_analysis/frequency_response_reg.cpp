@@ -12,6 +12,7 @@
 #include <keel/array.h>
 #include <keel/complex.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -20,7 +21,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -48,7 +48,7 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
             keel::String s = args[i].toString();
-            for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            for (char &c : s) c = keel::to_ascii_lower(c);
             if (s == "whole") whole = true;
         } else if (!args[i].isEmpty()) {
             if (numericSeen == 0 && args[i].numel() > 1)

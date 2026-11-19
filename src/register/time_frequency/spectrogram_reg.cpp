@@ -16,6 +16,7 @@
 #include <keel/array.h>
 #include <keel/complex.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -29,7 +30,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <tuple>
@@ -298,7 +298,7 @@ static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
     auto eqIgnoreCase = [](keel::StringRef a, const char *b) {
         if (a.size() != keel::StringRef(b).size()) return false;
         for (keel::usize i = 0; i < a.size(); ++i)
-            if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) return false;
+            if (keel::to_ascii_lower(a[i]) != keel::to_ascii_lower(b[i])) return false;
         return true;
     };
     for (keel::usize i = startIdx; i + 1 < args.size(); i += 2) {

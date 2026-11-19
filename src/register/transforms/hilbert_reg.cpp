@@ -7,6 +7,7 @@
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
+#include <keel/utf8.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>     // interp1 (spline)
 #include <numkit/signal/transforms/hilbert.hpp>
@@ -15,7 +16,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <tuple>
@@ -42,7 +42,7 @@ void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         n = (keel::usize)args[1].toScalar();
     if (args.size() >= 3 && (args[2].isChar() || args[2].isString())) {
         keel::String m = args[2].toString();
-        for (auto &c : m) c = (char)std::tolower((unsigned char)c);
+        for (auto &c : m) c = keel::to_ascii_lower(c);
         if      (m == "analytic")           mode = 1;
         else if (m == "rms")                mode = 2;
         else if (m == "peak" || m == "peaks") mode = 3;

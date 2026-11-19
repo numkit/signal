@@ -8,6 +8,7 @@
 #include <keel/string.h>
 #include <keel/complex.h>
 #include <keel/math.h>
+#include <keel/utf8.h>
 #include <numkit/signal/measurements/dbconv.hpp>
 
 #include <numkit/value/value.hpp>
@@ -16,7 +17,6 @@
 #include <numkit/ops/helpers.hpp>  // createLike (toolboxes/builtin/src/)
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 
 namespace numkit::signal {
@@ -42,7 +42,7 @@ void forEachAsMag(const Value &x, double *dst, F &&f)
 keel::String toLower(keel::StringRef s)
 {
     keel::String r = keel::String::from(s);
-    for (auto &c : r) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (auto &c : r) c = keel::to_ascii_lower(c);
     return r;
 }
 
