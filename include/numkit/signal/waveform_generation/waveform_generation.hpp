@@ -12,8 +12,6 @@
 #include <numkit/value/fn_handle.hpp>
 #include <numkit/value/value.hpp>
 
-#include <string>
-
 namespace numkit::signal {
 
 /// @addtogroup group_signal
@@ -76,7 +74,7 @@ Value gauspuls(const Value &                t,
 /// @see pulstranHandle, rectpuls, tripuls, gauspuls
 Value pulstran(const Value &                t,
                const Value &                d,
-               const std::string &          fnName,
+               keel::StringRef              fnName,
                keel::f64                       fcOrW = 1.0,
                keel::f64                       bw    = 0.5,
                keel::Allocator *  mr    = nullptr);
@@ -120,7 +118,7 @@ Value chirp(const Value &                t,
             keel::f64                       f0,
             keel::f64                       t1,
             keel::f64                       f1,
-            const std::string &          method = "linear",
+            keel::StringRef              method = "linear",
             keel::Allocator *  mr     = nullptr);
 
 /// Square wave with period 2π.
@@ -211,7 +209,7 @@ Value diric(const Value &                x,
 Value modulate(const Value &                x,
                keel::f64                       Fc,
                keel::f64                       Fs,
-               const std::string &          method,
+               keel::StringRef              method,
                const Value &                opt = Value::Empty,
                keel::Allocator *  mr  = nullptr);
 
@@ -239,7 +237,7 @@ Value modulate(const Value &                x,
 Value demod(const Value &                y,
             keel::f64                       Fc,
             keel::f64                       Fs,
-            const std::string &          method,
+            keel::StringRef              method,
             const Value &                opt = Value::Empty,
             keel::Allocator *  mr  = nullptr);
 

@@ -16,8 +16,11 @@
 // Both give similar PSDs on stationary input; pburg is preferred on
 // short signals because it doesn't bias σ² downward.
 
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/complex.h>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 
@@ -26,7 +29,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -38,11 +40,10 @@ namespace {
 
 void ar_argcheck(const Value &x, int p, const char *fn) {
     if (p < 1)
-        throw Error(std::string(fn) + ": order p must be ≥ 1",
+        throw Error(keel::format("{}: order p must be ≥ 1", fn),
                     0, 0, fn, "", "numkit:ar:order");
     if (static_cast<keel::usize>(p) >= x.numel())
-        throw Error(std::string(fn) +
-                    ": order p must be < length(x)",
+        throw Error(keel::format("{}: order p must be < length(x)", fn),
                     0, 0, fn, "", "numkit:ar:order");
 }
 
@@ -50,7 +51,7 @@ void ar_argcheck(const Value &x, int p, const char *fn) {
 // `a` holds AR coefficients (a_1 … a_p), and `sigma2` the prediction-
 // error variance. Returns (Pxx, F) Values sized nOut × 1.
 std::tuple<Value, Value>
-arSpectrum(const std::vector<double> &a, double sigma2, keel::usize nfft, keel::Allocator *mr)
+arSpectrum(keel::ArrayRef<double> a, double sigma2, keel::usize nfft, keel::Allocator *mr)
 {
     const keel::usize nOut = nfft / 2 + 1;
     Value Pxx = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
@@ -80,21 +81,21 @@ arSpectrum(const std::vector<double> &a, double sigma2, keel::usize nfft, keel::
 // 1 + a_1·z^-1 + … + a_p·z^-p) and the prediction-error variance σ²
 // via Levinson-Durbin recursion on the biased autocorrelation.
 namespace {
-struct YWFit { std::vector<double> a; double sigma2; };
+struct YWFit { keel::Array<double> a; double sigma2; };
 
 YWFit yuleWalkerFit(const Value &x, keel::usize pp) {
     const keel::usize N = x.numel();
-    std::vector<double> r(pp + 1, 0.0);
+    keel::Array<double> r(pp + 1, 0.0);
     for (keel::usize k = 0; k <= pp; ++k) {
         double s = 0.0;
         for (keel::usize n = 0; n + k < N; ++n)
             s += x.elemAsDouble(n) * x.elemAsDouble(n + k);
         r[k] = s / static_cast<double>(N);
     }
-    std::vector<double> a(pp, 0.0);
+    keel::Array<double> a(pp, 0.0);
     double sigma2 = r[0];
     if (pp >= 1) {
-        std::vector<double> aPrev(pp, 0.0);
+        keel::Array<double> aPrev(pp, 0.0);
         const double k1 = -r[1] / r[0];
         a[0] = k1;
         sigma2 = r[0] * (1.0 - k1 * k1);
@@ -138,15 +139,15 @@ pburg(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
     if (nfft == 0) nfft = (N >= 256) ? 256 : 256;
 
     // Forward / backward prediction error sequences (start = signal).
-    std::vector<double> f(N), b(N);
+    keel::Array<double> f(N, mr), b(N, mr);
     for (keel::usize n = 0; n < N; ++n) {
         const double v = x.elemAsDouble(n);
         f[n] = v;
         b[n] = v;
     }
 
-    std::vector<double> a(pp, 0.0);
-    std::vector<double> aPrev(pp, 0.0);
+    keel::Array<double> a(pp, 0.0, mr);
+    keel::Array<double> aPrev(pp, 0.0, mr);
 
     // Initial prediction-error variance σ² = (1/N) Σ x²
     double sigma2 = 0.0;
@@ -180,7 +181,7 @@ pburg(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
         // for n = 0..(N - m - 2). After this the active length is
         // N - m - 1.
         const keel::usize L = N - m - 1;
-        std::vector<double> fNew(L), bNew(L);
+        keel::Array<double> fNew(L, mr), bNew(L, mr);
         for (keel::usize n = 0; n < L; ++n) {
             fNew[n] = f[n + 1] + kappa * b[n];
             bNew[n] = b[n]     + kappa * f[n + 1];

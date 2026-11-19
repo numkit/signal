@@ -5,21 +5,19 @@
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -51,7 +49,7 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     double conf = 0.95;
     for (keel::usize i = firstStr; i + 1 < args.size(); ++i) {
         if (!args[i].isChar()) continue;
-        std::string opt(args[i].toString().as_ref());
+        keel::String opt = args[i].toString();
         std::transform(opt.begin(), opt.end(), opt.begin(),
                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (opt == "confidencelevel")
@@ -92,7 +90,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     bool twoSided = args[0].isComplex();
     for (keel::usize i = 1; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
-            std::string s(args[i].toString().as_ref());
+            keel::String s = args[i].toString();
             for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if (s == "twosided" || s == "centered") twoSided = true;
         }

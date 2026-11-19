@@ -7,7 +7,9 @@
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <keel/complex.h>
 #include <keel/math.h>
 #include <numkit/signal/convolution/convolution.hpp>
@@ -23,10 +25,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -36,21 +36,20 @@ namespace detail {
 // argument with unknownShapeParameter). conv2's numeric third argument
 // is instead the SEPARABLE form conv2(u, v, A) â€” unimplemented, voiced
 // honestly instead of being silently ignored.
-static std::string shapeArg(const Value &v, std::string_view fn)
+static keel::String shapeArg(const Value &v, keel::StringRef fn)
 {
     if (v.isChar() || v.isString())
-        return std::string(v.toString().as_ref());
-    throw Error(std::string(fn) + ": shape option must be 'full', 'same', "
-                    "or 'valid' (got a non-string argument)",
-                0, 0, std::string(fn), "",
-                "numkit:" + std::string(fn) + ":badShape");
+        return v.toString();
+    throw Error(keel::format("{}: shape option must be 'full', 'same', or 'valid' (got a non-string argument)", fn),
+                0, 0, fn, "",
+                keel::format("numkit:{}:badShape", fn));
 }
 
 void conv_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "conv");
 
-    std::string shape = "full";
+    keel::String shape = keel::String::from("full");
     if (args.size() >= 3 && !args[2].isEmpty())
         shape = shapeArg(args[2], "conv");
 
@@ -75,7 +74,7 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     Value y = x;                 // default: autocorrelation
     bool haveY = false;
     int maxlag = -1;             // -1 => full
-    std::string scaleopt = "none";
+    keel::String scaleopt = keel::String::from("none");
 
     // Disambiguate (MATLAB): a string is scaleopt; a scalar numeric in the
     // y-slot is maxlag (autocorr); a vector numeric is y. Trailing args:
@@ -111,7 +110,7 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     const keel::usize N  = std::max(nx, ny);
 
     // scaleopt (case-insensitive). Previously accepted-and-ignored.
-    std::string opt = scaleopt;
+    keel::String opt = scaleopt.clone();
     for (char &ch : opt) if (ch >= 'A' && ch <= 'Z') ch = char(ch + 32);
 
     auto scaleElem = [&](keel::usize i, double s) {
@@ -183,7 +182,7 @@ void xcov_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     const Value &x = args[0];
     Value y = x;                 // default: auto-covariance
     int maxlag = -1;             // -1 => full
-    std::string scaleopt = "none";
+    keel::String scaleopt = keel::String::from("none");
 
     // MATLAB disambiguation: a string arg is scaleopt; a scalar numeric
     // arg in the y-slot is maxlag (auto-cov); a vector numeric is y.
@@ -221,7 +220,7 @@ void conv2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
 {
     argcheck::checkNargin(args.size(), 2, 4, "conv2");
     auto *mr = ctx.engine->allocator();
-    std::string shape = "full";
+    keel::String shape = keel::String::from("full");
     if (args.size() >= 3 && !args[2].isEmpty() &&
         !(args[2].isChar() || args[2].isString())) {
         if ((!args[0].isEmpty() && !args[0].dims().isVector()) ||
@@ -257,7 +256,7 @@ void filter2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
                  CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "filter2");
-    std::string shape = "same";
+    keel::String shape = keel::String::from("same");
     if (args.size() >= 3 && !args[2].isEmpty())
         shape = shapeArg(args[2], "filter2");
     outs[0] = filter2(args[0], args[1], shape, ctx.engine->allocator());
@@ -267,7 +266,7 @@ void convn_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
                CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "convn");
-    std::string shape = "full";
+    keel::String shape = keel::String::from("full");
     if (args.size() >= 3 && !args[2].isEmpty())
         shape = shapeArg(args[2], "convn");
     outs[0] = convn(args[0], args[1], shape, ctx.engine->allocator());

@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -264,9 +263,9 @@ pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nf
 namespace {
 
 struct CrossWelchOut {
-    std::vector<keel::c64> Sxy;
-    std::vector<double> Sxx, Syy;
-    std::vector<double> F;
+    keel::Array<keel::c64> Sxy;
+    keel::Array<double> Sxx, Syy;
+    keel::Array<double> F;
     double winPower = 0.0;
     keel::usize nSegments = 0;
     keel::usize nfft = 0;

@@ -1,35 +1,33 @@
-﻿// toolboxes/signal/src/transforms/fwht_reg.cpp
+// toolboxes/signal/src/transforms/fwht_reg.cpp
 //
 // CallContext register half of transforms/fwht.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/fwht.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
 namespace detail {
 
 static void parseFwhtArgs(keel::ArrayRef<Value> args,
-                           keel::usize &n, std::string &ordering)
+                           keel::usize &n, keel::String &ordering)
 {
     n = 0;
-    ordering = "sequency";
+    ordering.assign("sequency");
     if (args.size() >= 2 && !args[1].isEmpty()) {
         if (args[1].isChar() || args[1].isString()) {
             // (x, ordering) â€” n omitted.
@@ -51,7 +49,7 @@ void fwht_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
               keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "fwht");
-    keel::usize n; std::string ordering;
+    keel::usize n; keel::String ordering;
     parseFwhtArgs(args, n, ordering);
     outs[0] = fwht(args[0], n, ordering, ctx.engine->allocator());
 }
@@ -60,7 +58,7 @@ void ifwht_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
                keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "ifwht");
-    keel::usize n; std::string ordering;
+    keel::usize n; keel::String ordering;
     parseFwhtArgs(args, n, ordering);
     outs[0] = ifwht(args[0], n, ordering, ctx.engine->allocator());
 }

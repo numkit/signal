@@ -6,6 +6,7 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <keel/complex.h>
@@ -22,7 +23,6 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <string>
 #include <tuple>
 
 namespace numkit::signal {
@@ -31,7 +31,7 @@ namespace {
 
 // Fill caller-provided buffer with Hamming window coefficients, same
 // formula MATLAB uses.
-void iscola_argcheck(const Value &window, keel::usize noverlap, const std::string &method)
+void iscola_argcheck(const Value &window, keel::usize noverlap, keel::StringRef method)
 {
     const keel::usize M = window.numel();
     if (M == 0)
@@ -166,7 +166,7 @@ void resolveWindow(const Value &win, keel::Array<double> &out, keel::Allocator *
 
 } // anonymous namespace
 
-Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize fftLength, const std::string &range, keel::Allocator *mr)
+Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize fftLength, keel::StringRef range, keel::Allocator *mr)
 {
 // Contract (probed R2025b): x accepts double/single/complex; logical/integer
     // and 3-D+ arrays are rejected. Multi-channel 2-D matrices (N x C) frame
@@ -268,7 +268,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
     return S;
 }
 
-Value istft(const Value &S, const Value &window, keel::usize overlap, keel::usize fftLength, const std::string &range, keel::Allocator *mr)
+Value istft(const Value &S, const Value &window, keel::usize overlap, keel::usize fftLength, keel::StringRef range, keel::Allocator *mr)
 {
 const auto &d = S.dims();
     const keel::usize inRows = d.rows();
@@ -383,7 +383,7 @@ const auto &d = S.dims();
 // passes, dev ≥ 2·eps fails).
 
 std::tuple<Value, Value, Value>
-iscola(const Value &window, keel::usize noverlap, const std::string &method,
+iscola(const Value &window, keel::usize noverlap, keel::StringRef method,
        keel::Allocator *mr)
 {
     const keel::usize M = window.numel();

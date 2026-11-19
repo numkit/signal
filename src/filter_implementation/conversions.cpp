@@ -4,6 +4,7 @@
 // cascade applicator sosfilt lives in digital_filtering/sosfilt.cpp.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
 #include <keel/array.h>
@@ -174,9 +175,8 @@ keel::Array<keel::c64> readComplexVec(const Value &v, const char *fn, keel::Allo
 {
     if (v.isEmpty()) return keel::Array<keel::c64>(mr);
     if (v.type() != ValueType::COMPLEX && v.type() != ValueType::DOUBLE && v.type() != ValueType::SINGLE)
-        throw Error(std::string(fn) + ": zeros/poles must be double, single, or "
-                    "complex vectors",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":inputType");
+        throw Error(keel::format("{}: zeros/poles must be double, single, or complex vectors", fn),
+                    0, 0, fn, "", keel::format("numkit:{}:inputType", fn));
     keel::Array<keel::c64> out(mr);
     out.reserve(v.numel());
     if (v.type() == ValueType::COMPLEX) {

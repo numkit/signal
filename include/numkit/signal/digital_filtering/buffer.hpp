@@ -9,7 +9,6 @@
 
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
-#include <string>
 #include <tuple>
 
 namespace numkit::signal {

@@ -1,8 +1,9 @@
-﻿// toolboxes/signal/src/measurements/vibration_reg.cpp
+// toolboxes/signal/src/measurements/vibration_reg.cpp
 //
 // CallContext register half of measurements/vibration.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
@@ -13,16 +14,13 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -82,7 +80,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
             Value::matrix(0, 1, ValueType::DOUBLE, mr));
     }
     const double *xd = x.doubleData();
-    std::vector<double> tv(np);
+    keel::Array<double> tv(np, mr);
     for (keel::usize i = 0; i < np; ++i) tv[i] = tPulse.elemAsDouble(i);
 
     // Decide output length L = nominal samples per revolution. Use the
@@ -96,7 +94,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
 
     // For each revolution, linear-interpolate x onto an L-point grid
     // that spans [tv[i], tv[i+1]) and accumulate.
-    std::vector<double> avg(L, 0.0);
+    keel::Array<double> avg(L, 0.0, mr);
     keel::usize nValidRevs = 0;
     for (keel::usize r = 0; r < nRev; ++r) {
         const double t0 = tv[r];
@@ -104,7 +102,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
         const double dur = t1 - t0;
         if (dur <= 0.0) continue;
         bool revOK = true;
-        std::vector<double> sample(L, 0.0);
+        keel::Array<double> sample(L, 0.0, mr);
         for (keel::usize k = 0; k < L; ++k) {
             const double tk = t0 + dur * static_cast<double>(k)
                                     / static_cast<double>(L);

@@ -4,8 +4,10 @@
 // functions (modal*, order tracking, rpm*maps) are not implemented
 // here — they need a full state-space / RPM-resampling stack.
 
+#include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/complex.h>
 #include <keel/math.h>
 #include <numkit/signal/measurements/vibration.hpp>
@@ -20,7 +22,6 @@
 #include <array>
 #include <cmath>
 #include <cstring>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -30,15 +31,15 @@ namespace numkit::signal {
 
 namespace {
 
-std::vector<double> readVec(const Value &x)
+keel::Array<double> readVec(const Value &x)
 {
     const keel::usize n = x.numel();
-    std::vector<double> v(n);
+    keel::Array<double> v(n);
     for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
-Value vecCol(keel::Allocator *mr, const std::vector<double> &v)
+Value vecCol(keel::Allocator *mr, keel::ArrayRef<double> v)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
     if (!v.empty())
@@ -115,7 +116,7 @@ tachorpm(const Value &x, double fs,
     }
     // Detect rising-edge crossings of `thr`. Linear-interpolate the
     // sub-sample crossing instant for each.
-    std::vector<double> times;
+    keel::Array<double> times(mr);
     for (keel::usize i = 0; i + 1 < N; ++i) {
         if (v[i] < thr && v[i + 1] >= thr) {
             const double a = v[i], b = v[i + 1];
@@ -126,7 +127,7 @@ tachorpm(const Value &x, double fs,
     // RPM from inter-pulse periods. With `ppr` pulses per revolution,
     // RPM = 60 / (period * ppr). Output one RPM per pulse (carry the
     // last estimate forward to the final pulse).
-    std::vector<double> rpm(times.size(), 0.0);
+    keel::Array<double> rpm(times.size(), 0.0, mr);
     for (keel::usize i = 0; i + 1 < times.size(); ++i) {
         const double dt = times[i + 1] - times[i];
         if (dt > 0.0) rpm[i] = 60.0 / (dt * ppr);
@@ -146,9 +147,9 @@ namespace {
 // convention).
 struct Turn { double v; double idx; };
 
-std::vector<Turn> turningPointsWithIndex(const std::vector<double> &v)
+keel::Array<Turn> turningPointsWithIndex(keel::ArrayRef<double> v)
 {
-    std::vector<Turn> out;
+    keel::Array<Turn> out;
     if (v.empty()) return out;
     out.push_back({v.front(), 1.0});
     for (keel::usize i = 1; i + 1 < v.size(); ++i) {
@@ -171,8 +172,8 @@ Value rainflow(const Value &x, keel::Allocator *mr)
     //   [count, range, mean, start_idx, end_idx]
     // matching MATLAB R2025b's rainflow() return shape.
     struct Cycle { double count, range, mean, idx0, idx1; };
-    std::vector<Cycle> cycles;
-    std::vector<Turn> S;
+    keel::Array<Cycle> cycles(mr);
+    keel::Array<Turn> S(mr);
     for (const auto &y : tp) {
         S.push_back(y);
         // Apply the rule until no more cycles can be extracted.
@@ -186,14 +187,15 @@ Value rainflow(const Value &x, keel::Allocator *mr)
                 const double rng = keel::abs(S[0].v - S[1].v);
                 const double mn  = 0.5 * (S[0].v + S[1].v);
                 cycles.push_back({0.5, rng, mn, S[0].idx, S[1].idx});
-                S.erase(S.begin());
+                S.remove_at(0);
                 break;
             }
             // Full cycle on the inner pair.
             const double rng = Y;
             const double mn  = 0.5 * (S[n - 2].v + S[n - 3].v);
             cycles.push_back({1.0, rng, mn, S[n - 3].idx, S[n - 2].idx});
-            S.erase(S.end() - 3, S.end() - 1);
+            S[n - 3] = S[n - 1];
+            S.resize(n - 2);
         }
     }
     // Drain residual: every consecutive pair on the residual stack is
@@ -239,7 +241,7 @@ tsa(const Value &x, double fs,
     //    rpm is sampled at fs_rpm, signal at fs; we interpolate rpm
     //    onto the signal-sample grid first.
     const keel::usize N = signal_v.size();
-    std::vector<double> theta(N, 0.0);
+    keel::Array<double> theta(N, 0.0, mr);
     {
         double acc = 0.0;
         for (keel::usize i = 0; i < N; ++i) {
@@ -262,8 +264,8 @@ tsa(const Value &x, double fs,
     // 2. Re-sample onto a uniform angle grid by accumulating into
     //    n_per_rev bins per revolution.
     const double twoPi = 2.0 * M_PI;
-    std::vector<double> sumBin(n_per_rev, 0.0);
-    std::vector<int> cntBin(n_per_rev, 0);
+    keel::Array<double> sumBin(static_cast<keel::usize>(n_per_rev), 0.0, mr);
+    keel::Array<int> cntBin(static_cast<keel::usize>(n_per_rev), 0, mr);
     for (keel::usize i = 0; i < N; ++i) {
         double ang = std::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
@@ -272,11 +274,11 @@ tsa(const Value &x, double fs,
         sumBin[b] += signal_v[i];
         cntBin[b]++;
     }
-    std::vector<double> avg(n_per_rev);
+    keel::Array<double> avg(static_cast<keel::usize>(n_per_rev), mr);
     for (int b = 0; b < n_per_rev; ++b)
         avg[b] = (cntBin[b] > 0) ? sumBin[b] / cntBin[b] : 0.0;
 
-    std::vector<double> th(n_per_rev);
+    keel::Array<double> th(static_cast<keel::usize>(n_per_rev), mr);
     for (int b = 0; b < n_per_rev; ++b)
         th[b] = twoPi * b / n_per_rev;
 

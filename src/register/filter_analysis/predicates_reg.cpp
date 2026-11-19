@@ -25,10 +25,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {

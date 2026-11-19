@@ -9,7 +9,9 @@
 // unshiftdata(x, perm=[], nshifts=k): y = shiftdim(x, -k)
 // unshiftdata(x, perm, nshifts=[]):    y = ipermute(x, perm)
 
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
 #include <numkit/signal/digital_filtering/shiftdata.hpp>
@@ -21,7 +23,6 @@
 #include <tuple>
 
 #include <cmath>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -53,7 +54,7 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
 
     // perm = [dim, 1..dim-1, dim+1..N]
     const keel::usize N = std::max<keel::usize>(static_cast<keel::usize>(dim), mtlNdims(x));
-    std::vector<int> perm(N);
+    keel::Array<int> perm(N, mr);
     perm[0] = dim;
     keel::usize k = 1;
     for (int i = 1; i < dim; ++i) perm[k++] = i;
@@ -86,14 +87,13 @@ static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
     if (perm.isEmpty())
         return;
     const keel::usize n = perm.numel();
-    std::vector<char> seen(n + 1, 0);
+    keel::Array<char> seen(n + 1, 0);
     for (keel::usize i = 0; i < n; ++i) {
         const double v = perm.elemAsDouble(i);
         const double vi = std::floor(v);
         if (v != vi || vi < 1.0 || vi > static_cast<double>(n)
             || seen[static_cast<keel::usize>(vi)])
-            throw Error("unshiftdata: perm must be a permutation of 1.."
-                        + std::to_string(n),
+            throw Error(keel::format("unshiftdata: perm must be a permutation of 1..{}", n),
                         0, 0, "unshiftdata", "", "numkit:unshiftdata:badPerm");
         seen[static_cast<keel::usize>(vi)] = 1;
     }
@@ -111,7 +111,7 @@ Value unshiftdata(const Value &x, const Value &perm, const Value &nshifts, keel:
     }
     // ipermute(x, perm)
     const keel::usize N = perm.numel();
-    std::vector<int> permVec(N);
+    keel::Array<int> permVec(N, mr);
     for (keel::usize i = 0; i < N; ++i)
         permVec[i] = static_cast<int>(perm.elemAsDouble(i));
     return numkit::builtin::ipermute(x, keel::ArrayRef<int>(permVec.data(), N), mr);

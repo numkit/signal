@@ -16,10 +16,8 @@
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {

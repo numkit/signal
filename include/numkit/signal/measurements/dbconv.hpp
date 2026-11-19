@@ -8,9 +8,8 @@
 #pragma once
 
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <numkit/value/value.hpp>
-
-#include <string>
 
 namespace numkit::signal {
 
@@ -37,7 +36,7 @@ namespace numkit::signal {
 ///
 /// @see db2mag, db2pow, mag2db, pow2db
 Value db(const Value &                x,
-         const std::string &          signalType = "voltage",
+         keel::StringRef              signalType = "voltage",
          keel::Allocator *  mr         = nullptr);
 
 /// Inverse of `db` in voltage form: \f$ y = 10^{d/20} \f$.

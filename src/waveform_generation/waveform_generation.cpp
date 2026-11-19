@@ -4,9 +4,12 @@
 // Split from library.cpp (transform-domain helpers nextpow2 /
 // fftshift / ifftshift moved to transforms/transform_helpers.cpp).
 
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <keel/complex.h>
 #include <keel/math.h>
 #include <numkit/signal/waveform_generation/waveform_generation.hpp>
@@ -24,7 +27,6 @@
 #include <cctype>
 #include <cmath>
 #include <cstring>
-#include <string>
 
 namespace numkit::signal {
 
@@ -152,7 +154,7 @@ Value pulstranHandle(keel::ArrayRef<double> t, keel::ArrayRef<double> d,
     return out;
 }
 
-Value pulstran(const Value &t, const Value &d, const std::string &fnName,
+Value pulstran(const Value &t, const Value &d, keel::StringRef fnName,
                double fcOrW, double bw, keel::Allocator *mr)
 {
     auto out = createLike(t, ValueType::DOUBLE, mr);
@@ -160,7 +162,7 @@ Value pulstran(const Value &t, const Value &d, const std::string &fnName,
     std::memset(out.doubleDataMut(), 0, n * sizeof(double));
     double *dst = out.doubleDataMut();
 
-    std::string lower;
+    keel::String lower;
     lower.reserve(fnName.size());
     for (char c : fnName)
         lower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
@@ -186,9 +188,7 @@ Value pulstran(const Value &t, const Value &d, const std::string &fnName,
         applyKernel([](double tv, double fc, double a) { return gauspulsScalar(tv, fc, a); },
                     fcOrW, alpha);
     } else {
-        throw Error("pulstran: unsupported pulse function '" + fnName
-                     + "' (built-ins: 'rectpuls'/'tripuls'/'gauspuls'). "
-                     + "Custom handles need the engine callback API (planned).",
+        throw Error(keel::format("pulstran: unsupported pulse function '{}' (built-ins: 'rectpuls'/'tripuls'/'gauspuls'). Custom handles need the engine callback API (planned).", fnName),
                      0, 0, "pulstran", "", "numkit:pulstran:fnUnsupported");
     }
     return out;
@@ -306,20 +306,20 @@ Value diric(const Value &x, int n, keel::Allocator *mr)
 }
 
 Value chirp(const Value &t, double f0, double t1, double f1,
-            const std::string &method, keel::Allocator *mr)
+            keel::StringRef method, keel::Allocator *mr)
 {
     if (t1 <= 0)
         throw Error("chirp: t1 must be positive",
                      0, 0, "chirp", "", "numkit:chirp:badT1");
 
-    std::string m = method;
+    keel::String m = keel::String::from(method);
     for (auto &c : m) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
     enum class Mode { Linear, Quadratic, Logarithmic };
     Mode mode;
-    if      (m.empty() || std::string("linear").rfind(m, 0) == 0 || m == "li")        mode = Mode::Linear;
-    else if (std::string("quadratic").rfind(m, 0) == 0 || m == "q")                   mode = Mode::Quadratic;
-    else if (std::string("logarithmic").rfind(m, 0) == 0 || m == "lo")                mode = Mode::Logarithmic;
+    if      (m.empty() || keel::StringRef("linear").starts_with(m) || m == "li")        mode = Mode::Linear;
+    else if (keel::StringRef("quadratic").starts_with(m) || m == "q")                   mode = Mode::Quadratic;
+    else if (keel::StringRef("logarithmic").starts_with(m) || m == "lo")                mode = Mode::Logarithmic;
     else
         throw Error("chirp: method must be 'linear', 'quadratic', or 'logarithmic'",
                      0, 0, "chirp", "", "numkit:chirp:badMethod");
@@ -387,7 +387,7 @@ Value chirp(const Value &t, double f0, double t1, double f1,
 // sign-convention bug — same blocker as Cycle J / pitch LHS/SRH).
 // amssb / pwm / ptm/ppm / qam similarly deferred.
 Value demod(const Value &y, double Fc, double Fs,
-            const std::string &method, const Value &opt,
+            keel::StringRef method, const Value &opt,
             keel::Allocator *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
@@ -404,7 +404,7 @@ Value demod(const Value &y, double Fc, double Fs,
     if (N == 0)
         return Value::matrix(0, 0, ySingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
-    std::string m = method;
+    keel::String m = keel::String::from(method);
     std::transform(m.begin(), m.end(), m.begin(),
                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
@@ -447,7 +447,7 @@ Value demod(const Value &y, double Fc, double Fs,
             for (keel::usize c = 0; c < cols; ++c) {
                 // yq[r] = hilbert(y)[r] · exp(-j·2π·Fc·t)
                 // angle(yq) = angle(hilbert(y)) - 2π·Fc·t
-                std::vector<double> ang(len);
+                keel::Array<double> ang(len, mr);
                 for (keel::usize r = 0; r < len; ++r) {
                     const keel::c64 hh = hd[r + c * len];
                     const double t = static_cast<double>(r) / Fs;
@@ -532,7 +532,7 @@ Value demod(const Value &y, double Fc, double Fs,
 // Matches MATLAB R2025b modulate.m for these 4 modes one-to-one.
 // amssb (uses hilbert), pwm/ptm/ppm/qam deferred — KNOWN GAPs.
 Value modulate(const Value &x, double Fc, double Fs,
-               const std::string &method, const Value &opt,
+               keel::StringRef method, const Value &opt,
                keel::Allocator *mr)
 {
     constexpr double kPi = 3.14159265358979323846;
@@ -549,7 +549,7 @@ Value modulate(const Value &x, double Fc, double Fs,
     if (N == 0)
         return Value::matrix(0, 0, xSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
-    std::string m = method;
+    keel::String m = keel::String::from(method);
     std::transform(m.begin(), m.end(), m.begin(),
                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 

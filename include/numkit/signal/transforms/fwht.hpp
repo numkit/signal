@@ -5,8 +5,8 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <numkit/value/value.hpp>
-#include <string>
 
 namespace numkit::signal {
 
@@ -41,7 +41,7 @@ namespace numkit::signal {
 /// @see ifwht
 Value fwht(const Value &              x,
            keel::usize                n,
-           const std::string &        ordering,
+           keel::StringRef            ordering,
            keel::Allocator *mr = nullptr);
 
 /// @brief Inverse fast Walsh-Hadamard transform
@@ -61,7 +61,7 @@ Value fwht(const Value &              x,
 /// @see fwht
 Value ifwht(const Value &              y,
             keel::usize                n,
-            const std::string &        ordering,
+            keel::StringRef            ordering,
             keel::Allocator *mr = nullptr);
 
 

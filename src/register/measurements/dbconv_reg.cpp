@@ -1,24 +1,22 @@
-﻿// toolboxes/signal/src/measurements/dbconv_reg.cpp
+// toolboxes/signal/src/measurements/dbconv_reg.cpp
 //
 // CallContext register half of measurements/dbconv.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/measurements/dbconv.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {
@@ -28,7 +26,7 @@ namespace detail {
 void db_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "db");
-    std::string mode = "voltage";
+    keel::String mode = keel::String::from("voltage");
     if (args.size() >= 2) {
         if (!args[1].isChar() && !args[1].isString())
             throw Error("db: 2nd argument must be a string",

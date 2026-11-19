@@ -3,6 +3,7 @@
 // medfilt1 — sliding-window median. Split from toolboxes/signal/src/.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
 #include <keel/array.h>
@@ -18,8 +19,6 @@
 #include <cctype>
 #include <cmath>
 #include <limits>
-#include <string>
-#include <vector>
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 
@@ -115,8 +114,8 @@ void fillgaps_argcheck(const Value &x, keel::usize maxlen, keel::usize order)
         throw Error("fillgaps: input X must be a vector or 2-D matrix",
                     0, 0, "fillgaps", "", "numkit:fillgaps:expected2D");
     if (maxlen > 0 && order > 0 && order >= maxlen)
-        throw Error("fillgaps: ORDER must be strictly less than MAXLEN (got order=" +
-                    std::to_string(order) + ", maxlen=" + std::to_string(maxlen) + ")",
+        throw Error(keel::format("fillgaps: ORDER must be strictly less than MAXLEN (got order={}, maxlen={})",
+                                 order, maxlen),
                     0, 0, "fillgaps", "", "numkit:fillgaps:orderTooLarge");
 }
 
@@ -128,10 +127,10 @@ inline double conjScalar(double v) { return v; }
 inline keel::c64 conjScalar(keel::c64 v) { return keel::conj(v); }
 
 template <typename Scalar>
-std::vector<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
+keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
                                     keel::usize maxlen, keel::usize order)
 {
-    std::vector<Scalar> v(col, col + n);
+    keel::Array<Scalar> v(keel::ArrayRef<Scalar>(col, n));
     keel::usize i_first = n;
     for (keel::usize i = 0; i < n; ++i) {
         if (!isNanScalar(v[i])) {
@@ -159,7 +158,7 @@ std::vector<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
         for (keel::usize i = s_start; i < k; ++i) mu += v[i];
         mu /= static_cast<double>(L);
 
-        std::vector<Scalar> seg0(L);
+        keel::Array<Scalar> seg0(L);
         double e0 = 0.0;
         for (keel::usize i = 0; i < L; ++i) {
             seg0[i] = v[s_start + i] - mu;
@@ -174,15 +173,15 @@ std::vector<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
         }
 
         const keel::usize max_p = (order > 0) ? std::min(order, L - 1) : (L - 1);
-        std::vector<Scalar> ef = seg0;
-        std::vector<Scalar> eb = seg0;
-        std::vector<Scalar> a(max_p + 1, Scalar{});
+        keel::Array<Scalar> ef = seg0.clone();
+        keel::Array<Scalar> eb = seg0.clone();
+        keel::Array<Scalar> a(max_p + 1, Scalar{});
         a[0] = Scalar(1.0);
         double E = e0;
 
         keel::usize best_p = max_p;
         double best_aic = std::numeric_limits<double>::infinity();
-        std::vector<Scalar> best_a;
+        keel::Array<Scalar> best_a;
 
         for (keel::usize m = 1; m <= max_p; ++m) {
             Scalar num{};
@@ -200,7 +199,7 @@ std::vector<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
                 eb[idx] = b + conjScalar(km) * f;
             }
 
-            std::vector<Scalar> a_next = a;
+            keel::Array<Scalar> a_next = a.clone();
             for (keel::usize j = 1; j < m; ++j)
                 a_next[j] = a[j] + km * conjScalar(a[m - j]);
             a_next[m] = km;
@@ -215,7 +214,7 @@ std::vector<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
                 if (m == 1 || aic_m < best_aic) {
                     best_aic = aic_m;
                     best_p = m;
-                    best_a.assign(a.begin(), a.begin() + static_cast<keel::isize>(m + 1));
+                    best_a.assign(a.slice(0, m + 1));
                 } else if (m - best_p >= 31) {
                     break;
                 }
@@ -227,7 +226,7 @@ std::vector<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
             best_a = std::move(a);
         }
 
-        std::vector<Scalar> z(best_p + G);
+        keel::Array<Scalar> z(best_p + G);
         for (keel::usize i = 0; i < best_p; ++i)
             z[i] = seg0[L - best_p + i];
         for (keel::usize m = 0; m < G; ++m) {
@@ -260,11 +259,11 @@ void fillgapsColumn(const Scalar *src, Scalar *dst, keel::usize n,
         return;
     }
 
-    std::vector<Scalar> yf = fillgapsFwdPass(src, n, maxlen, order);
-    std::vector<Scalar> rev(n);
+    keel::Array<Scalar> yf = fillgapsFwdPass(src, n, maxlen, order);
+    keel::Array<Scalar> rev(n);
     for (keel::usize i = 0; i < n; ++i) rev[i] = src[n - 1 - i];
-    std::vector<Scalar> yb_rev = fillgapsFwdPass(rev.data(), n, maxlen, order);
-    std::vector<Scalar> yb(n);
+    keel::Array<Scalar> yb_rev = fillgapsFwdPass(rev.data(), n, maxlen, order);
+    keel::Array<Scalar> yb(n);
     for (keel::usize i = 0; i < n; ++i) yb[i] = yb_rev[n - 1 - i];
 
     std::copy(src, src + n, dst);

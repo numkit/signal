@@ -6,8 +6,10 @@
 // rc ↔ ac ↔ is ↔ lar). All implementations follow the standard real-
 // data formulations; complex AR isn't covered here.
 
+#include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/complex.h>
 #include <keel/math.h>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>
@@ -24,28 +26,27 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <vector>
 
 namespace numkit::signal {
 
 namespace {
 
-std::vector<double> readVec(const Value &x)
+keel::Array<double> readVec(const Value &x)
 {
     const keel::usize n = x.numel();
-    std::vector<double> v(n);
+    keel::Array<double> v(n);
     for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
-Value rowVec(const std::vector<double> &v, keel::Allocator *mr)
+Value rowVec(keel::ArrayRef<double> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
     if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
     return out;
 }
 
-Value colVec(const std::vector<double> &v, keel::Allocator *mr)
+Value colVec(keel::ArrayRef<double> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
     if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
@@ -53,11 +54,11 @@ Value colVec(const std::vector<double> &v, keel::Allocator *mr)
 }
 
 // Biased autocorrelation r[k] = (1/N) * sum_{i=0..N-1-k} x[i] * x[i+k],
-// for k in 0..maxLag. Returns vector of length maxLag+1.
-std::vector<double> biasedAutocorr(const std::vector<double> &x, int maxLag)
+// for k in 0..maxLag. Returns array of length maxLag+1.
+keel::Array<double> biasedAutocorr(keel::ArrayRef<double> x, int maxLag)
 {
     const keel::usize N = x.size();
-    std::vector<double> R(maxLag + 1, 0.0);
+    keel::Array<double> R(static_cast<keel::usize>(maxLag + 1), 0.0);
     for (int k = 0; k <= maxLag; ++k) {
         double s = 0.0;
         for (keel::usize i = 0; i + k < N; ++i) s += x[i] * x[i + k];
@@ -73,18 +74,18 @@ std::vector<double> biasedAutocorr(const std::vector<double> &x, int maxLag)
 // Standard Yule-Walker form: a is the coefficient vector of the AR
 // poly 1 + a[1]*z^-1 + ... + a[p]*z^-p such that the filter
 // 1/A(z) models the input autocorrelation.
-struct LevinsonResult { std::vector<double> a; double e; std::vector<double> k; };
+struct LevinsonResult { keel::Array<double> a; double e; keel::Array<double> k; };
 
-LevinsonResult levinsonCore(const std::vector<double> &r, int p)
+LevinsonResult levinsonCore(keel::ArrayRef<double> r, int p)
 {
     LevinsonResult res;
-    res.a.assign(p + 1, 0.0);
-    res.k.assign(p, 0.0);
+    res.a.assign(static_cast<keel::usize>(p + 1), 0.0);
+    res.k.assign(static_cast<keel::usize>(p), 0.0);
     res.a[0] = 1.0;
     if (p == 0) { res.e = (r.empty() ? 0.0 : r[0]); return res; }
     double e = r[0];
     if (e <= 0.0) { res.e = 0.0; return res; }
-    std::vector<double> a_prev(p + 1, 0.0); a_prev[0] = 1.0;
+    keel::Array<double> a_prev(static_cast<keel::usize>(p + 1), 0.0); a_prev[0] = 1.0;
 
     for (int i = 1; i <= p; ++i) {
         // Numerator of the i-th reflection coefficient.
@@ -100,7 +101,7 @@ LevinsonResult levinsonCore(const std::vector<double> &r, int p)
         res.k[i - 1] = k;
 
         // Update a using a_prev: a_new[j] = a_prev[j] + k * a_prev[i-j]
-        std::vector<double> a_new(p + 1, 0.0);
+        keel::Array<double> a_new(static_cast<keel::usize>(p + 1), 0.0);
         a_new[0] = 1.0;
         for (int j = 1; j < i; ++j)
             a_new[j] = a_prev[j] + k * a_prev[i - j];
@@ -108,7 +109,7 @@ LevinsonResult levinsonCore(const std::vector<double> &r, int p)
         a_prev = std::move(a_new);
         e *= (1.0 - k * k);
     }
-    res.a = a_prev;
+    res.a = std::move(a_prev);
     res.e = e;
     return res;
 }
@@ -138,22 +139,22 @@ rlevinson(const Value &a, double efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
     const int p = static_cast<int>(av.size()) - 1;
-    std::vector<double> R(p + 1, 0.0);
-    std::vector<double> k(p, 0.0);
+    keel::Array<double> R(static_cast<keel::usize>(p + 1), 0.0, mr);
+    keel::Array<double> k(static_cast<keel::usize>(p), 0.0, mr);
 
     // Step-down to recover reflection coefficients k[0..p-1].
-    auto cur = av;
+    keel::Array<double> cur = av.clone();
     double e = efinal;
     for (int i = p; i >= 1; --i) {
         const double ki = cur[i];
         k[i - 1] = ki;
         if (keel::abs(1.0 - ki * ki) < 1e-300) break;
-        std::vector<double> prev(i + 1, 0.0);  // a_{i-1}
+        keel::Array<double> prev(static_cast<keel::usize>(i + 1), 0.0, mr);  // a_{i-1}
         prev[0] = 1.0;
         const double denom = 1.0 - ki * ki;
         for (int j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
-        cur = prev;
+        cur = std::move(prev);
         e /= denom;  // step e back up
     }
 
@@ -189,10 +190,10 @@ arburg(const Value &x, int p, keel::Allocator *mr)
     // chosen to minimise the sum of forward + backward residual energy.
     auto v = readVec(x);
     const keel::usize N = v.size();
-    std::vector<double> ef = v;
-    std::vector<double> eb = v;
-    std::vector<double> a(p + 1, 0.0); a[0] = 1.0;
-    std::vector<double> k(p, 0.0);
+    keel::Array<double> ef = v.clone();
+    keel::Array<double> eb = v.clone();
+    keel::Array<double> a(static_cast<keel::usize>(p + 1), 0.0, mr); a[0] = 1.0;
+    keel::Array<double> k(static_cast<keel::usize>(p), 0.0, mr);
 
     double E = 0.0;
     for (double y : v) E += y * y;
@@ -218,7 +219,7 @@ arburg(const Value &x, int p, keel::Allocator *mr)
         }
 
         // Update AR coefficients via the Levinson update.
-        std::vector<double> a_new = a;
+        keel::Array<double> a_new = a.clone();
         for (int j = 1; j <= i; ++j)
             a_new[j] = a[j] + ki * a[i + 1 - j];
         a_new[i + 1] = ki;
@@ -279,10 +280,10 @@ Value schurrc(const Value &R, keel::Allocator *mr)
     // fitted poly stable; schurrc doesn't want that.
     auto rv = readVec(R);
     const int p = static_cast<int>(rv.size()) - 1;
-    if (p <= 0) return colVec(std::vector<double>{}, mr);
+    if (p <= 0) return colVec(keel::ArrayRef<double>{}, mr);
 
-    std::vector<double> k(p, 0.0);
-    std::vector<double> a_prev(p + 1, 0.0); a_prev[0] = 1.0;
+    keel::Array<double> k(static_cast<keel::usize>(p), 0.0, mr);
+    keel::Array<double> a_prev(static_cast<keel::usize>(p + 1), 0.0, mr); a_prev[0] = 1.0;
     double e = rv[0];
 
     for (int i = 1; i <= p; ++i) {
@@ -291,7 +292,7 @@ Value schurrc(const Value &R, keel::Allocator *mr)
         const double ki = (e != 0.0) ? -num / e : 0.0;
         k[i - 1] = ki;
 
-        std::vector<double> a_new(p + 1, 0.0); a_new[0] = 1.0;
+        keel::Array<double> a_new(static_cast<keel::usize>(p + 1), 0.0, mr); a_new[0] = 1.0;
         for (int j = 1; j < i; ++j)
             a_new[j] = a_prev[j] + ki * a_prev[i - j];
         a_new[i] = ki;
@@ -307,9 +308,9 @@ Value rc2ac(const Value &k, double r0, keel::Allocator *mr)
     const int p = static_cast<int>(kv.size());
     // Build R from k via the inverse Levinson: r0 known, then
     // r[i] = -(a_{i-1}[1]*r[i-1] + ... + a_{i-1}[i-1]*r[1]) - k[i-1]*e_{i-1}
-    std::vector<double> R(p + 1, 0.0);
+    keel::Array<double> R(static_cast<keel::usize>(p + 1), 0.0, mr);
     R[0] = r0;
-    std::vector<double> a(p + 1, 0.0); a[0] = 1.0;
+    keel::Array<double> a(static_cast<keel::usize>(p + 1), 0.0, mr); a[0] = 1.0;
     double e = r0;
     for (int i = 1; i <= p; ++i) {
         const double ki = kv[i - 1];
@@ -317,7 +318,7 @@ Value rc2ac(const Value &k, double r0, keel::Allocator *mr)
         for (int j = 1; j < i; ++j) s += a[j] * R[i - j];
         R[i] = -ki * e - s;
         // Update a by step-up.
-        std::vector<double> a_new(p + 1, 0.0);
+        keel::Array<double> a_new(static_cast<keel::usize>(p + 1), 0.0, mr);
         a_new[0] = 1.0;
         for (int j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
         a_new[i] = ki;
@@ -332,17 +333,17 @@ poly2rc(const Value &a, double efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
     const int p = static_cast<int>(av.size()) - 1;
-    std::vector<double> k(p, 0.0);
-    auto cur = av;
+    keel::Array<double> k(static_cast<keel::usize>(p), 0.0, mr);
+    keel::Array<double> cur = av.clone();
     for (int i = p; i >= 1; --i) {
         const double ki = cur[i];
         k[i - 1] = ki;
         const double denom = 1.0 - ki * ki;
         if (keel::abs(denom) < 1e-300) break;
-        std::vector<double> prev(i + 1, 0.0); prev[0] = 1.0;
+        keel::Array<double> prev(static_cast<keel::usize>(i + 1), 0.0, mr); prev[0] = 1.0;
         for (int j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
-        cur = prev;
+        cur = std::move(prev);
     }
     // Zero-lag autocorrelation R0 = efinal / prod_i (1 - k_i^2). This is
     // the second output [k, R0] = poly2rc(a, efinal): the energy of the
@@ -358,10 +359,10 @@ rc2poly(const Value &k, double r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
     const int p = static_cast<int>(kv.size());
-    std::vector<double> a(p + 1, 0.0); a[0] = 1.0;
+    keel::Array<double> a(static_cast<keel::usize>(p + 1), 0.0, mr); a[0] = 1.0;
     for (int i = 1; i <= p; ++i) {
         const double ki = kv[i - 1];
-        std::vector<double> a_new(p + 1, 0.0);
+        keel::Array<double> a_new(static_cast<keel::usize>(p + 1), 0.0, mr);
         a_new[0] = 1.0;
         for (int j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
         a_new[i] = ki;
@@ -427,8 +428,8 @@ namespace {
 // using Gaussian elimination with partial pivoting. A is row-major
 // p×p; returns x. For ill-conditioned inputs (singular matrix)
 // returns the partial result.
-std::vector<double>
-solveSPD(std::vector<double> &A, std::vector<double> &b, int p)
+keel::Array<double>
+solveSPD(keel::Array<double> &A, keel::Array<double> &b, int p)
 {
     for (int k = 0; k < p; ++k) {
         // Pivot.
@@ -449,7 +450,7 @@ solveSPD(std::vector<double> &A, std::vector<double> &b, int p)
             b[i] -= f * b[k];
         }
     }
-    std::vector<double> x(p, 0.0);
+    keel::Array<double> x(static_cast<keel::usize>(p), 0.0);
     for (int i = p - 1; i >= 0; --i) {
         double s = b[i];
         for (int j = i + 1; j < p; ++j) s -= A[i * p + j] * x[j];
@@ -461,11 +462,11 @@ solveSPD(std::vector<double> &A, std::vector<double> &b, int p)
 
 // Build the covariance correlation R_{ij} = sum_{n=p..N-1} x[n-i] * x[n-j]
 // for i, j in 0..p. Used by arcov / armcov.
-std::vector<double>
-covMatrixForward(const std::vector<double> &x, int p)
+keel::Array<double>
+covMatrixForward(keel::ArrayRef<double> x, int p)
 {
     const int N = static_cast<int>(x.size());
-    std::vector<double> R((p + 1) * (p + 1), 0.0);
+    keel::Array<double> R(static_cast<keel::usize>(p + 1) * static_cast<keel::usize>(p + 1), 0.0);
     for (int n = p; n < N; ++n) {
         for (int i = 0; i <= p; ++i)
             for (int j = 0; j <= p; ++j)
@@ -474,8 +475,8 @@ covMatrixForward(const std::vector<double> &x, int p)
     return R;
 }
 
-std::vector<double>
-covMatrixForwardBackward(const std::vector<double> &x, int p)
+keel::Array<double>
+covMatrixForwardBackward(keel::ArrayRef<double> x, int p)
 {
     const int N = static_cast<int>(x.size());
     auto R = covMatrixForward(x, p);
@@ -492,22 +493,22 @@ covMatrixForwardBackward(const std::vector<double> &x, int p)
 // 0..p, solve for AR coefficients a[1..p] from R[1..p, 1..p] · a =
 // -R[1..p, 0]. Returns full a vector with a[0] = 1 prepended, plus
 // the prediction error e = R[0,0] + sum_k a[k] * R[0,k].
-struct ArCovResult { std::vector<double> a; double e; };
-ArCovResult solveArCov(const std::vector<double> &R, int p)
+struct ArCovResult { keel::Array<double> a; double e; };
+ArCovResult solveArCov(keel::ArrayRef<double> R, int p)
 {
-    std::vector<double> A(p * p, 0.0);
-    std::vector<double> b(p, 0.0);
+    keel::Array<double> A(static_cast<keel::usize>(p) * static_cast<keel::usize>(p), 0.0);
+    keel::Array<double> b(static_cast<keel::usize>(p), 0.0);
     for (int i = 0; i < p; ++i) {
         for (int j = 0; j < p; ++j) A[i * p + j] = R[(i + 1) * (p + 1) + (j + 1)];
         b[i] = -R[(i + 1) * (p + 1) + 0];
     }
     auto a_tail = solveSPD(A, b, p);
-    std::vector<double> a(p + 1, 0.0);
+    keel::Array<double> a(static_cast<keel::usize>(p + 1), 0.0);
     a[0] = 1.0;
     for (int k = 0; k < p; ++k) a[k + 1] = a_tail[k];
     double e = R[0];
     for (int k = 1; k <= p; ++k) e += a[k] * R[k];
-    return {a, e};
+    return {std::move(a), e};
 }
 
 } // anonymous
@@ -556,8 +557,8 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
         // and rhs is length (N-1-nb). M[i, j] = h[nb+1+i-1-j] (padded
         // with zeros on the left), rhs[i] = h[nb+1+i].
         const int rows = std::max(N - 1 - nb, 1);
-        std::vector<double> M(rows * na, 0.0);
-        std::vector<double> rhs(rows, 0.0);
+        keel::Array<double> M(static_cast<keel::usize>(rows) * static_cast<keel::usize>(na), 0.0, mr);
+        keel::Array<double> rhs(static_cast<keel::usize>(rows), 0.0, mr);
         for (int i = 0; i < rows; ++i) {
             for (int j = 0; j < na; ++j) {
                 const int idx = nb + i - j;  // h index = nb+1+i - (j+1) = nb+i-j
@@ -567,8 +568,8 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
             rhs[i] = (rhs_idx < N) ? -hv[rhs_idx] : 0.0;
         }
         // Normal equations: (M^T M) · a_tail = M^T rhs
-        std::vector<double> MtM(na * na, 0.0);
-        std::vector<double> Mtb(na, 0.0);
+        keel::Array<double> MtM(static_cast<keel::usize>(na) * static_cast<keel::usize>(na), 0.0, mr);
+        keel::Array<double> Mtb(static_cast<keel::usize>(na), 0.0, mr);
         for (int i = 0; i < na; ++i) {
             for (int j = 0; j < na; ++j) {
                 double s = 0.0;
@@ -580,12 +581,12 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
             Mtb[i] = s;
         }
         auto a_tail = solveSPD(MtM, Mtb, na);
-        std::vector<double> a(na + 1, 0.0);
+        keel::Array<double> a(static_cast<keel::usize>(na + 1), 0.0, mr);
         a[0] = 1.0;
         for (int k = 0; k < na; ++k) a[k + 1] = a_tail[k];
 
         // b = (a * h) truncated to nb+1 terms.
-        std::vector<double> b(nb + 1, 0.0);
+        keel::Array<double> b(static_cast<keel::usize>(nb + 1), 0.0, mr);
         for (int i = 0; i <= nb; ++i) {
             double s = 0.0;
             for (int k = 0; k <= std::min(i, na); ++k)
@@ -595,9 +596,10 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
         return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
     }
     // na == 0: pure FIR. b[i] = h[i] for i = 0..nb, a = [1].
-    std::vector<double> b(nb + 1, 0.0);
+    keel::Array<double> b(static_cast<keel::usize>(nb + 1), 0.0, mr);
     for (int i = 0; i <= nb && i < N; ++i) b[i] = hv[i];
-    return std::make_tuple(rowVec(b, mr), rowVec(std::vector<double>{1.0}, mr));
+    const double one = 1.0;
+    return std::make_tuple(rowVec(b, mr), rowVec(keel::ArrayRef<double>(&one, 1), mr));
 }
 
 // ── stmcb ─────────────────────────────────────────────────────────
@@ -640,24 +642,24 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
     const int N  = static_cast<int>(yv.size());
     if (niter < 1) niter = 5;
 
-    std::vector<double> xv;
+    keel::Array<double> xv(mr);
     if (!x.isEmpty()) {
         xv = readVec(x);
     } else {
-        xv.assign(N, 0.0);
+        xv.assign(static_cast<keel::usize>(N), 0.0);
         if (N > 0) xv[0] = 1.0;
     }
 
-    std::vector<double> b(nb + 1, 0.0);
-    std::vector<double> a(na + 1, 0.0);
+    keel::Array<double> b(static_cast<keel::usize>(nb + 1), 0.0, mr);
+    keel::Array<double> a(static_cast<keel::usize>(na + 1), 0.0, mr);
     a[0] = 1.0;
     if (ai.isEmpty()) {
         // Initialise the denominator estimate via Prony (default `ai`).
         auto [b0, a0] = prony(y, x.isEmpty() ? nb : 0, na, mr);
         b = readVec(b0);
         a = readVec(a0);
-        b.resize(nb + 1, 0.0);
-        a.resize(na + 1, 0.0);
+        b.resize(static_cast<keel::usize>(nb + 1), 0.0);
+        a.resize(static_cast<keel::usize>(na + 1), 0.0);
         a[0] = 1.0;
     } else {
         auto aiv = readVec(ai);
@@ -672,7 +674,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
     }
 
     const int           P = nb + 1 + na;   // unknowns: b[0..nb] then a[1..na]
-    std::vector<double> e(N, 0.0), g(N, 0.0);
+    keel::Array<double> e(static_cast<keel::usize>(N), 0.0, mr), g(static_cast<keel::usize>(N), 0.0, mr);
     for (int it = 0; it < niter; ++it) {
         // Prefilter the input x and output y by 1/A.
         for (int n = 0; n < N; ++n) {
@@ -689,7 +691,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
             const int s = col - nb;             // 1..na
             return (n - s >= 0) ? -g[n - s] : 0.0;
         };
-        std::vector<double> MtM(static_cast<keel::usize>(P) * P, 0.0), Mtg(P, 0.0);
+        keel::Array<double> MtM(static_cast<keel::usize>(P) * P, 0.0, mr), Mtg(static_cast<keel::usize>(P), 0.0, mr);
         for (int n = 0; n < N; ++n)
             for (int i = 0; i < P; ++i) {
                 const double mi = Mcol(n, i);
@@ -741,15 +743,17 @@ Value corrmtx(const Value &x, int m, keel::Allocator *mr)
 
 namespace {
 
-std::vector<double> reverseVec(const std::vector<double> &v)
+keel::Array<double> reverseVec(keel::ArrayRef<double> v)
 {
-    return std::vector<double>(v.rbegin(), v.rend());
+    keel::Array<double> r(v.size());
+    for (keel::usize i = 0; i < v.size(); ++i) r[i] = v[v.size() - 1 - i];
+    return r;
 }
 
 // Pad poly p (descending power) to total length n with leading zeros.
-std::vector<double> padLeft(const std::vector<double> &p, int n)
+keel::Array<double> padLeft(keel::ArrayRef<double> p, int n)
 {
-    std::vector<double> r(n, 0.0);
+    keel::Array<double> r(static_cast<keel::usize>(n), 0.0);
     const int off = n - static_cast<int>(p.size());
     for (keel::usize i = 0; i < p.size(); ++i) r[off + i] = p[i];
     return r;
@@ -770,11 +774,11 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
 {
     auto av = readVec(a);
     const int N = static_cast<int>(av.size()) - 1;
-    if (N <= 0) return colVec(std::vector<double>{}, mr);
+    if (N <= 0) return colVec(keel::ArrayRef<double>{}, mr);
 
     // Build P = A + A_R_shifted, Q = A - A_R_shifted, both length N+2.
     auto ar = reverseVec(av);
-    std::vector<double> P(N + 2, 0.0), Q(N + 2, 0.0);
+    keel::Array<double> P(static_cast<keel::usize>(N + 2), 0.0, mr), Q(static_cast<keel::usize>(N + 2), 0.0, mr);
     for (int i = 0; i <= N; ++i) {
         P[i] = av[i];
         Q[i] = av[i];
@@ -784,8 +788,9 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
         Q[i] -= ar[i - 1];
     }
     // Find roots and pick angles in (0, π).
-    std::vector<double> angles;
-    for (auto &poly : {P, Q}) {
+    keel::Array<double> angles(mr);
+    const keel::ArrayRef<double> polys[2] = {P.as_ref(), Q.as_ref()};
+    for (auto poly : polys) {
         Value polyV = rowVec(poly, mr);
         Value rts = numkit::builtin::roots(polyV, mr);
         const keel::usize n = rts.numel();
@@ -797,7 +802,7 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
     }
     std::sort(angles.begin(), angles.end());
     // Should yield N angles.
-    if (static_cast<int>(angles.size()) > N) angles.resize(N);
+    if (static_cast<int>(angles.size()) > N) angles.resize(static_cast<keel::usize>(N));
     return colVec(angles, mr);
 }
 
@@ -805,7 +810,10 @@ Value lsf2poly(const Value &lsf, keel::Allocator *mr)
 {
     auto lv = readVec(lsf);
     const int m = static_cast<int>(lv.size());
-    if (m == 0) return rowVec(std::vector<double>{1.0}, mr);
+    if (m == 0) {
+        const double one = 1.0;
+        return rowVec(keel::ArrayRef<double>(&one, 1), mr);
+    }
 
     // LSF -> LPC conversion (Kabal & Ramachandran, IEEE TASSP, 1986).
     // The LSF angles split into two interleaved sets (even / odd
@@ -820,46 +828,36 @@ Value lsf2poly(const Value &lsf, keel::Allocator *mr)
     // The boundary-root distribution differs by parity so that A and
     // B always end up with the same degree (m+1); their trailing
     // coefficients cancel exactly in (A+B)/2 and we drop the result.
-    auto quad = [](double w) {
-        return std::vector<double>{1.0, -2.0 * std::cos(w), 1.0};
-    };
-    auto convOne = [](const std::vector<double> &a,
-                      const std::vector<double> &b) {
-        std::vector<double> r(a.size() + b.size() - 1, 0.0);
+    auto convOne = [mr](keel::ArrayRef<double> a,
+                        keel::ArrayRef<double> b) {
+        keel::Array<double> r(a.size() + b.size() - 1, 0.0, mr);
         for (keel::usize i = 0; i < a.size(); ++i)
             for (keel::usize j = 0; j < b.size(); ++j)
                 r[i + j] += a[i] * b[j];
         return r;
     };
-    auto convAll = [&](const std::vector<std::vector<double>> &ps,
-                       const std::vector<double> &lead) {
-        std::vector<double> r = lead;
-        for (auto &p : ps) r = convOne(r, p);
-        return r;
-    };
 
-    std::vector<std::vector<double>> Pquads, Qquads;
-    for (int i = 0; i < m; ++i) {
-        if (i % 2 == 0) Pquads.push_back(quad(lv[i]));
-        else            Qquads.push_back(quad(lv[i]));
-    }
-
-    std::vector<double> P, Q;
+    keel::Array<double> P(mr), Q(mr);
     if (m % 2 == 1) {
         // m odd: P has no boundary roots, Q gets both (-1 and +1) =
         // (1-z^-2). Both end up degree m+1.
-        P = convAll(Pquads, std::vector<double>{1.0});
-        Q = convAll(Qquads, std::vector<double>{1.0, 0.0, -1.0});
+        P = keel::Array<double>({1.0}, mr);
+        Q = keel::Array<double>({1.0, 0.0, -1.0}, mr);
     } else {
         // m even: P gets z=-1 → (1+z^-1); Q gets z=+1 → (1-z^-1).
         // Both end up degree m+1.
-        P = convAll(Pquads, std::vector<double>{1.0,  1.0});
-        Q = convAll(Qquads, std::vector<double>{1.0, -1.0});
+        P = keel::Array<double>({1.0,  1.0}, mr);
+        Q = keel::Array<double>({1.0, -1.0}, mr);
+    }
+    for (int i = 0; i < m; ++i) {
+        const double q[3] = {1.0, -2.0 * std::cos(lv[i]), 1.0};
+        if (i % 2 == 0) P = convOne(P, keel::ArrayRef<double>(q, 3));
+        else            Q = convOne(Q, keel::ArrayRef<double>(q, 3));
     }
 
     // P and Q have identical length now. a = (P + Q) / 2, then drop
     // the trailing element (it cancels to ~0 by construction).
-    std::vector<double> a(P.size(), 0.0);
+    keel::Array<double> a(P.size(), 0.0, mr);
     for (keel::usize i = 0; i < P.size(); ++i) a[i] = 0.5 * (P[i] + Q[i]);
     if (a.size() > 1) a.pop_back();
     return rowVec(a, mr);
@@ -882,9 +880,9 @@ Value lsf2poly(const Value &lsf, keel::Allocator *mr)
 
 namespace {
 
-std::vector<keel::c64> readComplexVecLocal(const Value &v) {
+keel::Array<keel::c64> readComplexVecLocal(const Value &v) {
     const keel::usize n = v.numel();
-    std::vector<keel::c64> out(n);
+    keel::Array<keel::c64> out(n);
     if (v.type() == ValueType::COMPLEX) {
         const keel::c64 *cd = v.complexData();
         for (keel::usize i = 0; i < n; ++i) out[i] = cd[i];
@@ -896,9 +894,9 @@ std::vector<keel::c64> readComplexVecLocal(const Value &v) {
 
 // Common solver: x is the "step" variable per frequency point —
 // jω_k for invfreqs, e^{-jω_k} for invfreqz.
-std::tuple<std::vector<double>, std::vector<double>>
-invfreqLSQ(const std::vector<keel::c64> &H,
-           const std::vector<keel::c64> &x,
+std::tuple<keel::Array<double>, keel::Array<double>>
+invfreqLSQ(keel::ArrayRef<keel::c64> H,
+           keel::ArrayRef<keel::c64> x,
            int nb, int na)
 {
     const int K  = static_cast<int>(H.size());
@@ -907,18 +905,18 @@ invfreqLSQ(const std::vector<keel::c64> &H,
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
 
     // Build A (2K × nv) row-major, plus rhs (length 2K).
-    std::vector<double> Ar(2 * K * nv, 0.0);
-    std::vector<double> rhs(2 * K, 0.0);
+    keel::Array<double> Ar(static_cast<keel::usize>(2 * K) * static_cast<keel::usize>(nv), 0.0);
+    keel::Array<double> rhs(static_cast<keel::usize>(2 * K), 0.0);
     for (int k = 0; k < K; ++k) {
         // Build x^0..x^max(nb, na) once.
         const int M = std::max(nb, na);
-        std::vector<keel::c64> xpow(M + 1);
+        keel::Array<keel::c64> xpow(static_cast<keel::usize>(M + 1));
         xpow[0] = keel::c64(1.0, 0.0);
         for (int i = 1; i <= M; ++i) xpow[i] = xpow[i - 1] * x[k];
 
         // Row k contains:
         //   -1, -x, -x², …, -x^nb, H·x, H·x², …, H·x^na
-        std::vector<keel::c64> row(nv);
+        keel::Array<keel::c64> row(static_cast<keel::usize>(nv));
         for (int i = 0; i <= nb; ++i) row[i] = -xpow[i];
         for (int j = 1; j <= na; ++j) row[nb + j] = H[k] * xpow[j];
 
@@ -932,8 +930,8 @@ invfreqLSQ(const std::vector<keel::c64> &H,
     }
 
     // Normal equations: (Aᵀ A) θ = Aᵀ rhs.
-    std::vector<double> AtA(nv * nv, 0.0);
-    std::vector<double> Atb(nv, 0.0);
+    keel::Array<double> AtA(static_cast<keel::usize>(nv) * static_cast<keel::usize>(nv), 0.0);
+    keel::Array<double> Atb(static_cast<keel::usize>(nv), 0.0);
     for (int i = 0; i < nv; ++i) {
         for (int j = 0; j < nv; ++j) {
             double s = 0.0;
@@ -947,7 +945,7 @@ invfreqLSQ(const std::vector<keel::c64> &H,
     auto theta = solveSPD(AtA, Atb, nv);
 
     // theta = [b_0, ..., b_nb, a_1, ..., a_na]
-    std::vector<double> b(nb + 1), a(na + 1);
+    keel::Array<double> b(static_cast<keel::usize>(nb + 1)), a(static_cast<keel::usize>(na + 1));
     for (int i = 0; i <= nb; ++i) b[i] = theta[i];
     a[0] = 1.0;
     for (int j = 1; j <= na; ++j) a[j] = theta[nb + j];
@@ -982,7 +980,7 @@ invfreqs(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
     invfreqs_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
     auto wv = readVec(w);
-    std::vector<keel::c64> x(wv.size());
+    keel::Array<keel::c64> x(wv.size(), mr);
     for (keel::usize k = 0; k < wv.size(); ++k) x[k] = keel::c64(0.0, wv[k]); // jω
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);
     return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
@@ -994,7 +992,7 @@ invfreqz(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
     invfreqz_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
     auto wv = readVec(w);
-    std::vector<keel::c64> x(wv.size());
+    keel::Array<keel::c64> x(wv.size(), mr);
     for (keel::usize k = 0; k < wv.size(); ++k)
         x[k] = keel::exp(keel::c64(0.0, -wv[k])); // z⁻¹
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);

@@ -5,9 +5,9 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <numkit/value/value.hpp>
 
-#include <string>
 #include <tuple>
 
 namespace numkit::signal {
@@ -29,7 +29,7 @@ namespace numkit::signal {
 std::tuple<Value, Value>
 butter(int                          N,
        keel::f64                       Wn,
-       const std::string &          type = "low",
+       keel::StringRef              type = "low",
        keel::Allocator *  mr   = nullptr);
 
 /// FIR filter design via windowed-sinc (Hamming window).
@@ -41,12 +41,12 @@ butter(int                          N,
 /// @param mr    Memory resource (nullptr → process default).
 Value fir1(int                          N,
            keel::f64                       Wn,
-           const std::string &          type = "low",
+           keel::StringRef              type = "low",
            keel::Allocator *  mr   = nullptr);
 
 Value fir1(int                          N,
            const Value &                Wn,
-           const std::string &          type,
+           keel::StringRef              type,
            const Value &                window,
            bool                         scale,
            keel::Allocator *  mr   = nullptr);
@@ -76,7 +76,7 @@ Value firls(int                          N,
             const Value &                F,
             const Value &                A,
             const Value &                W,
-            const std::string &          ftype,
+            keel::StringRef              ftype,
             keel::Allocator *  mr = nullptr);
 
 /// cell2sos(C) — convert cell array of {Bi, Ai} pairs to L×6 SOS matrix.
@@ -164,7 +164,7 @@ firpm(int                          N,
       const Value &                F,
       const Value &                A,
       const Value &                W      = Value::Empty,
-      const std::string &          ftype  = "",
+      keel::StringRef              ftype  = "",
       keel::Allocator *  mr     = nullptr);
 
 

@@ -12,6 +12,7 @@
 // eigendecomposition-sensitive (peaks are 1/near-zero), so it is NOT bit-matched.
 // bugs/signal/pmusic-peig.
 
+#include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>   // corrmtx, pmusic, peig
@@ -24,7 +25,6 @@
 #include <limits>
 #include <numeric>
 #include <tuple>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -44,7 +44,7 @@ void pseudospectrum_argcheck(const Value &x, int p, int nfft, double fs)
     (void)fs;
 }
 
-void jacobiEig(std::vector<double> &A, std::vector<double> &V, keel::usize D)
+void jacobiEig(keel::Array<double> &A, keel::Array<double> &V, keel::usize D)
 {
     V.assign(D * D, 0.0);
     for (keel::usize i = 0; i < D; ++i) V[i * D + i] = 1.0;
@@ -98,7 +98,7 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
     const int     rows = static_cast<int>(Xc.dims().rows());
     const double *Xd   = Xc.doubleData();         // column-major
 
-    std::vector<double> R(static_cast<keel::usize>(M) * M, 0.0);
+    keel::Array<double> R(static_cast<keel::usize>(M) * M, 0.0, mr);
     for (int i = 0; i < M; ++i)
         for (int j = 0; j < M; ++j) {
             double s = 0.0;
@@ -106,13 +106,13 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
             R[i * M + j] = s;
         }
 
-    std::vector<double> V;
+    keel::Array<double> V(mr);
     jacobiEig(R, V, static_cast<keel::usize>(M));
-    std::vector<double> lam(M);
+    keel::Array<double> lam(static_cast<keel::usize>(M), mr);
     for (int i = 0; i < M; ++i) lam[i] = R[i * M + i];
 
     // Ascending eigenvalue order; noise subspace = the smallest (M-p) vectors.
-    std::vector<int> ord(M);
+    keel::Array<int> ord(static_cast<keel::usize>(M), mr);
     std::iota(ord.begin(), ord.end(), 0);
     std::sort(ord.begin(), ord.end(), [&](int a, int b) { return lam[a] < lam[b]; });
     const int nNoise = M - p;

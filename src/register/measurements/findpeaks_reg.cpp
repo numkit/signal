@@ -4,7 +4,9 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <numkit/sys/plugin.hpp>
@@ -13,16 +15,13 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -74,11 +73,12 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
         if (!args[argi].isChar() && !args[argi].isString())
             throw Error("findpeaks: expected an option name",
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
-        std::string name(args[argi].toString().as_ref());
+        keel::String rawName = args[argi].toString();
+        keel::String name = rawName.clone();
         for (char &c : name)
             c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (argi + 1 >= args.size())
-            throw Error("findpeaks: option '" + std::string(args[argi].toString().as_ref()) + "' needs a value",
+            throw Error(keel::format("findpeaks: option '{}' needs a value", rawName),
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         const Value &v = args[argi + 1];
 
@@ -98,7 +98,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                                      "NPeaks", "findpeaks"),
                 argi ? static_cast<int>(argi) + 2 : 2, "NPeaks", "findpeaks"));
         } else if (name == "sortstr") {
-            std::string s(v.toString().as_ref());
+            keel::String s = v.toString();
             for (char &c : s)
                 c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if      (s == "none")    opt.sortMode = 0;
@@ -122,7 +122,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                 v, {"peaks", "extents"}, static_cast<int>(argi) + 2,
                 "Annotate", "findpeaks");
         } else {
-            throw Error("findpeaks: option '" + std::string(args[argi].toString().as_ref()) + "' not supported",
+            throw Error(keel::format("findpeaks: option '{}' not supported", rawName),
                          0, 0, "findpeaks", "", "numkit:findpeaks:unsupportedOpt");
         }
     }

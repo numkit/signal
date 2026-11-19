@@ -17,8 +17,10 @@
 //
 // PMR HARD RULE.
 
+#include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/string.h>
 #include <numkit/signal/digital_filtering/buffer.hpp>
 
 #include <numkit/value/value.hpp>
@@ -29,8 +31,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <string>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -47,7 +47,7 @@ int rowOrCol(const Value &x)
 bool isStringLikeNoDelay(const Value &v)
 {
     if (v.type() != ValueType::CHAR && v.type() != ValueType::STRING) return false;
-    std::string s(v.toString().as_ref());
+    keel::String s = v.toString();
     std::transform(s.begin(), s.end(), s.begin(),
                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return s == "nodelay";
@@ -123,7 +123,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     // Decide whether to apply initial-condition prepend (p > 0 only).
     bool prependZeros = (p > 0);
     keel::usize initLen = (p > 0) ? static_cast<keel::usize>(p) : 0;
-    std::vector<double> initVec(initLen, 0.0);  // initial condition (zeros default)
+    keel::Array<double> initVec(initLen, 0.0, mr);  // initial condition (zeros default)
 
     if (p > 0 && !opt.isEmpty()) {
         if (isStringLikeNoDelay(opt)) {

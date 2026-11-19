@@ -9,9 +9,12 @@
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/complex.h>
+#include <keel/string.h>
 #include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -22,16 +25,13 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -62,15 +62,15 @@ void ifft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     keel::usize nargs = args.size();
     bool symmetric = false;
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
-        std::string flag(args[nargs - 1].toString().as_ref());
+        keel::String rawFlag = args[nargs - 1].toString();
+        keel::String flag = rawFlag.clone();
         for (char &c : flag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
             symmetric = false;
         else
-            throw Error("ifft: unknown option '" + std::string(args[nargs - 1].toString().as_ref()) +
-                            "' (expected 'symmetric' or 'nonsymmetric')",
+            throw Error(keel::format("ifft: unknown option '{}' (expected 'symmetric' or 'nonsymmetric')", rawFlag),
                          0, 0, "ifft", "", "numkit:ifft:badOption");
         --nargs;   // consume the flag
     }
@@ -115,15 +115,15 @@ void ifft2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     keel::usize nargs = args.size();
     bool symmetric = false;
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
-        std::string flag(args[nargs - 1].toString().as_ref());
+        keel::String rawFlag = args[nargs - 1].toString();
+        keel::String flag = rawFlag.clone();
         for (char &c : flag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
             symmetric = false;
         else
-            throw Error("ifft2: unknown option '" + std::string(args[nargs - 1].toString().as_ref()) +
-                            "' (expected 'symmetric' or 'nonsymmetric')",
+            throw Error(keel::format("ifft2: unknown option '{}' (expected 'symmetric' or 'nonsymmetric')", rawFlag),
                          0, 0, "ifft2", "", "numkit:ifft2:badOption");
         --nargs;
     }
@@ -164,9 +164,9 @@ void interpft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 }
 
 // Shared helper for fftn_reg / ifftn_reg: unpack the optional `sz`
-// vector into a std::vector<size_t>. MATLAB accepts an empty / missing
+// vector into a keel::Array<keel::usize>. MATLAB accepts an empty / missing
 // 2nd arg.
-static void extractSizeArg(const Value &v, std::vector<keel::usize> &dst)
+static void extractSizeArg(const Value &v, keel::Array<keel::usize> &dst)
 {
     const keel::usize n = v.numel();
     dst.resize(n);
@@ -183,7 +183,7 @@ void fftn_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
               CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "fftn");
-    std::vector<keel::usize> sz;
+    keel::Array<keel::usize> sz(ctx.engine->allocator());
     if (args.size() >= 2 && !args[1].isEmpty())
         extractSizeArg(args[1], sz);
     outs[0] = fftn(args[0], keel::ArrayRef<keel::usize>(sz.data(), sz.size()), ctx.engine->allocator());
@@ -193,7 +193,7 @@ void ifftn_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
                CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "ifftn");
-    std::vector<keel::usize> sz;
+    keel::Array<keel::usize> sz(ctx.engine->allocator());
     if (args.size() >= 2 && !args[1].isEmpty())
         extractSizeArg(args[1], sz);
     outs[0] = ifftn(args[0], keel::ArrayRef<keel::usize>(sz.data(), sz.size()), ctx.engine->allocator());

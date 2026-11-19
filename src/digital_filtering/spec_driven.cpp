@@ -10,6 +10,7 @@
 // where fstop = fpass + (1 - Steepness)*(1 - fpass), Steepness = 0.85.
 // We compose ellip() + filtfilt() with the same parameters.
 
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <numkit/signal/digital_filtering/spec_driven.hpp>
 
@@ -31,20 +32,20 @@ namespace {
 double normaliseW(double f, double fs, const char *fnName)
 {
     if (!(fs > 0))
-        throw Error(std::string(fnName) + ": fs must be positive",
-                     0, 0, fnName, "", std::string("numkit:") + fnName + ":badFs");
+        throw Error(keel::format("{}: fs must be positive", fnName),
+                     0, 0, fnName, "", keel::format("numkit:{}:badFs", fnName));
     const double w = 2.0 * f / fs;
     if (!(w > 0.0) || !(w < 1.0))
-        throw Error(std::string(fnName) + ": cutoff must be in (0, fs/2)",
-                     0, 0, fnName, "", std::string("numkit:") + fnName + ":badCutoff");
+        throw Error(keel::format("{}: cutoff must be in (0, fs/2)", fnName),
+                     0, 0, fnName, "", keel::format("numkit:{}:badCutoff", fnName));
     return w;
 }
 
 void validateOrder(int order, const char *fnName)
 {
     if (order < 1)
-        throw Error(std::string(fnName) + ": order must be >= 1",
-                     0, 0, fnName, "", std::string("numkit:") + fnName + ":badOrder");
+        throw Error(keel::format("{}: order must be >= 1", fnName),
+                     0, 0, fnName, "", keel::format("numkit:{}:badOrder", fnName));
 }
 
 // MATLAB lowpass/highpass/bandpass/bandstop default parameters --

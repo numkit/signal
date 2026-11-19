@@ -3,6 +3,7 @@
 // CallContext register half of filter_design/analog_filters.cpp (Phase 2b compute/register split).
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
+#include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
@@ -17,7 +18,6 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -25,10 +25,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -222,15 +220,15 @@ struct FreqsRoot {
     double re, im;
 };
 
-std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
+keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
 {
     using numkit::ops::polyRootsDurandKerner;
     constexpr double kEps = 2.220446049250313e-16;
     keel::Allocator *mr = keel::default_allocator();
     keel::ArenaTemp scratch = keel::get_scratch(mr);
 
-    auto rootsOf = [&](const Value &p) -> std::vector<FreqsRoot> {
-        std::vector<FreqsRoot> out;
+    auto rootsOf = [&](const Value &p) -> keel::Array<FreqsRoot> {
+        keel::Array<FreqsRoot> out;
         if (!p.isComplex() && p.numel() >= 1) {
             auto r = polyRootsDurandKerner(p.doubleData(), p.numel(), scratch.allocator());
             for (const auto &z : r)
@@ -238,13 +236,13 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         }
         return out;
     };
-    std::vector<FreqsRoot> ep = rootsOf(a); // poles (full set)
-    std::vector<FreqsRoot> tz = rootsOf(b); // zeros (full set)
+    keel::Array<FreqsRoot> ep = rootsOf(a); // poles (full set)
+    keel::Array<FreqsRoot> tz = rootsOf(b); // zeros (full set)
     if (ep.empty())
         ep.push_back({-1000.0, 0.0});
 
     // ez: upper-half roots; zeros filtered to |z| < 1e5.
-    std::vector<FreqsRoot> ez;
+    keel::Array<FreqsRoot> ez;
     for (auto &r : ep)
         if (r.im >= 0.0)
             ez.push_back(r);
@@ -270,17 +268,17 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     const int nLong = 200 + diffzp + (anyRealDomZero ? 10 : 0);
 
     auto logspace = [](double l, double u, int n) {
-        std::vector<double> v(n);
+        keel::Array<double> v(static_cast<keel::usize>(n));
         const double d = (u - l) / (n - 1);
         for (int i = 0; i < n; ++i)
             v[i] = std::pow(10.0, l + i * d);
         v[n - 1] = std::pow(10.0, u); // linspace forces the last point exactly
         return v;
     };
-    std::vector<double> w = logspace(low, high, nLong); // the base LONG grid
+    keel::Array<double> w = logspace(low, high, nLong); // the base LONG grid
 
     // Oscillatory refinement (Im > |Re|), descending |Re| (stable).
-    std::vector<int> osc;
+    keel::Array<int> osc;
     for (keel::usize k = 0; k < ez.size(); ++k)
         if (ez[k].im > keel::abs(ez[k].re))
             osc.push_back(static_cast<int>(k));
@@ -288,31 +286,34 @@ std::vector<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
                      [&](int x, int y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
     const double npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
 
-    std::vector<double> f = w, z;
+    keel::Array<double> f = w.clone();
+    keel::Array<double> z;
     for (int k : osc) {
         const double r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
                                    std::pow(10.0, static_cast<double>(low)));
         const double r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
         auto outside = [&](double x) { return x > r2 || x < r1; };
-        z.erase(std::remove_if(z.begin(), z.end(), [&](double x) { return !outside(x); }), z.end());
-        f.erase(std::remove_if(f.begin(), f.end(), [&](double x) { return !outside(x); }), f.end());
+        z.resize(static_cast<keel::usize>(
+            std::remove_if(z.begin(), z.end(), [&](double x) { return !outside(x); }) - z.begin()));
+        f.resize(static_cast<keel::usize>(
+            std::remove_if(f.begin(), f.end(), [&](double x) { return !outside(x); }) - f.begin()));
         long cnt = 0;
         for (double x : w)
             if (x >= r1 && x <= r2)
                 ++cnt;
         auto seg = logspace(std::log10(r1), std::log10(r2), static_cast<int>(cnt + npts2));
-        z.insert(z.end(), seg.begin(), seg.end());
+        z.append(seg.as_ref());
     }
-    f.insert(f.end(), z.begin(), z.end());
+    f.append(z.as_ref());
     std::sort(f.begin(), f.end()); // w_long
 
     // Resample to exactly 200 points at evenly spaced INDEX positions,
     // linear in log10 (the caller-side interp1 of the classic code).
-    std::vector<double> lw(f.size());
+    keel::Array<double> lw(f.size());
     for (keel::usize i = 0; i < f.size(); ++i)
         lw[i] = std::log10(f[i]);
     const double dxi = static_cast<double>(f.size() - 1) / (npts - 1);
-    std::vector<double> out(npts);
+    keel::Array<double> out(static_cast<keel::usize>(npts));
     for (int i = 0; i < npts; ++i) {
         // 1-based index into lw; the last sample is EXACTLY the last knot
         // (linspace-forced), where interp1 returns log10(w_long(end)) as-is

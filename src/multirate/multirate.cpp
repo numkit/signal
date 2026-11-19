@@ -1,6 +1,7 @@
 // toolboxes/signal/src/multirate/multirate.cpp
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
 #include <keel/array.h>
@@ -55,10 +56,9 @@ void multirateGatherArgcheck(const Value &x, const char *fn)
 void multiratePhaseArgcheck(keel::usize n, keel::usize phase, const char *fn)
 {
     if (phase >= n)
-        throw Error(std::string(fn) + ": phase must be an integer in "
-                    "[0, n-1] (got " + std::to_string(phase) + " with n = "
-                    + std::to_string(n) + ")",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":badPhase");
+        throw Error(keel::format("{}: phase must be an integer in [0, n-1] (got {} with n = {})",
+                                 fn, phase, n),
+                    0, 0, fn, "", keel::format("numkit:{}:badPhase", fn));
 }
 
 // Column count / orientation helpers shared by the typed gathers.
@@ -87,7 +87,7 @@ Value allocMultirateOut(const Value &x, const GatherShape &gs, keel::usize outRo
     const int nd = x.dims().ndim();
     if (nd <= 2)
         return Value::matrix(outRows, gs.cols, t, mr);
-    std::vector<keel::usize> od(static_cast<keel::usize>(nd));
+    keel::Array<keel::usize> od(static_cast<keel::usize>(nd), mr);
     od[0] = outRows;
     for (int d = 1; d < nd; ++d)
         od[static_cast<keel::usize>(d)] = x.dims().dim(d);

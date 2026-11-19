@@ -8,8 +8,11 @@
 // power-band integrations yield rad/s. When fs is supplied, freqs run
 // [0, fs/2] and integrations yield Hz.
 
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/complex.h>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
@@ -28,7 +31,6 @@
 #include <cstring>
 #include <limits>
 #include <numeric>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -46,8 +48,8 @@ double scalarOr(const Value &v, double dflt)
 // Compute single-segment periodogram of x, returning (Pxx, F) where F
 // is in physical units: [0, fs/2] when fs > 0, else [0, π] when fs <= 0.
 struct PsdPair {
-    std::vector<double> Pxx;
-    std::vector<double> F;
+    keel::Array<double> Pxx;
+    keel::Array<double> F;
 };
 
 PsdPair computePsd(const Value &x, double fs, keel::Allocator *mr)
@@ -61,9 +63,7 @@ PsdPair computePsd(const Value &x, double fs, keel::Allocator *mr)
     Value xD = detail::widenSingleToDouble(x, mr);
     auto [Pxx, F] = periodogram(xD, win, xD.numel(), effFs, mr);
     const keel::usize n = Pxx.numel();
-    PsdPair p;
-    p.Pxx.resize(n);
-    p.F.resize(n);
+    PsdPair p{keel::Array<double>(n, mr), keel::Array<double>(n, mr)};
     const double *fd = F.doubleData();
     const double *pd = Pxx.doubleData();
     for (keel::usize i = 0; i < n; ++i) {
@@ -76,7 +76,7 @@ PsdPair computePsd(const Value &x, double fs, keel::Allocator *mr)
 // Trapezoidal integration of P over the frequency grid F, with a band
 // restriction to [fLo, fHi] (inclusive). Endpoints are linearly
 // interpolated when they fall inside an interval.
-double integrate(const std::vector<double> &P, const std::vector<double> &F,
+double integrate(keel::ArrayRef<double> P, keel::ArrayRef<double> F,
                  double fLo, double fHi)
 {
     const keel::usize n = P.size();
@@ -136,9 +136,8 @@ Value bandpower(const Value &x, const Value &fs, const Value &freqrange, keel::A
                     "together (bandpower(x, fs, freqrange))",
                     0, 0, "bandpower", "", "numkit:bandpower:freqRangeRequired");
     if (freqrange.numel() != 2)
-        throw Error("bandpower: freqrange must be a 2-element vector "
-                    "[fmin, fmax] (got " + std::to_string(freqrange.numel())
-                    + " elements)",
+        throw Error(keel::format("bandpower: freqrange must be a 2-element vector [fmin, fmax] (got {} elements)",
+                                 freqrange.numel()),
                     0, 0, "bandpower", "", "numkit:bandpower:freqRange");
     if (fs.numel() != 1 || fs.isComplex())
         throw Error("bandpower: fs must be a real scalar",
@@ -159,7 +158,7 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, kee
     if (f.numel() != n || n < 2)
         throw Error("bandpower: frequency vector f must have the same length as pxx (>= 2)",
                     0, 0, "bandpower", "", "numkit:bandpower:freqVecLength");
-    std::vector<double> P(n), F(n);
+    keel::Array<double> P(n, mr), F(n, mr);
     for (keel::usize i = 0; i < n; ++i) {
         P[i] = pxx.elemAsDouble(i);
         F[i] = f.elemAsDouble(i);
@@ -179,8 +178,8 @@ Value bandpowerPsd(const Value &pxx, const Value &f, const Value &freqrange, kee
         return detail::narrowDoubleToSingleIf(Value::scalar(total, mr), anySingle, mr);
     }
     if (freqrange.numel() != 2)
-        throw Error("bandpower: freqrange must be a 2-element vector [fmin, fmax] (got " +
-                    std::to_string(freqrange.numel()) + " elements)",
+        throw Error(keel::format("bandpower: freqrange must be a 2-element vector [fmin, fmax] (got {} elements)",
+                                 freqrange.numel()),
                     0, 0, "bandpower", "", "numkit:bandpower:freqRange");
     const double fLo = freqrange.elemAsDouble(0);
     const double fHi = freqrange.elemAsDouble(1);
@@ -221,7 +220,7 @@ Value medfreq(const Value &x, const Value &fs, keel::Allocator *mr)
     auto p = computePsd(x, fsv, mr);
     if (p.F.size() < 2) return Value::scalar(0.0, mr);
     // Cumulative trapezoid of P over F.
-    std::vector<double> cum(p.F.size(), 0.0);
+    keel::Array<double> cum(p.F.size(), 0.0, mr);
     for (keel::usize i = 1; i < p.F.size(); ++i) {
         cum[i] = cum[i - 1]
                + 0.5 * (p.Pxx[i - 1] + p.Pxx[i]) * (p.F[i] - p.F[i - 1]);
@@ -279,7 +278,7 @@ obw(const Value &x, const Value &fs, double p, keel::Allocator *mr)
     const double   fsHz = (fsv > 0.0) ? fsv : (2.0 * M_PI);  // rad/s when fs omitted
     const double   df   = fsHz / static_cast<double>(N);
 
-    std::vector<double> P(nOut), F(nOut);
+    keel::Array<double> P(nOut, mr), F(nOut, mr);
     for (keel::usize k = 0; k < nOut; ++k) {
         double mag2 = keel::norm(X[k]);
         if (k > 0 && 2 * k != N) mag2 *= 2.0;   // one-sided fold (skip DC & Nyquist)
@@ -288,7 +287,7 @@ obw(const Value &x, const Value &fs, double p, keel::Allocator *mr)
     }
 
     // Rectangle-rule cumulative power (MATLAB obw): cum[k] = Σ_{j≤k} P[j]·df.
-    std::vector<double> cum(nOut, 0.0);
+    keel::Array<double> cum(nOut, 0.0, mr);
     cum[0] = P[0] * df;
     for (keel::usize i = 1; i < nOut; ++i)
         cum[i] = cum[i - 1] + P[i] * df;
@@ -359,8 +358,8 @@ struct PsdMoments {
     double m4;   // fourth central moment
 };
 
-PsdMoments computePsdMoments(const std::vector<double> &P,
-                             const std::vector<double> &F)
+PsdMoments computePsdMoments(keel::ArrayRef<double> P,
+                             keel::ArrayRef<double> F)
 {
     double sumP = 0.0;
     for (double v : P) sumP += v;
@@ -493,7 +492,7 @@ constexpr int kDcBins     = 8;   // DC bins to ignore when finding peak
 // values; for narrow peaks this is close to the trapezoidal estimate
 // times df, scaled identically across all sums so the ratio in dB is
 // unchanged).
-double sumBins(const std::vector<double> &P, int lo, int hi)
+double sumBins(keel::ArrayRef<double> P, int lo, int hi)
 {
     if (lo < 0) lo = 0;
     if (hi > static_cast<int>(P.size())) hi = static_cast<int>(P.size());
@@ -503,7 +502,7 @@ double sumBins(const std::vector<double> &P, int lo, int hi)
 }
 
 // Find the bin of the dominant peak, ignoring the first kDcBins.
-int findFundamentalBin(const std::vector<double> &P)
+int findFundamentalBin(keel::ArrayRef<double> P)
 {
     int pk = kDcBins;
     double pkV = -1.0;
@@ -520,7 +519,7 @@ struct HarmonicAnalysis {
     int    f0Bin;
 };
 
-HarmonicAnalysis analyseHarmonics(const std::vector<double> &P)
+HarmonicAnalysis analyseHarmonics(keel::ArrayRef<double> P)
 {
     const int nbins = static_cast<int>(P.size());
     HarmonicAnalysis r{0, 0, 0, 0, 0};
@@ -532,7 +531,7 @@ HarmonicAnalysis analyseHarmonics(const std::vector<double> &P)
     // Mark which bins belong to the fundamental skirt or a harmonic
     // skirt. Everything else contributes to noise (after skipping DC
     // bins at the start).
-    std::vector<keel::u8> mark(nbins, 0); // 1=fund, 2=harm
+    keel::Array<keel::u8> mark(static_cast<keel::usize>(nbins), 0); // 1=fund, 2=harm
     for (int j = std::max(0, f0 - kSkirtBins);
          j < std::min(nbins, f0 + kSkirtBins + 1); ++j) mark[j] = 1;
     for (int n = 2; n <= kHarmonics; ++n) {
@@ -618,7 +617,7 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
     const keel::c64 *X = Xv.complexData();
     const keel::usize nBins = n / 2 + 1;
     const double df = fsScalar / static_cast<double>(n);
-    std::vector<double> Pxx(nBins), F(nBins);
+    keel::Array<double> Pxx(nBins, mr), F(nBins, mr);
     for (keel::usize k = 0; k < nBins; ++k) {
         double mag2 = keel::norm(X[k]);
         if (k > 0 && 2 * k != n)
@@ -685,8 +684,8 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
 
 namespace {
 
-// Read complex Value (output of hilbert) into separate re/im vectors.
-void readComplex(const Value &z, std::vector<double> &re, std::vector<double> &im)
+// Read complex Value (output of hilbert) into separate re/im arrays.
+void readComplex(const Value &z, keel::Array<double> &re, keel::Array<double> &im)
 {
     const keel::usize n = z.numel();
     re.resize(n); im.resize(n);
@@ -706,43 +705,57 @@ void pspectrum_argcheck(const Value &x, const Value &fsOrT,
 {
     detail::requireFloatInput(x, caller);
     if (x.isEmpty() || x.numel() < 2)
-        throw Error(std::string(caller) + ": input signal X must have at least 2 samples",
-                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidSignal");
+        throw Error(keel::format("{}: input signal X must have at least 2 samples", caller),
+                    0, 0, caller, "", keel::format("numkit:{}:invalidSignal", caller));
     if (x.dims().ndims() > 2)
-        throw Error(std::string(caller) + ": input signal X must be a vector or 2-D matrix",
-                    0, 0, caller, "", std::string("numkit:") + caller + ":expected2D");
+        throw Error(keel::format("{}: input signal X must be a vector or 2-D matrix", caller),
+                    0, 0, caller, "", keel::format("numkit:{}:expected2D", caller));
     if (opts.type != "power" && opts.type != "spectrogram")
-        throw Error(std::string(caller) + ": spectrum type must be 'power' or 'spectrogram'",
-                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidType");
+        throw Error(keel::format("{}: spectrum type must be 'power' or 'spectrogram'", caller),
+                    0, 0, caller, "", keel::format("numkit:{}:invalidType", caller));
     if (!std::isfinite(opts.leakage) || opts.leakage < 0.0 || opts.leakage > 1.0)
-        throw Error(std::string(caller) + ": 'Leakage' must be in [0, 1]",
-                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidLeakage");
+        throw Error(keel::format("{}: 'Leakage' must be in [0, 1]", caller),
+                    0, 0, caller, "", keel::format("numkit:{}:invalidLeakage", caller));
     if (opts.overlapPercent >= 100.0 || (opts.overlapPercent < 0.0 && opts.overlapPercent != -1.0))
-        throw Error(std::string(caller) + ": 'OverlapPercent' must be in [0, 100)",
-                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidOverlap");
+        throw Error(keel::format("{}: 'OverlapPercent' must be in [0, 100)", caller),
+                    0, 0, caller, "", keel::format("numkit:{}:invalidOverlap", caller));
     if (opts.timeResolution <= 0.0 && opts.timeResolution != -1.0)
-        throw Error(std::string(caller) + ": 'TimeResolution' must be positive",
-                    0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeResolution");
+        throw Error(keel::format("{}: 'TimeResolution' must be positive", caller),
+                    0, 0, caller, "", keel::format("numkit:{}:invalidTimeResolution", caller));
     if (!fsOrT.isEmpty()) {
         detail::requireRealFloatInput(fsOrT, caller);
         if (fsOrT.numel() == 1) {
             const double fsv = fsOrT.toScalar();
             if (!std::isfinite(fsv) || fsv <= 0.0)
-                throw Error(std::string(caller) + ": sample rate Fs must be finite and positive",
-                            0, 0, caller, "", std::string("numkit:") + caller + ":invalidFs");
+                throw Error(keel::format("{}: sample rate Fs must be finite and positive", caller),
+                            0, 0, caller, "", keel::format("numkit:{}:invalidFs", caller));
         } else {
             const keel::usize N = x.dims().isVector() ? x.numel() : x.dims().rows();
             if (!fsOrT.dims().isVector() || fsOrT.numel() != N)
-                throw Error(std::string(caller) + ": time vector T must match signal length",
-                            0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeVector");
+                throw Error(keel::format("{}: time vector T must match signal length", caller),
+                            0, 0, caller, "", keel::format("numkit:{}:invalidTimeVector", caller));
             for (keel::usize i = 0; i < N; ++i) {
                 const double ti = fsOrT.elemAsDouble(i);
                 if (!std::isfinite(ti) || (i > 0 && ti <= fsOrT.elemAsDouble(i - 1)))
-                    throw Error(std::string(caller) + ": time vector T must be finite and strictly increasing",
-                                0, 0, caller, "", std::string("numkit:") + caller + ":invalidTimeVector");
+                    throw Error(keel::format("{}: time vector T must be finite and strictly increasing", caller),
+                                0, 0, caller, "", keel::format("numkit:{}:invalidTimeVector", caller));
             }
         }
     }
+}
+
+PspectrumOptions clonePspectrumOptions(const PspectrumOptions &inOpts, keel::StringRef overrideType)
+{
+    PspectrumOptions opts;
+    opts.type.assign(overrideType);
+    opts.leakage = inOpts.leakage;
+    opts.overlapPercent = inOpts.overlapPercent;
+    opts.timeResolution = inOpts.timeResolution;
+    opts.fmin = inOpts.fmin;
+    opts.fmax = inOpts.fmax;
+    opts.twoSided = inOpts.twoSided;
+    opts.hasTwoSided = inOpts.hasTwoSided;
+    return opts;
 }
 
 double leakageToOverlapRatio(double leakage)
@@ -775,15 +788,15 @@ double kaiserEnbwFactor(double beta, keel::Allocator *mr)
     return (sumW > 0.0) ? (static_cast<double>(kRefLen) * sumW2 / (sumW * sumW)) : 1.0;
 }
 
-std::vector<double> normalizedKaiser(keel::usize len, double beta, keel::Allocator *mr)
+keel::Array<double> normalizedKaiser(keel::usize len, double beta, keel::Allocator *mr)
 {
-    if (len == 0) return {};
-    if (len == 1) return {1.0};
+    if (len == 0) return keel::Array<double>(mr);
+    if (len == 1) return keel::Array<double>({1.0}, mr);
     Value w = kaiser(len, beta, mr);
     const double *wd = w.doubleData();
     double sumW = 0.0;
     for (keel::usize i = 0; i < len; ++i) sumW += wd[i];
-    std::vector<double> out(len);
+    keel::Array<double> out(len, mr);
     const double inv = (sumW > 0.0) ? (1.0 / sumW) : (1.0 / static_cast<double>(len));
     for (keel::usize i = 0; i < len; ++i) out[i] = wd[i] * inv;
     return out;
@@ -855,8 +868,8 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     double fmax = 0.5 * fs;
     if (!std::isnan(opts.fmin) && !std::isnan(opts.fmax)) {
         if (opts.fmin >= opts.fmax || opts.fmin < -0.5 * fs - 1e-12 || opts.fmax > 0.5 * fs + 1e-12)
-            throw Error(std::string(caller) + ": 'FrequencyLimits' must satisfy [fmin, fmax] within Nyquist interval",
-                        0, 0, caller, "", std::string("numkit:") + caller + ":invalidFrequencyLimits");
+            throw Error(keel::format("{}: 'FrequencyLimits' must satisfy [fmin, fmax] within Nyquist interval", caller),
+                        0, 0, caller, "", keel::format("numkit:{}:invalidFrequencyLimits", caller));
         fmin = opts.fmin;
         fmax = opts.fmax;
         if (fmin < 0.0) twoSided = true;
@@ -877,8 +890,8 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
 
     if (isSpectrogram) {
         if (nCh > 1)
-            throw Error(std::string(caller) + ": 'spectrogram' mode requires a 1-D vector input",
-                        0, 0, caller, "", std::string("numkit:") + caller + ":expectedVector");
+            throw Error(keel::format("{}: 'spectrogram' mode requires a 1-D vector input", caller),
+                        0, 0, caller, "", keel::format("numkit:{}:expectedVector", caller));
         keel::usize wlen = 0;
         if (opts.timeResolution > 0.0) {
             wlen = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
@@ -976,7 +989,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
 
     const auto wFull = normalizedKaiser(wlen, beta, mr);
-    std::vector<keel::usize> starts(nT, 0);
+    keel::Array<keel::usize> starts(nT, 0, mr);
     if (nT > 1) {
         for (keel::usize m = 0; m < nT; ++m) {
             starts[m] = static_cast<keel::usize>(std::llround(
@@ -986,7 +999,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
 
     Value P = Value::matrix(nF, nCh, ValueType::DOUBLE, mr);
     double *pd = P.doubleDataMut();
-    std::vector<double> segPow(nF * nT, 0.0);
+    keel::Array<double> segPow(nF * nT, 0.0, mr);
 
     if (isComplex) {
         const keel::c64 *xc = x.complexData();
@@ -1080,7 +1093,7 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
     }
 
     Value z = hilbert(x, mr);
-    std::vector<double> re, im;
+    keel::Array<double> re(mr), im(mr);
     readComplex(z, re, im);
     const keel::usize n = re.size();
     if (n < 2) {
@@ -1110,8 +1123,7 @@ instfreqWithTime(const Value &x, const Value &fs,
                  const PspectrumOptions &inOpts,
                  keel::Allocator *mr)
 {
-    PspectrumOptions opts = inOpts;
-    opts.type = "spectrogram";
+    PspectrumOptions opts = clonePspectrumOptions(inOpts, "spectrogram");
     const Value effFs = fs.isEmpty() ? Value::scalar(1.0, mr) : fs;
 
     const bool isVec = x.dims().isVector();
@@ -1177,8 +1189,7 @@ instbwWithTime(const Value &x, const Value &fs,
                const PspectrumOptions &inOpts,
                keel::Allocator *mr)
 {
-    PspectrumOptions opts = inOpts;
-    opts.type = "spectrogram";
+    PspectrumOptions opts = clonePspectrumOptions(inOpts, "spectrogram");
     const Value effFs = fs.isEmpty() ? Value::scalar(1.0, mr) : fs;
 
     const bool isVec = x.dims().isVector();

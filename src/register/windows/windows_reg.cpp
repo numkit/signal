@@ -7,8 +7,10 @@
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/signal/windows/windows.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -22,10 +24,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -42,7 +42,7 @@ keel::usize parseSflag(keel::ArrayRef<Value> args, bool &periodic)
     if (args.empty()) return 0;
     const Value &last = args[args.size() - 1];
     if (!last.isChar() && !last.isString()) return args.size();
-    std::string s(last.toString().as_ref());
+    keel::String s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (s == "symmetric") return args.size() - 1;
@@ -74,13 +74,12 @@ void parseTypeNameOnly(keel::ArrayRef<Value> args, const char *fn)
     if (args.size() < 2) return;
     const Value &last = args[args.size() - 1];
     if (!last.isChar() && !last.isString()) return;
-    std::string s(last.toString().as_ref());
+    keel::String s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (s != "double" && s != "single")
-        throw Error(std::string(fn) + ": Expected TYPENAME to match one of "
-                    "these values: 'double', 'single' (got '" + s + "')",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":typeName");
+        throw Error(keel::format("{}: Expected TYPENAME to match one of these values: 'double', 'single' (got '{}')", fn, s),
+                    0, 0, fn, "", keel::format("numkit:{}:typeName", fn));
 }
 
 } // anonymous

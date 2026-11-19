@@ -10,10 +10,9 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/string.h>
 #include <numkit/value/value.hpp>
 
-#include <string>
-#include <string_view>
 #include <tuple>
 
 namespace numkit::signal {
@@ -253,7 +252,7 @@ firpmord(const Value &                F,
 ///             `"low"`, `"high"`, `"stop"`, `"bandpass"`, `"DC-0"`, `"DC-1"`.
 ///
 /// @see fir1, kaiser
-std::tuple<int, Value, keel::f64, std::string>
+std::tuple<int, Value, keel::f64, keel::String>
 kaiserord(const Value &                F,
           const Value &                A,
           const Value &                dev,

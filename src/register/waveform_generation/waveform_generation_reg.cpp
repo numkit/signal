@@ -4,10 +4,12 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
 #include <keel/arena.h>
 #include <keel/array.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/digital_filtering/filter.hpp>        // filtfilt
 #include <numkit/signal/filter_design/filter_design.hpp>     // butter
@@ -16,16 +18,13 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -38,11 +37,9 @@ static double carrierArg(const Value &v, int argNum, const char *name,
                          const char *fn)
 {
     if (v.isChar() || v.isString() || v.isCell() || v.isStruct())
-        throw Error(std::string(fn) + ": input " + std::to_string(argNum)
-                        + " (" + name + ") must be a real scalar "
-                          "(argument is not numeric)",
+        throw Error(keel::format("{}: input {} ({}) must be a real scalar (argument is not numeric)", fn, argNum, name),
                     0, 0, fn, "",
-                    std::string("numkit:") + fn + ":" + name + "NotReal");
+                    keel::format("numkit:{}:{}NotReal", fn, name));
     return argcheck::expectedReal(v, argNum, name, fn);
 }
 
@@ -54,7 +51,7 @@ void demod_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     if (!args[3].isChar() && !args[3].isString())
         throw Error("demod: method must be a string",
                     0, 0, "demod", "", "numkit:demod:BadMethodType");
-    std::string method(args[3].toString().as_ref());
+    keel::String method = args[3].toString();
     const Value &opt = (args.size() >= 5) ? args[4] : Value::Empty;
     outs[0] = demod(args[0], Fc, Fs, method, opt, ctx.engine->allocator());
 }
@@ -67,7 +64,7 @@ void modulate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     if (!args[3].isChar() && !args[3].isString())
         throw Error("modulate: method must be a string",
                     0, 0, "modulate", "", "numkit:modulate:BadMethodType");
-    std::string method(args[3].toString().as_ref());
+    keel::String method = args[3].toString();
     const Value &opt = (args.size() >= 5) ? args[4] : Value::Empty;
     outs[0] = modulate(args[0], Fc, Fs, method, opt, ctx.engine->allocator());
 }
@@ -157,7 +154,7 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     if (!args[2].isChar() && !args[2].isString())
         throw Error("pulstran: 3rd argument must be a string name or a function handle",
                      0, 0, "pulstran", "", "numkit:pulstran:fnType");
-    const std::string fnName(args[2].toString().as_ref());
+    const keel::String fnName = args[2].toString();
     const double fcOrW = (args.size() >= 4) ? args[3].toScalar() : 1.0;
     const double bw    = (args.size() >= 5) ? args[4].toScalar() : 0.5;
     outs[0] = pulstran(args[0], args[1], fnName, fcOrW, bw, mr);
@@ -203,7 +200,7 @@ void chirp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     const double f0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 0.0;
     const double t1 = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
     const double f1 = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 100.0;
-    std::string method = "linear";
+    keel::String method = keel::String::from("linear");
     if (args.size() >= 5) {
         if (!args[4].isChar() && !args[4].isString())
             throw Error("chirp: method must be a string",

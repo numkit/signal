@@ -4,23 +4,22 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>     // interp1 (spline)
 #include <numkit/signal/transforms/hilbert.hpp>
 #include <numkit/signal/windows/windows.hpp>          // kaiser
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {
@@ -42,13 +41,12 @@ void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     if (args.size() >= 2 && !args[1].isEmpty())
         n = (keel::usize)args[1].toScalar();
     if (args.size() >= 3 && (args[2].isChar() || args[2].isString())) {
-        std::string m(args[2].toString().as_ref());
+        keel::String m = args[2].toString();
         for (auto &c : m) c = (char)std::tolower((unsigned char)c);
         if      (m == "analytic")           mode = 1;
         else if (m == "rms")                mode = 2;
         else if (m == "peak" || m == "peaks") mode = 3;
-        else throw Error("envelope: unknown method '" + m +
-                         "' (expected 'analytic', 'rms', or 'peak')",
+        else throw Error(keel::format("envelope: unknown method '{}' (expected 'analytic', 'rms', or 'peak')", m),
                          0, 0, "envelope", "", "numkit:envelope:badmethod");
     } else if (args.size() >= 2) {
         // n given but no method â†’ MATLAB defaults to 'analytic'.

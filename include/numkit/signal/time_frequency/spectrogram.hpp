@@ -9,9 +9,9 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <numkit/value/value.hpp>
 
-#include <string>
 #include <tuple>
 
 namespace numkit::signal {
@@ -75,7 +75,7 @@ Value stft(const Value &                x,
            const Value &                window,
            keel::usize                  overlap,
            keel::usize                  fftLength,
-           const std::string &          range,
+           keel::StringRef              range,
            keel::Allocator *  mr = nullptr);
 
 /// Inverse STFT via overlap-add.
@@ -100,7 +100,7 @@ Value istft(const Value &                S,
             const Value &                window,
             keel::usize                  overlap,
             keel::usize                  fftLength,
-            const std::string &          range,
+            keel::StringRef              range,
             keel::Allocator *  mr = nullptr);
 
 /// @brief Constant OverLap-Add (COLA) compliance check
@@ -123,7 +123,7 @@ Value istft(const Value &                S,
 std::tuple<Value, Value, Value>
 iscola(const Value &                window,
        keel::usize                  noverlap,
-       const std::string &          method,
+       keel::StringRef              method,
        keel::Allocator *  mr = nullptr);
 
 

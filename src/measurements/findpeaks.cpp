@@ -18,7 +18,6 @@
 #include <cctype>
 #include <cmath>
 #include <limits>
-#include <string>
 
 namespace numkit::signal {
 

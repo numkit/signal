@@ -31,7 +31,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <string>
 
 namespace numkit::signal {
 

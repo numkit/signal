@@ -11,8 +11,12 @@
 // For bandpass/bandstop, Wn is a 2-vector [Wlo, Whi]; the prototype is
 // scaled to centre Ω₀ = √(Wlo·Whi), bandwidth Bw = Whi - Wlo.
 
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
+#include <keel/string.h>
 #include <keel/math.h>
 #include <numkit/signal/filter_design/iir_designs.hpp>
 
@@ -28,7 +32,6 @@
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -44,16 +47,15 @@ namespace {
 void iirOrder_argcheck(int N, const char *fn)
 {
     if (N <= 0)
-        throw Error(std::string(fn) + ": filter order N must be a "
-                        "positive integer (got " + std::to_string(N) + ").",
+        throw Error(keel::format("{}: filter order N must be a positive integer (got {}).", fn, N),
                     0, 0, fn, "",
-                    std::string("numkit:") + fn + ":orderNotPositive");
+                    keel::format("numkit:{}:orderNotPositive", fn));
 }
 
 // Convert Wn (Value) → 1 or 2 doubles.
-std::vector<double> readWn(const Value &Wn) {
+keel::Array<double> readWn(const Value &Wn) {
     const keel::usize n = Wn.numel();
-    std::vector<double> out(n);
+    keel::Array<double> out(n);
     for (keel::usize i = 0; i < n; ++i) out[i] = Wn.elemAsDouble(i);
     return out;
 }
@@ -66,7 +68,7 @@ inline double prewarp(double Wn_norm) {
 
 // Apply lp2X transform per ftype to (z, p, k).
 std::tuple<Value, Value, Value>
-applyLp2X(Value z, Value p, double k, FilterType ftype, const std::vector<double> &Wo_analog, keel::Allocator *mr)
+applyLp2X(Value z, Value p, double k, FilterType ftype, keel::ArrayRef<double> Wo_analog, keel::Allocator *mr)
 {
     switch (ftype) {
         case FilterType::Lowpass:
@@ -88,7 +90,7 @@ applyLp2X(Value z, Value p, double k, FilterType ftype, const std::vector<double
 }
 
 // Validate Wn arity vs ftype.
-void validateWn(FilterType ftype, const std::vector<double> &Wn) {
+void validateWn(FilterType ftype, keel::ArrayRef<double> Wn) {
     const bool isBand = (ftype == FilterType::Bandpass || ftype == FilterType::Bandstop);
     if (isBand && Wn.size() != 2)
         throw std::runtime_error("bandpass/bandstop requires 2-element Wn");
@@ -110,9 +112,9 @@ finishDesign(Value z, Value p, Value k_v, bool analog, keel::Allocator *mr)
 
 // Translate raw Wn (digital normalised or analog rad/s) into the
 // analog-domain Wo's used by the lp2X step.
-std::vector<double> wnToAnalog(const std::vector<double> &Wn, bool analog) {
-    if (analog) return Wn;
-    std::vector<double> out(Wn.size());
+keel::Array<double> wnToAnalog(keel::ArrayRef<double> Wn, bool analog) {
+    if (analog) return keel::Array<double>(Wn);
+    keel::Array<double> out(Wn.size());
     for (keel::usize i = 0; i < Wn.size(); ++i) out[i] = prewarp(Wn[i]);
     return out;
 }
@@ -219,8 +221,8 @@ struct OrdNormalised {
     double Wo_centre{0.0};
 };
 
-OrdNormalised normaliseOrd(const std::vector<double> &Wp,
-                           const std::vector<double> &Ws,
+OrdNormalised normaliseOrd(keel::ArrayRef<double> Wp,
+                           keel::ArrayRef<double> Ws,
                            bool analog)
 {
     OrdNormalised n{};
@@ -388,7 +390,7 @@ cheb2ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
 
 namespace {
 
-double findElliporderImpl(const std::vector<double> &WA, double Rp, double Rs, keel::Allocator *mr)
+double findElliporderImpl(keel::ArrayRef<double> WA, double Rp, double Rs, keel::Allocator *mr)
 {
     double WAmin = keel::abs(WA[0]);
     for (keel::usize i = 1; i < WA.size(); ++i)
@@ -437,7 +439,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
         throw Error("ellipord: Wp must be scalar or 2-vector",
                     0, 0, "ellipord", "", "numkit:ellipord:BadWp");
 
-    std::vector<double> wp(numW), ws(numW);
+    keel::Array<double> wp(numW, mr), ws(numW, mr);
     for (keel::usize i = 0; i < numW; ++i) {
         wp[i] = Wp_v.elemAsDouble(i);
         ws[i] = Ws_v.elemAsDouble(i);
@@ -448,17 +450,17 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     ftype += (wp[0] < ws[0]) ? 1 : 2;
 
     // Prewarp digital → analog if needed.
-    std::vector<double> WP(numW), WS(numW);
+    keel::Array<double> WP(numW, mr), WS(numW, mr);
     if (!analog) {
         for (keel::usize i = 0; i < numW; ++i) {
             WP[i] = std::tan(M_PI * wp[i] / 2.0);
             WS[i] = std::tan(M_PI * ws[i] / 2.0);
         }
     } else {
-        WP = wp; WS = ws;
+        WP = wp.clone(); WS = ws.clone();
     }
 
-    std::vector<double> WA;
+    keel::Array<double> WA(mr);
     int N = 0;
     switch (ftype) {
         case 1: { // lowpass: WA = WS / WP
@@ -555,7 +557,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, keel::Allo
         throw Error("firpmord: Fs must be positive",
                     0, 0, "firpmord", "", "numkit:firpmord:BadFs");
 
-    std::vector<double> fcuts(mf), mags(nbands), devs(nbands);
+    keel::Array<double> fcuts(mf, mr), mags(nbands, mr), devs(nbands, mr);
     for (keel::usize i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
     for (keel::usize i = 0; i < nbands; ++i) {
         mags[i] = A.elemAsDouble(i);
@@ -577,7 +579,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, keel::Allo
     }
 
     // Separate transition edges into f1, f2 pairs.
-    std::vector<double> f1v, f2v;
+    keel::Array<double> f1v(mr), f2v(mr);
     for (keel::usize i = 0; i + 1 < mf; i += 2) {
         f1v.push_back(fcuts[i]);
         f2v.push_back(fcuts[i + 1]);
@@ -677,7 +679,7 @@ KaislpResult kaislpord(double f1, double f2, double d1, double d2)
 
 } // anon
 
-std::tuple<int, Value, double, std::string>
+std::tuple<int, Value, double, keel::String>
 kaiserord(const Value &F, const Value &A, const Value &dev, double fs, keel::Allocator *mr)
 {
     const keel::usize mf     = F.numel();
@@ -694,7 +696,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, keel::All
         throw Error("kaiserord: Fs must be positive",
                     0, 0, "kaiserord", "", "numkit:kaiserord:BadFs");
 
-    std::vector<double> fcuts(mf), mags(nbands), devs(nbands);
+    keel::Array<double> fcuts(mf, mr), mags(nbands, mr), devs(nbands, mr);
     for (keel::usize i = 0; i < mf; ++i)     fcuts[i] = F.elemAsDouble(i) / fs;
     for (keel::usize i = 0; i < nbands; ++i) {
         mags[i] = A.elemAsDouble(i);
@@ -716,7 +718,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, keel::All
     }
 
     // Separate transition edges into f1 / f2 pairs.
-    std::vector<double> f1v, f2v;
+    keel::Array<double> f1v(mr), f2v(mr);
     for (keel::usize i = 0; i + 1 < mf; i += 2) {
         f1v.push_back(fcuts[i]);
         f2v.push_back(fcuts[i + 1]);
@@ -755,15 +757,15 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, keel::All
         for (keel::usize i = 0; i < f1v.size(); ++i) wd[i] = f1v[i] + f2v[i];
     }
 
-    std::string ftype = "low";
-    if (nbands == 2 && mags[0] == 0.0)              ftype = "high";
-    else if (nbands == 3 && mags[1] == 0.0)         ftype = "stop";
-    else if (nbands >= 3 && mags[0] == 0.0)         ftype = "DC-0";
-    else if (nbands >= 3 && mags[0] == 1.0)         ftype = "DC-1";
+    keel::String ftype = keel::String::from("low", mr);
+    if (nbands == 2 && mags[0] == 0.0)              ftype.assign("high");
+    else if (nbands == 3 && mags[1] == 0.0)         ftype.assign("stop");
+    else if (nbands >= 3 && mags[0] == 0.0)         ftype.assign("DC-0");
+    else if (nbands >= 3 && mags[0] == 1.0)         ftype.assign("DC-1");
 
     if ((N % 2) != 0 && mags[nbands - 1] != 0.0) ++N;
 
-    return {N, Wn, bta, ftype};
+    return {N, std::move(Wn), bta, keel::move(ftype)};
 }
 
 } // namespace numkit::signal

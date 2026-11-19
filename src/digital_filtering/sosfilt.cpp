@@ -4,7 +4,9 @@
 // zp2sos / tf2sos live in filter_implementation/conversions.cpp.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <keel/complex.h>
@@ -52,17 +54,17 @@ BiquadZi biquadZi(double b0, double b1, double b2,
     return {s1, s2};
 }
 
-keel::usize validateSosMatrix(const Value &sos, std::string_view fn)
+keel::usize validateSosMatrix(const Value &sos, keel::StringRef fn)
 {
     if (sos.dims().ndim() != 2 || sos.dims().cols() != 6 || sos.dims().rows() == 0)
-        throw Error(std::string(fn) + ": sos matrix must be L×6 with L >= 1",
-                     0, 0, std::string(fn), "",
-                     "numkit:" + std::string(fn) + ":sosShape");
+        throw Error(keel::format("{}: sos matrix must be L×6 with L >= 1", fn),
+                     0, 0, fn, "",
+                     keel::format("numkit:{}:sosShape", fn));
     if (sos.type() == ValueType::DOUBLE || sos.type() == ValueType::SINGLE)
         return sos.dims().rows();
-    throw Error(std::string(fn) + ": sos matrix must be DOUBLE or SINGLE",
-                 0, 0, std::string(fn), "",
-                 "numkit:" + std::string(fn) + ":sosType");
+    throw Error(keel::format("{}: sos matrix must be DOUBLE or SINGLE", fn),
+                 0, 0, fn, "",
+                 keel::format("numkit:{}:sosType", fn));
 }
 
 void applyCascade(const Value &sos, const double *xs, double *out, keel::usize n,
@@ -102,10 +104,8 @@ void sosfilt_argcheck(const Value &sos, const Value &x)
     validateSosMatrix(sos, "sosfilt");
     if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE
         && x.type() != ValueType::COMPLEX) {
-        throw Error("sosfilt: signal x must have floating point precision "
-                    "(got a " + std::to_string(x.dims().rows()) + "x"
-                    + std::to_string(x.dims().cols()) + " "
-                    + mtypeName(x.type()) + " array)",
+        throw Error(keel::format("sosfilt: signal x must have floating point precision (got a {}x{} {} array)",
+                                 x.dims().rows(), x.dims().cols(), mtypeName(x.type())),
                      0, 0, "sosfilt", "", "numkit:sosfilt:xType");
     }
 }
@@ -114,10 +114,8 @@ void sosfiltfilt_argcheck(const Value &sos, const Value &x)
 {
     validateSosMatrix(sos, "sosfiltfilt");
     if (x.type() != ValueType::DOUBLE && x.type() != ValueType::SINGLE) {
-        throw Error("sosfiltfilt: signal x must have floating point precision "
-                    "(got a " + std::to_string(x.dims().rows()) + "x"
-                    + std::to_string(x.dims().cols()) + " "
-                    + mtypeName(x.type()) + " array)",
+        throw Error(keel::format("sosfiltfilt: signal x must have floating point precision (got a {}x{} {} array)",
+                                 x.dims().rows(), x.dims().cols(), mtypeName(x.type())),
                      0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:xType");
     }
 }

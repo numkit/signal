@@ -15,7 +15,6 @@
 #define _USE_MATH_DEFINES
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -404,7 +403,7 @@ Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
                           (A * A + (nbar - 0.5) * (nbar - 0.5));
 
     // Coefficients F_m, m = 1..nbar-1.
-    auto Fm = std::vector<double>(static_cast<keel::usize>(nbar - 1), 0.0);
+    auto Fm = keel::Array<double>(static_cast<keel::usize>(nbar - 1), 0.0, mr);
     for (int m = 1; m < nbar; ++m) {
         double num = 1.0, den = 1.0;
         for (int k = 1; k < nbar; ++k) {
@@ -509,8 +508,8 @@ std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
     const double W = nw / static_cast<double>(N);
     const double cos2piW = std::cos(2.0 * M_PI * W);
 
-    std::vector<double> d(N, 0.0);
-    std::vector<double> e(N, 0.0);
+    keel::Array<double> d(N, 0.0, mr);
+    keel::Array<double> e(N, 0.0, mr);
     for (keel::usize i = 0; i < N; ++i) {
         const double h = 0.5 * (static_cast<double>(N - 1) - 2.0 * static_cast<double>(i));
         d[i] = h * h * cos2piW;
@@ -519,7 +518,7 @@ std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
         }
     }
 
-    std::vector<double> Z(N * N, 0.0);
+    keel::Array<double> Z(N * N, 0.0, mr);
     for (keel::usize i = 0; i < N; ++i) Z[i + i * N] = 1.0;
 
     // Symmetric tridiagonal implicit QL with Wilkinson shift (tql2)
@@ -572,7 +571,7 @@ std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
     }
 
     // Sort eigenvalues descending
-    std::vector<keel::usize> order(N);
+    keel::Array<keel::usize> order(N, mr);
     for (keel::usize i = 0; i < N; ++i) order[i] = i;
     std::sort(order.begin(), order.end(), [&](keel::usize a, keel::usize b) {
         return d[a] > d[b];
@@ -584,7 +583,7 @@ std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
     double *vd = V.doubleDataMut();
 
     // Precompute sinc row for concentration ratio V
-    std::vector<double> sincLag(N);
+    keel::Array<double> sincLag(N, mr);
     sincLag[0] = 2.0 * W;
     for (keel::usize lag = 1; lag < N; ++lag) {
         sincLag[lag] = std::sin(2.0 * M_PI * W * static_cast<double>(lag))

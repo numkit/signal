@@ -5,7 +5,9 @@
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
@@ -15,17 +17,14 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -90,20 +89,19 @@ int iirOrder(const Value &v, const char *fn)
 {
     if (!v.isScalar()) {
         const Dims &d = v.dims();
-        throw Error(std::string(fn) + ": filter order N must be a scalar "
-                    "(argument is " + std::to_string(d.dim(0)) + "x"
-                        + std::to_string(d.dim(1)) + ").",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotScalar");
+        throw Error(keel::format("{}: filter order N must be a scalar (argument is {}x{}).",
+                                 fn, d.dim(0), d.dim(1)),
+                    0, 0, fn, "", keel::format("numkit:{}:orderNotScalar", fn));
     }
     if (v.isComplex())
-        throw Error(std::string(fn) + ": filter order N must be real "
-                        "(argument is complex).",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotReal");
+        throw Error(keel::format("{}: filter order N must be real (argument is complex).", fn),
+                    0, 0, fn, "", keel::format("numkit:{}:orderNotReal", fn));
     const double n = v.toScalar();
-    if (n != std::floor(n))
-        throw Error(std::string(fn) + ": filter order N must be a positive "
-                        "integer (got " + argcheck::detail::num(n).c_str() + ").",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotInteger");
+    if (n != std::floor(n)) {
+        const auto numStr = argcheck::detail::num(n);
+        throw Error(keel::format("{}: filter order N must be a positive integer (got {}).", fn, numStr),
+                    0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));
+    }
     return static_cast<int>(n);
 }
 

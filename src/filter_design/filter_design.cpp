@@ -4,8 +4,10 @@
 // filter) live in filter_analysis/frequency_response.cpp.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <keel/complex.h>
@@ -106,7 +108,7 @@ void normaliseAtRef(keel::Array<double> &b, const keel::Array<double> &a,
 } // anonymous namespace
 
 std::tuple<Value, Value>
-butter(int N, double Wn, const std::string &type, keel::Allocator *mr)
+butter(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
 {
     if (Wn <= 0.0 || Wn >= 1.0)
         throw Error("butter: Wn must be between 0 and 1",
@@ -289,7 +291,7 @@ inline double IslinReal(double alpha, double w, double w0)
 } // anonymous namespace
 
 Value firls(int N, const Value &Farg, const Value &Aarg,
-            const Value &Warg, const std::string &ftype,
+            const Value &Warg, keel::StringRef ftype,
             keel::Allocator *mr)
 {
     if (N < 1)
@@ -298,8 +300,9 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
 
     bool antiSym = false;
     if (!ftype.empty()) {
-        std::string fl;
-        for (char c : ftype) fl += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        keel::String fl;
+        fl.reserve(ftype.size());
+        for (char c : ftype) fl.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
         if (fl == "hilbert" || fl == "h" || fl == "differentiator" || fl == "d")
             antiSym = true;
         else
@@ -457,24 +460,23 @@ namespace {
 // inside (0, 1), type one of the shipped forms. The bandpass/stop/
 // DC-0/DC-1/NOSCALE/SCALE vocabulary is an unported parity gap and is
 // rejected, not silently accepted.
-void fir1_argcheck(int N, double Wn, const std::string &type)
+void fir1_argcheck(int N, double Wn, keel::StringRef type)
 {
     argcheck::expectedPositive(static_cast<double>(N), 1, "n", "fir1");
     argcheck::expectedPositive(Wn, 2, "Wn", "fir1");
-    if (Wn >= 1.0)
-        throw Error(std::string("fir1: cutoff frequency Wn must be inside the open "
-                                "interval (0, 1) (got ")
-                        + argcheck::detail::num(Wn).c_str() + ").",
+    if (Wn >= 1.0) {
+        const auto numStr = argcheck::detail::num(Wn);
+        throw Error(keel::format("fir1: cutoff frequency Wn must be inside the open interval (0, 1) (got {}).", numStr),
                     0, 0, "fir1", "", "numkit:fir1:wnOutOfRange");
+    }
     if (type != "low" && type != "high")
-        throw Error("fir1: type must be one of: 'low', 'high' (got '"
-                        + type + "').",
+        throw Error(keel::format("fir1: type must be one of: 'low', 'high' (got '{}').", type),
                     0, 0, "fir1", "", "numkit:fir1:invalidType");
 }
 
 } // namespace
 
-Value fir1(int N, double Wn, const std::string &type, keel::Allocator *mr)
+Value fir1(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
 {
     fir1_argcheck(N, Wn, type);
 
@@ -512,7 +514,7 @@ Value fir1(int N, double Wn, const std::string &type, keel::Allocator *mr)
     return bv;
 }
 
-Value fir1(int N, const Value &Wn, const std::string &typeIn,
+Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
            const Value &window, bool scale, keel::Allocator *mr)
 {
     argcheck::expectedPositive(static_cast<double>(N), 1, "n", "fir1");
@@ -521,11 +523,11 @@ Value fir1(int N, const Value &Wn, const std::string &typeIn,
                     0, 0, "fir1", "", "numkit:fir1:invalidWn");
 
     const keel::usize nw = Wn.numel();
-    std::string type = typeIn;
+    keel::String type = keel::String::from(typeIn);
     for (char &ch : type)
         ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
     if (type.empty())
-        type = (nw == 1) ? "low" : (nw == 2 ? "bandpass" : "dc-0");
+        type.assign((nw == 1) ? "low" : (nw == 2 ? "bandpass" : "dc-0"));
 
     if (nw == 1 && window.isEmpty() && scale && (type == "low" || type == "high"))
         return fir1(N, Wn.elemAsDouble(0), type, mr);
@@ -546,11 +548,11 @@ Value fir1(int N, const Value &Wn, const std::string &typeIn,
     if (nw == 1) {
         if (type == "low") firstBandPass = true;
         else if (type == "high") firstBandPass = false;
-        else throw Error("fir1: invalid filter type '" + typeIn + "'.", 0, 0, "fir1", "", "numkit:fir1:invalidType");
+        else throw Error(keel::format("fir1: invalid filter type '{}'.", typeIn), 0, 0, "fir1", "", "numkit:fir1:invalidType");
     } else {
         if (type == "bandpass" || type == "dc-0") firstBandPass = false;
         else if (type == "stop" || type == "dc-1") firstBandPass = true;
-        else throw Error("fir1: invalid filter type '" + typeIn + "'.", 0, 0, "fir1", "", "numkit:fir1:invalidType");
+        else throw Error(keel::format("fir1: invalid filter type '{}'.", typeIn), 0, 0, "fir1", "", "numkit:fir1:invalidType");
     }
 
     // Odd-order filter with passband at Nyquist (f = 1) gets incremented by 1 when default window is used.
@@ -938,7 +940,7 @@ struct PMGridPoint {
 
 std::tuple<Value, double>
 firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
-      const std::string &ftype, keel::Allocator *mr)
+      keel::StringRef ftype, keel::Allocator *mr)
 {
     if (N < 3)
         throw Error("Filter order must be 3 or more",
@@ -985,10 +987,10 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     //   Type II : L = (N-1)/2
     //   Type III: L = N/2 - 1
     //   Type IV : L = (N-1)/2
-    auto lower_eq = [](const std::string &s, const char *t) {
+    auto lower_eq = [](keel::StringRef s, const char *t) {
         if (s.size() != keel::StringRef(t).size()) return false;
         for (keel::usize i = 0; i < s.size(); ++i)
-            if (std::tolower(s[i]) != std::tolower(t[i])) return false;
+            if (std::tolower(static_cast<unsigned char>(s[i])) != std::tolower(static_cast<unsigned char>(t[i]))) return false;
         return true;
     };
     const bool isHilbert   = lower_eq(ftype, "hilbert");

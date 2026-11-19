@@ -7,7 +7,9 @@
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/signal/smoothing/medfilt.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -21,10 +23,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -54,7 +54,7 @@ void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     bool zeropad = true;
     for (keel::usize a = args.size(); a-- > 1;) {
         if (args[a].isChar() || args[a].isString()) {
-            std::string s(args[a].toString().as_ref());
+            keel::String s = args[a].toString();
             for (char &c : s) c = static_cast<char>(std::tolower((unsigned char)c));
             if (s == "truncate") zeropad = false;
             else if (s == "zeropad") zeropad = true;
@@ -82,10 +82,11 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     keel::usize order = 0;
     if (args.size() >= 3 && !args[2].isEmpty()) {
         if (args[2].isChar() || args[2].isString()) {
-            std::string s(args[2].toString().as_ref());
+            keel::String raw = args[2].toString();
+            keel::String s = raw.clone();
             for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if (s != "aic")
-                throw Error("fillgaps: ORDER string must be 'aic' (got '" + std::string(args[2].toString().as_ref()) + "')",
+                throw Error(keel::format("fillgaps: ORDER string must be 'aic' (got '{}')", raw),
                             0, 0, "fillgaps", "", "numkit:fillgaps:invalidOrder");
             order = 0;
         } else {

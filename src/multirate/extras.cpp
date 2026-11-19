@@ -7,6 +7,7 @@
 // filter() / upsample() / downsample() primitives.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
 #include <keel/array.h>
@@ -24,7 +25,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -69,8 +69,8 @@ void upfirdn_argcheck(keel::usize p, keel::usize q)
 void interp_argcheck(const Value &x, keel::usize n)
 {
     if (x.numel() < 2 * n + 1)
-        throw Error("interp: input 1 (x) length (" + std::to_string(x.numel()) +
-                        ") must be at least 2*n+1 (" + std::to_string(2 * n + 1) + ")",
+        throw Error(keel::format("interp: input 1 (x) length ({}) must be at least 2*n+1 ({})",
+                                 x.numel(), 2 * n + 1),
                     0, 0, "interp", "", "numkit:interp:inputTooShort");
 }
 
@@ -91,7 +91,7 @@ Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
     const int  order = static_cast<int>(Ntaps - 1);   // even (2RL-2)
     const double R   = static_cast<double>(r);
 
-    std::vector<double> F, M;
+    keel::Array<double> F(mr), M(mr);
     if (alpha == 1.0) {
         M = {R, R, 0.0, 0.0};
         F = {0.0, 1.0 / (2.0 * R), 1.0 / (2.0 * R), 0.5};

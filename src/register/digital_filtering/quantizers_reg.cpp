@@ -8,6 +8,7 @@
 
 #include <keel/core.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/signal/digital_filtering/quantizers.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -21,10 +22,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -43,7 +42,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
         V = argcheck::expectedReal(args[2], 3, "V", "uencode");
     bool signedOut = false;
     if (args.size() >= 4 && !args[3].isEmpty()) {
-        std::string s(args[3].toString().as_ref());
+        keel::String s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (s == "signed")        signedOut = true;
@@ -67,7 +66,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
         V = argcheck::expectedReal(args[2], 3, "V", "udecode");
     bool wrap = false;
     if (args.size() >= 4 && !args[3].isEmpty()) {
-        std::string s(args[3].toString().as_ref());
+        keel::String s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (s == "wrap")          wrap = true;

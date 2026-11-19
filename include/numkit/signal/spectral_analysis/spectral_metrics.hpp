@@ -6,8 +6,8 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/string.h>
 #include <limits>
-#include <string>
 #include <tuple>
 #include <numkit/value/value.hpp>
 
@@ -235,7 +235,7 @@ Value sfdr(const Value &x, const Value &fs = Value::Empty,
 // ─────────────────────────────────────────────────────────────────────
 
 struct PspectrumOptions {
-    std::string type = "power";   // "power" or "spectrogram"
+    keel::String type = keel::String::from("power");   // "power" or "spectrogram"
     keel::f64 leakage = 0.5;         // in [0, 1]
     keel::f64 overlapPercent = -1.0; // -1 = automatic from leakage; else in [0, 100)
     keel::f64 timeResolution = -1.0; // -1 = automatic; else > 0 in seconds

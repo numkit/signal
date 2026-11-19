@@ -5,7 +5,9 @@
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/internal/shims/polyfun.hpp>
 #include <numkit/signal/internal/shims/specfun.hpp>
@@ -21,10 +23,8 @@
 #include <cmath>
 #include <cstddef>
 #include <cstring>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -38,11 +38,11 @@ namespace {
 int firOrder(const Value &v, int argNum, const char *name, const char *fn)
 {
     const double n = argcheck::expectedReal(v, argNum, name, fn);
-    if (n != std::floor(n))
-        throw Error(std::string(fn) + ": filter order " + name
-                        + " must be a positive integer (got "
-                        + argcheck::detail::num(n).c_str() + ").",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":orderNotInteger");
+    if (n != std::floor(n)) {
+        const auto numStr = argcheck::detail::num(n);
+        throw Error(keel::format("{}: filter order {} must be a positive integer (got {}).", fn, name, numStr),
+                    0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));
+    }
     return static_cast<int>(n);
 }
 
@@ -54,19 +54,19 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     const int N = firOrder(args[0], 1, "n", "fir1");
     if (args[1].isScalar() && args.size() <= 3 && (args.size() < 3 || args[2].isChar() || args[2].isString())) {
         const double Wn = argcheck::expectedReal(args[1], 2, "Wn", "fir1");
-        std::string type = "low";
+        keel::String type = keel::String::from("low");
         if (args.size() >= 3 && (args[2].isChar() || args[2].isString()))
             type = args[2].toString();
         outs[0] = fir1(N, Wn, type, ctx.engine->allocator());
         return;
     }
-    std::string type;
+    keel::String type;
     Value window = Value::Empty;
     bool scale = true;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
-            std::string s(args[i].toString().as_ref());
-            std::string sl = s;
+            keel::String s = args[i].toString();
+            keel::String sl = s.clone();
             for (char &ch : sl)
                 ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
             if (sl == "noscale")
@@ -74,7 +74,7 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
             else if (sl == "scale")
                 scale = true;
             else
-                type = s;
+                type = keel::move(s);
         } else if (args[i].isNumeric()) {
             window = args[i];
         }
@@ -87,7 +87,7 @@ void firls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     argcheck::checkNargin(args.size(), 3, 5, "firls");
     const int N = firOrder(args[0], 1, "N", "firls");
     Value W = Value::Empty;
-    std::string ftype;
+    keel::String ftype;
     for (keel::usize i = 3; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString())
             ftype = args[i].toString();
@@ -153,7 +153,7 @@ void firpm_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     // Trailing args: weights vector (numeric) or ftype string. MATLAB
     // accepts them in either order (W [, ftype] or ftype only).
     Value W;
-    std::string ftype;
+    keel::String ftype;
     for (keel::usize i = 3; i < args.size(); ++i) {
         if (args[i].isCell())
             throw Error("firpm: cell-form lgrid argument deferred",

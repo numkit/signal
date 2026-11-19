@@ -10,10 +10,12 @@
 #define _USE_MATH_DEFINES
 #endif
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
 #include <keel/array.h>
 #include <keel/complex.h>
+#include <keel/string.h>
 #include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -25,16 +27,13 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include "../../signal_detail.hpp"
 
@@ -55,7 +54,7 @@ void iscola_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                      0, 0, "iscola", "", "numkit:iscola:badOverlap");
     const keel::usize noverlap = static_cast<keel::usize>(novS);
 
-    std::string method = "wola";  // MATLAB default
+    keel::String method = keel::String::from("wola");  // MATLAB default
     if (args.size() >= 3) {
         if (!(args[2].isChar() || args[2].isString()))
             throw Error("iscola: method must be a string",
@@ -294,19 +293,19 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
 // than to silently misuse a guess.
 static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
                              Value &window, keel::usize &overlap,
-                             keel::usize &fftLength, std::string &range)
+                             keel::usize &fftLength, keel::String &range)
 {
-    auto eqIgnoreCase = [](const std::string &a, const char *b) {
+    auto eqIgnoreCase = [](keel::StringRef a, const char *b) {
         if (a.size() != keel::StringRef(b).size()) return false;
         for (keel::usize i = 0; i < a.size(); ++i)
-            if (std::tolower(a[i]) != std::tolower(b[i])) return false;
+            if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) return false;
         return true;
     };
     for (keel::usize i = startIdx; i + 1 < args.size(); i += 2) {
         if (!args[i].isChar())
             throw Error("stft: name-value pair name must be a string",
                          0, 0, "stft", "", "numkit:stft:badNVName");
-        const std::string key(args[i].toString().as_ref());
+        const keel::String key = args[i].toString();
         const Value &val      = args[i + 1];
         if (eqIgnoreCase(key, "Window"))           window    = val;
         else if (eqIgnoreCase(key, "OverlapLength"))
@@ -319,7 +318,7 @@ static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
                 int(i) + 2, "FFTLength", "stft"));
         else if (eqIgnoreCase(key, "FrequencyRange")) range  = val.toString();
         else
-            throw Error("stft: unknown name-value key '" + key + "'",
+            throw Error(keel::format("stft: unknown name-value key '{}'", key),
                          0, 0, "stft", "", "numkit:stft:badNVKey");
     }
 }
@@ -342,7 +341,7 @@ static keel::usize parseOptionalFs(keel::ArrayRef<Value> args, bool &fsGiven, do
 // Build the frequency-axis vector that MATLAB returns from
 // `[s, f, ...] = stft(...)`. The angular spacing is `f_scale / NFFT`
 // where `f_scale = fs` when given, else `2*pi` (radians/sample default).
-static Value buildFreqAxis(keel::usize NFFT, const std::string &range,
+static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
                            bool fsGiven, double fs,
                            keel::Allocator *mr)
 {
@@ -411,7 +410,7 @@ void stft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     Value window           = Value();
     keel::usize overlap    = SIZE_MAX;
     keel::usize fftLength  = 0;
-    std::string range      = "centered";  // matches MATLAB R2019b+ default
+    keel::String range      = keel::String::from("centered");  // matches MATLAB R2019b+ default
     parseStftNVPairs(args, nvStart, window, overlap, fftLength, range);
 
     // Resolve sizes (mirrors stft() internals) so we can build f, t.
@@ -444,7 +443,7 @@ void istft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     Value window           = Value();
     keel::usize overlap    = SIZE_MAX;
     keel::usize fftLength  = 0;
-    std::string range      = "centered";
+    keel::String range      = keel::String::from("centered");
     parseStftNVPairs(args, nvStart, window, overlap, fftLength, range);
 
     outs[0] = istft(args[0], window, overlap, fftLength, range, mr);

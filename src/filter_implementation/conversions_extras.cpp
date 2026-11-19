@@ -1,8 +1,11 @@
 // toolboxes/signal/src/filter_implementation/conversions_extras.cpp
 // sos2tf / sos2zp / tf2zpk + tf↔ss + sos↔ss + zpk↔ss adapters.
 
+#include <keel/array.h>
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/complex.h>
 #include <keel/math.h>
 #include <numkit/signal/filter_implementation/conversions_extras.hpp>
@@ -15,7 +18,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -23,24 +25,24 @@ namespace {
 
 // Trim trailing zeros from a polynomial coefficient vector. Returns
 // the kept length (1 = constant, 0 = empty input).
-keel::usize trimTrailingZeros(std::vector<double> &v)
+keel::usize trimTrailingZeros(keel::Array<double> &v)
 {
     while (v.size() > 1 && keel::abs(v.back()) < 1e-15) v.pop_back();
     return v.size();
 }
 
 // Convolve two real polynomials (coefficient-wise multiplication).
-std::vector<double> polyConv(const std::vector<double> &a, const std::vector<double> &b)
+keel::Array<double> polyConv(keel::ArrayRef<double> a, keel::ArrayRef<double> b)
 {
     if (a.empty() || b.empty()) return {};
-    std::vector<double> out(a.size() + b.size() - 1, 0.0);
+    keel::Array<double> out(a.size() + b.size() - 1, 0.0);
     for (keel::usize i = 0; i < a.size(); ++i)
         for (keel::usize j = 0; j < b.size(); ++j)
             out[i + j] += a[i] * b[j];
     return out;
 }
 
-Value rowFromVec(const std::vector<double> &v, keel::Allocator *mr)
+Value rowFromVec(keel::ArrayRef<double> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
     double *dst = out.doubleDataMut();
@@ -49,11 +51,11 @@ Value rowFromVec(const std::vector<double> &v, keel::Allocator *mr)
 }
 
 // Append row's roots (as Complex) to the running list.
-void appendRoots(const double *coeffs, keel::usize n, std::vector<keel::c64> &out, keel::Allocator *mr)
+void appendRoots(const double *coeffs, keel::usize n, keel::Array<keel::c64> &out, keel::Allocator *mr)
 {
     // Build a 1×n DOUBLE Value to feed roots(). Trim trailing zeros so
     // roots() doesn't add spurious roots at 0.
-    std::vector<double> trimmed(coeffs, coeffs + n);
+    keel::Array<double> trimmed(keel::ArrayRef<double>(coeffs, n), mr);
     trimTrailingZeros(trimmed);
     if (trimmed.size() < 2) return;
     auto p = Value::matrix(1, trimmed.size(), ValueType::DOUBLE, mr);
@@ -69,7 +71,7 @@ void appendRoots(const double *coeffs, keel::usize n, std::vector<keel::c64> &ou
     }
 }
 
-Value complexColFromVec(const std::vector<keel::c64> &v, keel::Allocator *mr)
+Value complexColFromVec(keel::ArrayRef<keel::c64> v, keel::Allocator *mr)
 {
     bool anyImag = false;
     for (const auto &c : v)
@@ -89,8 +91,8 @@ Value complexColFromVec(const std::vector<keel::c64> &v, keel::Allocator *mr)
 void requireSosShape(const Value &sos, const char *fn)
 {
     if (sos.dims().cols() != 6 || sos.dims().rows() == 0)
-        throw Error(std::string(fn) + ": sos must be an L×6 matrix",
-                     0, 0, fn, "", std::string("numkit:") + fn + ":badShape");
+        throw Error(keel::format("{}: sos must be an L×6 matrix", fn),
+                     0, 0, fn, "", keel::format("numkit:{}:badShape", fn));
 }
 
 void sos2tf_argcheck(const Value &sos)
@@ -111,12 +113,12 @@ sos2tf(const Value &sos, double g, keel::Allocator *mr)
 {
     sos2tf_argcheck(sos);
     const keel::usize L = sos.dims().rows();
-    std::vector<double> b{1.0}, a{1.0};
+    keel::Array<double> b({1.0}, mr), a({1.0}, mr);
     for (keel::usize i = 0; i < L; ++i) {
-        std::vector<double> bs = {sos(i, 0), sos(i, 1), sos(i, 2)};
-        std::vector<double> as = {sos(i, 3), sos(i, 4), sos(i, 5)};
-        b = polyConv(b, bs);
-        a = polyConv(a, as);
+        const double bs[3] = {sos(i, 0), sos(i, 1), sos(i, 2)};
+        const double as[3] = {sos(i, 3), sos(i, 4), sos(i, 5)};
+        b = polyConv(b, keel::ArrayRef<double>(bs, 3));
+        a = polyConv(a, keel::ArrayRef<double>(as, 3));
     }
     if (g != 1.0)
         for (auto &v : b) v *= g;
@@ -129,7 +131,7 @@ sos2zp(const Value &sos, double g, keel::Allocator *mr)
 {
     sos2zp_argcheck(sos);
     const keel::usize L = sos.dims().rows();
-    std::vector<keel::c64> zeros, poles;
+    keel::Array<keel::c64> zeros(mr), poles(mr);
     double gain = g;
     for (keel::usize i = 0; i < L; ++i) {
         const double bArr[3] = {sos(i, 0), sos(i, 1), sos(i, 2)};
@@ -168,13 +170,13 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
 
     // Normalise so a(1) = 1.
     const keel::usize na = a.numel();
-    std::vector<double> ah(na);
+    keel::Array<double> ah(na, mr);
     for (keel::usize i = 0; i < na; ++i) ah[i] = a.elemAsDouble(i) / a0;
 
     // Pad b to the same length as a (left-pad with zeros — matches
     // MATLAB convention for proper rationals).
     const keel::usize nb = b.numel();
-    std::vector<double> bh(na, 0.0);
+    keel::Array<double> bh(na, 0.0, mr);
     if (nb >= na) {
         for (keel::usize i = 0; i < na; ++i)
             bh[i] = b.elemAsDouble(nb - na + i) / a0;
@@ -261,9 +263,9 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
     //   p(λ) = c_0 + c_1 λ + ... + c_n λ^n   (with c_n = 1).
     // We also accumulate b(λ) = D * a(λ) + Σ C * M_k * B * λ^k.
 
-    auto matMul = [N](const std::vector<double> &X,
-                      const std::vector<double> &Y,
-                      std::vector<double> &out) {
+    auto matMul = [N](keel::ArrayRef<double> X,
+                      keel::ArrayRef<double> Y,
+                      keel::Array<double> &out) {
         out.assign(N * N, 0.0);
         for (keel::usize i = 0; i < N; ++i)
             for (keel::usize j = 0; j < N; ++j) {
@@ -273,16 +275,16 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
                 out[j * N + i] = s;
             }
     };
-    auto matVec = [N](const std::vector<double> &X,
+    auto matVec = [N](keel::ArrayRef<double> X,
                       const double *y,
-                      std::vector<double> &out) {
+                      keel::Array<double> &out) {
         out.assign(N, 0.0);
         for (keel::usize i = 0; i < N; ++i)
             for (keel::usize k = 0; k < N; ++k)
                 out[i] += X[k * N + i] * y[k];
     };
 
-    std::vector<double> A_(N * N);
+    keel::Array<double> A_(N * N, mr);
     for (keel::usize i = 0; i < N; ++i)
         for (keel::usize j = 0; j < N; ++j)
             A_[j * N + i] = A(i, j);
@@ -296,15 +298,15 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
     // k=0..N-1 and then placed into b_coeffs[N-1-k]:
     //   b_coeffs[N]       = D
     //   b_coeffs[N-1-k]   = D · a_coeffs[N-1-k] + (C · M_k · B)
-    std::vector<double> M(N * N, 0.0), AM(N * N);
+    keel::Array<double> M(N * N, 0.0, mr), AM(N * N, mr);
     for (keel::usize i = 0; i < N; ++i) M[i * N + i] = 1.0;   // M_0 = I
 
-    std::vector<double> a_coeffs(N + 1, 0.0);
+    keel::Array<double> a_coeffs(N + 1, 0.0, mr);
     a_coeffs[N] = 1.0;
-    std::vector<double> CMB(N, 0.0);
+    keel::Array<double> CMB(N, 0.0, mr);
 
-    std::vector<double> tmp(N);
-    auto dotCMB = [&](const std::vector<double> &Mat) {
+    keel::Array<double> tmp(N, mr);
+    auto dotCMB = [&](keel::ArrayRef<double> Mat) {
         matVec(Mat, Bp, tmp);
         double s = 0.0;
         for (keel::usize i = 0; i < N; ++i) s += Cp[i] * tmp[i];
@@ -325,7 +327,7 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
         if (k < N) CMB[k] = dotCMB(M);
     }
 
-    std::vector<double> b_coeffs(N + 1, 0.0);
+    keel::Array<double> b_coeffs(N + 1, 0.0, mr);
     b_coeffs[N] = Dscalar;
     for (keel::usize k = 0; k < N; ++k)
         b_coeffs[N - 1 - k] = Dscalar * a_coeffs[N - 1 - k] + CMB[k];
@@ -392,7 +394,7 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
                     0, 0, "ctf2zp", "", "numkit:ctf2zp:Empty");
 
     // SV defaults to 1 if not provided.
-    std::vector<double> sv;
+    keel::Array<double> sv(mr);
     if (SV.isEmpty() || SV.isEmpty()) {
         sv.assign(K + 1, 1.0);
     } else if (SV.numel() == 1) {
@@ -425,7 +427,7 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
         return row;
     };
 
-    std::vector<keel::c64> zeros, poles;
+    keel::Array<keel::c64> zeros(mr), poles(mr);
     double gainAccum = 1.0;
     for (keel::usize i = 0; i < K; ++i) {
         Value brow = extractRow(NUM, std::min(i, Knum - 1), Knum);

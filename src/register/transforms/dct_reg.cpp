@@ -4,6 +4,7 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/dct.hpp>
@@ -12,16 +13,13 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace numkit::signal {
 
@@ -39,7 +37,7 @@ static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
     while (pos < args.size()) {
         if (args[pos].isChar() || args[pos].isString()) {
             if (pos + 1 >= args.size())
-                throw Error(std::string(fn) + ": missing value after name",
+                throw Error(keel::format("{}: missing value after name", fn),
                              0, 0, fn, "", "numkit:dct:nv");
             const auto key = args[pos].toString();
             if (key == "Type" || key == "type") {
@@ -57,7 +55,7 @@ static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
         else if (pos == 2)
             a.dim = argcheck::dimArg(args[pos], fn);
         else
-            throw Error(std::string(fn) + ": too many positional arguments",
+            throw Error(keel::format("{}: too many positional arguments", fn),
                          0, 0, fn, "", "numkit:dct:nargin");
         ++pos;
     }

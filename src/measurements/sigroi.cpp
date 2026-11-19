@@ -19,6 +19,7 @@
 // via ScratchArena/ScratchVec.
 
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
 #include <keel/array.h>
@@ -64,9 +65,8 @@ inline void sigroi_argcheck(const Value &roi, const char *fn)
     if (t != ValueType::DOUBLE && t != ValueType::SINGLE && t != ValueType::COMPLEX && !isIntegerType(t))
         detail::throwInputType(roi, fn, "roi", 1, "numeric");
     if (roi.dims().ndim() != 2 || roi.dims().cols() != 2)
-        throw Error(std::string(fn) + ": roi must be an N×2 matrix of "
-                    "[start, end] pairs",
-                    0, 0, fn, "", std::string("numkit:") + fn + ":roiCols");
+        throw Error(keel::format("{}: roi must be an N×2 matrix of [start, end] pairs", fn),
+                    0, 0, fn, "", keel::format("numkit:{}:roiCols", fn));
 }
 
 inline void sigroiRoiArgcheck(const Value &roi, const char *fn)

@@ -25,6 +25,7 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <numkit/signal/transforms/fwht.hpp>
@@ -35,7 +36,6 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include <string>
 
 namespace numkit::signal {
 
@@ -136,7 +136,7 @@ keel::usize resolveLen(keel::usize L, keel::usize n)
 // the 1/N scaling.
 void transformOneColumn(const double *srcCol, keel::usize L,
                          double *dstCol, keel::usize N, int log2N,
-                         const std::string &ordering, bool forward,
+                         keel::StringRef ordering, bool forward,
                          keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -181,7 +181,7 @@ void transformOneColumn(const double *srcCol, keel::usize L,
     }
 }
 
-void fwht_argcheck(const Value &x, const std::string &ordering)
+void fwht_argcheck(const Value &x, keel::StringRef ordering)
 {
     if (ordering != "sequency" && ordering != "hadamard" && ordering != "dyadic")
         throw Error("fwht: ordering must be 'sequency', 'hadamard', or 'dyadic'",
@@ -192,7 +192,7 @@ void fwht_argcheck(const Value &x, const std::string &ordering)
 }
 
 Value runWalshHadamard(const Value &x, keel::usize n,
-                       const std::string &ordering, bool forward,
+                       keel::StringRef ordering, bool forward,
                        keel::Allocator *mr)
 {
     fwht_argcheck(x, ordering);
@@ -247,13 +247,13 @@ Value runWalshHadamard(const Value &x, keel::usize n,
 
 } // namespace
 
-Value fwht(const Value &x, keel::usize n, const std::string &ordering,
+Value fwht(const Value &x, keel::usize n, keel::StringRef ordering,
            keel::Allocator *mr)
 {
     return runWalshHadamard(x, n, ordering, /*forward=*/true, mr);
 }
 
-Value ifwht(const Value &y, keel::usize n, const std::string &ordering,
+Value ifwht(const Value &y, keel::usize n, keel::StringRef ordering,
             keel::Allocator *mr)
 {
     return runWalshHadamard(y, n, ordering, /*forward=*/false, mr);

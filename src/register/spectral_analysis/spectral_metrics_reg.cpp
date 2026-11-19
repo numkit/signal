@@ -4,7 +4,9 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/format.h>
 #include <keel/ref.h>
+#include <keel/string.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
@@ -12,16 +14,13 @@
 #include <numkit/signal/windows/windows.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
-#include <numkit/value/error.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {
@@ -34,11 +33,11 @@ void bandpower_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 1, 4, "bandpower");
     auto *mr = ctx.engine->allocator();
     if (args.size() >= 3 && (args[args.size() - 1].isChar() || args[args.size() - 1].isString())) {
-        std::string opt(args[args.size() - 1].toString().as_ref());
+        keel::String rawOpt = args[args.size() - 1].toString();
+        keel::String opt = rawOpt.clone();
         for (char &c : opt) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         if (opt != "psd")
-            throw Error("bandpower: unrecognized option '" + std::string(args[args.size() - 1].toString().as_ref()) +
-                        "' ('psd' is the only supported option)",
+            throw Error(keel::format("bandpower: unrecognized option '{}' ('psd' is the only supported option)", rawOpt),
                         0, 0, "bandpower", "", "numkit:bandpower:badOption");
         const Value &fr = (args.size() == 4) ? args[2] : Value::Empty;
         outs[0] = bandpowerPsd(args[0], args[1], fr, mr);
@@ -98,34 +97,35 @@ NUMKIT_SPEC1_REG(snr,              snr, 1, 6)
 NUMKIT_SPEC1_REG(sinad,            sinad, 1, 4)
 NUMKIT_SPEC1_REG(thd,              thd, 1, 6)
 NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
-static std::string toLowerCopy(keel::StringRef sv)
+static keel::String toLowerCopy(keel::StringRef sv)
 {
-    std::string s(sv.data(), sv.size());
+    keel::String s = keel::String::from(sv);
     for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
 }
 
 static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
-                               PspectrumOptions &opts, std::string *methodOut,
+                               PspectrumOptions &opts, keel::String *methodOut,
                                bool allowTypeFlag, const char *caller)
 {
     keel::usize i = startIdx;
     if (allowTypeFlag && i < args.size() && (args[i].isChar() || args[i].isString())) {
-        const std::string low = toLowerCopy(args[i].toString());
+        keel::String argStr = args[i].toString();
+        keel::String low = toLowerCopy(argStr);
         if (low == "power" || low == "spectrogram") {
-            opts.type = low;
+            opts.type = keel::move(low);
             ++i;
         }
     }
     while (i < args.size()) {
         if (!args[i].isChar() && !args[i].isString())
-            throw Error(std::string(caller) + ": expected option name string at argument " +
-                        std::to_string(i + 1),
-                        0, 0, caller, "", std::string("numkit:") + caller + ":invalidOption");
-        const std::string key = toLowerCopy(args[i].toString());
+            throw Error(keel::format("{}: expected option name string at argument {}", caller, i + 1),
+                        0, 0, caller, "", keel::format("numkit:{}:invalidOption", caller));
+        keel::String rawKey = args[i].toString();
+        const keel::String key = toLowerCopy(rawKey);
         if (i + 1 >= args.size())
-            throw Error(std::string(caller) + ": missing value for option '" + std::string(args[i].toString().as_ref()) + "'",
-                        0, 0, caller, "", std::string("numkit:") + caller + ":missingOptionValue");
+            throw Error(keel::format("{}: missing value for option '{}'", caller, rawKey),
+                        0, 0, caller, "", keel::format("numkit:{}:missingOptionValue", caller));
         const Value &val = args[i + 1];
         if (key == "leakage") {
             opts.leakage = argcheck::expectedReal(val, static_cast<int>(i + 2), "Leakage", caller);
@@ -135,8 +135,8 @@ static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
             opts.timeResolution = argcheck::expectedReal(val, static_cast<int>(i + 2), "TimeResolution", caller);
         } else if (key == "frequencylimits") {
             if (val.numel() != 2 || val.isComplex() || val.isChar() || val.isString())
-                throw Error(std::string(caller) + ": 'FrequencyLimits' must be a 2-element real vector",
-                            0, 0, caller, "", std::string("numkit:") + caller + ":invalidFrequencyLimits");
+                throw Error(keel::format("{}: 'FrequencyLimits' must be a 2-element real vector", caller),
+                            0, 0, caller, "", keel::format("numkit:{}:invalidFrequencyLimits", caller));
             opts.fmin = val.elemAsDouble(0);
             opts.fmax = val.elemAsDouble(1);
         } else if (key == "twosided") {
@@ -144,12 +144,13 @@ static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
             opts.twoSided = val.toBool();
         } else if (key == "method" && methodOut != nullptr) {
             if (!val.isChar() && !val.isString())
-                throw Error(std::string(caller) + ": 'Method' value must be a string",
-                            0, 0, caller, "", std::string("numkit:") + caller + ":method");
-            *methodOut = toLowerCopy(val.toString());
+                throw Error(keel::format("{}: 'Method' value must be a string", caller),
+                            0, 0, caller, "", keel::format("numkit:{}:method", caller));
+            keel::String valStr = val.toString();
+            *methodOut = toLowerCopy(valStr);
         } else {
-            throw Error(std::string(caller) + ": unrecognized option '" + std::string(args[i].toString().as_ref()) + "'",
-                        0, 0, caller, "", std::string("numkit:") + caller + ":invalidOption");
+            throw Error(keel::format("{}: unrecognized option '{}'", caller, rawKey),
+                        0, 0, caller, "", keel::format("numkit:{}:invalidOption", caller));
         }
         i += 2;
     }
@@ -178,8 +179,8 @@ void instfreq_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
 {
     argcheck::checkNargin(args.size(), 1, 7, "instfreq");
     PspectrumOptions opts;
-    opts.type = "spectrogram";
-    std::string method = "tfmoment";
+    opts.type.assign("spectrogram");
+    keel::String method = keel::String::from("tfmoment");
     keel::usize idx = 1;
     Value fsOrT = Value::Empty;
     if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {
@@ -194,7 +195,7 @@ void instfreq_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         return;
     }
     if (method != "tfmoment")
-        throw Error("instfreq: 'Method' must be 'tfmoment' or 'hilbert' (got '" + method + "')",
+        throw Error(keel::format("instfreq: 'Method' must be 'tfmoment' or 'hilbert' (got '{}')", method),
                     0, 0, "instfreq", "", "numkit:instfreq:method");
     auto [ifr, t] = instfreqWithTime(args[0], fsOrT, opts, ctx.engine->allocator());
     outs[0] = std::move(ifr);
@@ -206,7 +207,7 @@ void instbw_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
 {
     argcheck::checkNargin(args.size(), 1, 7, "instbw");
     PspectrumOptions opts;
-    opts.type = "spectrogram";
+    opts.type.assign("spectrogram");
     keel::usize idx = 1;
     Value fsOrT = Value::Empty;
     if (idx < args.size() && !args[idx].isChar() && !args[idx].isString()) {

@@ -4,6 +4,8 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
+#include <keel/string.h>
 #include <keel/complex.h>
 #include <keel/math.h>
 #include <numkit/signal/measurements/dbconv.hpp>
@@ -16,7 +18,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <string>
 
 namespace numkit::signal {
 
@@ -38,16 +39,16 @@ void forEachAsMag(const Value &x, double *dst, F &&f)
     }
 }
 
-std::string toLower(const std::string &s)
+keel::String toLower(keel::StringRef s)
 {
-    std::string r = s;
+    keel::String r = keel::String::from(s);
     for (auto &c : r) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return r;
 }
 
-double db_argcheck(const std::string &signalType)
+double db_argcheck(keel::StringRef signalType)
 {
-    const std::string mode = toLower(signalType);
+    const keel::String mode = toLower(signalType);
     if (mode == "voltage" || mode.empty())
         return 20.0;
     if (mode == "power")
@@ -59,7 +60,7 @@ double db_argcheck(const std::string &signalType)
 } // namespace
 
 // ── db ─────────────────────────────────────────────────────────────────
-Value db(const Value &x, const std::string &signalType, keel::Allocator *mr)
+Value db(const Value &x, keel::StringRef signalType, keel::Allocator *mr)
 {
     const double scale = db_argcheck(signalType);
     auto out = createLike(x, ValueType::DOUBLE, mr);

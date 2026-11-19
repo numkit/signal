@@ -61,9 +61,9 @@ void predicates_argcheck(const Value &b, const Value &a)
 
 // Strip trailing zeros from a polynomial vector — they don't change the
 // polynomial value but may confuse symmetry tests on b.
-std::vector<double> trimTrailingZeros(const Value &p)
+keel::Array<double> trimTrailingZeros(const Value &p)
 {
-    std::vector<double> v;
+    keel::Array<double> v;
     v.reserve(p.numel());
     for (keel::usize i = 0; i < p.numel(); ++i)
         v.push_back(p.elemAsDouble(i));
@@ -71,7 +71,7 @@ std::vector<double> trimTrailingZeros(const Value &p)
     return v;
 }
 
-bool isSymmetric(const std::vector<double> &v, double scale, double tol)
+bool isSymmetric(keel::ArrayRef<double> v, double scale, double tol)
 {
     const keel::usize n = v.size();
     for (keel::usize i = 0; i < n / 2; ++i)
