@@ -43,7 +43,7 @@ int firOrder(const Value &v, int argNum, const char *name, const char *fn)
         throw Error(keel::format("{}: filter order {} must be a positive integer (got {}).", fn, name, numStr),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));
     }
-    return static_cast<int>(n);
+    return keel::as<int>(n);
 }
 
 } // namespace

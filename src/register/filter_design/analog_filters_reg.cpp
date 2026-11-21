@@ -256,10 +256,10 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         loNum = std::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
         hiNum = std::max(hiNum, 3.0 * keel::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
     }
-    const int low = static_cast<int>(std::round(log10v(0.1 * loNum) - 0.5));
-    const int high = static_cast<int>(std::round(log10v(hiNum) + 0.5));
+    const int low = keel::as<int>(std::round(log10v(0.1 * loNum) - 0.5));
+    const int high = keel::as<int>(std::round(log10v(hiNum) + 0.5));
 
-    const int diffzp = static_cast<int>(ep.size()) - static_cast<int>(tz.size());
+    const int diffzp = keel::as<int>(ep.size()) - keel::as<int>(tz.size());
     bool anyRealDomZero = false;
     for (auto &r : tz)
         if (keel::abs(r.im) < keel::abs(r.re))
@@ -280,7 +280,7 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     keel::Array<int> osc;
     for (keel::usize k = 0; k < ez.size(); ++k)
         if (ez[k].im > keel::abs(ez[k].re))
-            osc.push_back(static_cast<int>(k));
+            osc.push_back(keel::as<int>(k));
     std::stable_sort(osc.begin(), osc.end(),
                      [&](int x, int y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
     const double npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
@@ -289,7 +289,7 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     keel::Array<double> z;
     for (int k : osc) {
         const double r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
-                                   std::pow(10.0, static_cast<double>(low)));
+                                   std::pow(10.0, keel::as<double>(low)));
         const double r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
         auto outside = [&](double x) { return x > r2 || x < r1; };
         z.resize(std::remove_if(z.begin(), z.end(), [&](double x) { return !outside(x); }) - z.begin());
@@ -298,7 +298,7 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         for (double x : w)
             if (x >= r1 && x <= r2)
                 ++cnt;
-        auto seg = logspace(std::log10(r1), std::log10(r2), static_cast<int>(cnt + npts2));
+        auto seg = logspace(std::log10(r1), std::log10(r2), keel::as<int>(cnt + npts2));
         z.append(seg.as_ref());
     }
     f.append(z.as_ref());
@@ -309,14 +309,14 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
     keel::Array<double> lw(f.size());
     for (keel::usize i = 0; i < f.size(); ++i)
         lw[i] = std::log10(f[i]);
-    const double dxi = static_cast<double>(f.size() - 1) / (npts - 1);
+    const double dxi = keel::as<double>(f.size() - 1) / (npts - 1);
     keel::Array<double> out(npts);
     for (int i = 0; i < npts; ++i) {
         // 1-based index into lw; the last sample is EXACTLY the last knot
         // (linspace-forced), where interp1 returns log10(w_long(end)) as-is
         // and the pow round-trip gives back the exact decade endpoint.
-        const double x = (i == npts - 1) ? static_cast<double>(f.size()) : 1.0 + i * dxi;
-        const keel::usize j = static_cast<keel::usize>(x) - 1;
+        const double x = (i == npts - 1) ? keel::as<double>(f.size()) : 1.0 + i * dxi;
+        const keel::usize j = keel::as<keel::usize>(x) - 1;
         const double t = x - (j + 1);
         // At the last sample (x == f.size(), t == 0) the upper knot j+1
         // is one past the end â€” clamp it so the read stays in bounds

@@ -304,7 +304,7 @@ buttord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog,
     const double GpLin = std::pow(10.0, Rp / 10.0) - 1.0;
     if (GpLin <= 0.0 || GsLin <= 0.0)
         throw std::runtime_error("buttord: Rp, Rs must be positive");
-    const int N = static_cast<int>(std::ceil(
+    const int N = keel::as<int>(std::ceil(
         0.5 * std::log10(GsLin / GpLin) / std::log10(n.ratio)));
     // MATLAB convention: Wn computed from STOPBAND spec, so the resulting
     // filter meets stopband attenuation exactly. For Butterworth:
@@ -332,7 +332,7 @@ cheb1ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     const double GpLin = std::pow(10.0, Rp / 10.0) - 1.0;
     if (GpLin <= 0.0 || GsLin <= 0.0)
         throw std::runtime_error("cheb1ord: Rp, Rs must be positive");
-    const int N = static_cast<int>(std::ceil(
+    const int N = keel::as<int>(std::ceil(
         std::acosh(std::sqrt(GsLin / GpLin)) / std::acosh(n.ratio)));
     // Natural cutoff for cheby1 = passband edge — return Wp directly.
     if (n.ftype == FilterType::Lowpass || n.ftype == FilterType::Highpass)
@@ -353,7 +353,7 @@ cheb2ord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     const double GpLin = std::pow(10.0, Rp / 10.0) - 1.0;
     if (GpLin <= 0.0 || GsLin <= 0.0)
         throw std::runtime_error("cheb2ord: Rp, Rs must be positive");
-    const int N = static_cast<int>(std::ceil(
+    const int N = keel::as<int>(std::ceil(
         std::acosh(std::sqrt(GsLin / GpLin)) / std::acosh(n.ratio)));
     // Natural cutoff for cheby2 = stopband edge — return Ws directly.
     if (n.ftype == FilterType::Lowpass || n.ftype == FilterType::Highpass)
@@ -444,7 +444,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     }
 
     // ftype = 2*(numW-1) + (1 if wp[0] < ws[0] else 2)
-    int ftype = 2 * (static_cast<int>(numW) - 1);
+    int ftype = 2 * (keel::as<int>(numW) - 1);
     ftype += (wp[0] < ws[0]) ? 1 : 2;
 
     // Prewarp digital → analog if needed.
@@ -463,12 +463,12 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
     switch (ftype) {
         case 1: { // lowpass: WA = WS / WP
             WA.push_back(WS[0] / WP[0]);
-            N = static_cast<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         case 2: { // highpass: WA = WP / WS
             WA.push_back(WP[0] / WS[0]);
-            N = static_cast<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         case 3: { // bandstop: reciprocal of the bandpass→lowpass map.
@@ -480,7 +480,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
                 const double w = WS[i];
                 WA.push_back((w * (WP[0] - WP[1])) / (w * w - WP[0] * WP[1]));
             }
-            N = static_cast<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         case 4: { // bandpass: WA = (WS² - WP1·WP2) / (WS·(WP1-WP2))
@@ -488,7 +488,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, double Rp, double Rs, bool analog
                 const double w = WS[i];
                 WA.push_back((w * w - WP[0] * WP[1]) / (w * (WP[0] - WP[1])));
             }
-            N = static_cast<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         default:
@@ -604,7 +604,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, double fs, keel::Allo
         }
     }
 
-    int N = static_cast<int>(std::ceil(L)) - 1;
+    int N = keel::as<int>(std::ceil(L)) - 1;
 
     // Build firpm-compatible spec vectors.
     // ff = [0; 2*fcuts; 1]  → length mf + 2
@@ -746,7 +746,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, double fs, keel::All
         }
     }
 
-    int N = static_cast<int>(std::ceil(L)) - 1;
+    int N = keel::as<int>(std::ceil(L)) - 1;
 
     // Wn = (f1 + f2) per pair (already factor-of-2 normalized to Nyquist).
     Value Wn = Value::matrix(1, f1v.size(), ValueType::DOUBLE, mr);

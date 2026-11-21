@@ -86,7 +86,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
         // MATLAB spectrogram default: 8 Hamming-windowed segments with
         // 50% overlap (winLen = floor(nx / 4.5)).
         winLen = std::max<keel::usize>(1,
-            static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
+            keel::as<keel::usize>(std::floor(keel::as<double>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
@@ -128,7 +128,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
         for (keel::usize i = 0; i < nFreqs; ++i)
             S.complexDataMut()[i + seg * nFreqs] = buf[i];
 
-        T.doubleDataMut()[seg] = static_cast<double>(start + winLen / 2);
+        T.doubleDataMut()[seg] = keel::as<double>(start + winLen / 2);
         seg++;
     }
 
@@ -253,7 +253,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
                     frameRd[i] = xr[start + i] * win[i];
                 for (keel::usize i = M; i < NFFT; ++i) frameRd[i] = 0.0;
             }
-            Value F = fft(frameV, static_cast<int>(NFFT), 1, mr);
+            Value F = fft(frameV, keel::as<int>(NFFT), 1, mr);
             const keel::c64 *Fd = F.complexData();
             if (isCentered) {
                 for (keel::usize r = 0; r < outRows; ++r)
@@ -347,7 +347,7 @@ const auto &d = S.dims();
             for (keel::usize r = 0; r < NFFT; ++r) Fd[r] = Sd[k * inRows + r];
         }
 
-        Value t = ifft(Fcol, static_cast<int>(NFFT), 1, mr);
+        Value t = ifft(Fcol, keel::as<int>(NFFT), 1, mr);
         // ifft may return DOUBLE or COMPLEX.
         const keel::c64     *tc = (t.type() == ValueType::COMPLEX) ? t.complexData() : nullptr;
         const double *tr = (t.type() == ValueType::COMPLEX) ? nullptr        : t.doubleData();

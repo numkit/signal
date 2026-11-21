@@ -72,8 +72,8 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
         const keel::usize fftLen = [&]() {
             keel::usize r = 1; while (r < n) r <<= 1; return r;
         }();
-        Value X = fft(xp, static_cast<int>(fftLen), /*dim=*/0, mr);
-        Value Y = fft(yp, static_cast<int>(fftLen), /*dim=*/0, mr);
+        Value X = fft(xp, keel::as<int>(fftLen), /*dim=*/0, mr);
+        Value Y = fft(yp, keel::as<int>(fftLen), /*dim=*/0, mr);
         // Pointwise multiply.
         auto Z = Value::complexMatrix(fftLen, 1, mr);
         const keel::c64 *Xc = X.complexData();
@@ -232,11 +232,11 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
                 const keel::c64 a = getC(Av, i, j, rA);
                 if (a == keel::c64(0.0, 0.0)) continue;
                 for (keel::usize p = 0; p < rB; ++p) {
-                    const long kRow = static_cast<long>(i) - static_cast<long>(p) + static_cast<long>(rB) - 1;
-                    if (kRow < 0 || kRow >= static_cast<long>(rOut)) continue;
+                    const long kRow = keel::as<long>(i) - keel::as<long>(p) + keel::as<long>(rB) - 1;
+                    if (kRow < 0 || kRow >= keel::as<long>(rOut)) continue;
                     for (keel::usize q = 0; q < cB; ++q) {
-                        const long kCol = static_cast<long>(j) - static_cast<long>(q) + static_cast<long>(cB) - 1;
-                        if (kCol < 0 || kCol >= static_cast<long>(cOut)) continue;
+                        const long kCol = keel::as<long>(j) - keel::as<long>(q) + keel::as<long>(cB) - 1;
+                        if (kCol < 0 || kCol >= keel::as<long>(cOut)) continue;
                         dstC[kRow + kCol * rOut] += a * keel::conj(getC(Bv, p, q, rB));
                     }
                 }
@@ -295,11 +295,11 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
             const double a = Av(i, j);
             if (a == 0.0) continue;
             for (keel::usize p = 0; p < rB; ++p) {
-                const long kRow = static_cast<long>(i) - static_cast<long>(p) + static_cast<long>(rB) - 1;
-                if (kRow < 0 || kRow >= static_cast<long>(rOut)) continue;
+                const long kRow = keel::as<long>(i) - keel::as<long>(p) + keel::as<long>(rB) - 1;
+                if (kRow < 0 || kRow >= keel::as<long>(rOut)) continue;
                 for (keel::usize q = 0; q < cB; ++q) {
-                    const long kCol = static_cast<long>(j) - static_cast<long>(q) + static_cast<long>(cB) - 1;
-                    if (kCol < 0 || kCol >= static_cast<long>(cOut)) continue;
+                    const long kCol = keel::as<long>(j) - keel::as<long>(q) + keel::as<long>(cB) - 1;
+                    if (kCol < 0 || kCol >= keel::as<long>(cOut)) continue;
                     dst[kRow + kCol * rOut] += a * Bv(p, q);
                 }
             }
@@ -318,7 +318,7 @@ long finddelay(const Value &x, const Value &y, long max_lag, keel::Allocator *mr
     long best_lag = 0;
     double best_mag = -1.0;
     for (keel::usize i = 0; i < n; ++i) {
-        const long lag = static_cast<long>(lp[i]);
+        const long lag = keel::as<long>(lp[i]);
         if (max_lag > 0 && keel::abs(lag) > max_lag) continue;
         const double mag = keel::abs(cp[i]);
         if (mag > best_mag) {
@@ -341,8 +341,8 @@ alignsignals(const Value &x, const Value &y, long max_lag, keel::Allocator *mr)
     // Lead-pad whichever signal is "leading" so peaks line up:
     //   d > 0: y is delayed by d → prepend d zeros to x.
     //   d < 0: x is delayed by |d| → prepend |d| zeros to y.
-    const keel::usize pad_x = (d > 0) ? static_cast<keel::usize>(d) : 0;
-    const keel::usize pad_y = (d < 0) ? static_cast<keel::usize>(-d) : 0;
+    const keel::usize pad_x = (d > 0) ? keel::as<keel::usize>(d) : 0;
+    const keel::usize pad_y = (d < 0) ? keel::as<keel::usize>(-d) : 0;
     // Then trail-pad whichever ends short so both outputs are same length.
     const keel::usize finalLen = std::max(nx + pad_x, ny + pad_y);
 

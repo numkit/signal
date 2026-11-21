@@ -91,12 +91,12 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocato
     // Helper to write one element into the typed buffer.
     auto writeElem = [&](keel::usize i, double v) {
         switch (vt) {
-            case ValueType::UINT8:  out.uint8DataMut()[i]  = static_cast<keel::u8>(v); break;
-            case ValueType::UINT16: out.uint16DataMut()[i] = static_cast<keel::u16>(v); break;
-            case ValueType::UINT32: out.uint32DataMut()[i] = static_cast<keel::u32>(v); break;
-            case ValueType::INT8:   out.int8DataMut()[i]   = static_cast<keel::i8>(v); break;
-            case ValueType::INT16:  out.int16DataMut()[i]  = static_cast<keel::i16>(v); break;
-            case ValueType::INT32:  out.int32DataMut()[i]  = static_cast<keel::i32>(v); break;
+            case ValueType::UINT8:  out.uint8DataMut()[i]  = keel::as<keel::u8>(v); break;
+            case ValueType::UINT16: out.uint16DataMut()[i] = keel::as<keel::u16>(v); break;
+            case ValueType::UINT32: out.uint32DataMut()[i] = keel::as<keel::u32>(v); break;
+            case ValueType::INT8:   out.int8DataMut()[i]   = keel::as<keel::i8>(v); break;
+            case ValueType::INT16:  out.int16DataMut()[i]  = keel::as<keel::i16>(v); break;
+            case ValueType::INT32:  out.int32DataMut()[i]  = keel::as<keel::i32>(v); break;
             default: break;
         }
     };

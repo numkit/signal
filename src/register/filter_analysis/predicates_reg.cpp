@@ -97,13 +97,13 @@ void filtord_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
     int n = (args.size() >= 2)
         ? filtord(args[0], args[1])
         : filtord(args[0]);
-    outs[0] = Value::scalar(static_cast<double>(n), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<double>(n), ctx.engine->allocator());
 }
 
 void firtype_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "firtype");
-    outs[0] = Value::scalar(static_cast<double>(firtype(args[0])), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<double>(firtype(args[0])), ctx.engine->allocator());
 }
 
 void filternorm_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -122,7 +122,7 @@ int filtord(const Value &b)
 {
     auto bv = trimTrailingZeros(b);
     if (bv.empty()) return 0;
-    return static_cast<int>(bv.size()) - 1;
+    return keel::as<int>(bv.size()) - 1;
 }
 
 int filtord(const Value &b, const Value &a)
@@ -132,7 +132,7 @@ int filtord(const Value &b, const Value &a)
     const keel::usize lb = bv.empty() ? 0 : bv.size();
     const keel::usize la = av.empty() ? 0 : av.size();
     const keel::usize n  = std::max(lb, la);
-    return (n == 0) ? 0 : static_cast<int>(n) - 1;
+    return (n == 0) ? 0 : keel::as<int>(n) - 1;
 }
 
 // â”€â”€ firtype â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -148,7 +148,7 @@ int firtype(const Value &b)
         throw Error("firtype: filter is not (anti)symmetric â€” not a "
                     "linear-phase FIR",
                      0, 0, "firtype", "", "numkit:firtype:notlinphase");
-    const int order = static_cast<int>(v.size()) - 1;  // L = order + 1
+    const int order = keel::as<int>(v.size()) - 1;  // L = order + 1
     const bool order_even = (order % 2 == 0);
     if (sym)  return order_even ? 1 : 2;
     /* anti */ return order_even ? 3 : 4;
@@ -181,7 +181,7 @@ double filternorm(const Value &b, const Value &a, double pnorm, keel::Allocator 
         const double w = (k == 0 || k == kNpts - 1) ? 0.5 : 1.0;
         sum += w * mag2;
     }
-    return std::sqrt(sum / static_cast<double>(kNpts - 1));
+    return std::sqrt(sum / keel::as<double>(kNpts - 1));
 }
 
 } // namespace numkit::signal

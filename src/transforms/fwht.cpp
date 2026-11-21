@@ -166,7 +166,7 @@ void transformOneColumn(const double *srcCol, keel::usize L,
 
     if (forward) {
         // Normalise + permute into requested ordering.
-        const double inv = 1.0 / static_cast<double>(N);
+        const double inv = 1.0 / keel::as<double>(N);
         for (keel::usize i = 0; i < N; ++i) buf[i] *= inv;
         if (ordering == "hadamard") {
             for (keel::usize i = 0; i < N; ++i) dstCol[i] = buf[i];

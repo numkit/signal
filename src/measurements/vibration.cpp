@@ -87,11 +87,11 @@ envspectrum(const Value &x, double fs, keel::Allocator *mr)
     const keel::c64 *zd = Z.complexData();
 
     const double fNyq = (fs > 0.0) ? fs * 0.5 : M_PI;
-    const double scale = 2.0 / static_cast<double>(N);  // single-sided amp.
+    const double scale = 2.0 / keel::as<double>(N);  // single-sided amp.
     for (keel::usize i = 0; i < nOne; ++i) {
         const double a = keel::abs(zd[i]) * scale;
         esd[i] = (i == 0 || i == nOne - 1) ? 0.5 * a : a;
-        fd[i]  = fNyq * static_cast<double>(i) / static_cast<double>(nOne - 1);
+        fd[i]  = fNyq * keel::as<double>(i) / keel::as<double>(nOne - 1);
     }
     return std::make_tuple(std::move(Es), std::move(F));
 }
@@ -154,9 +154,9 @@ keel::Array<Turn> turningPointsWithIndex(keel::ArrayRef<double> v)
     for (keel::usize i = 1; i + 1 < v.size(); ++i) {
         const double a = v[i - 1], b = v[i], c = v[i + 1];
         if ((b > a && b > c) || (b < a && b < c))
-            out.push_back({b, static_cast<double>(i + 1)});
+            out.push_back({b, keel::as<double>(i + 1)});
     }
-    out.push_back({v.back(), static_cast<double>(v.size())});
+    out.push_back({v.back(), keel::as<double>(v.size())});
     return out;
 }
 
@@ -244,10 +244,10 @@ tsa(const Value &x, double fs,
     {
         double acc = 0.0;
         for (keel::usize i = 0; i < N; ++i) {
-            const double t = static_cast<double>(i) / fs;
+            const double t = keel::as<double>(i) / fs;
             // Linear-interpolate rpm at time t.
             const double idxR = t * fs_rpm;
-            const keel::usize i0 = static_cast<keel::usize>(std::floor(idxR));
+            const keel::usize i0 = keel::as<keel::usize>(std::floor(idxR));
             const keel::usize i1 = std::min(i0 + 1, rpm_v.size() - 1);
             const double frac = std::min(std::max(idxR - i0, 0.0), 1.0);
             const double rpmI =
@@ -268,7 +268,7 @@ tsa(const Value &x, double fs,
     for (keel::usize i = 0; i < N; ++i) {
         double ang = std::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
-        int b = static_cast<int>(ang / twoPi * n_per_rev);
+        int b = keel::as<int>(ang / twoPi * n_per_rev);
         if (b >= n_per_rev) b = n_per_rev - 1;
         sumBin[b] += signal_v[i];
         cntBin[b]++;

@@ -195,19 +195,19 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allo
 
     double *wp = W.doubleDataMut();
     double *g  = gd.doubleDataMut();
-    const double offset = static_cast<double>(na) - 1.0;
+    const double offset = keel::as<double>(na) - 1.0;
     // fs > 0 (grpdelay(b,a,n,fs)): return the frequency vector in Hz over
     // [0, fs/2). The group delay (in samples) is evaluated from the same
     // normalised w and is unchanged.
     const double hzSpan = 0.5 * fs;
     for (keel::usize k = 0; k < npts; ++k) {
-        const double w = M_PI * static_cast<double>(k) / static_cast<double>(npts);
-        wp[k] = (fs > 0.0) ? (hzSpan * static_cast<double>(k) / static_cast<double>(npts)) : w;
+        const double w = M_PI * keel::as<double>(k) / keel::as<double>(npts);
+        wp[k] = (fs > 0.0) ? (hzSpan * keel::as<double>(k) / keel::as<double>(npts)) : w;
         const keel::c64 ejw(std::cos(w), -std::sin(w));
         keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
         for (keel::usize n = 0; n < nc; ++n) {
             C  += c[n] * ejwk;
-            CR += (static_cast<double>(n) * c[n]) * ejwk;
+            CR += (keel::as<double>(n) * c[n]) * ejwk;
             ejwk *= ejw;
         }
         const double cmag2 = C.real() * C.real() + C.imag() * C.imag();

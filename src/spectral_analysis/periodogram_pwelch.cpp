@@ -90,7 +90,7 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, double fs, ke
             const double *xd = x.doubleData();
             for (keel::usize i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
         }
-        Xv   = fft(xwin, static_cast<int>(nfft), /*dim=*/0, mr);
+        Xv   = fft(xwin, keel::as<int>(nfft), /*dim=*/0, mr);
         spec = Xv.complexData();
     }
 
@@ -100,7 +100,7 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, double fs, ke
         auto F   = Value::matrix(nfft, 1, ValueType::DOUBLE, mr);
         for (keel::usize i = 0; i < nfft; ++i) {
             Pxx.doubleDataMut()[i] = keel::norm(spec[i]) * scale;
-            F.doubleDataMut()[i]   = fs * static_cast<double>(i) / static_cast<double>(nfft);
+            F.doubleDataMut()[i]   = fs * keel::as<double>(i) / keel::as<double>(nfft);
         }
         return std::make_tuple(std::move(Pxx), std::move(F));
     }
@@ -114,8 +114,8 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, double fs, ke
         if (i > 0 && i < nfft / 2)
             mag2 *= 2.0;
         Pxx.doubleDataMut()[i] = mag2 * scale;
-        F.doubleDataMut()[i] = (fs / 2.0) * static_cast<double>(i)
-                               / static_cast<double>(nOut - 1);
+        F.doubleDataMut()[i] = (fs / 2.0) * keel::as<double>(i)
+                               / keel::as<double>(nOut - 1);
     }
 
     return std::make_tuple(std::move(Pxx), std::move(F));
@@ -180,7 +180,7 @@ pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nf
         //   nx = (winLen - noverlap)*8 + noverlap = 8*winLen - 7*noverlap
         // with noverlap = floor(winLen/2) gives winLen = floor(nx / 4.5).
         winLen = std::max<keel::usize>(1,
-            static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
+            keel::as<keel::usize>(std::floor(keel::as<double>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
@@ -239,8 +239,8 @@ pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nf
     for (keel::usize i = 0; i < nOutReal; ++i) {
         Pxx.doubleDataMut()[i] = psd[i] * scale;
         F.doubleDataMut()[i] = isCplx
-            ? (fs * static_cast<double>(i) / static_cast<double>(nfft))
-            : ((fs / 2.0) * static_cast<double>(i) / static_cast<double>(nOutReal - 1));
+            ? (fs * keel::as<double>(i) / keel::as<double>(nfft))
+            : ((fs / 2.0) * keel::as<double>(i) / keel::as<double>(nOutReal - 1));
     }
 
     return std::make_tuple(std::move(Pxx), std::move(F));
@@ -301,7 +301,7 @@ CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, ke
         // MATLAB cpsd / mscohere / tfestimate default: 8 Hamming-windowed
         // segments with 50% overlap (winLen = floor(nx / 4.5)).
         winLen = std::max<keel::usize>(1,
-            static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
+            keel::as<keel::usize>(std::floor(keel::as<double>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
@@ -347,7 +347,7 @@ CrossWelchOut crossWelch(const Value &x, const Value &y, const Value &window, ke
     o.nfft = nfft;
     o.F.assign(nOut, 0.0);
     for (keel::usize i = 0; i < nOut; ++i)
-        o.F[i] = M_PI * static_cast<double>(i) / static_cast<double>(nOut - 1);
+        o.F[i] = M_PI * keel::as<double>(i) / keel::as<double>(nOut - 1);
     return o;
 }
 
@@ -361,8 +361,8 @@ cpsd(const Value &x, const Value &y, const Value &window, keel::usize noverlap, 
     // Rescale frequency vector to [0, fs/2] (crossWelch uses [0, pi]).
     auto rescaleF = [&]() {
         for (keel::usize i = 0; i < nOut; ++i)
-            o.F[i] = (fs / 2.0) * static_cast<double>(i)
-                     / static_cast<double>(nOut - 1);
+            o.F[i] = (fs / 2.0) * keel::as<double>(i)
+                     / keel::as<double>(nOut - 1);
     };
     rescaleF();
     if (o.nSegments == 0) {
@@ -374,7 +374,7 @@ cpsd(const Value &x, const Value &y, const Value &window, keel::usize noverlap, 
     // MATLAB cpsd scaling: Pxy[k] = mean_segments(X*conj(Y)) /
     // (winPower * fs). Default fs = 2*pi mirrors MATLAB.
     const double scale = 1.0 / (o.winPower * fs *
-                                 static_cast<double>(o.nSegments));
+                                 keel::as<double>(o.nSegments));
     Value Pxy = Value::matrix(nOut, 1, ValueType::COMPLEX, mr);
     Value F   = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     auto *cd = Pxy.complexDataMut();
@@ -401,8 +401,8 @@ mscohere(const Value &x, const Value &y, const Value &window, keel::usize noverl
         const double denom = o.Sxx[i] * o.Syy[i];
         const double num   = keel::norm(o.Sxy[i]);
         cd[i] = (denom > 0.0) ? num / denom : 0.0;
-        fd[i] = (fs / 2.0) * static_cast<double>(i)
-                / static_cast<double>(nOut - 1);
+        fd[i] = (fs / 2.0) * keel::as<double>(i)
+                / keel::as<double>(nOut - 1);
     }
     return std::make_tuple(std::move(Cxy), std::move(F));
 }
@@ -424,8 +424,8 @@ tfestimate(const Value &x, const Value &y, const Value &window, keel::usize nove
         td[i] = (o.Sxx[i] > 0.0)
                 ? Syx / o.Sxx[i]
                 : keel::c64(0.0, 0.0);
-        fd[i] = (fs / 2.0) * static_cast<double>(i)
-                / static_cast<double>(nOut - 1);
+        fd[i] = (fs / 2.0) * keel::as<double>(i)
+                / keel::as<double>(nOut - 1);
     }
     return std::make_tuple(std::move(Txy), std::move(F));
 }

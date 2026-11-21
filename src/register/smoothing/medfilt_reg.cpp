@@ -44,7 +44,7 @@ void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         if (kv < 0)
             throw Error("medfilt1: window length must be nonnegative",
                          0, 0, "medfilt1", "", "numkit:medfilt1:badK");
-        k = static_cast<keel::usize>(kv);
+        k = keel::as<keel::usize>(kv);
     }
 
     // Padding mode: MATLAB default 'zeropad'; a trailing 'truncate' string
@@ -74,7 +74,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         if (std::isinf(ml) && ml > 0.0) {
             maxlen = 0;
         } else {
-            maxlen = static_cast<keel::usize>(
+            maxlen = keel::as<keel::usize>(
                 argcheck::expectedPositiveInteger(ml, 2, "MAXLEN", "fillgaps"));
         }
     }
@@ -94,7 +94,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
             if (std::isinf(ord) && ord > 0.0) {
                 order = 0;
             } else {
-                order = static_cast<keel::usize>(
+                order = keel::as<keel::usize>(
                     argcheck::expectedPositiveInteger(ord, 3, "ORDER", "fillgaps"));
             }
         }

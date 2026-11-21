@@ -45,7 +45,7 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
         auto res = numkit::builtin::shiftdimAuto(x, mr);
         // perm = []  (return as 1×0 double matrix)
         Value emptyPerm = Value::matrix(0, 0, ValueType::DOUBLE, mr);
-        Value nsh = Value::scalar(static_cast<double>(res.dropped), mr);
+        Value nsh = Value::scalar(keel::as<double>(res.dropped), mr);
         return {std::move(res.v), emptyPerm, nsh};
     }
     if (dim < 1)
@@ -53,12 +53,12 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
                     0, 0, "shiftdata", "", "numkit:shiftdata:BadDim");
 
     // perm = [dim, 1..dim-1, dim+1..N]
-    const keel::usize N = std::max<keel::usize>(static_cast<keel::usize>(dim), mtlNdims(x));
+    const keel::usize N = std::max<keel::usize>(keel::as<keel::usize>(dim), mtlNdims(x));
     keel::Array<int> perm(N, mr);
     perm[0] = dim;
     keel::usize k = 1;
     for (int i = 1; i < dim; ++i) perm[k++] = i;
-    for (keel::usize i = dim + 1; i <= N; ++i) perm[k++] = static_cast<int>(i);
+    for (keel::usize i = dim + 1; i <= N; ++i) perm[k++] = keel::as<int>(i);
 
     Value shifted = numkit::builtin::permute(x, keel::ArrayRef<int>(perm.data(), N), mr);
 
@@ -66,7 +66,7 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
     Value permV = Value::matrix(1, N, ValueType::DOUBLE, mr);
     {
         double *pd = permV.doubleDataMut();
-        for (keel::usize i = 0; i < N; ++i) pd[i] = static_cast<double>(perm[i]);
+        for (keel::usize i = 0; i < N; ++i) pd[i] = keel::as<double>(perm[i]);
     }
     Value emptyNsh = Value::matrix(0, 0, ValueType::DOUBLE, mr);
     return {std::move(shifted), std::move(permV), std::move(emptyNsh)};
@@ -91,11 +91,11 @@ static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
     for (keel::usize i = 0; i < n; ++i) {
         const double v = perm.elemAsDouble(i);
         const double vi = std::floor(v);
-        if (v != vi || vi < 1.0 || vi > static_cast<double>(n)
-            || seen[static_cast<keel::usize>(vi)])
+        if (v != vi || vi < 1.0 || vi > keel::as<double>(n)
+            || seen[keel::as<keel::usize>(vi)])
             throw Error(keel::format("unshiftdata: perm must be a permutation of 1..{}", n),
                         0, 0, "unshiftdata", "", "numkit:unshiftdata:badPerm");
-        seen[static_cast<keel::usize>(vi)] = 1;
+        seen[keel::as<keel::usize>(vi)] = 1;
     }
 }
 
@@ -107,13 +107,13 @@ Value unshiftdata(const Value &x, const Value &perm, const Value &nshifts, keel:
         const double ns = nshifts.isEmpty() ? 0.0
             : (nshifts.isComplex() ? nshifts.complexData()[0].real()
                                    : nshifts.toScalar());
-        return numkit::builtin::shiftdim(x, -static_cast<int>(ns), mr);
+        return numkit::builtin::shiftdim(x, -keel::as<int>(ns), mr);
     }
     // ipermute(x, perm)
     const keel::usize N = perm.numel();
     keel::Array<int> permVec(N, mr);
     for (keel::usize i = 0; i < N; ++i)
-        permVec[i] = static_cast<int>(perm.elemAsDouble(i));
+        permVec[i] = keel::as<int>(perm.elemAsDouble(i));
     return numkit::builtin::ipermute(x, keel::ArrayRef<int>(permVec.data(), N), mr);
 }
 

@@ -131,7 +131,7 @@ Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
                      0, 0, "taylorwin", "", "numkit:taylorwin:badNbar");
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 0) return out;
-    (void)keel::signal::taylorwin({out.doubleDataMut(), N}, static_cast<keel::i32>(nbar), sll, mr);
+    (void)keel::signal::taylorwin({out.doubleDataMut(), N}, keel::as<keel::i32>(nbar), sll, mr);
     return out;
 }
 

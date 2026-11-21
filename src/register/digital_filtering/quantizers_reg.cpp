@@ -35,7 +35,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 2, 4, "uencode");
     // Marshalling only â€” the [2, 32] range contract lives in the
     // uencode compute (nk:uencode:BadN).
-    const int N = static_cast<int>(argcheck::expectedInteger(
+    const int N = keel::as<int>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "uencode"), 2, "N", "uencode"));
     double V = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty())
@@ -59,7 +59,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 2, 4, "udecode");
     // Marshalling only: the [2, 32] range and V positivity contracts
     // live in udecode_argcheck (compute side).
-    const int N = static_cast<int>(argcheck::expectedInteger(
+    const int N = keel::as<int>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "udecode"), 2, "N", "udecode"));
     double V = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty())

@@ -95,10 +95,10 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
     const int M = 2 * p;                       // correlation-matrix order (MATLAB default)
 
     Value         Xc   = corrmtx(x, M - 1, mr);   // (N+M-1) × M data matrix; X'X = R
-    const int     rows = static_cast<int>(Xc.dims().rows());
+    const int     rows = keel::as<int>(Xc.dims().rows());
     const double *Xd   = Xc.doubleData();         // column-major
 
-    keel::Array<double> R(static_cast<keel::usize>(M) * M, 0.0, mr);
+    keel::Array<double> R(keel::as<keel::usize>(M) * M, 0.0, mr);
     for (int i = 0; i < M; ++i)
         for (int j = 0; j < M; ++j) {
             double s = 0.0;
@@ -107,7 +107,7 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
         }
 
     keel::Array<double> V(mr);
-    jacobiEig(R, V, static_cast<keel::usize>(M));
+    jacobiEig(R, V, keel::as<keel::usize>(M));
     keel::Array<double> lam(M, mr);
     for (int i = 0; i < M; ++i) lam[i] = R[i * M + i];
 
@@ -129,7 +129,7 @@ pseudospectrum(const Value &x, int p, int nfft, double fs, bool eigWeight,
             const int col = ord[t];
             double    re = 0.0, im = 0.0;
             for (int m = 0; m < M; ++m) {
-                const double v = V[static_cast<keel::usize>(m) * M + col];
+                const double v = V[keel::as<keel::usize>(m) * M + col];
                 re += v * std::cos(w * m);
                 im += v * std::sin(w * m);
             }

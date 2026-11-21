@@ -87,9 +87,9 @@ Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
     // intfilt.m's bandlimited ('b') branch: passband amplitude R around
     // each image-free band, zero in the images, then h = firls(n-1, F*2, M).
     if (2 * n * r < 1) return Value::matrix(1, 1, ValueType::DOUBLE, mr);
-    const long Ntaps = static_cast<long>(2 * n * r) - 1;
-    const int  order = static_cast<int>(Ntaps - 1);   // even (2RL-2)
-    const double R   = static_cast<double>(r);
+    const long Ntaps = keel::as<long>(2 * n * r) - 1;
+    const int  order = keel::as<int>(Ntaps - 1);   // even (2RL-2)
+    const double R   = keel::as<double>(r);
 
     keel::Array<double> F(mr), M(mr);
     if (alpha == 1.0) {
@@ -99,8 +99,8 @@ Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
         const double hw = alpha / (2.0 * R);          // half passband width
         M = {R, R};
         F = {0.0, hw};
-        for (keel::usize k = 1; static_cast<double>(k) / R <= 0.5 + 1e-9; ++k) {
-            const double f = static_cast<double>(k) / R;
+        for (keel::usize k = 1; keel::as<double>(k) / R <= 0.5 + 1e-9; ++k) {
+            const double f = keel::as<double>(k) / R;
             F.push_back(f - hw);
             F.push_back(f + hw);
             M.push_back(0.0);
@@ -226,7 +226,7 @@ Value fftfilt(const Value &b, const Value &x, keel::usize nfft, keel::Allocator 
     fftRadix2(Bf.data(), nfft, W_fwd.data());
 
     auto Xf  = keel::Array<keel::c64>(nfft, scratch.allocator());
-    const double invN = 1.0 / static_cast<double>(nfft);
+    const double invN = 1.0 / keel::as<double>(nfft);
 
     if (isCx) {
         const bool row = (x.dims().rows() == 1 && x.dims().cols() >= 1);

@@ -68,8 +68,8 @@ void lpc_reg(keel::ArrayRef<Value> args, keel::usize nargout,
 {
     argcheck::checkNargin(args.size(), 1, 2, "lpc");
     const int p = (args.size() >= 2 && !args[1].isEmpty())
-        ? static_cast<int>(argcheck::roundLength(args[1], 2, "p", "lpc"))
-        : static_cast<int>(args[0].numel() > 0 ? args[0].numel() - 1 : 0);
+        ? keel::as<int>(argcheck::roundLength(args[1], 2, "p", "lpc"))
+        : keel::as<int>(args[0].numel() > 0 ? args[0].numel() - 1 : 0);
     auto [a, g] = lpc(args[0], p, ctx.engine->allocator());
     outs[0] = std::move(a);
     if (nargout > 1) outs[1] = std::move(g);

@@ -62,7 +62,7 @@ keel::Array<double> biasedAutocorr(keel::ArrayRef<double> x, int maxLag)
     for (int k = 0; k <= maxLag; ++k) {
         double s = 0.0;
         for (keel::usize i = 0; i + k < N; ++i) s += x[i] * x[i + k];
-        R[k] = s / static_cast<double>(N);
+        R[k] = s / keel::as<double>(N);
     }
     return R;
 }
@@ -122,9 +122,9 @@ std::tuple<Value, Value, Value>
 levinson(const Value &r, int n, keel::Allocator *mr)
 {
     auto rv = readVec(r);
-    if (n < 0) n = static_cast<int>(rv.size()) - 1;
+    if (n < 0) n = keel::as<int>(rv.size()) - 1;
     if (n < 0) n = 0;
-    if (n + 1 > static_cast<int>(rv.size())) rv.resize(n + 1, 0.0);
+    if (n + 1 > keel::as<int>(rv.size())) rv.resize(n + 1, 0.0);
     auto res = levinsonCore(rv, n);
     return std::make_tuple(rowVec(res.a, mr),
                            Value::scalar(res.e, mr),
@@ -138,7 +138,7 @@ std::tuple<Value, Value>
 rlevinson(const Value &a, double efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
-    const int p = static_cast<int>(av.size()) - 1;
+    const int p = keel::as<int>(av.size()) - 1;
     keel::Array<double> R(p + 1, 0.0, mr);
     keel::Array<double> k(p, 0.0, mr);
 
@@ -197,7 +197,7 @@ arburg(const Value &x, int p, keel::Allocator *mr)
 
     double E = 0.0;
     for (double y : v) E += y * y;
-    E /= static_cast<double>(N);
+    E /= keel::as<double>(N);
 
     for (int i = 0; i < p; ++i) {
         // Reflection coefficient: maximise correlation of forward and
@@ -211,7 +211,7 @@ arburg(const Value &x, int p, keel::Allocator *mr)
         k[i] = ki;
 
         // Update prediction errors in-place.
-        for (keel::usize n = N - 1; n > static_cast<keel::usize>(i); --n) {
+        for (keel::usize n = N - 1; n > keel::as<keel::usize>(i); --n) {
             const double f = ef[n];
             const double b = eb[n - 1];
             ef[n] = f + ki * b;
@@ -249,7 +249,7 @@ std::tuple<Value, Value>
 ac2poly(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
-    const int p = static_cast<int>(rv.size()) - 1;
+    const int p = keel::as<int>(rv.size()) - 1;
     auto res = levinsonCore(rv, std::max(p, 0));
     return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
@@ -265,7 +265,7 @@ std::tuple<Value, Value>
 ac2rc(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
-    const int p = static_cast<int>(rv.size()) - 1;
+    const int p = keel::as<int>(rv.size()) - 1;
     auto res = levinsonCore(rv, std::max(p, 0));
     return std::make_tuple(colVec(res.k, mr),
                            Value::scalar(rv.empty() ? 0.0 : rv[0], mr));
@@ -279,7 +279,7 @@ Value schurrc(const Value &R, keel::Allocator *mr)
     // unstable AR model). levinsonCore early-exits on e<=0 to keep the
     // fitted poly stable; schurrc doesn't want that.
     auto rv = readVec(R);
-    const int p = static_cast<int>(rv.size()) - 1;
+    const int p = keel::as<int>(rv.size()) - 1;
     if (p <= 0) return colVec(keel::ArrayRef<double>{}, mr);
 
     keel::Array<double> k(p, 0.0, mr);
@@ -305,7 +305,7 @@ Value schurrc(const Value &R, keel::Allocator *mr)
 Value rc2ac(const Value &k, double r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
-    const int p = static_cast<int>(kv.size());
+    const int p = keel::as<int>(kv.size());
     // Build R from k via the inverse Levinson: r0 known, then
     // r[i] = -(a_{i-1}[1]*r[i-1] + ... + a_{i-1}[i-1]*r[1]) - k[i-1]*e_{i-1}
     keel::Array<double> R(p + 1, 0.0, mr);
@@ -332,7 +332,7 @@ std::tuple<Value, Value>
 poly2rc(const Value &a, double efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
-    const int p = static_cast<int>(av.size()) - 1;
+    const int p = keel::as<int>(av.size()) - 1;
     keel::Array<double> k(p, 0.0, mr);
     keel::Array<double> cur = av.clone();
     for (int i = p; i >= 1; --i) {
@@ -358,7 +358,7 @@ std::tuple<Value, Value>
 rc2poly(const Value &k, double r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
-    const int p = static_cast<int>(kv.size());
+    const int p = keel::as<int>(kv.size());
     keel::Array<double> a(p + 1, 0.0, mr); a[0] = 1.0;
     for (int i = 1; i <= p; ++i) {
         const double ki = kv[i - 1];
@@ -465,8 +465,8 @@ solveSPD(keel::Array<double> &A, keel::Array<double> &b, int p)
 keel::Array<double>
 covMatrixForward(keel::ArrayRef<double> x, int p)
 {
-    const int N = static_cast<int>(x.size());
-    keel::Array<double> R(static_cast<keel::usize>(p + 1) * static_cast<keel::usize>(p + 1), 0.0);
+    const int N = keel::as<int>(x.size());
+    keel::Array<double> R(keel::as<keel::usize>(p + 1) * keel::as<keel::usize>(p + 1), 0.0);
     for (int n = p; n < N; ++n) {
         for (int i = 0; i <= p; ++i)
             for (int j = 0; j <= p; ++j)
@@ -478,7 +478,7 @@ covMatrixForward(keel::ArrayRef<double> x, int p)
 keel::Array<double>
 covMatrixForwardBackward(keel::ArrayRef<double> x, int p)
 {
-    const int N = static_cast<int>(x.size());
+    const int N = keel::as<int>(x.size());
     auto R = covMatrixForward(x, p);
     // Backward: R += sum_{n=0..N-1-p} x[n+i] x[n+j]
     for (int n = 0; n + p < N; ++n) {
@@ -496,7 +496,7 @@ covMatrixForwardBackward(keel::ArrayRef<double> x, int p)
 struct ArCovResult { keel::Array<double> a; double e; };
 ArCovResult solveArCov(keel::ArrayRef<double> R, int p)
 {
-    keel::Array<double> A(static_cast<keel::usize>(p) * static_cast<keel::usize>(p), 0.0);
+    keel::Array<double> A(keel::as<keel::usize>(p) * keel::as<keel::usize>(p), 0.0);
     keel::Array<double> b(p, 0.0);
     for (int i = 0; i < p; ++i) {
         for (int j = 0; j < p; ++j) A[i * p + j] = R[(i + 1) * (p + 1) + (j + 1)];
@@ -520,8 +520,8 @@ arcov(const Value &x, int p, keel::Allocator *mr)
     auto R = covMatrixForward(v, p);
     // Normalise by the count of summed terms (N - p) so e has the
     // same units as the residual variance.
-    const int N = static_cast<int>(v.size());
-    const double norm = static_cast<double>(std::max(N - p, 1));
+    const int N = keel::as<int>(v.size());
+    const double norm = keel::as<double>(std::max(N - p, 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
     return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
@@ -532,8 +532,8 @@ armcov(const Value &x, int p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = covMatrixForwardBackward(v, p);
-    const int N = static_cast<int>(v.size());
-    const double norm = static_cast<double>(std::max(2 * (N - p), 1));
+    const int N = keel::as<int>(v.size());
+    const double norm = keel::as<double>(std::max(2 * (N - p), 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
     return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
@@ -551,13 +551,13 @@ std::tuple<Value, Value>
 prony(const Value &h, int nb, int na, keel::Allocator *mr)
 {
     auto hv = readVec(h);
-    const int N = static_cast<int>(hv.size());
+    const int N = keel::as<int>(hv.size());
     if (na > 0) {
         // Build linear system M · a_tail = -rhs, where M is (N-1-nb) × na
         // and rhs is length (N-1-nb). M[i, j] = h[nb+1+i-1-j] (padded
         // with zeros on the left), rhs[i] = h[nb+1+i].
         const int rows = std::max(N - 1 - nb, 1);
-        keel::Array<double> M(static_cast<keel::usize>(rows) * static_cast<keel::usize>(na), 0.0, mr);
+        keel::Array<double> M(keel::as<keel::usize>(rows) * keel::as<keel::usize>(na), 0.0, mr);
         keel::Array<double> rhs(rows, 0.0, mr);
         for (int i = 0; i < rows; ++i) {
             for (int j = 0; j < na; ++j) {
@@ -568,7 +568,7 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
             rhs[i] = (rhs_idx < N) ? -hv[rhs_idx] : 0.0;
         }
         // Normal equations: (M^T M) · a_tail = M^T rhs
-        keel::Array<double> MtM(static_cast<keel::usize>(na) * static_cast<keel::usize>(na), 0.0, mr);
+        keel::Array<double> MtM(keel::as<keel::usize>(na) * keel::as<keel::usize>(na), 0.0, mr);
         keel::Array<double> Mtb(na, 0.0, mr);
         for (int i = 0; i < na; ++i) {
             for (int j = 0; j < na; ++j) {
@@ -622,10 +622,10 @@ void stmcb_argcheck(const Value &y, const Value &x, int nb, int na, const Value 
                     0, 0, "stmcb", "", "numkit:stmcb:InvalidDimensions");
     if (!ai.isEmpty()) {
         const keel::usize n_ai = ai.numel();
-        if (n_ai != static_cast<keel::usize>(na + 1) && n_ai != static_cast<keel::usize>(na))
+        if (n_ai != keel::as<keel::usize>(na + 1) && n_ai != keel::as<keel::usize>(na))
             throw Error("stmcb: initial denominator estimate ai must have length na+1 (or na)",
                         0, 0, "stmcb", "", "numkit:stmcb:InvalidAiLength");
-        if (n_ai == static_cast<keel::usize>(na + 1) && ai.elemAsDouble(0) == 0.0)
+        if (n_ai == keel::as<keel::usize>(na + 1) && ai.elemAsDouble(0) == 0.0)
             throw Error("stmcb: leading coefficient of ai must be nonzero",
                         0, 0, "stmcb", "", "numkit:stmcb:ZeroLeadingCoefficient");
     }
@@ -639,7 +639,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
 {
     stmcb_argcheck(y, x, nb, na, ai);
     auto      yv = readVec(y);
-    const int N  = static_cast<int>(yv.size());
+    const int N  = keel::as<int>(yv.size());
     if (niter < 1) niter = 5;
 
     keel::Array<double> xv(mr);
@@ -663,7 +663,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
         a[0] = 1.0;
     } else {
         auto aiv = readVec(ai);
-        if (static_cast<int>(aiv.size()) == na + 1) {
+        if (keel::as<int>(aiv.size()) == na + 1) {
             const double a0_val = aiv[0];
             for (int k = 0; k <= na; ++k) a[k] = aiv[k] / a0_val;
             a[0] = 1.0;
@@ -674,7 +674,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
     }
 
     const int           P = nb + 1 + na;   // unknowns: b[0..nb] then a[1..na]
-    keel::Array<double> e(N, 0.0, mr), g(static_cast<keel::usize>(N), 0.0, mr);
+    keel::Array<double> e(N, 0.0, mr), g(keel::as<keel::usize>(N), 0.0, mr);
     for (int it = 0; it < niter; ++it) {
         // Prefilter the input x and output y by 1/A.
         for (int n = 0; n < N; ++n) {
@@ -691,7 +691,7 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
             const int s = col - nb;             // 1..na
             return (n - s >= 0) ? -g[n - s] : 0.0;
         };
-        keel::Array<double> MtM(static_cast<keel::usize>(P) * P, 0.0, mr), Mtg(static_cast<keel::usize>(P), 0.0, mr);
+        keel::Array<double> MtM(keel::as<keel::usize>(P) * P, 0.0, mr), Mtg(keel::as<keel::usize>(P), 0.0, mr);
         for (int n = 0; n < N; ++n)
             for (int i = 0; i < P; ++i) {
                 const double mi = Mcol(n, i);
@@ -720,7 +720,7 @@ stmcb(const Value &h, int nb, int na, int niter, keel::Allocator *mr)
 Value corrmtx(const Value &x, int m, keel::Allocator *mr)
 {
     auto v = readVec(x);
-    const int N = static_cast<int>(v.size());
+    const int N = keel::as<int>(v.size());
     const int rows = N + m;
     const int cols = m + 1;
     auto X = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
@@ -754,7 +754,7 @@ keel::Array<double> reverseVec(keel::ArrayRef<double> v)
 [[maybe_unused]] keel::Array<double> padLeft(keel::ArrayRef<double> p, int n)
 {
     keel::Array<double> r(n, 0.0);
-    const int off = n - static_cast<int>(p.size());
+    const int off = n - keel::as<int>(p.size());
     for (keel::usize i = 0; i < p.size(); ++i) r[off + i] = p[i];
     return r;
 }
@@ -773,12 +773,12 @@ keel::Array<double> reverseVec(keel::ArrayRef<double> v)
 Value poly2lsf(const Value &a, keel::Allocator *mr)
 {
     auto av = readVec(a);
-    const int N = static_cast<int>(av.size()) - 1;
+    const int N = keel::as<int>(av.size()) - 1;
     if (N <= 0) return colVec(keel::ArrayRef<double>{}, mr);
 
     // Build P = A + A_R_shifted, Q = A - A_R_shifted, both length N+2.
     auto ar = reverseVec(av);
-    keel::Array<double> P(N + 2, 0.0, mr), Q(static_cast<keel::usize>(N + 2), 0.0, mr);
+    keel::Array<double> P(N + 2, 0.0, mr), Q(keel::as<keel::usize>(N + 2), 0.0, mr);
     for (int i = 0; i <= N; ++i) {
         P[i] = av[i];
         Q[i] = av[i];
@@ -802,14 +802,14 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
     }
     std::sort(angles.begin(), angles.end());
     // Should yield N angles.
-    if (static_cast<int>(angles.size()) > N) angles.resize(N);
+    if (keel::as<int>(angles.size()) > N) angles.resize(N);
     return colVec(angles, mr);
 }
 
 Value lsf2poly(const Value &lsf, keel::Allocator *mr)
 {
     auto lv = readVec(lsf);
-    const int m = static_cast<int>(lv.size());
+    const int m = keel::as<int>(lv.size());
     if (m == 0) {
         const double one = 1.0;
         return rowVec(keel::ArrayRef<double>(&one, 1), mr);
@@ -899,13 +899,13 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
            keel::ArrayRef<keel::c64> x,
            int nb, int na)
 {
-    const int K  = static_cast<int>(H.size());
+    const int K  = keel::as<int>(H.size());
     const int nv = nb + 1 + na;
     if (K * 2 < nv)
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
 
     // Build A (2K × nv) row-major, plus rhs (length 2K).
-    keel::Array<double> Ar(static_cast<keel::usize>(2 * K) * static_cast<keel::usize>(nv), 0.0);
+    keel::Array<double> Ar(keel::as<keel::usize>(2 * K) * keel::as<keel::usize>(nv), 0.0);
     keel::Array<double> rhs(2 * K, 0.0);
     for (int k = 0; k < K; ++k) {
         // Build x^0..x^max(nb, na) once.
@@ -930,7 +930,7 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
     }
 
     // Normal equations: (Aᵀ A) θ = Aᵀ rhs.
-    keel::Array<double> AtA(static_cast<keel::usize>(nv) * static_cast<keel::usize>(nv), 0.0);
+    keel::Array<double> AtA(keel::as<keel::usize>(nv) * keel::as<keel::usize>(nv), 0.0);
     keel::Array<double> Atb(nv, 0.0);
     for (int i = 0; i < nv; ++i) {
         for (int j = 0; j < nv; ++j) {
@@ -945,7 +945,7 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
     auto theta = solveSPD(AtA, Atb, nv);
 
     // theta = [b_0, ..., b_nb, a_1, ..., a_na]
-    keel::Array<double> b(nb + 1), a(static_cast<keel::usize>(na + 1));
+    keel::Array<double> b(nb + 1), a(keel::as<keel::usize>(na + 1));
     for (int i = 0; i <= nb; ++i) b[i] = theta[i];
     a[0] = 1.0;
     for (int j = 1; j <= na; ++j) a[j] = theta[nb + j];
@@ -956,7 +956,7 @@ void invfreqs_argcheck(const Value &H, const Value &w, int nb, int na)
 {
     if (H.numel() != w.numel())
         throw std::runtime_error("invfreqs: H and w must be the same length");
-    const int K  = static_cast<int>(H.numel());
+    const int K  = keel::as<int>(H.numel());
     const int nv = nb + 1 + na;
     if (K * 2 < nv)
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
@@ -966,7 +966,7 @@ void invfreqz_argcheck(const Value &H, const Value &w, int nb, int na)
 {
     if (H.numel() != w.numel())
         throw std::runtime_error("invfreqz: H and w must be the same length");
-    const int K  = static_cast<int>(H.numel());
+    const int K  = keel::as<int>(H.numel());
     const int nv = nb + 1 + na;
     if (K * 2 < nv)
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");

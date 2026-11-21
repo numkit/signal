@@ -175,7 +175,7 @@ static void extractSizeArg(const Value &v, keel::Array<keel::usize> &dst)
         if (d <= 0 || d != std::floor(d))
             throw Error("fftn: size entries must be positive integers",
                          0, 0, "fftn", "", "numkit:fftn:badSize");
-        dst[i] = static_cast<keel::usize>(d);
+        dst[i] = keel::as<keel::usize>(d);
     }
 }
 
@@ -214,7 +214,7 @@ argcheck::checkNargin(args.size(), 1, 4, "czt");
     // Reference defaults: m = length(x) for vectors, size(x, 1) for matrices/N-D,
     // w = exp(-2*pi*j/m), a = 1.
     const bool isRowVec = (x.dims().ndim() == 2 && x.dims().rows() == 1 && x.dims().cols() > 1);
-    int m = static_cast<int>(isRowVec ? x.dims().cols() : x.dims().rows());
+    int m = keel::as<int>(isRowVec ? x.dims().cols() : x.dims().rows());
     if (args.size() >= 2 && !args[1].isEmpty())
         m = argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[1], 2, "m", "czt"), 2, "m", "czt");

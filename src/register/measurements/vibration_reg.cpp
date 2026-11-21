@@ -87,8 +87,8 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
     // MATLAB's default behaviour.
     const double T_total = tv[np - 1] - tv[0];
     const keel::usize nRev = np - 1;
-    const double T_avg = T_total / static_cast<double>(nRev);
-    keel::usize L = static_cast<keel::usize>(std::floor(T_avg * fs));
+    const double T_avg = T_total / keel::as<double>(nRev);
+    keel::usize L = keel::as<keel::usize>(std::floor(T_avg * fs));
     if (L < 1) L = 1;
 
     // For each revolution, linear-interpolate x onto an L-point grid
@@ -103,12 +103,12 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
         bool revOK = true;
         keel::Array<double> sample(L, 0.0, mr);
         for (keel::usize k = 0; k < L; ++k) {
-            const double tk = t0 + dur * static_cast<double>(k)
-                                    / static_cast<double>(L);
+            const double tk = t0 + dur * keel::as<double>(k)
+                                    / keel::as<double>(L);
             const double idxF = tk * fs;
-            const long  i0   = static_cast<long>(std::floor(idxF));
-            const double frac = idxF - static_cast<double>(i0);
-            if (i0 < 0 || static_cast<keel::usize>(i0 + 1) >= nx) { revOK = false; break; }
+            const long  i0   = keel::as<long>(std::floor(idxF));
+            const double frac = idxF - keel::as<double>(i0);
+            if (i0 < 0 || keel::as<keel::usize>(i0 + 1) >= nx) { revOK = false; break; }
             sample[k] = (1.0 - frac) * xd[i0] + frac * xd[i0 + 1];
         }
         if (!revOK) continue;
@@ -117,7 +117,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
     }
     if (nValidRevs > 0) {
         for (keel::usize k = 0; k < L; ++k)
-            avg[k] /= static_cast<double>(nValidRevs);
+            avg[k] /= keel::as<double>(nValidRevs);
     }
 
     auto Ya = Value::matrix(L, 1, ValueType::DOUBLE, mr);
@@ -126,7 +126,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
     double *ta = Ta.doubleDataMut();
     for (keel::usize k = 0; k < L; ++k) {
         ya[k] = avg[k];
-        ta[k] = T_avg * static_cast<double>(k) / static_cast<double>(L);
+        ta[k] = T_avg * keel::as<double>(k) / keel::as<double>(L);
     }
     return std::make_tuple(std::move(Ya), std::move(Ta));
 }

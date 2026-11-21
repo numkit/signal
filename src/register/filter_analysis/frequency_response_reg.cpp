@@ -54,7 +54,7 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
             if (numericSeen == 0 && args[i].numel() > 1)
                 wvec = &args[i];           // freqz(b,a,W): vector-w form
             else if (numericSeen == 0)
-                npts = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+                npts = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
                     argcheck::expectedReal(args[i], int(i) + 1, "n", "freqz"),
                     int(i) + 1, "n", "freqz"));
             else if (numericSeen == 1) fs   = args[i].toScalar();
@@ -87,7 +87,7 @@ void phasez_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
             if (numericSeen == 0)
-                npts = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+                npts = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
                     argcheck::expectedReal(args[i], int(i) + 1, "n", "phasez"),
                     int(i) + 1, "n", "phasez"));
         else if (numericSeen == 1) fs   = args[i].toScalar();
@@ -113,7 +113,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         if (numericSeen == 0 && args[i].numel() > 1)
             fvec = &args[i];
         else if (numericSeen == 0)
-            npts = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+            npts = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
                 argcheck::expectedReal(args[i], int(i) + 1, "n", "grpdelay"),
                 int(i) + 1, "n", "grpdelay"));
         else if (numericSeen == 1) fs = args[i].toScalar();
@@ -132,7 +132,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
                 for (keel::usize j = 0; j < na; ++j)
                     c[i + j] += args[0].elemAsDouble(i) * a.elemAsDouble(na - 1 - j);
             double *g = gd.doubleDataMut();
-            const double offset = static_cast<double>(na) - 1.0;
+            const double offset = keel::as<double>(na) - 1.0;
             constexpr double kPi = 3.14159265358979323846;
             for (keel::usize k = 0; k < nf; ++k) {
                 const double fk = fvec->elemAsDouble(k);
@@ -141,7 +141,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
                 keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
                 for (keel::usize n = 0; n < nc; ++n) {
                     C  += c[n] * ejwk;
-                    CR += (static_cast<double>(n) * c[n]) * ejwk;
+                    CR += (keel::as<double>(n) * c[n]) * ejwk;
                     ejwk *= ejw;
                 }
                 const double cmag2 = C.real() * C.real() + C.imag() * C.imag();

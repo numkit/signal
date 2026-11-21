@@ -41,7 +41,7 @@ void goertzel_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         Value ind = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
         double *id = ind.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i)
-            id[i] = static_cast<double>(i + 1);
+            id[i] = keel::as<double>(i + 1);
         outs[0] = goertzel(x, ind, mr);
         return;
     }

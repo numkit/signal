@@ -28,7 +28,7 @@ namespace detail {
 static keel::i64 sigroiLen(const Value &v, int argNum, const char *name,
                          const char *fn)
 {
-    return static_cast<keel::i64>(argcheck::expectedInteger(
+    return keel::as<keel::i64>(argcheck::expectedInteger(
         argcheck::expectedReal(v, argNum, name, fn), argNum, name, fn));
 }
 

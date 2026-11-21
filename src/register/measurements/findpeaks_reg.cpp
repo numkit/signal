@@ -57,7 +57,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                              0, 0, "findpeaks", "", "numkit:findpeaks:badFs");
             locStore.assign(n, 0.0);
             for (keel::usize i = 0; i < n; ++i)
-                locStore[i] = static_cast<double>(i) / fs;
+                locStore[i] = keel::as<double>(i) / fs;
             locArr = locStore.data();
         } else {
             if (second.numel() != n)
@@ -93,10 +93,10 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
             opt.minProm = v.toScalar();
             opt.useMinProm = true;
         } else if (name == "npeaks") {
-            opt.nPeaks = static_cast<long>(argcheck::expectedPositiveInteger(
-                argcheck::expectedReal(v, argi ? static_cast<int>(argi) + 2 : 2,
+            opt.nPeaks = keel::as<long>(argcheck::expectedPositiveInteger(
+                argcheck::expectedReal(v, argi ? keel::as<int>(argi) + 2 : 2,
                                      "NPeaks", "findpeaks"),
-                argi ? static_cast<int>(argi) + 2 : 2, "NPeaks", "findpeaks"));
+                argi ? keel::as<int>(argi) + 2 : 2, "NPeaks", "findpeaks"));
         } else if (name == "sortstr") {
             keel::String s = v.toString();
             for (char &c : s)
@@ -108,8 +108,8 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                 throw Error("findpeaks: SortStr must be 'none'/'ascend'/'descend'",
                              0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         } else if (name == "widthreference") {
-            opt.widthRef = static_cast<int>(argcheck::expectedChoice(
-                v, {"halfprom", "halfheight"}, static_cast<int>(argi) + 2,
+            opt.widthRef = keel::as<int>(argcheck::expectedChoice(
+                v, {"halfprom", "halfheight"}, keel::as<int>(argi) + 2,
                 "WidthReference", "findpeaks"));
         } else if (name == "minpeakwidth") {
             opt.minWidth = v.toScalar();
@@ -119,7 +119,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
             opt.useWidthFilter = true;
         } else if (name == "annotate") {
             (void)argcheck::expectedChoice(
-                v, {"peaks", "extents"}, static_cast<int>(argi) + 2,
+                v, {"peaks", "extents"}, keel::as<int>(argi) + 2,
                 "Annotate", "findpeaks");
         } else {
             throw Error(keel::format("findpeaks: option '{}' not supported", rawName),

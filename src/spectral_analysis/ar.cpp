@@ -42,7 +42,7 @@ void ar_argcheck(const Value &x, int p, const char *fn) {
     if (p < 1)
         throw Error(keel::format("{}: order p must be ≥ 1", fn),
                     0, 0, fn, "", "numkit:ar:order");
-    if (static_cast<keel::usize>(p) >= x.numel())
+    if (keel::as<keel::usize>(p) >= x.numel())
         throw Error(keel::format("{}: order p must be < length(x)", fn),
                     0, 0, fn, "", "numkit:ar:order");
 }
@@ -59,12 +59,12 @@ arSpectrum(keel::ArrayRef<double> a, double sigma2, keel::usize nfft, keel::Allo
     double *pd = Pxx.doubleDataMut();
     double *fd = F.doubleDataMut();
     for (keel::usize k = 0; k < nOut; ++k) {
-        const double w = M_PI * static_cast<double>(k) /
-                                   static_cast<double>(nOut - 1);
+        const double w = M_PI * keel::as<double>(k) /
+                                   keel::as<double>(nOut - 1);
         keel::c64 A(1.0, 0.0);
         for (keel::usize i = 0; i < a.size(); ++i) {
             const keel::c64 z =
-                keel::polar(1.0, -w * static_cast<double>(i + 1));
+                keel::polar(1.0, -w * keel::as<double>(i + 1));
             A += a[i] * z;
         }
         const double mag2 = keel::norm(A);
@@ -90,7 +90,7 @@ YWFit yuleWalkerFit(const Value &x, keel::usize pp) {
         double s = 0.0;
         for (keel::usize n = 0; n + k < N; ++n)
             s += x.elemAsDouble(n) * x.elemAsDouble(n + k);
-        r[k] = s / static_cast<double>(N);
+        r[k] = s / keel::as<double>(N);
     }
     keel::Array<double> a(pp, 0.0);
     double sigma2 = r[0];
@@ -120,7 +120,7 @@ pyulear(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
 {
     ar_argcheck(x, p, "pyulear");
     if (nfft == 0) nfft = 256;
-    auto fit = yuleWalkerFit(x, static_cast<keel::usize>(p));
+    auto fit = yuleWalkerFit(x, keel::as<keel::usize>(p));
     return arSpectrum(fit.a, fit.sigma2, nfft, mr);
 }
 
@@ -135,7 +135,7 @@ pburg(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
 {
     ar_argcheck(x, p, "pburg");
     const keel::usize N = x.numel();
-    const keel::usize pp = static_cast<keel::usize>(p);
+    const keel::usize pp = keel::as<keel::usize>(p);
     if (nfft == 0) nfft = (N >= 256) ? 256 : 256;
 
     // Forward / backward prediction error sequences (start = signal).
@@ -155,7 +155,7 @@ pburg(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
         const double v = x.elemAsDouble(n);
         sigma2 += v * v;
     }
-    sigma2 /= static_cast<double>(N);
+    sigma2 /= keel::as<double>(N);
 
     for (keel::usize m = 0; m < pp; ++m) {
         // kappa = -2 · Σ f[n+1] · b[n]   /   Σ (f[n+1]² + b[n]²)

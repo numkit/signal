@@ -40,7 +40,7 @@ Value makeColVector(keel::usize n, Gen &&g, keel::Allocator *mr)
 // 0-based time-index column vector [0, 1, ..., n-1] as doubles.
 Value sampleIndex(keel::usize n, keel::Allocator *mr)
 {
-    return makeColVector(n, [](keel::usize i) { return static_cast<double>(i); }, mr);
+    return makeColVector(n, [](keel::usize i) { return keel::as<double>(i); }, mr);
 }
 
 // True if `a` is "the trivial denominator" — scalar 1 or a vector
@@ -109,10 +109,10 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
     // Decay to 5e-5 of initial amplitude.
     const double decayThresh = 5e-5;
     const double n = std::log(decayThresh) / std::log(rho);
-    long N = static_cast<long>(std::floor(n));
+    long N = keel::as<long>(std::floor(n));
     if (N < 1) N = 1;
     if (N > 8192) N = 8192;
-    return static_cast<keel::usize>(N);
+    return keel::as<keel::usize>(N);
 }
 
 // ── impz ──────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ zerophase(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 {
     auto [H, w] = freqz(b, a, n, /*whole=*/false, /*fs=*/0.0, mr);
     const double tau = (b.numel() > 0)
-                       ? (static_cast<double>(b.numel()) - 1.0) / 2.0
+                       ? (keel::as<double>(b.numel()) - 1.0) / 2.0
                        : 0.0;
     auto Hr = Value::matrix(n, 1, ValueType::DOUBLE, mr);
     double *dst = Hr.doubleDataMut();

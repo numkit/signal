@@ -118,11 +118,11 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     };
 
     if (opt == "biased") {
-        const double inv = (N > 0) ? 1.0 / static_cast<double>(N) : 0.0;
+        const double inv = (N > 0) ? 1.0 / keel::as<double>(N) : 0.0;
         for (keel::usize i = 0; i < nc; ++i) scaleElem(i, inv);
     } else if (opt == "unbiased") {
         for (keel::usize i = 0; i < nc; ++i) {
-            const double div = static_cast<double>(N) - keel::abs(ld[i]);
+            const double div = keel::as<double>(N) - keel::abs(ld[i]);
             scaleElem(i, (div > 0.0) ? (1.0 / div) : 0.0);
         }
     } else if (opt == "coeff" || opt == "normalized") {
@@ -144,7 +144,7 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     }
 
     // maxlag crop (or zero-pad) about lag 0 at index fullMaxLag.
-    const int fullMaxLag = (N > 0) ? static_cast<int>(N) - 1 : 0;
+    const int fullMaxLag = (N > 0) ? keel::as<int>(N) - 1 : 0;
     if (maxlag < 0) maxlag = fullMaxLag;
     if (maxlag != fullMaxLag) {
         const int center0 = fullMaxLag;
@@ -158,11 +158,11 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
         for (int m = -maxlag; m <= maxlag; ++m) {
             const int src = center0 + m;
             const int dst = m + maxlag;
-            lo[dst] = static_cast<double>(m);
+            lo[dst] = keel::as<double>(m);
             if (isCplx) {
-                cOut.complexDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? ccd[src] : keel::c64(0.0, 0.0);
+                cOut.complexDataMut()[dst] = (src >= 0 && src < keel::as<int>(nc)) ? ccd[src] : keel::c64(0.0, 0.0);
             } else {
-                cOut.doubleDataMut()[dst] = (src >= 0 && src < static_cast<int>(nc)) ? cd[src] : 0.0;
+                cOut.doubleDataMut()[dst] = (src >= 0 && src < keel::as<int>(nc)) ? cd[src] : 0.0;
             }
         }
         cfull = std::move(cOut);

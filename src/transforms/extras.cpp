@@ -61,11 +61,11 @@ void dftExact(keel::c64 *buf, keel::usize n, int dir, keel::Allocator *mr)
     if (isPow2(n)) { fftRadix2(mr, buf, n, dir); return; }
     keel::ArenaTemp arena = keel::get_scratch(mr);
     auto out = keel::Array<keel::c64>(n, arena.allocator());
-    const double base = static_cast<double>(dir) * 2.0 * M_PI / static_cast<double>(n);
+    const double base = keel::as<double>(dir) * 2.0 * M_PI / keel::as<double>(n);
     for (keel::usize k = 0; k < n; ++k) {
         keel::c64 s(0.0, 0.0);
         for (keel::usize m = 0; m < n; ++m) {
-            const double a = base * static_cast<double>(k) * static_cast<double>(m);
+            const double a = base * keel::as<double>(k) * keel::as<double>(m);
             s += buf[m] * keel::c64(std::cos(a), std::sin(a));
         }
         out[k] = s;
@@ -91,10 +91,10 @@ Value dftmtx(keel::usize N, keel::Allocator *mr)
                      0, 0, "dftmtx", "", "numkit:dftmtx:badN");
     auto out = Value::complexMatrix(N, N, mr);
     keel::c64 *dst = out.complexDataMut();
-    const double base = -2.0 * M_PI / static_cast<double>(N);
+    const double base = -2.0 * M_PI / keel::as<double>(N);
     for (keel::usize k = 0; k < N; ++k)
         for (keel::usize n = 0; n < N; ++n) {
-            const double a = base * static_cast<double>(k) * static_cast<double>(n);
+            const double a = base * keel::as<double>(k) * keel::as<double>(n);
             dst[n * N + k] = keel::c64(std::cos(a), std::sin(a));   // column-major
         }
     return out;
@@ -146,7 +146,7 @@ Value dst(const Value &x, keel::Allocator *mr)
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 0) return out;
     double *dst = out.doubleDataMut();
-    const double scale = M_PI / static_cast<double>(N + 1);
+    const double scale = M_PI / keel::as<double>(N + 1);
     for (keel::usize k = 0; k < N; ++k) {
         double s = 0.0;
         for (keel::usize n = 0; n < N; ++n)
@@ -162,7 +162,7 @@ Value idst(const Value &y, keel::Allocator *mr)
     auto x = dst(y, mr);
     const keel::usize N = x.numel();
     if (N == 0) return x;
-    const double scale = 2.0 / static_cast<double>(N + 1);
+    const double scale = 2.0 / keel::as<double>(N + 1);
     double *p = x.doubleDataMut();
     for (keel::usize i = 0; i < N; ++i) p[i] *= scale;
     return x;
@@ -184,7 +184,7 @@ Value rceps(const Value &x, keel::Allocator *mr)
         X[i] = keel::c64(std::log(std::max(mag, 1e-300)), 0.0);
     }
     dftExact(X.data(), n, -1, mr);
-    const double invN = 1.0 / static_cast<double>(n);
+    const double invN = 1.0 / keel::as<double>(n);
     auto out = realLike(x, n, mr);
     double *dst = out.doubleDataMut();
     for (keel::usize i = 0; i < n; ++i) dst[i] = X[i].real() * invN;
@@ -216,7 +216,7 @@ std::pair<Value, Value> rcepsMinPhase(const Value &x, keel::Allocator *mr)
     dftExact(W.data(), n, -1, mr);                // fft
     for (keel::usize i = 0; i < n; ++i) W[i] = keel::exp(W[i]);
     dftExact(W.data(), n, +1, mr);                // ifft (unscaled)
-    const double invN = 1.0 / static_cast<double>(n);
+    const double invN = 1.0 / keel::as<double>(n);
     double *md = ym.doubleDataMut();
     for (keel::usize i = 0; i < n; ++i) md[i] = W[i].real() * invN;
     return {std::move(y), std::move(ym)};
@@ -266,11 +266,11 @@ Value cceps(const Value &x, double *ndOut, keel::Allocator *mr)
     const keel::usize idx = (n == 1) ? 0 : nh;           // MATLAB's 1-based nh+1
     const double nd  = std::round(ph[idx] / M_PI);
     for (keel::usize i = 0; i < n; ++i)
-        ph[i] -= M_PI * nd * static_cast<double>(i) / static_cast<double>(nh);
+        ph[i] -= M_PI * nd * keel::as<double>(i) / keel::as<double>(nh);
     if (ndOut) *ndOut = nd;
     for (keel::usize i = 0; i < n; ++i) X[i] = keel::c64(lmag[i], ph[i]);
     dftExact(X.data(), n, +1, mr);
-    const double invN = 1.0 / static_cast<double>(n);
+    const double invN = 1.0 / keel::as<double>(n);
     auto out = realLike(x, n, mr);
     double *dst = out.doubleDataMut();
     for (keel::usize i = 0; i < n; ++i) dst[i] = X[i].real() * invN;
@@ -293,7 +293,7 @@ Value icceps(const Value &c, keel::Allocator *mr)
     dftExact(X.data(), n, -1, mr);                  // FORWARD fft
     for (keel::usize i = 0; i < n; ++i) X[i] = keel::exp(X[i]);
     dftExact(X.data(), n, +1, mr);                  // inverse
-    const double invN = 1.0 / static_cast<double>(n);
+    const double invN = 1.0 / keel::as<double>(n);
     auto out = realLike(c, n, mr);
     double *dst = out.doubleDataMut();
     for (keel::usize i = 0; i < n; ++i) dst[i] = X[i].real() * invN;

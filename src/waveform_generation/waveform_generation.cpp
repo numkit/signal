@@ -296,7 +296,7 @@ Value diric(const Value &x, int n, keel::Allocator *mr)
             const long k = std::lround(xv / kTwoPi);
             // Sign: (-1)^(k·(n-1))
             const long sign = ((k * (n - 1)) & 1) ? -1 : 1;
-            dst[i] = static_cast<double>(sign);
+            dst[i] = keel::as<double>(sign);
         } else {
             dst[i] = std::sin(n * xv * 0.5) / (n * s);
         }
@@ -449,7 +449,7 @@ Value demod(const Value &y, double Fc, double Fs,
                 keel::Array<double> ang(len, mr);
                 for (keel::usize r = 0; r < len; ++r) {
                     const keel::c64 hh = hd[r + c * len];
-                    const double t = static_cast<double>(r) / Fs;
+                    const double t = keel::as<double>(r) / Fs;
                     const keel::c64 yq = hh * keel::polar(1.0, -2.0 * kPi * Fc * t);
                     ang[r] = keel::arg(yq);
                 }
@@ -468,7 +468,7 @@ Value demod(const Value &y, double Fc, double Fs,
             for (keel::usize c = 0; c < cols; ++c) {
                 for (keel::usize r = 0; r < len; ++r) {
                     const keel::c64 hh = hd[r + c * len];
-                    const double t = static_cast<double>(r) / Fs;
+                    const double t = keel::as<double>(r) / Fs;
                     const keel::c64 yq = hh * keel::polar(1.0, -2.0 * kPi * Fc * t);
                     od[r + c * len] = (1.0 / P1) * keel::arg(yq);
                 }
@@ -487,7 +487,7 @@ Value demod(const Value &y, double Fc, double Fs,
     double *md = mixed.doubleDataMut();
     for (keel::usize c = 0; c < cols; ++c) {
         for (keel::usize r = 0; r < len; ++r) {
-            const double t = static_cast<double>(r) / Fs;
+            const double t = keel::as<double>(r) / Fs;
             const double yi = isRowVec ? y.elemAsDouble(r)
                                         : y.elemAsDouble(r + c * len);
             md[r + c * len] = yi * std::cos(2.0 * kPi * Fc * t);
@@ -566,7 +566,7 @@ Value modulate(const Value &x, double Fc, double Fs,
     if (m == "am" || m == "amdsb-sc") {
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = static_cast<double>(r) / Fs;
+                const double t = keel::as<double>(r) / Fs;
                 od[r + c * len] = getX(r, c) * std::cos(2.0 * kPi * Fc * t);
             }
         }
@@ -582,7 +582,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         const keel::c64 *hd = h.complexData();
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = static_cast<double>(r) / Fs;
+                const double t = keel::as<double>(r) / Fs;
                 const double cosT = std::cos(2.0 * kPi * Fc * t);
                 const double sinT = std::sin(2.0 * kPi * Fc * t);
                 const double xv = xd[r + c * len];
@@ -603,7 +603,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         }
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = static_cast<double>(r) / Fs;
+                const double t = keel::as<double>(r) / Fs;
                 od[r + c * len] = (getX(r, c) - offset) * std::cos(2.0 * kPi * Fc * t);
             }
         }
@@ -623,7 +623,7 @@ Value modulate(const Value &x, double Fc, double Fs,
             double cum = 0.0;
             for (keel::usize r = 0; r < len; ++r) {
                 cum += getX(r, c);
-                const double t = static_cast<double>(r) / Fs;
+                const double t = keel::as<double>(r) / Fs;
                 od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kf * cum);
             }
         }
@@ -641,7 +641,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         }
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = static_cast<double>(r) / Fs;
+                const double t = keel::as<double>(r) / Fs;
                 od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kp * getX(r, c));
             }
         }
@@ -715,7 +715,7 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
             // Index into x: row vec → x[n]; column-major matrix → x[n + c*R].
             const keel::usize srcIdx = rowVec ? n : (n + c * R);
             cum += x.elemAsDouble(srcIdx);
-            const double t = static_cast<double>(n) / fs;
+            const double t = keel::as<double>(n) / fs;
             od[srcIdx] = std::cos(2.0 * kPi * Fc * t + range1 * cum);
         }
     }

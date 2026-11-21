@@ -28,7 +28,7 @@ namespace detail {
 void dftmtx_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "dftmtx");
-    outs[0] = dftmtx(static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    outs[0] = dftmtx(keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[0], 1, "n", "dftmtx"), 1, "n", "dftmtx")),
         ctx.engine->allocator());
 }
@@ -55,7 +55,7 @@ void bitrevorder_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         double *id = I.doubleDataMut();
         for (keel::usize i = 0; i < n; ++i) {
             // dst[bitReverse(i, bits)] = i+1 (1-based MATLAB index).
-            id[bitReverse(i, bits)] = static_cast<double>(i + 1);
+            id[bitReverse(i, bits)] = keel::as<double>(i + 1);
         }
         outs[1] = std::move(I);
     }

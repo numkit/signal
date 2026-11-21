@@ -52,7 +52,7 @@ void iscola_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     if (!(novS >= 0.0))
         throw Error("iscola: noverlap must be non-negative",
                      0, 0, "iscola", "", "numkit:iscola:badOverlap");
-    const keel::usize noverlap = static_cast<keel::usize>(novS);
+    const keel::usize noverlap = keel::as<keel::usize>(novS);
 
     keel::String method = keel::String::from("wola");  // MATLAB default
     if (args.size() >= 3) {
@@ -80,7 +80,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     Value window = Value();
     if (args.size() >= 2 && !args[1].isChar()) {
         if (args[1].numel() == 1) {
-            const keel::usize winLen = static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "window", "spectrogram"), 2, "window", "spectrogram"));
+            const keel::usize winLen = keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "window", "spectrogram"), 2, "window", "spectrogram"));
             auto w = Value::matrix(1, winLen, ValueType::DOUBLE, ctx.engine->allocator());
             if (winLen == 1) {
                 w.doubleDataMut()[0] = 1.0;
@@ -94,9 +94,9 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         }
     }
     const keel::usize noverlap = (args.size() >= 3 && !args[2].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "noverlap", "spectrogram"), 3, "noverlap", "spectrogram")) : 0;
+        ? keel::as<keel::usize>(argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "noverlap", "spectrogram"), 3, "noverlap", "spectrogram")) : 0;
     const keel::usize nfft = (args.size() >= 4 && !args[3].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "nfft", "spectrogram"), 4, "nfft", "spectrogram")) : 0;
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "nfft", "spectrogram"), 4, "nfft", "spectrogram")) : 0;
 
     auto [S, F, T] = spectrogram(args[0], window, noverlap, nfft, ctx.engine->allocator());
 
@@ -114,7 +114,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         const keel::usize nfftEff = (nFreqs > 1) ? (nFreqs - 1) * 2 : 1;
         double *fd = F.doubleDataMut();
         for (keel::usize i = 0; i < nFreqs; ++i)
-            fd[i] = static_cast<double>(i) * fs / static_cast<double>(nfftEff);
+            fd[i] = keel::as<double>(i) * fs / keel::as<double>(nfftEff);
         double *td = T.doubleDataMut();
         for (keel::usize j = 0; j < T.numel(); ++j)
             td[j] /= fs;
@@ -142,7 +142,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
             for (keel::usize i = 0; i < L; ++i) win[i] = window.elemAsDouble(i);
         } else {
             keel::usize L = std::max<keel::usize>(
-                1, static_cast<keel::usize>(std::floor(static_cast<double>(nx) / 4.5)));
+                1, keel::as<keel::usize>(std::floor(keel::as<double>(nx) / 4.5)));
             if (L > nx && nx > 0) L = nx;
             win.resize(L);
             if (L == 1) win[0] = 1.0;
@@ -169,9 +169,9 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
             const keel::usize L = win.size();
             keel::Array<double> wt(L, mr);
             keel::Array<double> wd(L, mr);
-            const double halfL = 0.5 * static_cast<double>(L > 0 ? L - 1 : 0);
+            const double halfL = 0.5 * keel::as<double>(L > 0 ? L - 1 : 0);
             for (keel::usize i = 0; i < L; ++i)
-                wt[i] = (static_cast<double>(i) - halfL) * win[i];
+                wt[i] = (keel::as<double>(i) - halfL) * win[i];
 
             if (L <= 1) {
                 if (L == 1) wd[0] = 0.0;
@@ -228,8 +228,8 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                     fTd[i] = 0.0;
                     fDd[i] = 0.0;
                 }
-                Value St = fft(frameT, static_cast<int>(nfftEff), 1, mr);
-                Value Sd = fft(frameD, static_cast<int>(nfftEff), 1, mr);
+                Value St = fft(frameT, keel::as<int>(nfftEff), 1, mr);
+                Value Sd = fft(frameD, keel::as<int>(nfftEff), 1, mr);
                 const keel::c64 *std_ptr = St.complexData();
                 const keel::c64 *sdd_ptr = Sd.complexData();
                 for (keel::usize k = 0; k < R; ++k) {
@@ -309,11 +309,11 @@ static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
         const Value &val      = args[i + 1];
         if (eqIgnoreCase(key, "Window"))           window    = val;
         else if (eqIgnoreCase(key, "OverlapLength"))
-            overlap = static_cast<keel::usize>(argcheck::expectedInteger(
+            overlap = keel::as<keel::usize>(argcheck::expectedInteger(
                 argcheck::expectedReal(val, int(i) + 2, "OverlapLength", "stft"),
                 int(i) + 2, "OverlapLength", "stft"));
         else if (eqIgnoreCase(key, "FFTLength"))
-            fftLength = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+            fftLength = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
                 argcheck::expectedReal(val, int(i) + 2, "FFTLength", "stft"),
                 int(i) + 2, "FFTLength", "stft"));
         else if (eqIgnoreCase(key, "FrequencyRange")) range  = val.toString();
@@ -346,13 +346,13 @@ static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
                            keel::Allocator *mr)
 {
     const double f_scale = fsGiven ? fs : (2.0 * M_PI);
-    const double df      = f_scale / static_cast<double>(NFFT);
+    const double df      = f_scale / keel::as<double>(NFFT);
     if (range == "onesided") {
         const keel::usize nF = NFFT / 2 + 1;
         Value f = Value::matrix(nF, 1, ValueType::DOUBLE, mr);
         double *fd = f.doubleDataMut();
         for (keel::usize k = 0; k < nF; ++k)
-            fd[k] = static_cast<double>(k) * df;
+            fd[k] = keel::as<double>(k) * df;
         return f;
     }
     if (range == "centered") {
@@ -360,17 +360,17 @@ static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
         double *fd = f.doubleDataMut();
         // Even N: bins are [-N/2+1, ..., N/2] (Nyquist at end).
         // Odd  N: bins are [-(N-1)/2, ..., (N-1)/2].
-        const long long Nll = static_cast<long long>(NFFT);
+        const long long Nll = keel::as<long long>(NFFT);
         const long long lo  = (Nll % 2 == 0) ? -(Nll / 2 - 1) : -((Nll - 1) / 2);
         for (long long k = 0; k < Nll; ++k)
-            fd[k] = static_cast<double>(lo + k) * df;
+            fd[k] = keel::as<double>(lo + k) * df;
         return f;
     }
     // twosided: bins 0, 1, ..., N-1.
     Value f = Value::matrix(NFFT, 1, ValueType::DOUBLE, mr);
     double *fd = f.doubleDataMut();
     for (keel::usize k = 0; k < NFFT; ++k)
-        fd[k] = static_cast<double>(k) * df;
+        fd[k] = keel::as<double>(k) * df;
     return f;
 }
 
@@ -382,11 +382,11 @@ static Value buildTimeAxisStft(keel::usize M, keel::usize hop, keel::usize K,
                                keel::Allocator *mr)
 {
     const double tscale = fsGiven ? fs : 1.0;
-    const double half_M = 0.5 * static_cast<double>(M);
+    const double half_M = 0.5 * keel::as<double>(M);
     Value t = Value::matrix(K, 1, ValueType::DOUBLE, mr);
     double *td = t.doubleDataMut();
     for (keel::usize k = 0; k < K; ++k)
-        td[k] = (half_M + static_cast<double>(k * hop)) / tscale;
+        td[k] = (half_M + keel::as<double>(k * hop)) / tscale;
     return t;
 }
 
@@ -454,7 +454,7 @@ void istft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
         Value t = Value::matrix(Nout, 1, ValueType::DOUBLE, mr);
         double *td = t.doubleDataMut();
         for (keel::usize i = 0; i < Nout; ++i)
-            td[i] = static_cast<double>(i) / tscale;
+            td[i] = keel::as<double>(i) / tscale;
         outs[1] = std::move(t);
     }
 }

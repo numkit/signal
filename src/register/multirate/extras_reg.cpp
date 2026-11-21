@@ -31,11 +31,11 @@ void upfirdn_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
 {
     argcheck::checkNargin(args.size(), 2, 4, "upfirdn");
     const keel::usize p = (args.size() >= 3 && !args[2].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[2], 3, "p", "upfirdn"), 3, "p", "upfirdn"))
         : 1;
     const keel::usize q = (args.size() >= 4 && !args[3].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[3], 4, "q", "upfirdn"), 4, "q", "upfirdn"))
         : 1;
     outs[0] = upfirdn(args[0], args[1], p, q, ctx.engine->allocator());
@@ -44,10 +44,10 @@ void upfirdn_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
 void interp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "interp");
-    const keel::usize r = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize r = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "r", "interp"), 2, "r", "interp"));
     const keel::usize n = (args.size() >= 3)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[2], 3, "n", "interp"), 3, "n", "interp"))
         : 4;
     const double alpha = (args.size() >= 4) ? args[3].toScalar() : 0.5;
@@ -57,10 +57,10 @@ void interp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 void intfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 3, "intfilt");
-    const keel::usize r = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize r = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[0], 1, "r", "intfilt"), 1, "r", "intfilt"));
     const keel::usize n = (args.size() >= 2)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[1], 2, "n", "intfilt"), 2, "n", "intfilt"))
         : 4;
     const double alpha = (args.size() >= 3) ? args[2].toScalar() : 0.5;
@@ -71,7 +71,7 @@ void fftfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
 {
     argcheck::checkNargin(args.size(), 2, 3, "fftfilt");
     const keel::usize nfft = (args.size() >= 3)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[2], 3, "nfft", "fftfilt"), 3, "nfft", "fftfilt"))
         : 0;
     outs[0] = fftfilt(args[0], args[1], nfft, ctx.engine->allocator());

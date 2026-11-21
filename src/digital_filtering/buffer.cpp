@@ -70,7 +70,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
         return r;
     }
     const keel::usize N = x.numel();
-    const keel::usize Nn = static_cast<keel::usize>(n);
+    const keel::usize Nn = keel::as<keel::usize>(n);
     const int hop = n - p;  // can be negative when p > n (invalid)
 
     // Underlap branch (p < 0): skip |p| samples per frame.
@@ -82,10 +82,10 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
             if (v < 0.0 || v > -p)
                 throw Error("buffer: OPT (offset) for underlap must be in [0, -P]",
                             0, 0, "buffer", "", "numkit:buffer:BadOpt");
-            offset = static_cast<keel::usize>(v);
+            offset = keel::as<keel::usize>(v);
         }
         const keel::usize startN = (offset < N) ? (N - offset) : 0;
-        const keel::usize step = static_cast<keel::usize>(hop);  // n + |p|
+        const keel::usize step = keel::as<keel::usize>(hop);  // n + |p|
         // Number of frames that fit
         keel::usize numFrames = 0;
         if (startN >= Nn) numFrames = (startN - Nn) / step + 1;
@@ -114,13 +114,13 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     }
 
     // Overlap (p > 0) and zero-overlap (p == 0) branches.
-    const keel::usize hopP = static_cast<keel::usize>(hop);  // = n - p, must be > 0
+    const keel::usize hopP = keel::as<keel::usize>(hop);  // = n - p, must be > 0
     if (hopP == 0)
         throw Error("buffer: P must be < N (overlap < frame length)",
                     0, 0, "buffer", "", "numkit:buffer:BadOverlap");
 
     // Decide whether to apply initial-condition prepend (p > 0 only).
-    keel::usize initLen = (p > 0) ? static_cast<keel::usize>(p) : 0;
+    keel::usize initLen = (p > 0) ? keel::as<keel::usize>(p) : 0;
     keel::Array<double> initVec(initLen, 0.0, mr);  // initial condition (zeros default)
 
     if (p > 0 && !opt.isEmpty()) {
@@ -129,11 +129,11 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
             initVec.clear();
         } else {
             // Numeric initial-condition vector of length p.
-            if (opt.numel() != static_cast<keel::usize>(p))
+            if (opt.numel() != keel::as<keel::usize>(p))
                 throw Error("buffer: initial-condition OPT must have length P",
                             0, 0, "buffer", "", "numkit:buffer:BadInitLen");
             initVec.resize(p);
-            for (keel::usize i = 0; i < static_cast<keel::usize>(p); ++i)
+            for (keel::usize i = 0; i < keel::as<keel::usize>(p); ++i)
                 initVec[i] = opt.elemAsDouble(i);
         }
     }
@@ -219,7 +219,7 @@ void buffer_argcheck(int n, int p, const Value &opt)
         throw Error("buffer: P must be < N (overlap < frame length)",
                     0, 0, "buffer", "", "numkit:buffer:BadOverlap");
     if (p > 0 && !opt.isEmpty() && !isStringLikeNoDelay(opt)) {
-        if (opt.numel() != static_cast<keel::usize>(p))
+        if (opt.numel() != keel::as<keel::usize>(p))
             throw Error("buffer: initial-condition OPT must have length P",
                         0, 0, "buffer", "", "numkit:buffer:BadInitLen");
     }

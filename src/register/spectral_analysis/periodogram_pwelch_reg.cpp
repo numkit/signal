@@ -42,7 +42,7 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     if (firstStr > 1 && !args[1].isEmpty())
         window = args[1];
     const keel::usize nfft = (firstStr > 2 && !args[2].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "periodogram"), 3, "nfft", "periodogram")) : 0;
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "periodogram"), 3, "nfft", "periodogram")) : 0;
     const double fs   = (firstStr > 3 && !args[3].isEmpty()) ? args[3].toScalar() : kDefaultFs;
 
     // 'ConfidenceLevel', p name-value pair (case-insensitive); MATLAB default 0.95.
@@ -78,11 +78,11 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
         window = args[1];
     // Empty [] placeholders select the default (MATLAB pwelch(x,[],[],nfft)).
     const keel::usize noverlap = (args.size() >= 3 && !args[2].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedInteger(
+        ? keel::as<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[2], 3, "noverlap", "pwelch"),
             3, "noverlap", "pwelch")) : 0;
     const keel::usize nfft = (args.size() >= 4 && !args[3].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[3], 4, "nfft", "pwelch"),
             4, "nfft", "pwelch")) : 0;
     const double fs   = (args.size() >= 5 && !args[4].isEmpty()) ? args[4].toScalar() : kDefaultFs;
@@ -115,7 +115,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
             }
         }
         for (keel::usize k = 0; k < fullN; ++k)
-            f2[k] = fs * static_cast<double>(k) / static_cast<double>(fullN);
+            f2[k] = fs * keel::as<double>(k) / keel::as<double>(fullN);
         Pxx = std::move(P2);
         F = std::move(F2);
     }
@@ -130,11 +130,11 @@ void cpsd_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     Value window = Value();
     if (args.size() >= 3 && !args[2].isChar()) window = args[2];
     const keel::usize noverlap = (args.size() >= 4 && !args[3].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedInteger(
+        ? keel::as<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[3], 4, "noverlap", "cpsd"),
             4, "noverlap", "cpsd")) : 0;
     const keel::usize nfft     = (args.size() >= 5 && !args[4].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[4], 5, "nfft", "cpsd"),
             5, "nfft", "cpsd")) : 0;
     const double fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
@@ -149,11 +149,11 @@ void mscohere_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     Value window = Value();
     if (args.size() >= 3 && !args[2].isChar()) window = args[2];
     const keel::usize noverlap = (args.size() >= 4 && !args[3].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedInteger(
+        ? keel::as<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[3], 4, "noverlap", "mscohere"),
             4, "noverlap", "mscohere")) : 0;
     const keel::usize nfft     = (args.size() >= 5 && !args[4].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[4], 5, "nfft", "mscohere"),
             5, "nfft", "mscohere")) : 0;
     const double fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
@@ -168,11 +168,11 @@ void tfestimate_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutAr
     Value window = Value();
     if (args.size() >= 3 && !args[2].isChar()) window = args[2];
     const keel::usize noverlap = (args.size() >= 4 && !args[3].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedInteger(
+        ? keel::as<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[3], 4, "noverlap", "tfestimate"),
             4, "noverlap", "tfestimate")) : 0;
     const keel::usize nfft     = (args.size() >= 5 && !args[4].isEmpty())
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[4], 5, "nfft", "tfestimate"),
             5, "nfft", "tfestimate")) : 0;
     const double fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;

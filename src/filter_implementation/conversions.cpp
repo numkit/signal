@@ -305,7 +305,7 @@ Value zp2sos(const Value &zerosV, const Value &polesV, double gain, keel::Alloca
     const keel::usize L = sos.dims().rows();
     if (sos.type() == ValueType::SINGLE) {
         float *p = sos.singleDataMut();
-        const float gf = static_cast<float>(g);
+        const float gf = keel::as<float>(g);
         p[0 * L + 0] *= gf;
         p[1 * L + 0] *= gf;
         p[2 * L + 0] *= gf;
@@ -356,7 +356,7 @@ Value tf2sos(const Value &b, const Value &a, keel::Allocator *mr)
     const keel::usize L = sos.dims().rows();
     if (sos.type() == ValueType::SINGLE) {
         float *p = sos.singleDataMut();
-        const float gf = static_cast<float>(g);
+        const float gf = keel::as<float>(g);
         p[0 * L + 0] *= gf;
         p[1 * L + 0] *= gf;
         p[2 * L + 0] *= gf;

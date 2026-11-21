@@ -49,7 +49,7 @@ void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k
     keel::usize lo = 0;
     auto insertSorted = [&](double val) {
         const keel::usize idx =
-            static_cast<keel::usize>(std::upper_bound(win.begin(), win.end(), val) - win.begin());
+            keel::as<keel::usize>(std::upper_bound(win.begin(), win.end(), val) - win.begin());
         win.push_back(0.0);
         if (idx + 1 < win.size()) {
             keel::mem_move(win.data() + idx + 1, win.data() + idx,
@@ -71,9 +71,9 @@ void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k
         // Full window is k long: m in-range samples + (k-m) pad zeros.
         const keel::usize nz = k - m;
         const keel::usize nNeg =
-            static_cast<keel::usize>(std::lower_bound(win.begin(), win.end(), 0.0) - win.begin());
+            keel::as<keel::usize>(std::lower_bound(win.begin(), win.end(), 0.0) - win.begin());
         const keel::usize nZeroWin =
-            static_cast<keel::usize>(std::upper_bound(win.begin(), win.end(), 0.0) - win.begin()) - nNeg;
+            keel::as<keel::usize>(std::upper_bound(win.begin(), win.end(), 0.0) - win.begin()) - nNeg;
         const keel::usize zerosTot = nz + nZeroWin;
         auto valAt = [&](keel::usize r) -> double {
             if (r < nNeg)              return win[r];        // a negative
@@ -96,7 +96,7 @@ void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k
         for (keel::usize j = lo; j < new_lo; ++j) {
             const auto pos = std::lower_bound(win.begin(), win.end(), src[j]);
             if (pos != win.end() && *pos == src[j])
-                win.erase(static_cast<keel::usize>(pos - win.begin()));
+                win.erase(keel::as<keel::usize>(pos - win.begin()));
         }
         lo = new_lo;
         dst[i] = computeMedian();
@@ -155,7 +155,7 @@ keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
 
         Scalar mu{};
         for (keel::usize i = s_start; i < k; ++i) mu += v[i];
-        mu /= static_cast<double>(L);
+        mu /= keel::as<double>(L);
 
         keel::Array<Scalar> seg0(L);
         double e0 = 0.0;
@@ -163,7 +163,7 @@ keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
             seg0[i] = v[s_start + i] - mu;
             e0 += normScalar(seg0[i]);
         }
-        e0 /= static_cast<double>(L);
+        e0 /= keel::as<double>(L);
 
         if (L <= 1 || !(e0 > 0.0)) {
             for (keel::usize m = 0; m < G; ++m) v[k + m] = mu;
@@ -208,8 +208,8 @@ keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
 
             if (order == 0) {
                 const double aic_m =
-                    static_cast<double>(L) * std::log(std::max(E, 1e-300)) +
-                    2.0 * static_cast<double>(m);
+                    keel::as<double>(L) * std::log(std::max(E, 1e-300)) +
+                    2.0 * keel::as<double>(m);
                 if (m == 1 || aic_m < best_aic) {
                     best_aic = aic_m;
                     best_p = m;
@@ -279,7 +279,7 @@ void fillgapsColumn(const Scalar *src, Scalar *dst, keel::usize n,
         while (g_end + 1 < i_last && isNanScalar(src[g_end + 1])) ++g_end;
         const keel::usize G = g_end - k + 1;
         for (keel::usize m = 0; m < G; ++m) {
-            const double w = static_cast<double>(m + 1) / static_cast<double>(G + 1);
+            const double w = keel::as<double>(m + 1) / keel::as<double>(G + 1);
             dst[k + m] = (1.0 - w) * yf[k + m] + w * yb[k + m];
         }
         k = g_end + 1;
@@ -312,7 +312,7 @@ Value medfilt1(const Value &x, keel::usize k, bool zeropad, keel::Allocator *mr)
     const double *src = xD.doubleData();
     double *dst = r.doubleDataMut();
 
-    const keel::usize R = static_cast<keel::usize>(xD.dims().dim(0));
+    const keel::usize R = keel::as<keel::usize>(xD.dims().dim(0));
     // Vector / scalar → one signal over every element. True 2-D (or N-D)
     // matrix → median-filter each column (length R) independently.
     if (R <= 1 || xD.dims().isVector()) {

@@ -250,7 +250,7 @@ Value enbw(const Value &window, const Value &fs, keel::Allocator *mr)
         sm    += w;
     }
     const double bin = (sm * sm > 0) ? n * sumsq / (sm * sm) : 0.0;
-    const double fsv = scalarOr(fs, static_cast<double>(n));
+    const double fsv = scalarOr(fs, keel::as<double>(n));
     return Value::scalar(bin * fsv / n, mr);
 }
 
@@ -272,18 +272,18 @@ obw(const Value &x, const Value &fs, double p, keel::Allocator *mr)
     // the length-N DFT through the general fft (Bluestein for non-pow2 N) and
     // form the one-sided PSD here: Pxx[k] = (2 if folded)·|X[k]|² / (fs·N),
     // which obeys Σ Pxx·df = mean(x²) (rectangular window power = N).
-    Value          Xv = fft(x, static_cast<int>(N), /*dim=*/0, mr);
+    Value          Xv = fft(x, keel::as<int>(N), /*dim=*/0, mr);
     const keel::c64 *X  = Xv.complexData();
     const keel::usize   nOut = N / 2 + 1;
     const double   fsHz = (fsv > 0.0) ? fsv : (2.0 * M_PI);  // rad/s when fs omitted
-    const double   df   = fsHz / static_cast<double>(N);
+    const double   df   = fsHz / keel::as<double>(N);
 
     keel::Array<double> P(nOut, mr), F(nOut, mr);
     for (keel::usize k = 0; k < nOut; ++k) {
         double mag2 = keel::norm(X[k]);
         if (k > 0 && 2 * k != N) mag2 *= 2.0;   // one-sided fold (skip DC & Nyquist)
-        P[k] = mag2 / (fsHz * static_cast<double>(N));
-        F[k] = static_cast<double>(k) * df;
+        P[k] = mag2 / (fsHz * keel::as<double>(N));
+        F[k] = keel::as<double>(k) * df;
     }
 
     // Rectangle-rule cumulative power (MATLAB obw): cum[k] = Σ_{j≤k} P[j]·df.
@@ -424,7 +424,7 @@ Value spectralentropy(const Value &x, const Value &fs, keel::Allocator *mr)
         if (q > 0) H -= q * std::log(q);
     }
     // Normalise by log(N) so the result lies in [0, 1].
-    return Value::scalar(H / std::log(static_cast<double>(p.Pxx.size())), mr);
+    return Value::scalar(H / std::log(keel::as<double>(p.Pxx.size())), mr);
 }
 
 Value spectralkurtosis(const Value &x, const Value &fs, keel::Allocator *mr)
@@ -469,13 +469,13 @@ PsdPair computePsdKaiser(const Value &x, double fs, keel::Allocator *mr)
     const keel::usize nfft = (n > 1) ? 2 * (n - 1) : 1;
     if (fs > 0.0) {
         const double fScale = fs / (2.0 * M_PI);
-        const double pScale = static_cast<double>(nfft) / fs;
+        const double pScale = keel::as<double>(nfft) / fs;
         for (keel::usize i = 0; i < n; ++i) {
             p.F[i]   = F.doubleData()[i] * fScale;
             p.Pxx[i] = Pxx.doubleData()[i] * pScale;
         }
     } else {
-        const double pScale = static_cast<double>(nfft) / (2.0 * M_PI);
+        const double pScale = keel::as<double>(nfft) / (2.0 * M_PI);
         for (keel::usize i = 0; i < n; ++i) {
             p.F[i]   = F.doubleData()[i];
             p.Pxx[i] = Pxx.doubleData()[i] * pScale;
@@ -495,7 +495,7 @@ constexpr int kDcBins     = 8;   // DC bins to ignore when finding peak
 [[maybe_unused]] double sumBins(keel::ArrayRef<double> P, int lo, int hi)
 {
     if (lo < 0) lo = 0;
-    if (hi > static_cast<int>(P.size())) hi = static_cast<int>(P.size());
+    if (hi > keel::as<int>(P.size())) hi = keel::as<int>(P.size());
     double s = 0.0;
     for (int i = lo; i < hi; ++i) s += P[i];
     return s;
@@ -506,7 +506,7 @@ int findFundamentalBin(keel::ArrayRef<double> P)
 {
     int pk = kDcBins;
     double pkV = -1.0;
-    for (int i = kDcBins; i < static_cast<int>(P.size()); ++i)
+    for (int i = kDcBins; i < keel::as<int>(P.size()); ++i)
         if (P[i] > pkV) { pkV = P[i]; pk = i; }
     return pk;
 }
@@ -521,7 +521,7 @@ struct HarmonicAnalysis {
 
 HarmonicAnalysis analyseHarmonics(keel::ArrayRef<double> P)
 {
-    const int nbins = static_cast<int>(P.size());
+    const int nbins = keel::as<int>(P.size());
     HarmonicAnalysis r{0, 0, 0, 0, 0};
     if (nbins < 2) return r;
 
@@ -613,24 +613,24 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
         xwd[i] = x.elemAsDouble(i) * wi;
     }
     const double rbw = (sumW > 0.0) ? (fsScalar * sumW2 / (sumW * sumW)) : 0.0;
-    Value Xv = fft(xw, static_cast<int>(n), 0, mr);
+    Value Xv = fft(xw, keel::as<int>(n), 0, mr);
     const keel::c64 *X = Xv.complexData();
     const keel::usize nBins = n / 2 + 1;
-    const double df = fsScalar / static_cast<double>(n);
+    const double df = fsScalar / keel::as<double>(n);
     keel::Array<double> Pxx(nBins, mr), F(nBins, mr);
     for (keel::usize k = 0; k < nBins; ++k) {
         double mag2 = keel::norm(X[k]);
         if (k > 0 && 2 * k != n)
             mag2 *= 2.0;
         Pxx[k] = mag2 / (fsScalar * sumW2);
-        F[k] = static_cast<double>(k) * df;
+        F[k] = keel::as<double>(k) * df;
     }
 
     auto getTone = [&](int idxTone, int &outLeft, int &outRight) -> double {
         int iL = idxTone - 1;
         int iR = idxTone + 1;
         while (iL >= 0 && Pxx[iL] <= Pxx[iL + 1]) --iL;
-        while (iR < static_cast<int>(nBins) && Pxx[iR - 1] >= Pxx[iR]) ++iR;
+        while (iR < keel::as<int>(nBins) && Pxx[iR - 1] >= Pxx[iR]) ++iR;
         ++iL;
         --iR;
         outLeft = iL;
@@ -660,15 +660,15 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
     for (int k = dcL; k <= dcR; ++k) Pxx[k] = 0.0;
 
     // Fundamental peak
-    int iFund = static_cast<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    int iFund = keel::as<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
     int fL = 0, fR = 0;
     double Pfund = getTone(iFund, fL, fR);
     for (int k = fL; k <= fR; ++k) Pxx[k] = 0.0;
 
     // Max spur
-    int spurBin = static_cast<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    int spurBin = keel::as<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
     int iLeftBin = std::max(0, spurBin - 1);
-    int iRightBin = std::min(static_cast<int>(nBins) - 1, spurBin + 1);
+    int iRightBin = std::min(keel::as<int>(nBins) - 1, spurBin + 1);
     int iSpur = iLeftBin;
     for (int k = iLeftBin + 1; k <= iRightBin; ++k)
         if (Pxx[k] > Pxx[iSpur]) iSpur = k;
@@ -769,8 +769,8 @@ double leakageToOverlapRatio(double leakage)
     };
     const double clamped = std::max(0.0, std::min(1.0, leakage));
     const double pos = clamped * 20.0;
-    const keel::usize idx = std::min<keel::usize>(19, static_cast<keel::usize>( std::floor(pos) ));
-    const double frac = pos - static_cast<double>(idx);
+    const keel::usize idx = std::min<keel::usize>(19, keel::as<keel::usize>( std::floor(pos) ));
+    const double frac = pos - keel::as<double>(idx);
     return kTable[idx] * (1.0 - frac) + kTable[idx + 1] * frac;
 }
 
@@ -785,7 +785,7 @@ double kaiserEnbwFactor(double beta, keel::Allocator *mr)
         sumW += wd[i];
         sumW2 += wd[i] * wd[i];
     }
-    return (sumW > 0.0) ? (static_cast<double>(kRefLen) * sumW2 / (sumW * sumW)) : 1.0;
+    return (sumW > 0.0) ? (keel::as<double>(kRefLen) * sumW2 / (sumW * sumW)) : 1.0;
 }
 
 keel::Array<double> normalizedKaiser(keel::usize len, double beta, keel::Allocator *mr)
@@ -797,7 +797,7 @@ keel::Array<double> normalizedKaiser(keel::usize len, double beta, keel::Allocat
     double sumW = 0.0;
     for (keel::usize i = 0; i < len; ++i) sumW += wd[i];
     keel::Array<double> out(len, mr);
-    const double inv = (sumW > 0.0) ? (1.0 / sumW) : (1.0 / static_cast<double>(len));
+    const double inv = (sumW > 0.0) ? (1.0 / sumW) : (1.0 / keel::as<double>(len));
     for (keel::usize i = 0; i < len; ++i) out[i] = wd[i] * inv;
     return out;
 }
@@ -823,7 +823,7 @@ void evalSegmentsCztPower(const Value &segMat, keel::usize len, keel::usize nSeg
         }
         return;
     }
-    Value X = czt(segMat, static_cast<int>(nF), W, A, mr);
+    Value X = czt(segMat, keel::as<int>(nF), W, A, mr);
     const keel::c64 *xd = X.complexData();
     for (keel::usize s = 0; s < nSegs; ++s) {
         for (keel::usize k = 0; k < nF; ++k) {
@@ -852,7 +852,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
         } else {
             const double tStart = fsOrT.elemAsDouble(0);
             const double tEnd   = fsOrT.elemAsDouble(N - 1);
-            const double dt     = (tEnd - tStart) / static_cast<double>(N - 1);
+            const double dt     = (tEnd - tStart) / keel::as<double>(N - 1);
             fs = 1.0 / dt;
             t0 = tStart - 0.5 * dt;
         }
@@ -882,11 +882,11 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     Value F = Value::matrix(nF, 1, ValueType::DOUBLE, mr);
     double *fd = F.doubleDataMut();
     for (keel::usize k = 0; k < nF; ++k) {
-        fd[k] = fmin + (fmax - fmin) * static_cast<double>(k) / static_cast<double>(nF - 1);
+        fd[k] = fmin + (fmax - fmin) * keel::as<double>(k) / keel::as<double>(nF - 1);
     }
 
     const keel::c64 A = keel::polar(1.0, 2.0 * M_PI * fmin / fs);
-    const keel::c64 W = keel::polar(1.0, -2.0 * M_PI * (fmax - fmin) / (static_cast<double>(nF - 1) * fs));
+    const keel::c64 W = keel::polar(1.0, -2.0 * M_PI * (fmax - fmin) / (keel::as<double>(nF - 1) * fs));
 
     if (isSpectrogram) {
         if (nCh > 1)
@@ -894,11 +894,11 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
                         0, 0, caller, "", keel::format("numkit:{}:expectedVector", caller));
         keel::usize wlen = 0;
         if (opts.timeResolution > 0.0) {
-            wlen = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
+            wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
         } else {
             keel::usize D = 2;
             if (N >= 64) {
-                const int exp2 = static_cast<int>(std::floor(std::log2(static_cast<double>(N)))) - 7;
+                const int exp2 = keel::as<int>(std::floor(std::log2(keel::as<double>(N)))) - 7;
                 if (exp2 <= 3)      D = 8;
                 else if (exp2 >= 7) D = 128;
                 else                D = keel::usize(1) << exp2;
@@ -906,7 +906,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
             wlen = (N + D - 1) / D;
         }
         wlen = std::max<keel::usize>(1, std::min(N, wlen));
-        keel::usize nov = static_cast<keel::usize>(std::floor(r * static_cast<double>(wlen)));
+        keel::usize nov = keel::as<keel::usize>(std::floor(r * keel::as<double>(wlen)));
         if (nov >= wlen) nov = wlen - 1;
         const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
         const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
@@ -918,7 +918,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
 
         const double timeStepScale = isNormFreq ? 1.0 : (1.0 / fs);
         for (keel::usize m = 0; m < nT; ++m) {
-            td[m] = t0 + (0.5 * static_cast<double>(wlen) + static_cast<double>(m * hop)) * timeStepScale;
+            td[m] = t0 + (0.5 * keel::as<double>(wlen) + keel::as<double>(m * hop)) * timeStepScale;
         }
 
         const keel::usize lastStart = (nT - 1) * hop;
@@ -977,13 +977,13 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     // 'power' mode
     keel::usize wlen = 0;
     if (opts.timeResolution > 0.0) {
-        wlen = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
+        wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
     } else {
-        const keel::usize target = static_cast<keel::usize>(std::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
+        const keel::usize target = keel::as<keel::usize>(std::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
         wlen = std::min(N, std::max<keel::usize>(2, target));
     }
     wlen = std::max<keel::usize>(1, std::min(N, wlen));
-    keel::usize nov = static_cast<keel::usize>(std::floor(r * static_cast<double>(wlen)));
+    keel::usize nov = keel::as<keel::usize>(std::floor(r * keel::as<double>(wlen)));
     if (nov >= wlen) nov = wlen - 1;
     const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
     const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
@@ -992,8 +992,8 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     keel::Array<keel::usize> starts(nT, 0, mr);
     if (nT > 1) {
         for (keel::usize m = 0; m < nT; ++m) {
-            starts[m] = static_cast<keel::usize>(std::llround(
-                static_cast<double>(m) * static_cast<double>(N - wlen) / static_cast<double>(nT - 1)));
+            starts[m] = keel::as<keel::usize>(std::llround(
+                keel::as<double>(m) * keel::as<double>(N - wlen) / keel::as<double>(nT - 1)));
         }
     }
 
@@ -1016,7 +1016,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
             for (keel::usize k = 0; k < nF; ++k) {
                 double acc = 0.0;
                 for (keel::usize m = 0; m < nT; ++m) acc += segPow[m * nF + k];
-                pd[ch * nF + k] = acc / static_cast<double>(nT);
+                pd[ch * nF + k] = acc / keel::as<double>(nT);
             }
         }
     } else {
@@ -1035,7 +1035,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
             for (keel::usize k = 0; k < nF; ++k) {
                 double acc = 0.0;
                 for (keel::usize m = 0; m < nT; ++m) acc += segPow[m * nF + k];
-                pd[ch * nF + k] = acc / static_cast<double>(nT);
+                pd[ch * nF + k] = acc / keel::as<double>(nT);
             }
         }
     }
@@ -1086,7 +1086,7 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
                             0, 0, "instfreq", "", "numkit:instfreq:invalidTimeVector");
             const double tStart = fs.elemAsDouble(0);
             const double tEnd   = fs.elemAsDouble(N - 1);
-            const double dt     = (tEnd - tStart) / static_cast<double>(N - 1);
+            const double dt     = (tEnd - tStart) / keel::as<double>(N - 1);
             fsv = 1.0 / dt;
             t0 = tStart;
         }
@@ -1113,7 +1113,7 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
         while (dp >  kPi) dp -= 2.0 * kPi;
         while (dp <= -kPi) dp += 2.0 * kPi;
         d[i] = dp * fsv / (2.0 * kPi);
-        td[i] = t0 + (static_cast<double>(i) + 0.5) / fsv;
+        td[i] = t0 + (keel::as<double>(i) + 0.5) / fsv;
     }
     return {std::move(out), std::move(tOut)};
 }

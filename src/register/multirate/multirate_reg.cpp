@@ -30,11 +30,11 @@ namespace detail {
 void downsample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "downsample");
-    const keel::usize n = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize n = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "n", "downsample"), 2, "n", "downsample"));
     keel::usize phase = 0;
     if (args.size() >= 3)
-        phase = static_cast<keel::usize>(argcheck::expectedInteger(
+        phase = keel::as<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[2], 3, "phase", "downsample"), 3, "phase", "downsample"));
     // phase < n contract lives in the compute argcheck.
     outs[0] = downsample(args[0], n, phase, ctx.engine->allocator());
@@ -43,11 +43,11 @@ void downsample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::M
 void upsample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "upsample");
-    const keel::usize n = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize n = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "n", "upsample"), 2, "n", "upsample"));
     keel::usize phase = 0;
     if (args.size() >= 3)
-        phase = static_cast<keel::usize>(argcheck::expectedInteger(
+        phase = keel::as<keel::usize>(argcheck::expectedInteger(
             argcheck::expectedReal(args[2], 3, "phase", "upsample"), 3, "phase", "upsample"));
     // phase < n contract lives in the compute argcheck.
     outs[0] = upsample(args[0], n, phase, ctx.engine->allocator());
@@ -56,7 +56,7 @@ void upsample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 void decimate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "decimate");
-    outs[0] = decimate(args[0], static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    outs[0] = decimate(args[0], keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "q", "decimate"), 2, "q", "decimate")),
         ctx.engine->allocator());
 }
@@ -64,9 +64,9 @@ void decimate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 void resample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "resample");
-    const keel::usize p = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize p = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "p", "resample"), 2, "p", "resample"));
-    const keel::usize q = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize q = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[2], 3, "q", "resample"), 3, "q", "resample"));
     int n_order = 10;
     double beta = 5.0;

@@ -51,7 +51,7 @@ keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
         Value xcol = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         double *xd = xcol.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i) xd[i] = x.elemAsDouble(i);
-        Value X = fft(xcol, static_cast<int>(N), /*dim=*/0, mr);
+        Value X = fft(xcol, keel::as<int>(N), /*dim=*/0, mr);
         const keel::c64 *Xc = X.complexData();
         std::copy(Xc, Xc + N, buf.begin());
     }
@@ -65,12 +65,12 @@ keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
         // IFFT via conjugate trick: ifft(X) = conj(fft(conj(X)))/N.
         for (auto &v : buf) v = keel::conj(v);
         fftRadix2(mr, buf, -1);
-        const double invN = 1.0 / static_cast<double>(N);
+        const double invN = 1.0 / keel::as<double>(N);
         for (auto &v : buf) v = keel::conj(v) * invN;
     } else {
         Value Xm = Value::matrix(N, 1, ValueType::COMPLEX, mr);
         std::copy(buf.begin(), buf.end(), Xm.complexDataMut());
-        Value zt = ifft(Xm, static_cast<int>(N), /*dim=*/0, mr);
+        Value zt = ifft(Xm, keel::as<int>(N), /*dim=*/0, mr);
         const keel::c64 *zc = zt.complexData();
         std::copy(zc, zc + N, buf.begin());
     }

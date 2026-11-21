@@ -227,12 +227,12 @@ void barthannwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::
 void dpss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "dpss");
-    const keel::usize N = static_cast<keel::usize>(argcheck::expectedPositiveInteger(
+    const keel::usize N = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[0], 1, "N", "dpss"), 1, "N", "dpss"));
     const double nw = args[1].toScalar();
-    keel::usize k = std::min(N, std::max<keel::usize>(1, static_cast<keel::usize>(std::llround(2.0 * nw))));
+    keel::usize k = std::min(N, std::max<keel::usize>(1, keel::as<keel::usize>(std::llround(2.0 * nw))));
     if (args.size() >= 3 && args[2].isNumeric() && !args[2].isEmpty()) {
-        k = std::min(N, static_cast<keel::usize>(std::max(1.0, std::round(args[2].elemAsDouble(args[2].numel() - 1)))));
+        k = std::min(N, keel::as<keel::usize>(std::max(1.0, std::round(args[2].elemAsDouble(args[2].numel() - 1)))));
     }
     auto [E, V] = dpss(N, nw, k, ctx.engine->allocator());
     outs[0] = std::move(E);

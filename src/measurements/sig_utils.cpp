@@ -72,8 +72,8 @@ seqperiod(const Value &x, double tol, keel::Allocator *mr)
         }
         if (ok) { period = d; break; }
     }
-    return {Value::scalar(static_cast<double>(period), mr),
-            Value::scalar(static_cast<double>(N) / static_cast<double>(period), mr)};
+    return {Value::scalar(keel::as<double>(period), mr),
+            Value::scalar(keel::as<double>(N) / keel::as<double>(period), mr)};
 }
 
 // ── zerocrossrate ─────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ zerocrossrate(const Value &x, double level, keel::Allocator *mr)
     if (N <= 1) {
         // Edge: no transitions possible; rate = 0.5 / N (boundary credit).
         const double cnt = (N == 0) ? 0.0 : 0.5;
-        return {Value::scalar(N == 0 ? 0.0 : cnt / static_cast<double>(N), mr),
+        return {Value::scalar(N == 0 ? 0.0 : cnt / keel::as<double>(N), mr),
                 Value::scalar(cnt, mr)};
     }
     long long crossings = 0;
@@ -100,8 +100,8 @@ zerocrossrate(const Value &x, double level, keel::Allocator *mr)
         if (s != 0 && prev_sign != 0 && s != prev_sign) ++crossings;
         if (s != 0) prev_sign = s;
     }
-    const double count = static_cast<double>(crossings) + 0.5;
-    const double rate  = count / static_cast<double>(N);
+    const double count = keel::as<double>(crossings) + 0.5;
+    const double rate  = count / keel::as<double>(N);
     return {Value::scalar(rate, mr), Value::scalar(count, mr)};
 }
 
@@ -134,7 +134,7 @@ CusumResult cusum(const Value &x, double climit, double mshift,
     if (!have_tmean) {
         double sum = 0.0;
         for (keel::usize i = 0; i < baseN; ++i) sum += x.elemAsDouble(i);
-        tmeanEff = sum / static_cast<double>(baseN);
+        tmeanEff = sum / keel::as<double>(baseN);
     }
     if (!have_tdev) {
         double sum = 0.0, sumsq = 0.0;
@@ -142,9 +142,9 @@ CusumResult cusum(const Value &x, double climit, double mshift,
             const double v = x.elemAsDouble(i);
             sum += v; sumsq += v * v;
         }
-        const double m = sum / static_cast<double>(baseN);
-        const double var = (sumsq - static_cast<double>(baseN) * m * m)
-                          / static_cast<double>(baseN > 1 ? baseN - 1 : 1);
+        const double m = sum / keel::as<double>(baseN);
+        const double var = (sumsq - keel::as<double>(baseN) * m * m)
+                          / keel::as<double>(baseN > 1 ? baseN - 1 : 1);
         tdevEff = std::sqrt(std::max(0.0, var));
     }
     if (tdevEff <= 0.0) tdevEff = 1.0;  // guard
@@ -160,11 +160,11 @@ CusumResult cusum(const Value &x, double climit, double mshift,
         lo = std::max(0.0, lo - z - half_shift);
         us[i] = up;
         ls[i] = lo;
-        if (iup_first < 0 && up > climit) iup_first = static_cast<long long>(i + 1);
-        if (ilo_first < 0 && lo > climit) ilo_first = static_cast<long long>(i + 1);
+        if (iup_first < 0 && up > climit) iup_first = keel::as<long long>(i + 1);
+        if (ilo_first < 0 && lo > climit) ilo_first = keel::as<long long>(i + 1);
     }
-    if (iup_first > 0) R.iupper = Value::scalar(static_cast<double>(iup_first), mr);
-    if (ilo_first > 0) R.ilower = Value::scalar(static_cast<double>(ilo_first), mr);
+    if (iup_first > 0) R.iupper = Value::scalar(keel::as<double>(iup_first), mr);
+    if (ilo_first > 0) R.ilower = Value::scalar(keel::as<double>(ilo_first), mr);
     return R;
 }
 

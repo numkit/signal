@@ -318,7 +318,7 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
         matMul(A_, M, AM);
         double trace = 0.0;
         for (keel::usize i = 0; i < N; ++i) trace += AM[i * N + i];
-        const double ck = -trace / static_cast<double>(k);
+        const double ck = -trace / keel::as<double>(k);
         a_coeffs[N - k] = ck;
         // M_k = AM + ck * I
         for (keel::usize i = 0; i < N * N; ++i) M[i] = AM[i];
@@ -548,7 +548,7 @@ Value scaleFilterSections(const Value &CTFNum, const Value &SV,
     // K-th root of the overall gain magnitude.
     const double root = (K == 0)
         ? 0.0
-        : std::pow(keel::abs(overall), 1.0 / static_cast<double>(K));
+        : std::pow(keel::abs(overall), 1.0 / keel::as<double>(K));
 
     // Sign of the overall gain — concentrated on the last section.
     const keel::c64 sgn = sfs_sign(overall);

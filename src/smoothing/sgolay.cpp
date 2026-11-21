@@ -61,10 +61,10 @@ keel::Array<double> buildVandermonde(int order, int framelen, keel::Allocator *m
     const int n = framelen;
     const int p = order + 1;
     keel::Array<double> V(n * p, mr);
-    const double half = static_cast<double>(framelen / 2);
+    const double half = keel::as<double>(framelen / 2);
     for (int i = 0; i < n; ++i) {
         double v = 1.0;
-        const double x = static_cast<double>(i) - half;
+        const double x = keel::as<double>(i) - half;
         for (int k = 0; k < p; ++k) {
             V[i * p + k] = v;
             v *= x;
@@ -261,7 +261,7 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
         throw Error("sgolayfilt: dim must be 1 or 2",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:badDim");
 
-    const int n = static_cast<int>(useDim == 1 ? R : C);
+    const int n = keel::as<int>(useDim == 1 ? R : C);
     if (n < framelen)
         throw Error("sgolayfilt: signal length along dim must be >= framelen",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:tooShort");
@@ -281,7 +281,7 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
         // Each column is contiguous (length R) in column-major storage.
         for (keel::usize c = 0; c < C; ++c)
             sgolayfiltSlice(src.data() + c * R, dst + c * R,
-                            static_cast<int>(R), B.data(), framelen);
+                            keel::as<int>(R), B.data(), framelen);
     } else {
         // Each row is strided by R: gather → filter → scatter.
         auto rbuf = keel::Array<double>(C, scratch.allocator());
@@ -289,7 +289,7 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
         for (keel::usize r = 0; r < R; ++r) {
             for (keel::usize c = 0; c < C; ++c) rbuf[c] = src[r + c * R];
             sgolayfiltSlice(rbuf.data(), obuf.data(),
-                            static_cast<int>(C), B.data(), framelen);
+                            keel::as<int>(C), B.data(), framelen);
             for (keel::usize c = 0; c < C; ++c) dst[r + c * R] = obuf[c];
         }
     }
@@ -311,7 +311,7 @@ Value sgolayfilt(const Value &x, int order, int framelen,
     if (weights.type() == ValueType::COMPLEX)
         throw Error("sgolayfilt: weights must be real and positive",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:weights");
-    if (static_cast<int>(weights.numel()) != framelen)
+    if (keel::as<int>(weights.numel()) != framelen)
         throw Error("sgolayfilt: weights must have length framelen",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:weightsLen");
     keel::ArenaTemp wa = keel::get_scratch(mr);

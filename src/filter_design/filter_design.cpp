@@ -355,14 +355,14 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
     //   Type II  ( oddN && !antiSym): K = (N+1)/2,  alpha[i] = i + 0.5     (cos)
     //   Type III (!oddN &&  antiSym): K = N/2,      alpha[i] = i + 1.0     (sin)
     //   Type IV  ( oddN &&  antiSym): K = (N+1)/2,  alpha[i] = i + 0.5     (sin)
-    const keel::usize K = (!oddN && !antiSym) ? static_cast<keel::usize>(N / 2 + 1)
-                        : (!oddN &&  antiSym) ? static_cast<keel::usize>(N / 2)
-                                              : static_cast<keel::usize>((N + 1) / 2);
+    const keel::usize K = (!oddN && !antiSym) ? keel::as<keel::usize>(N / 2 + 1)
+                        : (!oddN &&  antiSym) ? keel::as<keel::usize>(N / 2)
+                                              : keel::as<keel::usize>((N + 1) / 2);
     keel::Array<double> alpha(K, 0.0, scratch.allocator());
     for (keel::usize i = 0; i < K; ++i) {
-        if (!oddN && !antiSym)      alpha[i] = static_cast<double>(i);
-        else if (!oddN && antiSym)  alpha[i] = static_cast<double>(i + 1);
-        else                        alpha[i] = static_cast<double>(i) + 0.5;
+        if (!oddN && !antiSym)      alpha[i] = keel::as<double>(i);
+        else if (!oddN && antiSym)  alpha[i] = keel::as<double>(i + 1);
+        else                        alpha[i] = keel::as<double>(i) + 0.5;
     }
 
     keel::Array<double> Q(K * K, 0.0, scratch.allocator());
@@ -407,12 +407,12 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         throw Error("firls: Q matrix is not positive-definite",
                     0, 0, "firls", "", "numkit:firls:singular");
 
-    const keel::usize len = static_cast<keel::usize>(N + 1);
+    const keel::usize len = keel::as<keel::usize>(N + 1);
     auto bv = Value::matrix(1, len, ValueType::DOUBLE, mr);
     auto *bd = bv.doubleDataMut();
     if (!oddN && !antiSym) {
         // Type I
-        const keel::usize M = static_cast<keel::usize>(N / 2);
+        const keel::usize M = keel::as<keel::usize>(N / 2);
         bd[M] = c[0];
         for (keel::usize k = 1; k <= M; ++k) {
             const double v = 0.5 * c[k];
@@ -421,7 +421,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         }
     } else if (oddN && !antiSym) {
         // Type II
-        const keel::usize M = static_cast<keel::usize>((N - 1) / 2);
+        const keel::usize M = keel::as<keel::usize>((N - 1) / 2);
         for (keel::usize k = 0; k <= M; ++k) {
             const double v = 0.5 * c[k];
             bd[M - k] = v;
@@ -429,7 +429,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         }
     } else if (!oddN && antiSym) {
         // Type III
-        const keel::usize M = static_cast<keel::usize>(N / 2);
+        const keel::usize M = keel::as<keel::usize>(N / 2);
         bd[M] = 0.0;
         for (keel::usize k = 0; k < M; ++k) {
             const double v = 0.5 * c[k];
@@ -438,7 +438,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         }
     } else {
         // Type IV
-        const keel::usize M = static_cast<keel::usize>((N - 1) / 2);
+        const keel::usize M = keel::as<keel::usize>((N - 1) / 2);
         for (keel::usize k = 0; k <= M; ++k) {
             const double v = 0.5 * c[k];
             bd[M - k]     =  v;
@@ -463,7 +463,7 @@ namespace {
 // rejected, not silently accepted.
 void fir1_argcheck(int N, double Wn, keel::StringRef type)
 {
-    argcheck::expectedPositive(static_cast<double>(N), 1, "n", "fir1");
+    argcheck::expectedPositive(keel::as<double>(N), 1, "n", "fir1");
     argcheck::expectedPositive(Wn, 2, "Wn", "fir1");
     if (Wn >= 1.0) {
         const auto numStr = argcheck::detail::num(Wn);
@@ -506,7 +506,7 @@ Value fir1(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
             h[i] /= hSum;
         for (keel::usize i = 0; i < filtLen; ++i)
             h[i] = -h[i];
-        h[static_cast<keel::usize>(half)] += 1.0;
+        h[keel::as<keel::usize>(half)] += 1.0;
     }
 
     auto bv = Value::matrix(1, filtLen, ValueType::DOUBLE, mr);
@@ -518,7 +518,7 @@ Value fir1(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
 Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
            const Value &window, bool scale, keel::Allocator *mr)
 {
-    argcheck::expectedPositive(static_cast<double>(N), 1, "n", "fir1");
+    argcheck::expectedPositive(keel::as<double>(N), 1, "n", "fir1");
     if (!Wn.isNumeric() || Wn.isComplex() || Wn.isEmpty() || !Wn.dims().isVector())
         throw Error("fir1: cutoff frequency Wn must be a real non-empty vector.",
                     0, 0, "fir1", "", "numkit:fir1:invalidWn");
@@ -561,7 +561,7 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
     if (passAtNyquist && (N % 2 == 1) && window.isEmpty())
         N += 1;
 
-    const keel::usize filtLen = static_cast<keel::usize>(N + 1);
+    const keel::usize filtLen = keel::as<keel::usize>(N + 1);
     if (!window.isEmpty() && window.numel() != filtLen)
         throw Error("fir1: window length must equal N + 1.",
                     0, 0, "fir1", "", "numkit:fir1:badWindowLength");
@@ -581,7 +581,7 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
         const double fL = edges[b];
         const double fR = edges[b + 1];
         for (keel::usize i = 0; i < filtLen; ++i) {
-            const double n = static_cast<double>(i) - half;
+            const double n = keel::as<double>(i) - half;
             const double sR = (keel::abs(n) < 1e-12) ? fR : std::sin(M_PI * fR * n) / (M_PI * n);
             const double sL = (keel::abs(n) < 1e-12) ? fL : std::sin(M_PI * fL * n) / (M_PI * n);
             h[i] += (sR - sL);
@@ -590,7 +590,7 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
 
     for (keel::usize i = 0; i < filtLen; ++i) {
         const double win = window.isEmpty()
-            ? (N == 0 ? 1.0 : (0.54 - 0.46 * std::cos(2.0 * M_PI * static_cast<double>(i) / static_cast<double>(N))))
+            ? (N == 0 ? 1.0 : (0.54 - 0.46 * std::cos(2.0 * M_PI * keel::as<double>(i) / keel::as<double>(N))))
             : window.elemAsDouble(i);
         h[i] *= win;
     }
@@ -602,7 +602,7 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
         }
         double gain = 0.0;
         for (keel::usize i = 0; i < filtLen; ++i)
-            gain += h[i] * std::cos(M_PI * f0 * (static_cast<double>(i) - half));
+            gain += h[i] * std::cos(M_PI * f0 * (keel::as<double>(i) - half));
         if (keel::abs(gain) > 1e-15) {
             for (keel::usize i = 0; i < filtLen; ++i)
                 h[i] /= gain;
@@ -811,10 +811,10 @@ Value fir2(int n, const Value &f, const Value &m,
         if (df == 0.0) {
             // Duplicated frequency — a response discontinuity. Back up
             // half the smoothing window, then ramp across `lap` points.
-            nb = static_cast<int>(std::ceil(nb - lap / 2.0));
+            nb = keel::as<int>(std::ceil(nb - lap / 2.0));
             ne = nb + lap;
         } else {
-            ne = static_cast<int>(std::floor(fv[i + 1] * npt1));
+            ne = keel::as<int>(std::floor(fv[i + 1] * npt1));
         }
 
         if (nb < 1 || ne > npt1)
@@ -826,8 +826,8 @@ Value fir2(int n, const Value &f, const Value &m,
             if (ne == nb)
                 inc = 0.0;
             else
-                inc = static_cast<double>(j - nb)
-                      / static_cast<double>(ne - nb);
+                inc = keel::as<double>(j - nb)
+                      / keel::as<double>(ne - nb);
             putH(j, inc * mv[i + 1] + (1.0 - inc) * mv[i]);
         }
         nb = ne + 1;
@@ -846,7 +846,7 @@ Value fir2(int n, const Value &f, const Value &m,
     //   Hfull = [ H[0..npt], conj(H[npt-1]), ..., conj(H[1]) ]
     const int nFull = 2 * npt;  // power of two
     Value spectrum =
-        Value::matrix(static_cast<keel::usize>(nFull), 1, ValueType::COMPLEX, mr);
+        Value::matrix(keel::as<keel::usize>(nFull), 1, ValueType::COMPLEX, mr);
     keel::c64 *sp = spectrum.complexDataMut();
     for (int k = 0; k <= npt; ++k)
         sp[k] = H[k];
@@ -857,13 +857,13 @@ Value fir2(int n, const Value &f, const Value &m,
     Value timeDom = ifft(spectrum, nFull, 1, arena.allocator());
 
     // ── 9. Take the first nn samples and window (spec §2.5) ────────────
-    Value b = Value::matrix(1, static_cast<keel::usize>(nn), ValueType::DOUBLE, mr);
+    Value b = Value::matrix(1, keel::as<keel::usize>(nn), ValueType::DOUBLE, mr);
     double *bd = b.doubleDataMut();
 
     // The window: user-supplied or a default Hamming of length nn.
     keel::Array<double> win(0, arena.allocator());
     if (!opts.window.isEmpty()) {
-        if (static_cast<int>(opts.window.numel()) != nn)
+        if (keel::as<int>(opts.window.numel()) != nn)
             throw numkit::Error("The window length must equal the filter "
                                 "length.",
                                 0, 0, "fir2", "", "numkit:fir2:BadWindow");
@@ -1006,10 +1006,10 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     else          filterType = (N % 2 == 0) ? TYPE_III : TYPE_IV;
     keel::usize L = 0;
     switch (filterType) {
-        case TYPE_I:   L = static_cast<keel::usize>(N) / 2;     break;
-        case TYPE_II:  L = static_cast<keel::usize>(N - 1) / 2; break;
-        case TYPE_III: L = static_cast<keel::usize>(N) / 2 - 1; break;
-        case TYPE_IV:  L = static_cast<keel::usize>(N - 1) / 2; break;
+        case TYPE_I:   L = keel::as<keel::usize>(N) / 2;     break;
+        case TYPE_II:  L = keel::as<keel::usize>(N - 1) / 2; break;
+        case TYPE_III: L = keel::as<keel::usize>(N) / 2 - 1; break;
+        case TYPE_IV:  L = keel::as<keel::usize>(N - 1) / 2; break;
     }
     const keel::usize r     = L + 1;       // # cosine basis coefficients
     const keel::usize nExtr = r + 1;       // # extremal frequencies (= L+2)
@@ -1023,13 +1023,13 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         throw Error("firpm: all bands have zero width",
                     0, 0, "firpm", "", "numkit:firpm:badF");
 
-    double df = 1.0 / (static_cast<double>(lgrid) * static_cast<double>(r));
-    if (totalWidth / df < static_cast<double>(nExtr + 4 * numBands)) {
-        df = totalWidth / static_cast<double>(lgrid * r);
+    double df = 1.0 / (keel::as<double>(lgrid) * keel::as<double>(r));
+    if (totalWidth / df < keel::as<double>(nExtr + 4 * numBands)) {
+        df = totalWidth / keel::as<double>(lgrid * r);
     }
 
     keel::Array<PMGridPoint> grid(arena.allocator());
-    grid.reserve(static_cast<keel::usize>(totalWidth / df) + 4 * numBands);
+    grid.reserve(keel::as<keel::usize>(totalWidth / df) + 4 * numBands);
 
     for (keel::usize k = 0; k < numBands; ++k) {
         const double f1 = F[2 * k], f2 = F[2 * k + 1];
@@ -1134,7 +1134,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
             const double bw = F[2 * k + 1] - F[2 * k];
             keel::usize n =
                 std::max<keel::usize>(2,
-                    static_cast<keel::usize>(std::round(
+                    keel::as<keel::usize>(std::round(
                         double(nExtr) * bw / totalWidth)));
             perBand[k] = n;
             assigned   += n;
@@ -1364,7 +1364,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
 
     Value bOut = Value::matrix(1, keel::usize(N) + 1, ValueType::DOUBLE, mr);
     double *bd = bOut.doubleDataMut();
-    for (keel::usize i = 0; i <= static_cast<keel::usize>(N); ++i) bd[i] = 0.0;
+    for (keel::usize i = 0; i <= keel::as<keel::usize>(N); ++i) bd[i] = 0.0;
 
     if (filterType == TYPE_I) {
         // Type I (even N): h[L] = a[0], h[L±k] = a[k]/2.
@@ -1452,7 +1452,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     // Differentiator sign correction: flip the entire impulse response
     // when neg && !hilbert.
     if (isDiff) {
-        for (keel::usize i = 0; i <= static_cast<keel::usize>(N); ++i)
+        for (keel::usize i = 0; i <= keel::as<keel::usize>(N); ++i)
             bd[i] = -bd[i];
     }
 

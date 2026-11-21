@@ -44,7 +44,7 @@ Value rms(const Value &x, int dim, keel::Allocator *mr)
             double s = 0.0;
             for (keel::usize i = 0; i < n; ++i)
                 s += slice[i] * slice[i];
-            return std::sqrt(s / static_cast<double>(n));
+            return std::sqrt(s / keel::as<double>(n));
         }, mr);
 }
 
@@ -94,7 +94,7 @@ Value peak2rms(const Value &x, int dim, keel::Allocator *mr)
                 s += a * a;
                 if (a > peak) peak = a;
             }
-            const double r = std::sqrt(s / static_cast<double>(n));
+            const double r = std::sqrt(s / keel::as<double>(n));
             if (r == 0.0) return std::numeric_limits<double>::infinity();
             return peak / r;
         }, mr);

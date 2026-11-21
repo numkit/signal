@@ -33,7 +33,7 @@ void impz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     const Value &b = args[0];
     Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
     keel::usize n = (args.size() >= 3)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "impz"), 3, "n", "impz")) : 0;
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "impz"), 3, "n", "impz")) : 0;
     auto [h, t] = impz(b, a, n, ctx.engine->allocator());
     outs[0] = std::move(h);
     if (nargout > 1) outs[1] = std::move(t);
@@ -45,7 +45,7 @@ void impzlength_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::M
     const Value &b = args[0];
     Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
     const keel::usize n = impzlength(b, a, ctx.engine->allocator());
-    outs[0] = Value::scalar(static_cast<double>(n), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<double>(n), ctx.engine->allocator());
 }
 
 void stepz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -54,7 +54,7 @@ void stepz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     const Value &b = args[0];
     Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
     keel::usize n = (args.size() >= 3)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "stepz"), 3, "n", "stepz")) : 0;
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "stepz"), 3, "n", "stepz")) : 0;
     auto [s, t] = stepz(b, a, n, ctx.engine->allocator());
     outs[0] = std::move(s);
     if (nargout > 1) outs[1] = std::move(t);
@@ -66,7 +66,7 @@ void phasedelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutAr
     const Value &b = args[0];
     Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
     keel::usize n = (args.size() >= 3)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "phasedelay"), 3, "n", "phasedelay")) : 512;
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "phasedelay"), 3, "n", "phasedelay")) : 512;
     auto [pd, w] = phasedelay(b, a, n, ctx.engine->allocator());
     outs[0] = std::move(pd);
     if (nargout > 1) outs[1] = std::move(w);
@@ -78,7 +78,7 @@ void zerophase_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
     const Value &b = args[0];
     Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
     keel::usize n = (args.size() >= 3)
-        ? static_cast<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "zerophase"), 3, "n", "zerophase")) : 512;
+        ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "zerophase"), 3, "n", "zerophase")) : 512;
     auto [Hr, w] = zerophase(b, a, n, ctx.engine->allocator());
     outs[0] = std::move(Hr);
     if (nargout > 1) outs[1] = std::move(w);

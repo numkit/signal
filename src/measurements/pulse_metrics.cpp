@@ -74,13 +74,13 @@ LowHigh stateLevelsCalc(const double *x, keel::usize n)
     const double width = (xmax - xmin) / kHistBins;
     keel::Array<int> hist(kHistBins, 0);
     for (keel::usize i = 0; i < n; ++i) {
-        int b = static_cast<int>((x[i] - xmin) / width);
+        int b = keel::as<int>((x[i] - xmin) / width);
         if (b >= kHistBins) b = kHistBins - 1;
         if (b < 0) b = 0;
         hist[b]++;
     }
     const double mid = (xmin + xmax) * 0.5;
-    const int splitBin = static_cast<int>((mid - xmin) / width);
+    const int splitBin = keel::as<int>((mid - xmin) / width);
     int lowBin = 0, highBin = kHistBins - 1;
     int lowMax = -1, highMax = -1;
     for (int b = 0; b < splitBin; ++b)
@@ -99,7 +99,7 @@ LowHigh stateLevelsCalc(const double *x, keel::usize n)
 double crossingIdx(const double *x, keel::usize i, double level)
 {
     const double a = x[i], b = x[i + 1];
-    if (a == b) return static_cast<double>(i);
+    if (a == b) return keel::as<double>(i);
     return i + (level - a) / (b - a);
 }
 
@@ -298,10 +298,10 @@ Value overshoot(const Value &x, const Value &fs, keel::Allocator *mr)
         const auto &t = trs[k];
         if (t.sign <= 0) continue;
         // Window: from end of rise to next transition (or end of signal).
-        const keel::usize wbeg = static_cast<keel::usize>(std::ceil(t.endIdx));
+        const keel::usize wbeg = keel::as<keel::usize>(std::ceil(t.endIdx));
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
-            wend = static_cast<keel::usize>(std::floor(trs[j].startIdx));
+            wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
             break;
         }
         if (wbeg >= wend) continue;
@@ -325,10 +325,10 @@ Value undershoot(const Value &x, const Value &fs, keel::Allocator *mr)
     for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
         if (t.sign >= 0) continue;
-        const keel::usize wbeg = static_cast<keel::usize>(std::ceil(t.endIdx));
+        const keel::usize wbeg = keel::as<keel::usize>(std::ceil(t.endIdx));
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
-            wend = static_cast<keel::usize>(std::floor(trs[j].startIdx));
+            wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
             break;
         }
         if (wbeg >= wend) continue;
@@ -359,16 +359,16 @@ Value settlingtime(const Value &x, const Value &fs, double tol, keel::Allocator 
         const double band = tol * range;
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
-            wend = static_cast<keel::usize>(std::floor(trs[j].startIdx));
+            wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
             break;
         }
         // Walk backwards from wend-1 to find the LAST sample outside band.
-        keel::usize lastOut = static_cast<keel::usize>(std::floor(t.startIdx));
-        for (keel::usize i = static_cast<keel::usize>(std::floor(t.startIdx));
+        keel::usize lastOut = keel::as<keel::usize>(std::floor(t.startIdx));
+        for (keel::usize i = keel::as<keel::usize>(std::floor(t.startIdx));
              i + 1 < wend && i < v.size(); ++i) {
             if (keel::abs(v[i] - dest) > band) lastOut = i;
         }
-        const double settled = static_cast<double>(lastOut) - t.startIdx;
+        const double settled = keel::as<double>(lastOut) - t.startIdx;
         out.push_back(std::max(0.0, settled) / std::max(f, 1.0));
     }
     return colVec(out, mr);

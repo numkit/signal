@@ -68,7 +68,7 @@ double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
                  const double *locArr, int widthRef)
 {
     auto pos = [&](keel::usize i) {
-        return locArr ? locArr[i] : static_cast<double>(i + 1);
+        return locArr ? locArr[i] : keel::as<double>(i + 1);
     };
 
     if (widthRef == 1) {
@@ -177,7 +177,7 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
             if (drop < opt.threshold)              // Threshold (>= vertical drop)
                 continue;
             val.push_back(v);
-            loc.push_back(locArr ? locArr[i] : static_cast<double>(i + 1));
+            loc.push_back(locArr ? locArr[i] : keel::as<double>(i + 1));
             sidx.push_back(i);
         }
     }
@@ -253,8 +253,8 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
 
     // NPeaks truncation (after sorting).
     keel::usize keepN = surv.size();
-    if (opt.nPeaks >= 0 && static_cast<keel::usize>(opt.nPeaks) < keepN)
-        keepN = static_cast<keel::usize>(opt.nPeaks);
+    if (opt.nPeaks >= 0 && keel::as<keel::usize>(opt.nPeaks) < keepN)
+        keepN = keel::as<keel::usize>(opt.nPeaks);
 
     // Output orientation matches input column-vector orientation.
     const bool col = (x.dims().ndim() == 2 && x.dims().dim(0) > 1 && x.dims().dim(1) == 1);
