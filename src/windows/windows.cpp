@@ -4,6 +4,7 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/signal.h>
 #include <numkit/signal/windows/windows.hpp>
 
@@ -28,63 +29,63 @@ void gausswin_argcheck(double alpha)
 Value hamming(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::hamming(N, r.doubleDataMut());
+    keel::signal::hamming({r.doubleDataMut(), N});
     return r;
 }
 
 Value hann(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::hann(N, r.doubleDataMut());
+    keel::signal::hann({r.doubleDataMut(), N});
     return r;
 }
 
 Value blackman(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::blackman(N, r.doubleDataMut());
+    keel::signal::blackman({r.doubleDataMut(), N});
     return r;
 }
 
 Value kaiser(keel::usize N, double beta, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::kaiser(N, beta, r.doubleDataMut());
+    keel::signal::kaiser({r.doubleDataMut(), N}, beta);
     return r;
 }
 
 Value rectwin(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::rectwin(N, r.doubleDataMut());
+    keel::signal::rectwin({r.doubleDataMut(), N});
     return r;
 }
 
 Value bartlett(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::bartlett(N, r.doubleDataMut());
+    keel::signal::bartlett({r.doubleDataMut(), N});
     return r;
 }
 
 Value triang(keel::usize N, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::triang(N, r.doubleDataMut());
+    keel::signal::triang({r.doubleDataMut(), N});
     return r;
 }
 
 Value tukeywin(keel::usize N, double r, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::tukeywin(N, r, out.doubleDataMut());
+    keel::signal::tukeywin({out.doubleDataMut(), N}, r);
     return out;
 }
 
 Value flattopwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::flattopwin(N, out.doubleDataMut());
+    keel::signal::flattopwin({out.doubleDataMut(), N});
     return out;
 }
 
@@ -92,7 +93,7 @@ Value gausswin(keel::usize N, double alpha, keel::Allocator *mr)
 {
     gausswin_argcheck(alpha);
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    (void)keel::signal::gausswin(N, alpha, out.doubleDataMut());
+    (void)keel::signal::gausswin({out.doubleDataMut(), N}, alpha);
     return out;
 }
 
@@ -102,21 +103,21 @@ Value chebwin(keel::usize N, double at, keel::Allocator *mr)
         throw Error("chebwin: at must be positive (sidelobe attenuation in dB)",
                      0, 0, "chebwin", "", "numkit:chebwin:badAt");
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    (void)keel::signal::chebwin(N, at, out.doubleDataMut(), mr);
+    (void)keel::signal::chebwin({out.doubleDataMut(), N}, at, mr);
     return out;
 }
 
 Value parzenwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::parzenwin(N, out.doubleDataMut());
+    keel::signal::parzenwin({out.doubleDataMut(), N});
     return out;
 }
 
 Value nuttallwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::nuttallwin(N, out.doubleDataMut());
+    keel::signal::nuttallwin({out.doubleDataMut(), N});
     return out;
 }
 
@@ -130,28 +131,28 @@ Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
                      0, 0, "taylorwin", "", "numkit:taylorwin:badNbar");
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 0) return out;
-    (void)keel::signal::taylorwin(N, static_cast<keel::i32>(nbar), sll, out.doubleDataMut(), mr);
+    (void)keel::signal::taylorwin({out.doubleDataMut(), N}, static_cast<keel::i32>(nbar), sll, mr);
     return out;
 }
 
 Value blackmanharris(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::blackmanharris(N, out.doubleDataMut());
+    keel::signal::blackmanharris({out.doubleDataMut(), N});
     return out;
 }
 
 Value bohmanwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::bohmanwin(N, out.doubleDataMut());
+    keel::signal::bohmanwin({out.doubleDataMut(), N});
     return out;
 }
 
 Value barthannwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    keel::signal::barthannwin(N, out.doubleDataMut());
+    keel::signal::barthannwin({out.doubleDataMut(), N});
     return out;
 }
 
@@ -165,7 +166,7 @@ std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
     if (k > N) k = N;
     Value E = Value::matrix(N, k, ValueType::DOUBLE, mr);
     Value V = Value::matrix(k, 1, ValueType::DOUBLE, mr);
-    (void)keel::signal::dpss(N, nw, k, E.doubleDataMut(), V.doubleDataMut(), mr);
+    (void)keel::signal::dpss(N, nw, {E.doubleDataMut(), N * k}, {V.doubleDataMut(), k}, mr);
     return {std::move(E), std::move(V)};
 }
 

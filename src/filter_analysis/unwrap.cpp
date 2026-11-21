@@ -4,6 +4,7 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/ref.h>
 #include <keel/signal.h>
 #include <numkit/signal/filter_analysis/unwrap.hpp>
 
@@ -28,7 +29,7 @@ Value unwrap(const Value &phase, keel::Allocator *mr)
     auto r = createLike(phase, ValueType::DOUBLE, mr);
     if (n == 0)
         return r;
-    keel::signal::unwrap_phase(phase.doubleData(), n, r.doubleDataMut());
+    (void)keel::signal::unwrap_phase({phase.doubleData(), n}, {r.doubleDataMut(), n});
     return r;
 }
 

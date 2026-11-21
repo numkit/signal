@@ -7,6 +7,7 @@
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <keel/complex.h>
+#include <keel/ref.h>
 #include <keel/signal.h>
 #include <numkit/signal/transforms/goertzel.hpp>
 
@@ -44,20 +45,20 @@ Value goertzel(const Value &x, const Value &ind, keel::Allocator *mr)
 
     keel::c64 *od = r.complexDataMut();
     if (xComplex) {
-        const keel::c64 *xd = x.complexData();
+        const keel::ArrayRef<keel::c64> xRef(x.complexData(), N);
         for (keel::usize m = 0; m < M; ++m) {
-            od[m] = keel::signal::goertzel_bin_c64(xd, N, id[m] - 1.0);
+            od[m] = keel::signal::goertzel_bin_c64(xRef, id[m] - 1.0);
         }
     } else if (x.type() == ValueType::DOUBLE) {
-        const double *xd = x.doubleData();
+        const keel::ArrayRef<double> xRef(x.doubleData(), N);
         for (keel::usize m = 0; m < M; ++m) {
-            od[m] = keel::signal::goertzel_bin(xd, N, id[m] - 1.0);
+            od[m] = keel::signal::goertzel_bin(xRef, id[m] - 1.0);
         }
     } else {
         keel::Array<double> xr(N, scratch.allocator());
         for (keel::usize i = 0; i < N; ++i) xr[i] = x.elemAsDouble(i);
         for (keel::usize m = 0; m < M; ++m) {
-            od[m] = keel::signal::goertzel_bin(xr.data(), N, id[m] - 1.0);
+            od[m] = keel::signal::goertzel_bin(xr, id[m] - 1.0);
         }
     }
     return r;

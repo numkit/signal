@@ -104,11 +104,11 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     const keel::usize L = sosD.dims().rows();
-    const double *sosP = sosD.doubleData();
+    const keel::ArrayRef<double> sosRef(sosD.doubleData(), L * 6);
     if (xD.dims().isVector() || xD.isScalar()) {
-        checkZeroLead(keel::signal::sosfilt_col_major(sosP, L, xD.doubleData(),
-                                                      out.doubleDataMut(), xD.numel(),
-                                                      nullptr, mr),
+        const keel::usize n = xD.numel();
+        checkZeroLead(keel::signal::sosfilt_col_major(sosRef, L, {xD.doubleData(), n},
+                                                      {out.doubleDataMut(), n}, {}, mr),
                       "sosfilt");
         return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
@@ -117,9 +117,8 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     const double *src = xD.doubleData();
     double *dst = out.doubleDataMut();
     for (keel::usize c = 0; c < cols; ++c) {
-        checkZeroLead(keel::signal::sosfilt_col_major(sosP, L, src + c * rows,
-                                                      dst + c * rows, rows,
-                                                      nullptr, mr),
+        checkZeroLead(keel::signal::sosfilt_col_major(sosRef, L, {src + c * rows, rows},
+                                                      {dst + c * rows, rows}, {}, mr),
                       "sosfilt");
     }
     return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
@@ -136,10 +135,11 @@ Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     const keel::usize L = sosD.dims().rows();
-    const double *sosP = sosD.doubleData();
+    const keel::ArrayRef<double> sosRef(sosD.doubleData(), L * 6);
     if (xD.dims().isVector() || xD.isScalar()) {
-        checkZeroLead(keel::signal::sosfiltfilt_col_major(sosP, L, xD.doubleData(),
-                                                          out.doubleDataMut(), xD.numel(), mr),
+        const keel::usize n = xD.numel();
+        checkZeroLead(keel::signal::sosfiltfilt_col_major(sosRef, L, {xD.doubleData(), n},
+                                                          {out.doubleDataMut(), n}, mr),
                       "sosfiltfilt");
         return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
@@ -148,8 +148,8 @@ Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     const double *src = xD.doubleData();
     double *dst = out.doubleDataMut();
     for (keel::usize c = 0; c < cols; ++c) {
-        checkZeroLead(keel::signal::sosfiltfilt_col_major(sosP, L, src + c * rows,
-                                                          dst + c * rows, rows, mr),
+        checkZeroLead(keel::signal::sosfiltfilt_col_major(sosRef, L, {src + c * rows, rows},
+                                                          {dst + c * rows, rows}, mr),
                       "sosfiltfilt");
     }
     return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
