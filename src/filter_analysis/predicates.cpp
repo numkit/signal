@@ -21,7 +21,7 @@ namespace numkit::signal {
 
 namespace {
 
-constexpr double kTol = 1e-12;
+constexpr keel::f64 kTol = 1e-12;
 
 bool isTrivialA(const Value &a)
 {
@@ -34,17 +34,17 @@ bool isTrivialA(const Value &a)
     return true;
 }
 
-double maxRootRadius(const Value &p, keel::Allocator *mr)
+keel::f64 maxRootRadius(const Value &p, keel::Allocator *mr)
 {
     if (p.numel() < 2) return 0.0;
     auto r = numkit::builtin::roots(p, mr);
-    double mx = 0.0;
+    keel::f64 mx = 0.0;
     if (r.isComplex()) {
         const keel::c64 *src = r.complexData();
         for (keel::usize i = 0; i < r.numel(); ++i)
             mx = std::max(mx, keel::abs(src[i]));
     } else {
-        const double *src = r.doubleData();
+        const keel::f64 *src = r.doubleData();
         for (keel::usize i = 0; i < r.numel(); ++i)
             mx = std::max(mx, keel::abs(src[i]));
     }
@@ -61,9 +61,9 @@ void predicates_argcheck(const Value &b, const Value &a)
 
 // Strip trailing zeros from a polynomial vector — they don't change the
 // polynomial value but may confuse symmetry tests on b.
-keel::Array<double> trimTrailingZeros(const Value &p)
+keel::Array<keel::f64> trimTrailingZeros(const Value &p)
 {
-    keel::Array<double> v;
+    keel::Array<keel::f64> v;
     v.reserve(p.numel());
     for (keel::usize i = 0; i < p.numel(); ++i)
         v.push_back(p.elemAsDouble(i));
@@ -71,7 +71,7 @@ keel::Array<double> trimTrailingZeros(const Value &p)
     return v;
 }
 
-bool isSymmetric(keel::ArrayRef<double> v, double scale, double tol)
+bool isSymmetric(keel::ArrayRef<keel::f64> v, keel::f64 scale, keel::f64 tol)
 {
     const keel::usize n = v.size();
     for (keel::usize i = 0; i < n / 2; ++i)
@@ -120,7 +120,7 @@ bool ismaxphase(const Value &b, const Value &a, keel::Allocator *mr)
     if (coeffs.size() < 2) return false;
     std::reverse(coeffs.begin(), coeffs.end());
     auto reversed = Value::matrix(1, coeffs.size(), ValueType::DOUBLE, mr);
-    double *dst = reversed.doubleDataMut();
+    keel::f64 *dst = reversed.doubleDataMut();
     for (keel::usize i = 0; i < coeffs.size(); ++i) dst[i] = coeffs[i];
     if (maxRootRadius(reversed, mr) >= 1.0 - 1e-9)
         return false;
@@ -148,9 +148,9 @@ bool isallpass(const Value &b, const Value &a)
     if (bv.size() != av.size() || bv.empty()) return false;
     // Find the scale factor between leading coefficient of a and trailing of b.
     if (keel::abs(bv.back()) < kTol) return false;
-    const double scale = av.front() / bv.back();
+    const keel::f64 scale = av.front() / bv.back();
     for (keel::usize i = 0; i < bv.size(); ++i) {
-        const double expected = scale * bv[bv.size() - 1 - i];
+        const keel::f64 expected = scale * bv[bv.size() - 1 - i];
         if (keel::abs(av[i] - expected) > 1e-9 * (1.0 + keel::abs(av[i])))
             return false;
     }

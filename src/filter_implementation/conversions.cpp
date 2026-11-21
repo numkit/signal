@@ -33,7 +33,7 @@ namespace {
 
 using numkit::ops::polyRootsDurandKerner;
 
-constexpr double kImagThresh = 1e-10;  // |Im(r)| below this → treat as real
+constexpr keel::f64 kImagThresh = 1e-10;  // |Im(r)| below this → treat as real
 
 inline bool isReal(keel::c64 r)
 {
@@ -60,11 +60,11 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
     const keel::c64 pick = pool[pickIdx];
     if (isReal(pick)) {
         keel::usize mateIdx = pool.size();
-        double bestDist = std::numeric_limits<double>::infinity();
+        keel::f64 bestDist = std::numeric_limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < pool.size(); ++i) {
             if (i == pickIdx) continue;
             if (!isReal(pool[i])) continue;
-            const double d = keel::abs(pool[i] - pick);
+            const keel::f64 d = keel::abs(pool[i] - pick);
             if (d < bestDist) { bestDist = d; mateIdx = i; }
         }
         if (mateIdx < pool.size()) {
@@ -80,10 +80,10 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
     } else {
         const keel::c64 conjP = keel::conj(pick);
         keel::usize mateIdx = pool.size();
-        double bestDist = std::numeric_limits<double>::infinity();
+        keel::f64 bestDist = std::numeric_limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < pool.size(); ++i) {
             if (i == pickIdx) continue;
-            const double d = keel::abs(pool[i] - conjP);
+            const keel::f64 d = keel::abs(pool[i] - conjP);
             if (d < bestDist) { bestDist = d; mateIdx = i; }
         }
         if (mateIdx >= pool.size())
@@ -98,7 +98,7 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
     return true;
 }
 
-struct QuadCoeffs { double b1, b2; };
+struct QuadCoeffs { keel::f64 b1, b2; };
 
 QuadCoeffs pairToQuad(const RootPair &p)
 {
@@ -124,19 +124,19 @@ bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
 {
     if (zeros.empty()) return false;
     keel::usize pickIdx = 0;
-    double bestDist = keel::abs(zeros[0] - target);
+    keel::f64 bestDist = keel::abs(zeros[0] - target);
     for (keel::usize i = 1; i < zeros.size(); ++i) {
-        const double d = keel::abs(zeros[i] - target);
+        const keel::f64 d = keel::abs(zeros[i] - target);
         if (d < bestDist) { bestDist = d; pickIdx = i; }
     }
     const keel::c64 pick = zeros[pickIdx];
     if (isReal(pick)) {
         keel::usize mateIdx = zeros.size();
-        double bestMate = std::numeric_limits<double>::infinity();
+        keel::f64 bestMate = std::numeric_limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < zeros.size(); ++i) {
             if (i == pickIdx) continue;
             if (!isReal(zeros[i])) continue;
-            const double d = keel::abs(zeros[i] - target);
+            const keel::f64 d = keel::abs(zeros[i] - target);
             if (d < bestMate) { bestMate = d; mateIdx = i; }
         }
         if (mateIdx < zeros.size()) {
@@ -153,10 +153,10 @@ bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
     } else {
         const keel::c64 conjP = keel::conj(pick);
         keel::usize mateIdx = zeros.size();
-        double bestDist2 = std::numeric_limits<double>::infinity();
+        keel::f64 bestDist2 = std::numeric_limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < zeros.size(); ++i) {
             if (i == pickIdx) continue;
-            const double d = keel::abs(zeros[i] - conjP);
+            const keel::f64 d = keel::abs(zeros[i] - conjP);
             if (d < bestDist2) { bestDist2 = d; mateIdx = i; }
         }
         if (mateIdx >= zeros.size())
@@ -188,12 +188,12 @@ keel::Array<keel::c64> readComplexVec(const Value &v, const char *fn, keel::Allo
     return out;
 }
 
-Value buildSosMatrix(const double *b1s, const double *b2s, const double *a1s, const double *a2s, const keel::u8 *noZeros, bool surplusAtOrigin, keel::usize L, double leadingGain, keel::Allocator *mr)
+Value buildSosMatrix(const keel::f64 *b1s, const keel::f64 *b2s, const keel::f64 *a1s, const keel::f64 *a2s, const keel::u8 *noZeros, bool surplusAtOrigin, keel::usize L, keel::f64 leadingGain, keel::Allocator *mr)
 {
     auto sos = Value::matrix(L, 6, ValueType::DOUBLE, mr);
-    double *p = sos.doubleDataMut();
+    keel::f64 *p = sos.doubleDataMut();
     for (keel::usize r = 0; r < L; ++r) {
-        const double scale = (r == 0) ? leadingGain : 1.0;
+        const keel::f64 scale = (r == 0) ? leadingGain : 1.0;
         if (noZeros && noZeros[r] && surplusAtOrigin) {
             // zp2sos: a section carrying no finite zeros gets MATLAB's
             // surplus zeros at the ORIGIN, i.e. numerator = scale*z^-2 ->
@@ -251,8 +251,8 @@ void zp2sos_argcheck(const Value &zerosV, const Value &polesV)
 
 } // namespace
 
-std::tuple<Value, double>
-zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surplusAtOrigin, keel::Allocator *mr)
+std::tuple<Value, keel::f64>
+zp2sosWithGain(const Value &zerosV, const Value &polesV, keel::f64 gain, bool surplusAtOrigin, keel::Allocator *mr)
 {
     zp2sos_argcheck(zerosV, polesV);
 
@@ -263,10 +263,10 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surpl
 
     const keel::usize L = (poles.size() + 1) / 2;
 
-    auto b1s = keel::Array<double>(L, scratch.allocator());
-    auto b2s = keel::Array<double>(L, scratch.allocator());
-    auto a1s = keel::Array<double>(L, scratch.allocator());
-    auto a2s = keel::Array<double>(L, scratch.allocator());
+    auto b1s = keel::Array<keel::f64>(L, scratch.allocator());
+    auto b2s = keel::Array<keel::f64>(L, scratch.allocator());
+    auto a1s = keel::Array<keel::f64>(L, scratch.allocator());
+    auto a2s = keel::Array<keel::f64>(L, scratch.allocator());
     auto noZeros = keel::Array<keel::u8>(L, scratch.allocator());
     for (keel::usize s = 0; s < L; ++s) {
         RootPair polePair;
@@ -299,18 +299,18 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, double gain, bool surpl
                            gain);
 }
 
-Value zp2sos(const Value &zerosV, const Value &polesV, double gain, keel::Allocator *mr)
+Value zp2sos(const Value &zerosV, const Value &polesV, keel::f64 gain, keel::Allocator *mr)
 {
     auto [sos, g] = zp2sosWithGain(zerosV, polesV, gain, /*surplusAtOrigin=*/true, mr);
     const keel::usize L = sos.dims().rows();
     if (sos.type() == ValueType::SINGLE) {
-        float *p = sos.singleDataMut();
-        const float gf = keel::as<float>(g);
+        keel::f32 *p = sos.singleDataMut();
+        const keel::f32 gf = keel::as<keel::f32>(g);
         p[0 * L + 0] *= gf;
         p[1 * L + 0] *= gf;
         p[2 * L + 0] *= gf;
     } else {
-        double *p = sos.doubleDataMut();
+        keel::f64 *p = sos.doubleDataMut();
         p[0 * L + 0] *= g;
         p[1 * L + 0] *= g;
         p[2 * L + 0] *= g;
@@ -318,7 +318,7 @@ Value zp2sos(const Value &zerosV, const Value &polesV, double gain, keel::Alloca
     return sos;
 }
 
-std::tuple<Value, double>
+std::tuple<Value, keel::f64>
 tf2sosWithGain(const Value &b, const Value &a, keel::Allocator *mr)
 {
     const bool anySingle = (b.type() == ValueType::SINGLE) || (a.type() == ValueType::SINGLE);
@@ -332,7 +332,7 @@ tf2sosWithGain(const Value &b, const Value &a, keel::Allocator *mr)
         throw Error("tf2sos: b is empty",
                      0, 0, "tf2sos", "", "numkit:tf2sos:emptyB");
 
-    const double gain = (bv[0] / av[0]).real();
+    const keel::f64 gain = (bv[0] / av[0]).real();
     auto zeros = polyRootsDurandKerner(bv.data(), bv.size(), scratch.allocator());
     auto poles = polyRootsDurandKerner(av.data(), av.size(), scratch.allocator());
 
@@ -355,13 +355,13 @@ Value tf2sos(const Value &b, const Value &a, keel::Allocator *mr)
     auto [sos, g] = tf2sosWithGain(b, a, mr);
     const keel::usize L = sos.dims().rows();
     if (sos.type() == ValueType::SINGLE) {
-        float *p = sos.singleDataMut();
-        const float gf = keel::as<float>(g);
+        keel::f32 *p = sos.singleDataMut();
+        const keel::f32 gf = keel::as<keel::f32>(g);
         p[0 * L + 0] *= gf;
         p[1 * L + 0] *= gf;
         p[2 * L + 0] *= gf;
     } else {
-        double *p = sos.doubleDataMut();
+        keel::f64 *p = sos.doubleDataMut();
         p[0 * L + 0] *= g;
         p[1 * L + 0] *= g;
         p[2 * L + 0] *= g;

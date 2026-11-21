@@ -26,22 +26,22 @@ namespace {
 // outward until a strictly-higher sample (or the signal end) bounds the
 // peak on each side; the base is the higher of the two interval minima.
 // Fills lb/rb with the (inclusive) interval bounds for the width search.
-double peakProminence(const double *x, keel::usize n, keel::usize pi, double h,
+keel::f64 peakProminence(const keel::f64 *x, keel::usize n, keel::usize pi, keel::f64 h,
                       keel::usize &lb, keel::usize &rb)
 {
-    double leftMin = std::numeric_limits<double>::infinity();
+    keel::f64 leftMin = std::numeric_limits<keel::f64>::infinity();
     lb = 0;
     for (keel::usize j = pi; j-- > 0;) {
         if (x[j] > h) { lb = j; break; }
         leftMin = std::min(leftMin, x[j]);
     }
-    double rightMin = std::numeric_limits<double>::infinity();
+    keel::f64 rightMin = std::numeric_limits<keel::f64>::infinity();
     rb = n - 1;
     for (keel::usize j = pi + 1; j < n; ++j) {
         if (x[j] > h) { rb = j; break; }
         rightMin = std::min(rightMin, x[j]);
     }
-    const double base = std::max(leftMin, rightMin);
+    const keel::f64 base = std::max(leftMin, rightMin);
     return h - base;
 }
 
@@ -63,20 +63,20 @@ double peakProminence(const double *x, keel::usize n, keel::usize pi, double h,
 //    the first floor plateau: on the right the first flat sample, on the
 //    left the far end of the flat — the reference's asymmetric
 //    no-crossing width (its pedestal width 6, not the naive span 8).
-double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
-                 double prom, keel::usize lb, keel::usize rb,
-                 const double *locArr, int widthRef)
+keel::f64 peakWidth(const keel::f64 *x, keel::usize n, keel::usize pi, keel::f64 h,
+                 keel::f64 prom, keel::usize lb, keel::usize rb,
+                 const keel::f64 *locArr, int widthRef)
 {
     auto pos = [&](keel::usize i) {
-        return locArr ? locArr[i] : keel::as<double>(i + 1);
+        return locArr ? locArr[i] : keel::as<keel::f64>(i + 1);
     };
 
     if (widthRef == 1) {
-        const double ref = h / 2.0;
+        const keel::f64 ref = h / 2.0;
         // Left side: walk left while non-increasing. plateau tracks the
         // leftmost index of the floor run (updated on EVERY non-rise step
         // so it extends across the flat to its far end).
-        double lcross = pos(pi);
+        keel::f64 lcross = pos(pi);
         {
             keel::usize plateau = pi;
             bool crossed = false;
@@ -84,7 +84,7 @@ double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
                 if (x[k] > x[k + 1])
                     break; // strict rise — walk ends
                 if (x[k] <= ref) {
-                    const double f = (ref - x[k]) / (x[k + 1] - x[k]); // 0 on touch
+                    const keel::f64 f = (ref - x[k]) / (x[k + 1] - x[k]); // 0 on touch
                     lcross = pos(k) + f * (pos(k + 1) - pos(k));
                     crossed = true;
                     break;
@@ -96,7 +96,7 @@ double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
         }
         // Right side: mirrored walk; plateau tracks only strict drops, so
         // it stays at the FIRST flat sample.
-        double rcross = pos(pi);
+        keel::f64 rcross = pos(pi);
         {
             keel::usize plateau = pi;
             bool crossed = false;
@@ -104,7 +104,7 @@ double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
                 if (x[k] > x[k - 1])
                     break; // strict rise — walk ends
                 if (x[k] <= ref) {
-                    const double f = (ref - x[k]) / (x[k - 1] - x[k]); // 0 on touch
+                    const keel::f64 f = (ref - x[k]) / (x[k - 1] - x[k]); // 0 on touch
                     rcross = pos(k) - f * (pos(k) - pos(k - 1));
                     crossed = true;
                     break;
@@ -118,20 +118,20 @@ double peakWidth(const double *x, keel::usize n, keel::usize pi, double h,
         return rcross - lcross;
     }
 
-    const double ref = h - prom / 2.0;
+    const keel::f64 ref = h - prom / 2.0;
 
-    double lcross = pos(lb);
+    keel::f64 lcross = pos(lb);
     for (keel::usize j = pi; j > lb; --j) {
         if (x[j - 1] < ref && x[j] >= ref) {
-            const double f = (ref - x[j - 1]) / (x[j] - x[j - 1]);
+            const keel::f64 f = (ref - x[j - 1]) / (x[j] - x[j - 1]);
             lcross = pos(j - 1) + f * (pos(j) - pos(j - 1));
             break;
         }
     }
-    double rcross = pos(rb);
+    keel::f64 rcross = pos(rb);
     for (keel::usize j = pi; j < rb; ++j) {
         if (x[j] >= ref && x[j + 1] < ref) {
-            const double f = (x[j] - ref) / (x[j] - x[j + 1]);
+            const keel::f64 f = (x[j] - ref) / (x[j] - x[j + 1]);
             rcross = pos(j) + f * (pos(j + 1) - pos(j));
             break;
         }
@@ -153,31 +153,31 @@ void findpeaks_argcheck(const Value &x, const PeakOpts &opt)
 // (declared in findpeaks_detail.hpp) so findpeaks_reg can run the core
 // after parsing Name-Value options into a PeakOpts.
 std::tuple<Value, Value, Value, Value>
-findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
+findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
               keel::Allocator *mr)
 {
     findpeaks_argcheck(x, opt);
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    auto val  = keel::Array<double>(scratch.allocator());      // peak heights
-    auto loc  = keel::Array<double>(scratch.allocator());      // peak locations
+    auto val  = keel::Array<keel::f64>(scratch.allocator());      // peak heights
+    auto loc  = keel::Array<keel::f64>(scratch.allocator());      // peak locations
     auto sidx = keel::Array<keel::usize>(scratch.allocator()); // peak sample indices
 
     const keel::usize n = x.numel();
-    const double *p = (n > 0) ? x.doubleData() : nullptr;
+    const keel::f64 *p = (n > 0) ? x.doubleData() : nullptr;
     if (n >= 3) {
         for (keel::usize i = 1; i + 1 < n; ++i) {
-            const double v = p[i];
+            const keel::f64 v = p[i];
             if (std::isnan(v) || std::isnan(p[i - 1]) || std::isnan(p[i + 1]))
                 continue;
             if (!(v > p[i - 1] && v > p[i + 1]))   // strict local maximum
                 continue;
             if (!(v > opt.minHeight))              // MinPeakHeight (strictly greater)
                 continue;
-            const double drop = std::min(v - p[i - 1], v - p[i + 1]);
+            const keel::f64 drop = std::min(v - p[i - 1], v - p[i + 1]);
             if (drop < opt.threshold)              // Threshold (>= vertical drop)
                 continue;
             val.push_back(v);
-            loc.push_back(locArr ? locArr[i] : keel::as<double>(i + 1));
+            loc.push_back(locArr ? locArr[i] : keel::as<keel::f64>(i + 1));
             sidx.push_back(i);
         }
     }
@@ -185,8 +185,8 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
     keel::usize m = val.size();
 
     // Prominence and width per raw peak.
-    auto prom = keel::Array<double>(scratch.allocator());      prom.assign(m, 0.0);
-    auto wid  = keel::Array<double>(scratch.allocator());      wid.assign(m, 0.0);
+    auto prom = keel::Array<keel::f64>(scratch.allocator());      prom.assign(m, 0.0);
+    auto wid  = keel::Array<keel::f64>(scratch.allocator());      wid.assign(m, 0.0);
     auto lbnd = keel::Array<keel::usize>(scratch.allocator()); lbnd.assign(m, 0);
     auto rbnd = keel::Array<keel::usize>(scratch.allocator()); rbnd.assign(m, 0);
     for (keel::usize k = 0; k < m; ++k) {
@@ -266,10 +266,10 @@ findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
     Value locs  = makeRowOrCol(keepN);
     Value wids  = makeRowOrCol(keepN);
     Value proms = makeRowOrCol(keepN);
-    double *vp = vals.doubleDataMut();
-    double *lp = locs.doubleDataMut();
-    double *wp = wids.doubleDataMut();
-    double *pp = proms.doubleDataMut();
+    keel::f64 *vp = vals.doubleDataMut();
+    keel::f64 *lp = locs.doubleDataMut();
+    keel::f64 *wp = wids.doubleDataMut();
+    keel::f64 *pp = proms.doubleDataMut();
     for (keel::usize k = 0; k < keepN; ++k) {
         const keel::usize s = surv[k];
         vp[k] = val[s];

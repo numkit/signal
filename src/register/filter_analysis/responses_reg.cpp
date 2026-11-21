@@ -45,7 +45,7 @@ void impzlength_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::M
     const Value &b = args[0];
     Value a = (args.size() >= 2) ? args[1] : Value::scalar(1.0, ctx.engine->allocator());
     const keel::usize n = impzlength(b, a, ctx.engine->allocator());
-    outs[0] = Value::scalar(keel::as<double>(n), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<keel::f64>(n), ctx.engine->allocator());
 }
 
 void stepz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)

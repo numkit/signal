@@ -28,7 +28,7 @@ namespace detail {
 // MATLAB syntax: dct(X), dct(X, n), dct(X, n, dim). 'Type' name-value
 // is parsed separately (currently not implemented; explicit error to
 // surface the unsupported branch instead of silently doing Type-II).
-struct DctArgs { int n; int dim; bool hasType; double typeVal; };
+struct DctArgs { int n; int dim; bool hasType; keel::f64 typeVal; };
 static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
 {
     DctArgs a{0, 0, false, 2.0};
@@ -76,7 +76,7 @@ void dct_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArray
         return;
     }
     auto a = parseDctArgs(args, "dct");
-    const double t = a.hasType ? a.typeVal : 2.0;
+    const keel::f64 t = a.hasType ? a.typeVal : 2.0;
     if (t != 1.0 && t != 2.0 && t != 3.0 && t != 4.0)
         throw Error("dct: 'Type' must be 1, 2, 3, or 4",
                      0, 0, "dct", "", "numkit:dct:type");
@@ -99,7 +99,7 @@ void idct_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
         return;
     }
     auto a = parseDctArgs(args, "idct");
-    const double t = a.hasType ? a.typeVal : 2.0;
+    const keel::f64 t = a.hasType ? a.typeVal : 2.0;
     if (t != 1.0 && t != 2.0 && t != 3.0 && t != 4.0)
         throw Error("idct: 'Type' must be 1, 2, 3, or 4",
                      0, 0, "idct", "", "numkit:idct:type");

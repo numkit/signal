@@ -40,8 +40,8 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
 
     PeakOpts opt;
     keel::ArenaTemp locScratch = keel::get_scratch(mr);
-    auto locStore = keel::Array<double>(locScratch.allocator()); // for the Fs form
-    const double *locArr = nullptr;
+    auto locStore = keel::Array<keel::f64>(locScratch.allocator()); // for the Fs form
+    const keel::f64 *locArr = nullptr;
 
     keel::usize argi = 1;
 
@@ -51,13 +51,13 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
         const keel::usize n = y.numel();
         if (second.numel() == 1) {
             // Sampling frequency: location(i) = i / Fs  (0-based sample index).
-            const double fs = second.toScalar();
+            const keel::f64 fs = second.toScalar();
             if (!(fs > 0.0))
                 throw Error("findpeaks: sample rate Fs must be positive",
                              0, 0, "findpeaks", "", "numkit:findpeaks:badFs");
             locStore.assign(n, 0.0);
             for (keel::usize i = 0; i < n; ++i)
-                locStore[i] = keel::as<double>(i) / fs;
+                locStore[i] = keel::as<keel::f64>(i) / fs;
             locArr = locStore.data();
         } else {
             if (second.numel() != n)

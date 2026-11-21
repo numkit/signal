@@ -86,7 +86,7 @@ void ac2poly_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArray
 void poly2ac_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "poly2ac");
-    const double e = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1.0;
+    const keel::f64 e = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1.0;
     outs[0] = poly2ac(args[0], e, ctx.engine->allocator());
 }
 
@@ -107,7 +107,7 @@ void schurrc_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
 void rc2ac_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "rc2ac");
-    const double r0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1.0;
+    const keel::f64 r0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1.0;
     outs[0] = rc2ac(args[0], r0, ctx.engine->allocator());
 }
 
@@ -116,7 +116,7 @@ void poly2rc_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArray
     argcheck::checkNargin(args.size(), 1, 2, "poly2rc");
     // [k, r0] = poly2rc(a, efinal). efinal (final prediction error) is
     // only needed for the second output; defaults to 0.
-    const double efinal = (args.size() >= 2 && !args[1].isEmpty())
+    const keel::f64 efinal = (args.size() >= 2 && !args[1].isEmpty())
                               ? args[1].toScalar() : 0.0;
     auto [k, r0] = poly2rc(args[0], efinal, ctx.engine->allocator());
     outs[0] = std::move(k);
@@ -128,7 +128,7 @@ void rc2poly_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArray
     argcheck::checkNargin(args.size(), 1, 2, "rc2poly");
     // [a, efinal] = rc2poly(k, r0). r0 (zero-lag autocorrelation) is only
     // needed for the second output efinal = r0*prod(1-k.^2); defaults to 1.
-    const double r0 = (args.size() >= 2 && !args[1].isEmpty())
+    const keel::f64 r0 = (args.size() >= 2 && !args[1].isEmpty())
                           ? args[1].toScalar() : 1.0;
     auto [a, efinal] = rc2poly(args[0], r0, ctx.engine->allocator());
     outs[0] = std::move(a);

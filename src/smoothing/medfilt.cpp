@@ -31,7 +31,7 @@ namespace {
 // window leans LEFT). With `zeropad` out-of-range samples count as 0
 // and the window is always k long; otherwise ('truncate') the window
 // is clipped to the valid range.
-void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k,
+void medfilt1Column(const keel::f64 *src, keel::f64 *dst, keel::usize n, keel::usize k,
                     keel::usize leftHalf, keel::usize rightHalf, bool zeropad,
                     keel::Allocator *mr)
 {
@@ -42,18 +42,18 @@ void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k
     // cache-friendly). Pad zeros are folded into the median by rank, never
     // materialised.
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    auto win = keel::Array<double>(scratch.allocator());
+    auto win = keel::Array<keel::f64>(scratch.allocator());
     win.reserve(k);
 
     keel::usize hi = std::min(n, rightHalf + 1);
     keel::usize lo = 0;
-    auto insertSorted = [&](double val) {
+    auto insertSorted = [&](keel::f64 val) {
         const keel::usize idx =
             keel::as<keel::usize>(std::upper_bound(win.begin(), win.end(), val) - win.begin());
         win.push_back(0.0);
         if (idx + 1 < win.size()) {
             keel::mem_move(win.data() + idx + 1, win.data() + idx,
-                           (win.size() - 1 - idx) * sizeof(double));
+                           (win.size() - 1 - idx) * sizeof(keel::f64));
         }
         win[idx] = val;
     };
@@ -61,7 +61,7 @@ void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k
         insertSorted(src[i]);
     }
 
-    auto computeMedian = [&]() -> double {
+    auto computeMedian = [&]() -> keel::f64 {
         const keel::usize m = win.size();                  // in-range count
         if (!zeropad) {
             if (m == 0) return 0.0;
@@ -75,7 +75,7 @@ void medfilt1Column(const double *src, double *dst, keel::usize n, keel::usize k
         const keel::usize nZeroWin =
             keel::as<keel::usize>(std::upper_bound(win.begin(), win.end(), 0.0) - win.begin()) - nNeg;
         const keel::usize zerosTot = nz + nZeroWin;
-        auto valAt = [&](keel::usize r) -> double {
+        auto valAt = [&](keel::usize r) -> keel::f64 {
             if (r < nNeg)              return win[r];        // a negative
             if (r < nNeg + zerosTot)   return 0.0;           // a zero (pad or in-range)
             return win[r - nz];                              // a positive
@@ -118,11 +118,11 @@ void fillgaps_argcheck(const Value &x, keel::usize maxlen, keel::usize order)
                     0, 0, "fillgaps", "", "numkit:fillgaps:orderTooLarge");
 }
 
-inline bool isNanScalar(double v) { return std::isnan(v); }
+inline bool isNanScalar(keel::f64 v) { return std::isnan(v); }
 inline bool isNanScalar(keel::c64 v) { return std::isnan(v.real()) || std::isnan(v.imag()); }
-inline double normScalar(double v) { return v * v; }
-inline double normScalar(keel::c64 v) { return keel::norm(v); }
-inline double conjScalar(double v) { return v; }
+inline keel::f64 normScalar(keel::f64 v) { return v * v; }
+inline keel::f64 normScalar(keel::c64 v) { return keel::norm(v); }
+inline keel::f64 conjScalar(keel::f64 v) { return v; }
 inline keel::c64 conjScalar(keel::c64 v) { return keel::conj(v); }
 
 template <typename Scalar>
@@ -155,15 +155,15 @@ keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
 
         Scalar mu{};
         for (keel::usize i = s_start; i < k; ++i) mu += v[i];
-        mu /= keel::as<double>(L);
+        mu /= keel::as<keel::f64>(L);
 
         keel::Array<Scalar> seg0(L);
-        double e0 = 0.0;
+        keel::f64 e0 = 0.0;
         for (keel::usize i = 0; i < L; ++i) {
             seg0[i] = v[s_start + i] - mu;
             e0 += normScalar(seg0[i]);
         }
-        e0 /= keel::as<double>(L);
+        e0 /= keel::as<keel::f64>(L);
 
         if (L <= 1 || !(e0 > 0.0)) {
             for (keel::usize m = 0; m < G; ++m) v[k + m] = mu;
@@ -176,15 +176,15 @@ keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
         keel::Array<Scalar> eb = seg0.clone();
         keel::Array<Scalar> a(max_p + 1, Scalar{});
         a[0] = Scalar(1.0);
-        double E = e0;
+        keel::f64 E = e0;
 
         keel::usize best_p = max_p;
-        double best_aic = std::numeric_limits<double>::infinity();
+        keel::f64 best_aic = std::numeric_limits<keel::f64>::infinity();
         keel::Array<Scalar> best_a;
 
         for (keel::usize m = 1; m <= max_p; ++m) {
             Scalar num{};
-            double den = 0.0;
+            keel::f64 den = 0.0;
             for (keel::usize idx = m; idx < L; ++idx) {
                 num += ef[idx] * conjScalar(eb[idx - 1]);
                 den += normScalar(ef[idx]) + normScalar(eb[idx - 1]);
@@ -207,9 +207,9 @@ keel::Array<Scalar> fillgapsFwdPass(const Scalar *col, keel::usize n,
             E *= std::max(0.0, 1.0 - normScalar(km));
 
             if (order == 0) {
-                const double aic_m =
-                    keel::as<double>(L) * std::log(std::max(E, 1e-300)) +
-                    2.0 * keel::as<double>(m);
+                const keel::f64 aic_m =
+                    keel::as<keel::f64>(L) * std::log(std::max(E, 1e-300)) +
+                    2.0 * keel::as<keel::f64>(m);
                 if (m == 1 || aic_m < best_aic) {
                     best_aic = aic_m;
                     best_p = m;
@@ -279,7 +279,7 @@ void fillgapsColumn(const Scalar *src, Scalar *dst, keel::usize n,
         while (g_end + 1 < i_last && isNanScalar(src[g_end + 1])) ++g_end;
         const keel::usize G = g_end - k + 1;
         for (keel::usize m = 0; m < G; ++m) {
-            const double w = keel::as<double>(m + 1) / keel::as<double>(G + 1);
+            const keel::f64 w = keel::as<keel::f64>(m + 1) / keel::as<keel::f64>(G + 1);
             dst[k + m] = (1.0 - w) * yf[k + m] + w * yb[k + m];
         }
         k = g_end + 1;
@@ -299,8 +299,8 @@ Value medfilt1(const Value &x, keel::usize k, bool zeropad, keel::Allocator *mr)
     // k == 0: the reference answers an all-NaN signal (median of an
     // empty window per sample) instead of rejecting.
     if (k == 0) {
-        double *dst = r.doubleDataMut();
-        const double nan = std::numeric_limits<double>::quiet_NaN();
+        keel::f64 *dst = r.doubleDataMut();
+        const keel::f64 nan = std::numeric_limits<keel::f64>::quiet_NaN();
         for (keel::usize i = 0; i < total; ++i) dst[i] = nan;
         return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
     }
@@ -309,8 +309,8 @@ Value medfilt1(const Value &x, keel::usize k, bool zeropad, keel::Allocator *mr)
     const keel::usize rightHalf = k - 1 - leftHalf;
 
     Value xD = detail::widenSingleToDouble(x, mr);
-    const double *src = xD.doubleData();
-    double *dst = r.doubleDataMut();
+    const keel::f64 *src = xD.doubleData();
+    keel::f64 *dst = r.doubleDataMut();
 
     const keel::usize R = keel::as<keel::usize>(xD.dims().dim(0));
     // Vector / scalar → one signal over every element. True 2-D (or N-D)
@@ -348,8 +348,8 @@ Value fillgaps(const Value &x, keel::usize maxlen, keel::usize order, keel::Allo
 
     Value xD = detail::widenSingleToDouble(x, mr);
     auto r = createLike(x, ValueType::DOUBLE, mr);
-    const double *src = xD.doubleData();
-    double *dst = r.doubleDataMut();
+    const keel::f64 *src = xD.doubleData();
+    keel::f64 *dst = r.doubleDataMut();
     const keel::usize R = xD.dims().rows();
     if (R <= 1 || xD.dims().isVector()) {
         fillgapsColumn(src, dst, total, maxlen, order);

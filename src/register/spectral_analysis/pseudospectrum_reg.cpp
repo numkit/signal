@@ -27,7 +27,7 @@ void pmusic_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     const int    p    = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pmusic"), 2, "p", "pmusic");
     const int    nfft = (args.size() >= 3 && !args[2].isEmpty())
                        ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pmusic"), 3, "nfft", "pmusic") : 256;
-    const double fs   = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 2.0 * M_PI;
+    const keel::f64 fs   = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 2.0 * M_PI;
     auto [P, F] = pmusic(args[0], p, nfft, fs, ctx.engine->allocator());
     outs[0] = std::move(P);
     if (nargout > 1) outs[1] = std::move(F);
@@ -39,7 +39,7 @@ void peig_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     const int    p    = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "peig"), 2, "p", "peig");
     const int    nfft = (args.size() >= 3 && !args[2].isEmpty())
                        ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "peig"), 3, "nfft", "peig") : 256;
-    const double fs   = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 2.0 * M_PI;
+    const keel::f64 fs   = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 2.0 * M_PI;
     auto [P, F] = peig(args[0], p, nfft, fs, ctx.engine->allocator());
     outs[0] = std::move(P);
     if (nargout > 1) outs[1] = std::move(F);

@@ -45,7 +45,7 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
         auto res = numkit::builtin::shiftdimAuto(x, mr);
         // perm = []  (return as 1×0 double matrix)
         Value emptyPerm = Value::matrix(0, 0, ValueType::DOUBLE, mr);
-        Value nsh = Value::scalar(keel::as<double>(res.dropped), mr);
+        Value nsh = Value::scalar(keel::as<keel::f64>(res.dropped), mr);
         return {std::move(res.v), emptyPerm, nsh};
     }
     if (dim < 1)
@@ -65,8 +65,8 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
     // Build perm Value (1 × N row).
     Value permV = Value::matrix(1, N, ValueType::DOUBLE, mr);
     {
-        double *pd = permV.doubleDataMut();
-        for (keel::usize i = 0; i < N; ++i) pd[i] = keel::as<double>(perm[i]);
+        keel::f64 *pd = permV.doubleDataMut();
+        for (keel::usize i = 0; i < N; ++i) pd[i] = keel::as<keel::f64>(perm[i]);
     }
     Value emptyNsh = Value::matrix(0, 0, ValueType::DOUBLE, mr);
     return {std::move(shifted), std::move(permV), std::move(emptyNsh)};
@@ -89,9 +89,9 @@ static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
     const keel::usize n = perm.numel();
     keel::Array<char> seen(n + 1, 0);
     for (keel::usize i = 0; i < n; ++i) {
-        const double v = perm.elemAsDouble(i);
-        const double vi = std::floor(v);
-        if (v != vi || vi < 1.0 || vi > keel::as<double>(n)
+        const keel::f64 v = perm.elemAsDouble(i);
+        const keel::f64 vi = std::floor(v);
+        if (v != vi || vi < 1.0 || vi > keel::as<keel::f64>(n)
             || seen[keel::as<keel::usize>(vi)])
             throw Error(keel::format("unshiftdata: perm must be a permutation of 1..{}", n),
                         0, 0, "unshiftdata", "", "numkit:unshiftdata:badPerm");
@@ -104,7 +104,7 @@ Value unshiftdata(const Value &x, const Value &perm, const Value &nshifts, keel:
     unshiftdata_argcheck(perm, nshifts);
     if (perm.isEmpty()) {
         // nshifts real part (complex scalars are legal — see argcheck).
-        const double ns = nshifts.isEmpty() ? 0.0
+        const keel::f64 ns = nshifts.isEmpty() ? 0.0
             : (nshifts.isComplex() ? nshifts.complexData()[0].real()
                                    : nshifts.toScalar());
         return numkit::builtin::shiftdim(x, -keel::as<int>(ns), mr);

@@ -30,23 +30,23 @@ namespace numkit::signal {
 
 namespace {
 
-keel::Array<double> readVec(const Value &x)
+keel::Array<keel::f64> readVec(const Value &x)
 {
     const keel::usize n = x.numel();
-    keel::Array<double> v(n);
+    keel::Array<keel::f64> v(n);
     for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
-Value vecCol(keel::Allocator *mr, keel::ArrayRef<double> v)
+Value vecCol(keel::Allocator *mr, keel::ArrayRef<keel::f64> v)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
     if (!v.empty())
-        std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
+        std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
     return out;
 }
 
-void tachorpm_argcheck(const Value &x, double fs, int ppr)
+void tachorpm_argcheck(const Value &x, keel::f64 fs, int ppr)
 {
     (void)x;
     (void)fs;
@@ -58,7 +58,7 @@ void tachorpm_argcheck(const Value &x, double fs, int ppr)
 // ── envspectrum ────────────────────────────────────────────────────
 
 std::tuple<Value, Value>
-envspectrum(const Value &x, double fs, keel::Allocator *mr)
+envspectrum(const Value &x, keel::f64 fs, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     if (N == 0)
@@ -69,8 +69,8 @@ envspectrum(const Value &x, double fs, keel::Allocator *mr)
     Value env = envelope(x, mr);
     // 2. AC-couple by subtracting the mean.
     auto e = readVec(env);
-    double m = 0.0;
-    for (double v : e) m += v;
+    keel::f64 m = 0.0;
+    for (keel::f64 v : e) m += v;
     m /= e.size();
     for (auto &v : e) v -= m;
 
@@ -82,16 +82,16 @@ envspectrum(const Value &x, double fs, keel::Allocator *mr)
 
     auto Es = Value::matrix(nOne, 1, ValueType::DOUBLE, mr);
     auto F  = Value::matrix(nOne, 1, ValueType::DOUBLE, mr);
-    double *esd = Es.doubleDataMut();
-    double *fd  = F.doubleDataMut();
+    keel::f64 *esd = Es.doubleDataMut();
+    keel::f64 *fd  = F.doubleDataMut();
     const keel::c64 *zd = Z.complexData();
 
-    const double fNyq = (fs > 0.0) ? fs * 0.5 : M_PI;
-    const double scale = 2.0 / keel::as<double>(N);  // single-sided amp.
+    const keel::f64 fNyq = (fs > 0.0) ? fs * 0.5 : M_PI;
+    const keel::f64 scale = 2.0 / keel::as<keel::f64>(N);  // single-sided amp.
     for (keel::usize i = 0; i < nOne; ++i) {
-        const double a = keel::abs(zd[i]) * scale;
+        const keel::f64 a = keel::abs(zd[i]) * scale;
         esd[i] = (i == 0 || i == nOne - 1) ? 0.5 * a : a;
-        fd[i]  = fNyq * keel::as<double>(i) / keel::as<double>(nOne - 1);
+        fd[i]  = fNyq * keel::as<keel::f64>(i) / keel::as<keel::f64>(nOne - 1);
     }
     return std::make_tuple(std::move(Es), std::move(F));
 }
@@ -99,36 +99,36 @@ envspectrum(const Value &x, double fs, keel::Allocator *mr)
 // ── tachorpm ───────────────────────────────────────────────────────
 
 std::tuple<Value, Value>
-tachorpm(const Value &x, double fs,
+tachorpm(const Value &x, keel::f64 fs,
          const Value &threshold, int ppr, keel::Allocator *mr)
 {
     tachorpm_argcheck(x, fs, ppr);
     auto v = readVec(x);
     const keel::usize N = v.size();
-    double thr;
+    keel::f64 thr;
     if (!threshold.isEmpty()) {
         thr = threshold.toScalar();
     } else {
-        double lo = v.empty() ? 0.0 : v[0], hi = lo;
-        for (double y : v) { if (y < lo) lo = y; if (y > hi) hi = y; }
+        keel::f64 lo = v.empty() ? 0.0 : v[0], hi = lo;
+        for (keel::f64 y : v) { if (y < lo) lo = y; if (y > hi) hi = y; }
         thr = 0.5 * (lo + hi);
     }
     // Detect rising-edge crossings of `thr`. Linear-interpolate the
     // sub-sample crossing instant for each.
-    keel::Array<double> times(mr);
+    keel::Array<keel::f64> times(mr);
     for (keel::usize i = 0; i + 1 < N; ++i) {
         if (v[i] < thr && v[i + 1] >= thr) {
-            const double a = v[i], b = v[i + 1];
-            const double frac = (b == a) ? 0.0 : (thr - a) / (b - a);
+            const keel::f64 a = v[i], b = v[i + 1];
+            const keel::f64 frac = (b == a) ? 0.0 : (thr - a) / (b - a);
             times.push_back((i + frac) / fs);
         }
     }
     // RPM from inter-pulse periods. With `ppr` pulses per revolution,
     // RPM = 60 / (period * ppr). Output one RPM per pulse (carry the
     // last estimate forward to the final pulse).
-    keel::Array<double> rpm(times.size(), 0.0, mr);
+    keel::Array<keel::f64> rpm(times.size(), 0.0, mr);
     for (keel::usize i = 0; i + 1 < times.size(); ++i) {
-        const double dt = times[i + 1] - times[i];
+        const keel::f64 dt = times[i + 1] - times[i];
         if (dt > 0.0) rpm[i] = 60.0 / (dt * ppr);
     }
     if (rpm.size() >= 2) rpm.back() = rpm[rpm.size() - 2];
@@ -144,19 +144,19 @@ namespace {
 
 // Turning points + their original-signal indices (1-based, MATLAB
 // convention).
-struct Turn { double v; double idx; };
+struct Turn { keel::f64 v; keel::f64 idx; };
 
-keel::Array<Turn> turningPointsWithIndex(keel::ArrayRef<double> v)
+keel::Array<Turn> turningPointsWithIndex(keel::ArrayRef<keel::f64> v)
 {
     keel::Array<Turn> out;
     if (v.empty()) return out;
     out.push_back({v.front(), 1.0});
     for (keel::usize i = 1; i + 1 < v.size(); ++i) {
-        const double a = v[i - 1], b = v[i], c = v[i + 1];
+        const keel::f64 a = v[i - 1], b = v[i], c = v[i + 1];
         if ((b > a && b > c) || (b < a && b < c))
-            out.push_back({b, keel::as<double>(i + 1)});
+            out.push_back({b, keel::as<keel::f64>(i + 1)});
     }
-    out.push_back({v.back(), keel::as<double>(v.size())});
+    out.push_back({v.back(), keel::as<keel::f64>(v.size())});
     return out;
 }
 
@@ -170,7 +170,7 @@ Value rainflow(const Value &x, keel::Allocator *mr)
     // ASTM E1049-85 four-point algorithm. Each cycle yields a row
     //   [count, range, mean, start_idx, end_idx]
     // matching MATLAB R2025b's rainflow() return shape.
-    struct Cycle { double count, range, mean, idx0, idx1; };
+    struct Cycle { keel::f64 count, range, mean, idx0, idx1; };
     keel::Array<Cycle> cycles(mr);
     keel::Array<Turn> S(mr);
     for (const auto &y : tp) {
@@ -178,20 +178,20 @@ Value rainflow(const Value &x, keel::Allocator *mr)
         // Apply the rule until no more cycles can be extracted.
         while (S.size() >= 3) {
             const keel::usize n = S.size();
-            const double X = keel::abs(S[n - 1].v - S[n - 2].v);
-            const double Y = keel::abs(S[n - 2].v - S[n - 3].v);
+            const keel::f64 X = keel::abs(S[n - 1].v - S[n - 2].v);
+            const keel::f64 Y = keel::abs(S[n - 2].v - S[n - 3].v);
             if (X < Y) break;
             if (n == 3) {
                 // Half cycle: pop the bottom of the stack.
-                const double rng = keel::abs(S[0].v - S[1].v);
-                const double mn  = 0.5 * (S[0].v + S[1].v);
+                const keel::f64 rng = keel::abs(S[0].v - S[1].v);
+                const keel::f64 mn  = 0.5 * (S[0].v + S[1].v);
                 cycles.push_back({0.5, rng, mn, S[0].idx, S[1].idx});
                 S.remove_at(0);
                 break;
             }
             // Full cycle on the inner pair.
-            const double rng = Y;
-            const double mn  = 0.5 * (S[n - 2].v + S[n - 3].v);
+            const keel::f64 rng = Y;
+            const keel::f64 mn  = 0.5 * (S[n - 2].v + S[n - 3].v);
             cycles.push_back({1.0, rng, mn, S[n - 3].idx, S[n - 2].idx});
             S[n - 3] = S[n - 1];
             S.resize(n - 2);
@@ -208,7 +208,7 @@ Value rainflow(const Value &x, keel::Allocator *mr)
     }
     auto out = Value::matrix(cycles.size(), 5, ValueType::DOUBLE, mr);
     if (cycles.empty()) return out;
-    double *d = out.doubleDataMut();
+    keel::f64 *d = out.doubleDataMut();
     const keel::usize rows = cycles.size();
     for (keel::usize i = 0; i < rows; ++i) {
         d[i + 0 * rows] = cycles[i].count;
@@ -223,8 +223,8 @@ Value rainflow(const Value &x, keel::Allocator *mr)
 // ── tsa ────────────────────────────────────────────────────────────
 
 std::tuple<Value, Value>
-tsa(const Value &x, double fs,
-    const Value &rpm, double fs_rpm, int n_per_rev,
+tsa(const Value &x, keel::f64 fs,
+    const Value &rpm, keel::f64 fs_rpm, int n_per_rev,
     keel::Allocator *mr)
 {
     auto signal_v = readVec(x);
@@ -240,21 +240,21 @@ tsa(const Value &x, double fs,
     //    rpm is sampled at fs_rpm, signal at fs; we interpolate rpm
     //    onto the signal-sample grid first.
     const keel::usize N = signal_v.size();
-    keel::Array<double> theta(N, 0.0, mr);
+    keel::Array<keel::f64> theta(N, 0.0, mr);
     {
-        double acc = 0.0;
+        keel::f64 acc = 0.0;
         for (keel::usize i = 0; i < N; ++i) {
-            const double t = keel::as<double>(i) / fs;
+            const keel::f64 t = keel::as<keel::f64>(i) / fs;
             // Linear-interpolate rpm at time t.
-            const double idxR = t * fs_rpm;
+            const keel::f64 idxR = t * fs_rpm;
             const keel::usize i0 = keel::as<keel::usize>(std::floor(idxR));
             const keel::usize i1 = std::min(i0 + 1, rpm_v.size() - 1);
-            const double frac = std::min(std::max(idxR - i0, 0.0), 1.0);
-            const double rpmI =
+            const keel::f64 frac = std::min(std::max(idxR - i0, 0.0), 1.0);
+            const keel::f64 rpmI =
                 (i0 < rpm_v.size())
                 ? rpm_v[i0] + frac * (rpm_v[i1] - rpm_v[i0])
                 : rpm_v.back();
-            const double omega = 2.0 * M_PI * rpmI / 60.0;
+            const keel::f64 omega = 2.0 * M_PI * rpmI / 60.0;
             theta[i] = acc;
             acc += omega / fs;
         }
@@ -262,22 +262,22 @@ tsa(const Value &x, double fs,
 
     // 2. Re-sample onto a uniform angle grid by accumulating into
     //    n_per_rev bins per revolution.
-    const double twoPi = 2.0 * M_PI;
-    keel::Array<double> sumBin(n_per_rev, 0.0, mr);
+    const keel::f64 twoPi = 2.0 * M_PI;
+    keel::Array<keel::f64> sumBin(n_per_rev, 0.0, mr);
     keel::Array<int> cntBin(n_per_rev, 0, mr);
     for (keel::usize i = 0; i < N; ++i) {
-        double ang = std::fmod(theta[i], twoPi);
+        keel::f64 ang = std::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
         int b = keel::as<int>(ang / twoPi * n_per_rev);
         if (b >= n_per_rev) b = n_per_rev - 1;
         sumBin[b] += signal_v[i];
         cntBin[b]++;
     }
-    keel::Array<double> avg(n_per_rev, mr);
+    keel::Array<keel::f64> avg(n_per_rev, mr);
     for (int b = 0; b < n_per_rev; ++b)
         avg[b] = (cntBin[b] > 0) ? sumBin[b] / cntBin[b] : 0.0;
 
-    keel::Array<double> th(n_per_rev, mr);
+    keel::Array<keel::f64> th(n_per_rev, mr);
     for (int b = 0; b < n_per_rev; ++b)
         th[b] = twoPi * b / n_per_rev;
 

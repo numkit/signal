@@ -78,7 +78,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
         // Initial offset in [0, -p].
         keel::usize offset = 0;
         if (!opt.isEmpty()) {
-            const double v = opt.toScalar();
+            const keel::f64 v = opt.toScalar();
             if (v < 0.0 || v > -p)
                 throw Error("buffer: OPT (offset) for underlap must be in [0, -P]",
                             0, 0, "buffer", "", "numkit:buffer:BadOpt");
@@ -98,7 +98,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
             r.partialEnd = N;
             return r;
         }
-        double *yd = r.Y.doubleDataMut();
+        keel::f64 *yd = r.Y.doubleDataMut();
         std::fill(yd, yd + Nn * numFrames, 0.0);
         for (keel::usize f = 0; f < numFrames; ++f) {
             const keel::usize base = offset + f * step;
@@ -121,7 +121,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
 
     // Decide whether to apply initial-condition prepend (p > 0 only).
     keel::usize initLen = (p > 0) ? keel::as<keel::usize>(p) : 0;
-    keel::Array<double> initVec(initLen, 0.0, mr);  // initial condition (zeros default)
+    keel::Array<keel::f64> initVec(initLen, 0.0, mr);  // initial condition (zeros default)
 
     if (p > 0 && !opt.isEmpty()) {
         if (isStringLikeNoDelay(opt)) {
@@ -160,11 +160,11 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     const keel::usize numFramesOut = forceCompleteOnly ? numComplete : numFramesOneOut;
     BufferResult r;
     r.Y = Value::matrix(Nn, numFramesOut, ValueType::DOUBLE, mr);
-    double *yd = r.Y.doubleDataMut();
+    keel::f64 *yd = r.Y.doubleDataMut();
     std::fill(yd, yd + Nn * numFramesOut, 0.0);
 
     // Index helper into "effective" input (initVec || x).
-    auto effGet = [&](keel::usize idx) -> double {
+    auto effGet = [&](keel::usize idx) -> keel::f64 {
         if (idx < initLen) return initVec[idx];
         const keel::usize xi = idx - initLen;
         return (xi < N) ? x.elemAsDouble(xi) : 0.0;
@@ -196,7 +196,7 @@ Value makePartialZ(const Value &x, keel::usize startIdx, keel::usize endIdx, int
     const keel::usize cols = (xOrient == 1) ? len : (len == 0 ? 0 : 1);
     Value z = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
     if (len == 0) return z;
-    double *zd = z.doubleDataMut();
+    keel::f64 *zd = z.doubleDataMut();
     for (keel::usize i = 0; i < len; ++i)
         zd[i] = x.elemAsDouble(startIdx + i);
     return z;
@@ -207,7 +207,7 @@ void buffer_argcheck(int n, int p, const Value &opt)
     if (n <= 0) return;
     if (p < 0) {
         if (!opt.isEmpty()) {
-            const double v = opt.toScalar();
+            const keel::f64 v = opt.toScalar();
             if (v < 0.0 || v > -p)
                 throw Error("buffer: OPT (offset) for underlap must be in [0, -P]",
                             0, 0, "buffer", "", "numkit:buffer:BadOpt");

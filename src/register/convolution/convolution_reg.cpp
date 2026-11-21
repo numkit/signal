@@ -102,9 +102,9 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     auto [cfull, lagsfull] = haveY ? xcorr(x, y, mr) : xcorr(x, mr);
     const keel::usize nc = cfull.numel();
     const bool isCplx = cfull.isComplex();
-    double *cd = isCplx ? nullptr : cfull.doubleDataMut();
+    keel::f64 *cd = isCplx ? nullptr : cfull.doubleDataMut();
     keel::c64 *ccd = isCplx ? cfull.complexDataMut() : nullptr;
-    const double *ld = lagsfull.doubleData();
+    const keel::f64 *ld = lagsfull.doubleData();
     const keel::usize nx = x.numel(), ny = y.numel();
     const keel::usize N  = std::max(nx, ny);
 
@@ -112,30 +112,30 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     keel::String opt = scaleopt.clone();
     for (char &ch : opt) if (ch >= 'A' && ch <= 'Z') ch = char(ch + 32);
 
-    auto scaleElem = [&](keel::usize i, double s) {
+    auto scaleElem = [&](keel::usize i, keel::f64 s) {
         if (isCplx) ccd[i] *= s;
         else cd[i] *= s;
     };
 
     if (opt == "biased") {
-        const double inv = (N > 0) ? 1.0 / keel::as<double>(N) : 0.0;
+        const keel::f64 inv = (N > 0) ? 1.0 / keel::as<keel::f64>(N) : 0.0;
         for (keel::usize i = 0; i < nc; ++i) scaleElem(i, inv);
     } else if (opt == "unbiased") {
         for (keel::usize i = 0; i < nc; ++i) {
-            const double div = keel::as<double>(N) - keel::abs(ld[i]);
+            const keel::f64 div = keel::as<keel::f64>(N) - keel::abs(ld[i]);
             scaleElem(i, (div > 0.0) ? (1.0 / div) : 0.0);
         }
     } else if (opt == "coeff" || opt == "normalized") {
-        double c0x = 0.0, c0y = 0.0;
+        keel::f64 c0x = 0.0, c0y = 0.0;
         for (keel::usize i = 0; i < nx; ++i) {
             if (x.isComplex()) c0x += keel::norm(x.complexData()[i]);
-            else { double v = x.elemAsDouble(i); c0x += v * v; }
+            else { keel::f64 v = x.elemAsDouble(i); c0x += v * v; }
         }
         for (keel::usize i = 0; i < ny; ++i) {
             if (y.isComplex()) c0y += keel::norm(y.complexData()[i]);
-            else { double v = y.elemAsDouble(i); c0y += v * v; }
+            else { keel::f64 v = y.elemAsDouble(i); c0y += v * v; }
         }
-        const double denom = std::sqrt(c0x * c0y);
+        const keel::f64 denom = std::sqrt(c0x * c0y);
         if (denom > 0.0)
             for (keel::usize i = 0; i < nc; ++i) scaleElem(i, 1.0 / denom);
     } else if (!(opt.empty() || opt == "none")) {
@@ -154,11 +154,11 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
         Value cOut = colOut ? Value::matrix(outLen, 1, vt, mr)
                             : Value::matrix(1, outLen, vt, mr);
         Value lOut = Value::matrix(1, outLen, ValueType::DOUBLE, mr);
-        double *lo = lOut.doubleDataMut();
+        keel::f64 *lo = lOut.doubleDataMut();
         for (int m = -maxlag; m <= maxlag; ++m) {
             const int src = center0 + m;
             const int dst = m + maxlag;
-            lo[dst] = keel::as<double>(m);
+            lo[dst] = keel::as<keel::f64>(m);
             if (isCplx) {
                 cOut.complexDataMut()[dst] = (src >= 0 && src < keel::as<int>(nc)) ? ccd[src] : keel::c64(0.0, 0.0);
             } else {
@@ -236,9 +236,9 @@ void conv2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
         const keel::usize m = args[0].numel();
         const keel::usize n = args[1].numel();
         Value k = Value::matrix(m, n, ValueType::DOUBLE, mr);
-        double *kd = k.doubleDataMut();
+        keel::f64 *kd = k.doubleDataMut();
         for (keel::usize c = 0; c < n; ++c) {
-            const double vc = args[1].elemAsDouble(c);
+            const keel::f64 vc = args[1].elemAsDouble(c);
             for (keel::usize r = 0; r < m; ++r)
                 kd[r + c * m] = args[0].elemAsDouble(r) * vc;
         }

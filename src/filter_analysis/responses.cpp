@@ -32,7 +32,7 @@ template <typename Gen>
 Value makeColVector(keel::usize n, Gen &&g, keel::Allocator *mr)
 {
     auto v = Value::matrix(n, 1, ValueType::DOUBLE, mr);
-    double *dst = v.doubleDataMut();
+    keel::f64 *dst = v.doubleDataMut();
     for (keel::usize i = 0; i < n; ++i) dst[i] = g(i);
     return v;
 }
@@ -40,7 +40,7 @@ Value makeColVector(keel::usize n, Gen &&g, keel::Allocator *mr)
 // 0-based time-index column vector [0, 1, ..., n-1] as doubles.
 Value sampleIndex(keel::usize n, keel::Allocator *mr)
 {
-    return makeColVector(n, [](keel::usize i) { return keel::as<double>(i); }, mr);
+    return makeColVector(n, [](keel::usize i) { return keel::as<keel::f64>(i); }, mr);
 }
 
 // True if `a` is "the trivial denominator" — scalar 1 or a vector
@@ -57,17 +57,17 @@ bool isTrivialA(const Value &a)
 }
 
 // Largest-magnitude root of a polynomial. Empty / scalar → 0.
-double maxRootRadius(const Value &p, keel::Allocator *mr)
+keel::f64 maxRootRadius(const Value &p, keel::Allocator *mr)
 {
     if (p.numel() < 2) return 0.0;
     auto r = numkit::builtin::roots(p, mr);
-    double mx = 0.0;
+    keel::f64 mx = 0.0;
     if (r.isComplex()) {
         const keel::c64 *src = r.complexData();
         for (keel::usize i = 0; i < r.numel(); ++i)
             mx = std::max(mx, keel::abs(src[i]));
     } else {
-        const double *src = r.doubleData();
+        const keel::f64 *src = r.doubleData();
         for (keel::usize i = 0; i < r.numel(); ++i)
             mx = std::max(mx, keel::abs(src[i]));
     }
@@ -95,7 +95,7 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
         // FIR: response length is degree + 1 = numel(b).
         return std::max<keel::usize>(b.numel(), 1);
     }
-    const double rho = maxRootRadius(a, mr);
+    const keel::f64 rho = maxRootRadius(a, mr);
     if (!(rho > 0.0)) {
         // Trivial / no IIR contribution -> fall back to FIR length.
         return std::max<keel::usize>(b.numel(), 1);
@@ -107,8 +107,8 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
         return 8192;
     }
     // Decay to 5e-5 of initial amplitude.
-    const double decayThresh = 5e-5;
-    const double n = std::log(decayThresh) / std::log(rho);
+    const keel::f64 decayThresh = 5e-5;
+    const keel::f64 n = std::log(decayThresh) / std::log(rho);
     long N = keel::as<long>(std::floor(n));
     if (N < 1) N = 1;
     if (N > 8192) N = 8192;
@@ -142,14 +142,14 @@ phasedelay(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
     auto [phi, w] = phasez(b, a, n, /*fs=*/0.0, mr);
     // phi is column vector of length n; w too. Compute pd = -phi/w.
     auto pd = Value::matrix(n, 1, ValueType::DOUBLE, mr);
-    double *dst = pd.doubleDataMut();
-    const double *phiP = phi.doubleData();
-    const double *wP   = w.doubleData();
+    keel::f64 *dst = pd.doubleDataMut();
+    const keel::f64 *phiP = phi.doubleData();
+    const keel::f64 *wP   = w.doubleData();
     // MATLAB: pd = -phi / w. At DC (w == 0) the ratio is 0/0 (or NaN/0
     // when the filter has a zero at DC) — both degenerate to NaN. Do
     // not extrapolate; let std::nan propagate so the caller sees the
     // documented MATLAB behaviour.
-    constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
+    constexpr keel::f64 kNaN = std::numeric_limits<keel::f64>::quiet_NaN();
     for (keel::usize i = 0; i < n; ++i) {
         if (wP[i] == 0.0) {
             dst[i] = kNaN;
@@ -169,14 +169,14 @@ std::tuple<Value, Value>
 zerophase(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 {
     auto [H, w] = freqz(b, a, n, /*whole=*/false, /*fs=*/0.0, mr);
-    const double tau = (b.numel() > 0)
-                       ? (keel::as<double>(b.numel()) - 1.0) / 2.0
+    const keel::f64 tau = (b.numel() > 0)
+                       ? (keel::as<keel::f64>(b.numel()) - 1.0) / 2.0
                        : 0.0;
     auto Hr = Value::matrix(n, 1, ValueType::DOUBLE, mr);
-    double *dst = Hr.doubleDataMut();
+    keel::f64 *dst = Hr.doubleDataMut();
     const keel::c64 *Hc = H.isComplex() ? H.complexData() : nullptr;
-    const double *Hd  = H.isComplex() ? nullptr : H.doubleData();
-    const double *wP = w.doubleData();
+    const keel::f64 *Hd  = H.isComplex() ? nullptr : H.doubleData();
+    const keel::f64 *wP = w.doubleData();
     for (keel::usize i = 0; i < n; ++i) {
         const keel::c64 hi = Hc ? Hc[i] : keel::c64(Hd[i], 0.0);
         const keel::c64 twist = keel::polar(1.0, wP[i] * tau);

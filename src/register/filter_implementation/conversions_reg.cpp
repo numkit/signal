@@ -33,7 +33,7 @@ void zp2sos_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                 keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 6, "zp2sos");
-    const double gain = (args.size() >= 3 && !args[2].isEmpty())
+    const keel::f64 gain = (args.size() >= 3 && !args[2].isEmpty())
                             ? args[2].toScalar()
                             : 1.0;
     const bool anySingle = (args[0].type() == ValueType::SINGLE)

@@ -37,7 +37,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     // uencode compute (nk:uencode:BadN).
     const int N = keel::as<int>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "uencode"), 2, "N", "uencode"));
-    double V = 1.0;
+    keel::f64 V = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty())
         V = argcheck::expectedReal(args[2], 3, "V", "uencode");
     bool signedOut = false;
@@ -61,7 +61,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     // live in udecode_argcheck (compute side).
     const int N = keel::as<int>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "udecode"), 2, "N", "udecode"));
-    double V = 1.0;
+    keel::f64 V = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty())
         V = argcheck::expectedReal(args[2], 3, "V", "udecode");
     bool wrap = false;

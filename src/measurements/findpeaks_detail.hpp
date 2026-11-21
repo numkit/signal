@@ -20,17 +20,17 @@ namespace numkit::signal {
 
 // Parsed findpeaks options (filled by findpeaks_reg from Name-Value pairs).
 struct PeakOpts {
-    double minHeight  = -std::numeric_limits<double>::infinity(); // keep if v > minHeight
-    double threshold  = 0.0;     // keep if min(v-left, v-right) >= threshold
-    double minDist    = 0.0;     // in location units; <=0 => disabled
+    keel::f64 minHeight  = -std::numeric_limits<keel::f64>::infinity(); // keep if v > minHeight
+    keel::f64 threshold  = 0.0;     // keep if min(v-left, v-right) >= threshold
+    keel::f64 minDist    = 0.0;     // in location units; <=0 => disabled
     bool   useMinDist = false;
-    double minProm    = 0.0;     // MinPeakProminence: keep if prominence >= minProm
+    keel::f64 minProm    = 0.0;     // MinPeakProminence: keep if prominence >= minProm
     bool   useMinProm = false;
     long   nPeaks     = -1;      // -1 => unlimited
     int    sortMode   = 0;       // 0 none(location), 1 ascend(height), 2 descend(height)
     int    widthRef   = 0;       // WidthReference: 0 'halfprom' (default), 1 'halfheight'
-    double minWidth   = 0.0;     // MinPeakWidth: keep if width >= minWidth
-    double maxWidth   = std::numeric_limits<double>::infinity(); // MaxPeakWidth: keep if width <= maxWidth
+    keel::f64 minWidth   = 0.0;     // MinPeakWidth: keep if width >= minWidth
+    keel::f64 maxWidth   = std::numeric_limits<keel::f64>::infinity(); // MaxPeakWidth: keep if width <= maxWidth
     bool   useWidthFilter = false;
 };
 
@@ -38,7 +38,7 @@ struct PeakOpts {
 // sample indices; otherwise locArr[i] is the location of sample i.
 // Returns (heights, locations, widths, prominences).
 std::tuple<Value, Value, Value, Value>
-findpeaksImpl(const Value &x, const double *locArr, const PeakOpts &opt,
+findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
               keel::Allocator *mr);
 
 } // namespace numkit::signal

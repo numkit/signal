@@ -25,7 +25,7 @@ namespace {
 
 // Walk every element of x, taking magnitude when complex; pass to f.
 template <typename F>
-void forEachAsMag(const Value &x, double *dst, F &&f)
+void forEachAsMag(const Value &x, keel::f64 *dst, F &&f)
 {
     const keel::usize n = x.numel();
     if (x.isComplex()) {
@@ -33,7 +33,7 @@ void forEachAsMag(const Value &x, double *dst, F &&f)
         for (keel::usize i = 0; i < n; ++i)
             dst[i] = f(keel::abs(src[i]));
     } else {
-        const double *src = x.doubleData();
+        const keel::f64 *src = x.doubleData();
         for (keel::usize i = 0; i < n; ++i)
             dst[i] = f(src[i]);
     }
@@ -46,7 +46,7 @@ keel::String toLower(keel::StringRef s)
     return r;
 }
 
-double db_argcheck(keel::StringRef signalType)
+keel::f64 db_argcheck(keel::StringRef signalType)
 {
     const keel::String mode = toLower(signalType);
     if (mode == "voltage" || mode.empty())
@@ -62,10 +62,10 @@ double db_argcheck(keel::StringRef signalType)
 // ── db ─────────────────────────────────────────────────────────────────
 Value db(const Value &x, keel::StringRef signalType, keel::Allocator *mr)
 {
-    const double scale = db_argcheck(signalType);
+    const keel::f64 scale = db_argcheck(signalType);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
-                 [scale](double v) { return scale * std::log10(v); });
+                 [scale](keel::f64 v) { return scale * std::log10(v); });
     return out;
 }
 
@@ -74,7 +74,7 @@ Value db2mag(const Value &d, keel::Allocator *mr)
 {
     auto out = createLike(d, ValueType::DOUBLE, mr);
     forEachAsMag(d, out.doubleDataMut(),
-                 [](double v) { return std::pow(10.0, v / 20.0); });
+                 [](keel::f64 v) { return std::pow(10.0, v / 20.0); });
     return out;
 }
 
@@ -83,7 +83,7 @@ Value mag2db(const Value &x, keel::Allocator *mr)
 {
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
-                 [](double v) { return 20.0 * std::log10(v); });
+                 [](keel::f64 v) { return 20.0 * std::log10(v); });
     return out;
 }
 
@@ -92,7 +92,7 @@ Value db2pow(const Value &d, keel::Allocator *mr)
 {
     auto out = createLike(d, ValueType::DOUBLE, mr);
     forEachAsMag(d, out.doubleDataMut(),
-                 [](double v) { return std::pow(10.0, v / 10.0); });
+                 [](keel::f64 v) { return std::pow(10.0, v / 10.0); });
     return out;
 }
 
@@ -101,7 +101,7 @@ Value pow2db(const Value &p, keel::Allocator *mr)
 {
     auto out = createLike(p, ValueType::DOUBLE, mr);
     forEachAsMag(p, out.doubleDataMut(),
-                 [](double v) { return 10.0 * std::log10(v); });
+                 [](keel::f64 v) { return 10.0 * std::log10(v); });
     return out;
 }
 

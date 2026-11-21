@@ -58,7 +58,7 @@ void obw_reg(keel::ArrayRef<Value> args, keel::usize nargout,
 {
     argcheck::checkNargin(args.size(), 1, 5, "obw");
     const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
-    double p = 0.99;
+    keel::f64 p = 0.99;
     if (args.size() >= 3 && !args[2].isEmpty()) p = args[2].toScalar();
     auto [bw, flo, fhi, pw] = obw(args[0], fs, p, ctx.engine->allocator());
     outs[0] = std::move(bw);

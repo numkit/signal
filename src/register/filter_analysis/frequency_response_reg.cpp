@@ -41,7 +41,7 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     // numerics after b,a — the first is n (npts), the second is fs (the
     // freqz(b,a,n,fs) / freqz(b,a,n,'whole',fs) sample-rate form).
     keel::usize npts = 512;
-    double fs   = 0.0;
+    keel::f64 fs   = 0.0;
     bool   whole = false;
     int    numericSeen = 0;
     const Value *wvec = nullptr;
@@ -82,7 +82,7 @@ void phasez_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
     // n (1st numeric after b,a) and optional fs (2nd) — phasez(b,a,n,fs).
     keel::usize npts = 512;
-    double fs = 0.0;
+    keel::f64 fs = 0.0;
     int numericSeen = 0;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
@@ -105,7 +105,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     Value a = (args.size() >= 2 && !args[1].isEmpty()) ? args[1] : Value::scalar(1.0, mr);
     // n (1st numeric after b,a) and optional fs (2nd) — grpdelay(b,a,n,fs).
     keel::usize npts = 512;
-    double fs = 0.0;
+    keel::f64 fs = 0.0;
     int numericSeen = 0;
     const Value *fvec = nullptr;
     for (keel::usize i = 2; i < args.size(); ++i) {
@@ -126,25 +126,25 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         if (nf > 0 && nb > 0 && na > 0) {
             keel::ArenaTemp scratch = keel::get_scratch(mr);
             const keel::usize nc = nb + na - 1;
-            auto c = keel::Array<double>(nc, scratch.allocator());
+            auto c = keel::Array<keel::f64>(nc, scratch.allocator());
             for (keel::usize i = 0; i < nc; ++i) c[i] = 0.0;
             for (keel::usize i = 0; i < nb; ++i)
                 for (keel::usize j = 0; j < na; ++j)
                     c[i + j] += args[0].elemAsDouble(i) * a.elemAsDouble(na - 1 - j);
-            double *g = gd.doubleDataMut();
-            const double offset = keel::as<double>(na) - 1.0;
-            constexpr double kPi = 3.14159265358979323846;
+            keel::f64 *g = gd.doubleDataMut();
+            const keel::f64 offset = keel::as<keel::f64>(na) - 1.0;
+            constexpr keel::f64 kPi = 3.14159265358979323846;
             for (keel::usize k = 0; k < nf; ++k) {
-                const double fk = fvec->elemAsDouble(k);
-                const double w = (fs > 0.0) ? (2.0 * kPi * fk / fs) : fk;
+                const keel::f64 fk = fvec->elemAsDouble(k);
+                const keel::f64 w = (fs > 0.0) ? (2.0 * kPi * fk / fs) : fk;
                 const keel::c64 ejw(std::cos(w), -std::sin(w));
                 keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
                 for (keel::usize n = 0; n < nc; ++n) {
                     C  += c[n] * ejwk;
-                    CR += (keel::as<double>(n) * c[n]) * ejwk;
+                    CR += (keel::as<keel::f64>(n) * c[n]) * ejwk;
                     ejwk *= ejw;
                 }
-                const double cmag2 = C.real() * C.real() + C.imag() * C.imag();
+                const keel::f64 cmag2 = C.real() * C.real() + C.imag() * C.imag();
                 g[k] = (cmag2 < 1e-300) ? 0.0 : ((CR / C).real() - offset);
             }
         }

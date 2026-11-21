@@ -46,17 +46,17 @@ Value dctDirect(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
-    const double *xd = x.doubleData();
+    const keel::f64 *xd = x.doubleData();
     dct_argcheck(x);
-    double *X  = r.doubleDataMut();
-    const double w0 = std::sqrt(1.0 / keel::as<double>(N));
-    const double wk = std::sqrt(2.0 / keel::as<double>(N));
-    const double piOver2N = M_PI / (2.0 * keel::as<double>(N));
+    keel::f64 *X  = r.doubleDataMut();
+    const keel::f64 w0 = std::sqrt(1.0 / keel::as<keel::f64>(N));
+    const keel::f64 wk = std::sqrt(2.0 / keel::as<keel::f64>(N));
+    const keel::f64 piOver2N = M_PI / (2.0 * keel::as<keel::f64>(N));
     for (keel::usize k = 0; k < N; ++k) {
-        double acc = 0.0;
-        const double angK = piOver2N * keel::as<double>(k);
+        keel::f64 acc = 0.0;
+        const keel::f64 angK = piOver2N * keel::as<keel::f64>(k);
         for (keel::usize n = 0; n < N; ++n)
-            acc += xd[n] * std::cos(angK * keel::as<double>(2 * n + 1));
+            acc += xd[n] * std::cos(angK * keel::as<keel::f64>(2 * n + 1));
         X[k] = (k == 0 ? w0 : wk) * acc;
     }
     return r;
@@ -67,16 +67,16 @@ Value idctDirect(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
-    const double *Xd = x.doubleData();
-    double *xt = r.doubleDataMut();
-    const double w0 = std::sqrt(1.0 / keel::as<double>(N));
-    const double wk = std::sqrt(2.0 / keel::as<double>(N));
-    const double piOver2N = M_PI / (2.0 * keel::as<double>(N));
+    const keel::f64 *Xd = x.doubleData();
+    keel::f64 *xt = r.doubleDataMut();
+    const keel::f64 w0 = std::sqrt(1.0 / keel::as<keel::f64>(N));
+    const keel::f64 wk = std::sqrt(2.0 / keel::as<keel::f64>(N));
+    const keel::f64 piOver2N = M_PI / (2.0 * keel::as<keel::f64>(N));
     for (keel::usize n = 0; n < N; ++n) {
-        double acc = w0 * Xd[0];
-        const double angN = piOver2N * keel::as<double>(2 * n + 1);
+        keel::f64 acc = w0 * Xd[0];
+        const keel::f64 angN = piOver2N * keel::as<keel::f64>(2 * n + 1);
         for (keel::usize k = 1; k < N; ++k)
-            acc += wk * Xd[k] * std::cos(angN * keel::as<double>(k));
+            acc += wk * Xd[k] * std::cos(angN * keel::as<keel::f64>(k));
         xt[n] = acc;
     }
     return r;
@@ -94,18 +94,18 @@ Value dctType1(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
-    const double *xd = x.doubleData();
-    double *X = r.doubleDataMut();
+    const keel::f64 *xd = x.doubleData();
+    keel::f64 *X = r.doubleDataMut();
     if (N == 1) { X[0] = xd[0]; return r; }   // DCT-I undefined for N<2
-    const double scale = std::sqrt(2.0 / keel::as<double>(N - 1));
-    const double s0 = 1.0 / std::sqrt(2.0);
-    const double piOverNm1 = M_PI / keel::as<double>(N - 1);
+    const keel::f64 scale = std::sqrt(2.0 / keel::as<keel::f64>(N - 1));
+    const keel::f64 s0 = 1.0 / std::sqrt(2.0);
+    const keel::f64 piOverNm1 = M_PI / keel::as<keel::f64>(N - 1);
     auto beta = [&](keel::usize i) { return (i == 0 || i == N - 1) ? s0 : 1.0; };
     for (keel::usize k = 0; k < N; ++k) {
-        double acc = 0.0;
+        keel::f64 acc = 0.0;
         for (keel::usize n = 0; n < N; ++n)
             acc += beta(n) * xd[n]
-                 * std::cos(piOverNm1 * keel::as<double>(n) * keel::as<double>(k));
+                 * std::cos(piOverNm1 * keel::as<keel::f64>(n) * keel::as<keel::f64>(k));
         X[k] = scale * beta(k) * acc;
     }
     return r;
@@ -117,15 +117,15 @@ Value dctType4(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
-    const double *xd = x.doubleData();
-    double *X = r.doubleDataMut();
-    const double scale = std::sqrt(2.0 / keel::as<double>(N));
-    const double piOverN = M_PI / keel::as<double>(N);
+    const keel::f64 *xd = x.doubleData();
+    keel::f64 *X = r.doubleDataMut();
+    const keel::f64 scale = std::sqrt(2.0 / keel::as<keel::f64>(N));
+    const keel::f64 piOverN = M_PI / keel::as<keel::f64>(N);
     for (keel::usize k = 0; k < N; ++k) {
-        double acc = 0.0;
-        const double kk = keel::as<double>(k) + 0.5;
+        keel::f64 acc = 0.0;
+        const keel::f64 kk = keel::as<keel::f64>(k) + 0.5;
         for (keel::usize n = 0; n < N; ++n)
-            acc += xd[n] * std::cos(piOverN * (keel::as<double>(n) + 0.5) * kk);
+            acc += xd[n] * std::cos(piOverN * (keel::as<keel::f64>(n) + 0.5) * kk);
         X[k] = scale * acc;
     }
     return r;
@@ -145,9 +145,9 @@ Value dct(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
-    const double *xd = x.doubleData();
+    const keel::f64 *xd = x.doubleData();
     dct_argcheck(x);
-    double *X  = r.doubleDataMut();
+    keel::f64 *X  = r.doubleDataMut();
 
     if (N == 1) {
         X[0] = xd[0];  // sqrt(1/1) * x[0]
@@ -164,7 +164,7 @@ Value dct(const Value &x, keel::Allocator *mr)
     // can call the existing FFT.
     const keel::usize M = 2 * N;
     auto y = Value::matrix(M, 1, ValueType::DOUBLE, mr);
-    double *yd = y.doubleDataMut();
+    keel::f64 *yd = y.doubleDataMut();
     for (keel::usize n = 0; n < N; ++n) {
         yd[n]         = xd[n];
         yd[M - 1 - n] = xd[n];
@@ -172,17 +172,17 @@ Value dct(const Value &x, keel::Allocator *mr)
     Value Y = fft(y, /*n=*/-1, /*dim=*/0, mr);
     const keel::c64 *Yc = Y.complexData();
 
-    const double w0 = std::sqrt(1.0 / keel::as<double>(N));
-    const double wk = std::sqrt(2.0 / keel::as<double>(N));
-    const double piOver2N = M_PI / (2.0 * keel::as<double>(N));
+    const keel::f64 w0 = std::sqrt(1.0 / keel::as<keel::f64>(N));
+    const keel::f64 wk = std::sqrt(2.0 / keel::as<keel::f64>(N));
+    const keel::f64 piOver2N = M_PI / (2.0 * keel::as<keel::f64>(N));
 
     // Standard DCT-II from FFT: X[k] = w[k] · Re(Y[k] · exp(-jπk/(2N))) / 2
     // where Y is the FFT of the length-2N mirrored signal. Uses the
     // textbook sign convention (matches MATLAB's fft).
     for (keel::usize k = 0; k < N; ++k) {
-        const double phase = -piOver2N * keel::as<double>(k);
+        const keel::f64 phase = -piOver2N * keel::as<keel::f64>(k);
         const keel::c64 rot(std::cos(phase), std::sin(phase));
-        const double v = (Yc[k] * rot).real() * 0.5;
+        const keel::f64 v = (Yc[k] * rot).real() * 0.5;
         X[k] = (k == 0 ? w0 : wk) * v;
     }
     return r;
@@ -198,8 +198,8 @@ Value idct(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
     if (N == 0) return r;
-    const double *Xd = x.doubleData();
-    double *xt = r.doubleDataMut();
+    const keel::f64 *Xd = x.doubleData();
+    keel::f64 *xt = r.doubleDataMut();
 
     if (N == 1) {
         xt[0] = Xd[0];
@@ -207,9 +207,9 @@ Value idct(const Value &x, keel::Allocator *mr)
     }
     if (!isPowerOfTwo(N)) return idctDirect(x, mr);
 
-    const double w0 = std::sqrt(1.0 / keel::as<double>(N));
-    const double wk = std::sqrt(2.0 / keel::as<double>(N));
-    const double piOver2N = M_PI / (2.0 * keel::as<double>(N));
+    const keel::f64 w0 = std::sqrt(1.0 / keel::as<keel::f64>(N));
+    const keel::f64 wk = std::sqrt(2.0 / keel::as<keel::f64>(N));
+    const keel::f64 piOver2N = M_PI / (2.0 * keel::as<keel::f64>(N));
 
     // Build length-2N complex spectrum.
     const keel::usize M = 2 * N;
@@ -223,8 +223,8 @@ Value idct(const Value &x, keel::Allocator *mr)
     //   Z[2N - k] = conj(Z[k])                     , k = 1..N-1
     // (textbook DCT inverse derivation; matches MATLAB's ifft).
     for (keel::usize k = 0; k < N; ++k) {
-        const double Vk = ((k == 0) ? Xd[0] / w0 : Xd[k] / wk) * 2.0;
-        const double phase = piOver2N * keel::as<double>(k);
+        const keel::f64 Vk = ((k == 0) ? Xd[0] / w0 : Xd[k] / wk) * 2.0;
+        const keel::f64 phase = piOver2N * keel::as<keel::f64>(k);
         const keel::c64 rot(std::cos(phase), std::sin(phase));
         Z[k] = Vk * rot;
     }
@@ -232,11 +232,11 @@ Value idct(const Value &x, keel::Allocator *mr)
 
     Value Y = ifft(Zv, /*n=*/-1, /*dim=*/0, mr);
     // y is real; first N samples are the recovered signal x.
-    const double *yd = (Y.type() == ValueType::COMPLEX)
+    const keel::f64 *yd = (Y.type() == ValueType::COMPLEX)
                        ? nullptr  // need real path below
                        : Y.doubleData();
     if (yd) {
-        std::memcpy(xt, yd, N * sizeof(double));
+        std::memcpy(xt, yd, N * sizeof(keel::f64));
     } else {
         const keel::c64 *Yc = Y.complexData();
         for (keel::usize n = 0; n < N; ++n) xt[n] = Yc[n].real();
@@ -257,13 +257,13 @@ namespace {
 Value extractLine(const Value &x, int dim, keel::usize lineIdx, keel::usize nNative, keel::usize nOut, keel::Allocator *mr)
 {
     auto col = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
-    double *dst = col.doubleDataMut();
-    const double *src = x.doubleData();
+    keel::f64 *dst = col.doubleDataMut();
+    const keel::f64 *src = x.doubleData();
     const keel::usize R = x.dims().rows();
     const keel::usize copyN = std::min(nOut, nNative);
     if (dim == 1) {
         // Column-major: column lineIdx starts at offset lineIdx*R.
-        const double *colSrc = src + lineIdx * R;
+        const keel::f64 *colSrc = src + lineIdx * R;
         for (keel::usize i = 0; i < copyN; ++i) dst[i] = colSrc[i];
     } else {  // dim == 2
         // Row lineIdx: stride is R between consecutive elements.
@@ -277,12 +277,12 @@ Value extractLine(const Value &x, int dim, keel::usize lineIdx, keel::usize nNat
 // slot of the destination matrix.
 void writeLine(Value &dst, const Value &line, int dim, keel::usize lineIdx)
 {
-    double *outd = dst.doubleDataMut();
-    const double *src = line.doubleData();
+    keel::f64 *outd = dst.doubleDataMut();
+    const keel::f64 *src = line.doubleData();
     const keel::usize R = dst.dims().rows();
     const keel::usize nOut = line.numel();
     if (dim == 1) {
-        double *colDst = outd + lineIdx * R;
+        keel::f64 *colDst = outd + lineIdx * R;
         for (keel::usize i = 0; i < nOut; ++i) colDst[i] = src[i];
     } else {
         for (keel::usize i = 0; i < nOut; ++i) outd[lineIdx + i * R] = src[i];
@@ -344,7 +344,7 @@ namespace {
 // orthonormal DCT matrices satisfy: Type 1 and Type 4 are self-inverse;
 // Type 2 and Type 3 are each other's inverse (II = existing dct core,
 // III = existing idct core).
-Value dctCore1D(const Value &line, double type, bool inverse,
+Value dctCore1D(const Value &line, keel::f64 type, bool inverse,
                 keel::Allocator *mr)
 {
     if (type == 1.0) return dctType1(line, mr);              // self-inverse
@@ -358,7 +358,7 @@ Value dctCore1D(const Value &line, double type, bool inverse,
 // Length-override / dim wrapper for an arbitrary DCT type (mirrors
 // dct(x,n,dim) but routes each line through dctCore1D). External linkage
 // (declared in dct_detail.hpp) so dct_reg.cpp can route Type-1/3/4 here.
-Value dctTyped(const Value &x, int n, int dim, double type, bool inverse,
+Value dctTyped(const Value &x, int n, int dim, keel::f64 type, bool inverse,
                keel::Allocator *mr)
 {
     if (x.numel() == 0) return createLike(x, ValueType::DOUBLE, mr);

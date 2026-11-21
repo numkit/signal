@@ -37,7 +37,7 @@ namespace {
 // positive/domain half lives in each compute's fir1_argcheck).
 int firOrder(const Value &v, int argNum, const char *name, const char *fn)
 {
-    const double n = argcheck::expectedReal(v, argNum, name, fn);
+    const keel::f64 n = argcheck::expectedReal(v, argNum, name, fn);
     if (n != std::floor(n)) {
         const auto numStr = argcheck::detail::num(n);
         throw Error(keel::format("{}: filter order {} must be a positive integer (got {}).", fn, name, numStr),
@@ -53,7 +53,7 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     argcheck::checkNargin(args.size(), 2, 6, "fir1");
     const int N = firOrder(args[0], 1, "n", "fir1");
     if (args[1].isScalar() && args.size() <= 3 && (args.size() < 3 || args[2].isChar() || args[2].isString())) {
-        const double Wn = argcheck::expectedReal(args[1], 2, "Wn", "fir1");
+        const keel::f64 Wn = argcheck::expectedReal(args[1], 2, "Wn", "fir1");
         keel::String type = keel::String::from("low");
         if (args.size() >= 3 && (args[2].isChar() || args[2].isString()))
             type = args[2].toString();

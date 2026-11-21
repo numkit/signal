@@ -45,7 +45,7 @@ void iscola_argcheck(const Value &window, keel::usize noverlap, keel::StringRef 
                      0, 0, "iscola", "", "numkit:iscola:badMethod");
 }
 
-void fillHammingWindow(double *w, keel::usize N)
+void fillHammingWindow(keel::f64 *w, keel::usize N)
 {
     if (N == 1) {
         w[0] = 1.0;
@@ -57,7 +57,7 @@ void fillHammingWindow(double *w, keel::usize N)
 
 // Periodic Hann window (MATLAB hann(N, 'periodic') — used as the stft
 // default. Note the divisor is N, NOT N-1 (that's the symmetric form).
-void fillHannPeriodic(double *w, keel::usize N)
+void fillHannPeriodic(keel::f64 *w, keel::usize N)
 {
     if (N == 1) { w[0] = 1.0; return; }
     for (keel::usize i = 0; i < N; ++i)
@@ -71,12 +71,12 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
 {
     Value xD = detail::widenSingleToDouble(x, mr);
     const keel::usize nx = xD.numel();
-    const double *xd = xD.doubleData();
+    const keel::f64 *xd = xD.doubleData();
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
 
     keel::usize winLen;
-    keel::Array<double> win(scratch.allocator());
+    keel::Array<keel::f64> win(scratch.allocator());
     if (window.numel() > 0) {
         winLen = window.numel();
         win.resize(winLen);
@@ -86,7 +86,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
         // MATLAB spectrogram default: 8 Hamming-windowed segments with
         // 50% overlap (winLen = floor(nx / 4.5)).
         winLen = std::max<keel::usize>(1,
-            keel::as<keel::usize>(std::floor(keel::as<double>(nx) / 4.5)));
+            keel::as<keel::usize>(std::floor(keel::as<keel::f64>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         fillHammingWindow(win.data(), winLen);
@@ -128,7 +128,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
         for (keel::usize i = 0; i < nFreqs; ++i)
             S.complexDataMut()[i + seg * nFreqs] = buf[i];
 
-        T.doubleDataMut()[seg] = keel::as<double>(start + winLen / 2);
+        T.doubleDataMut()[seg] = keel::as<keel::f64>(start + winLen / 2);
         seg++;
     }
 
@@ -150,7 +150,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
 // round-trip is bit-exact within ulp.
 namespace {
 
-void resolveWindow(const Value &win, keel::Array<double> &out, keel::Allocator *mr)
+void resolveWindow(const Value &win, keel::Array<keel::f64> &out, keel::Allocator *mr)
 {
     if (win.numel() > 0) {
         const keel::usize n = win.numel();
@@ -182,7 +182,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
         return Value::complexMatrix(0, 0, mr);
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> win(scratch.allocator());
+    keel::Array<keel::f64> win(scratch.allocator());
     resolveWindow(window, win, mr);
     const keel::usize M = win.size();
     if (M == 0)
@@ -224,7 +224,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
     // x as doubles. Complex input also supported via fft(complex frame).
     const bool xCplx = x.isComplex();
     Value xD = xCplx ? Value() : detail::widenSingleToDouble(x, mr);
-    const double *xr = xCplx ? nullptr : xD.doubleData();
+    const keel::f64 *xr = xCplx ? nullptr : xD.doubleData();
     const keel::c64     *xc = xCplx ? x.complexData() : nullptr;
 
     Value S = (nCh > 1)
@@ -237,7 +237,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
         ? Value::complexMatrix(NFFT, 1, mr)
         : Value::matrix(NFFT, 1, ValueType::DOUBLE, mr);
     keel::c64     *frameCd = xCplx ? frameV.complexDataMut() : nullptr;
-    double *frameRd = xCplx ? nullptr               : frameV.doubleDataMut();
+    keel::f64 *frameRd = xCplx ? nullptr               : frameV.doubleDataMut();
 
     for (keel::usize ch = 0; ch < nCh; ++ch) {
         const keel::usize chOff = ch * N;
@@ -277,7 +277,7 @@ const auto &d = S.dims();
         return Value::matrix(0, 0, ValueType::DOUBLE, mr);
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> win(scratch.allocator());
+    keel::Array<keel::f64> win(scratch.allocator());
     resolveWindow(window, win, mr);
     const keel::usize M = win.size();
     if (M == 0)
@@ -320,11 +320,11 @@ const auto &d = S.dims();
     const keel::usize Nout = (K - 1) * hop + M;
 
     Value out = Value::matrix(Nout, 1, ValueType::DOUBLE, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     std::fill(od, od + Nout, 0.0);
 
     // Per-sample window-square accumulator for normalization.
-    keel::Array<double> wnorm(Nout, 0.0, scratch.allocator());
+    keel::Array<keel::f64> wnorm(Nout, 0.0, scratch.allocator());
 
     // Per-frame full spectrum (after undoing centered / onesided
     // packing) and ifft-result.
@@ -350,11 +350,11 @@ const auto &d = S.dims();
         Value t = ifft(Fcol, keel::as<int>(NFFT), 1, mr);
         // ifft may return DOUBLE or COMPLEX.
         const keel::c64     *tc = (t.type() == ValueType::COMPLEX) ? t.complexData() : nullptr;
-        const double *tr = (t.type() == ValueType::COMPLEX) ? nullptr        : t.doubleData();
+        const keel::f64 *tr = (t.type() == ValueType::COMPLEX) ? nullptr        : t.doubleData();
 
         const keel::usize start = k * hop;
         for (keel::usize i = 0; i < M; ++i) {
-            const double real_i = tc ? tc[i].real() : tr[i];
+            const keel::f64 real_i = tc ? tc[i].real() : tr[i];
             od[start + i]    += win[i] * real_i;
             wnorm[start + i] += win[i] * win[i];
         }
@@ -405,10 +405,10 @@ iscola(const Value &window, keel::usize noverlap, keel::StringRef method,
     const bool isWola      = (method == "wola");
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> s(Ltot, 0.0, scratch.allocator());
+    keel::Array<keel::f64> s(Ltot, 0.0, scratch.allocator());
     for (keel::usize k = 0; k < K; ++k)
         for (keel::usize i = 0; i < M; ++i) {
-            const double wi = window.elemAsDouble(i);
+            const keel::f64 wi = window.elemAsDouble(i);
             s[k * hop + i] += isWola ? wi * wi : wi;
         }
 
@@ -416,26 +416,26 @@ iscola(const Value &window, keel::usize noverlap, keel::StringRef method,
     // window of it — by periodicity within the stable region every
     // hop-sized slice has the same content (up to FP).
     const keel::usize stableStart = (nOvw - 1) * hop;
-    keel::Array<double> stable(s.slice(stableStart, hop), scratch.allocator());
+    keel::Array<keel::f64> stable(s.slice(stableStart, hop), scratch.allocator());
 
     // Median.
-    keel::Array<double> sorted = stable.clone(scratch.allocator());
+    keel::Array<keel::f64> sorted = stable.clone(scratch.allocator());
     std::sort(sorted.begin(), sorted.end());
     const keel::usize H = sorted.size();
-    const double median = (H % 2 == 0)
+    const keel::f64 median = (H % 2 == 0)
         ? 0.5 * (sorted[H / 2 - 1] + sorted[H / 2])
         : sorted[H / 2];
 
     // Max absolute deviation from the median.
-    double maxDev = 0.0;
-    for (double v : stable)
+    keel::f64 maxDev = 0.0;
+    for (keel::f64 v : stable)
         maxDev = std::max(maxDev, keel::abs(v - median));
 
     // MATLAB tolerance is relative to the median (probed): dev/|m| ≤ eps
     // passes, dev/|m| > eps fails. e.g. hann@48 'ola' has dev = 2·eps and
     // m = 2 → ratio = eps (exact boundary), tf = 1.
-    const double eps = std::numeric_limits<double>::epsilon();
-    const double tol = (keel::abs(median) > 0.0) ? keel::abs(median) * eps : eps;
+    const keel::f64 eps = std::numeric_limits<keel::f64>::epsilon();
+    const keel::f64 tol = (keel::abs(median) > 0.0) ? keel::abs(median) * eps : eps;
     const bool   tf  = (maxDev <= tol);
 
     Value out_tf  = Value::scalar(tf ? 1.0 : 0.0, mr);

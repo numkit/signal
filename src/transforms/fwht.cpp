@@ -70,13 +70,13 @@ inline keel::usize bitReverse(keel::usize i, int bits)
 }
 
 // Radix-2 Hadamard butterfly (natural-order) — in-place.
-void hadamardButterfly(double *col, keel::usize N)
+void hadamardButterfly(keel::f64 *col, keel::usize N)
 {
     for (keel::usize h = 1; h < N; h <<= 1) {
         for (keel::usize i = 0; i < N; i += (h << 1)) {
             for (keel::usize j = 0; j < h; ++j) {
-                const double a = col[i + j];
-                const double b = col[i + j + h];
+                const keel::f64 a = col[i + j];
+                const keel::f64 b = col[i + j + h];
                 col[i + j]     = a + b;
                 col[i + j + h] = a - b;
             }
@@ -85,7 +85,7 @@ void hadamardButterfly(double *col, keel::usize N)
 }
 
 // Permute from natural Hadamard order to dyadic (Paley): out[i] = in[bitrev(i)].
-void permuteToDyadic(const double *in, double *out, keel::usize N, int log2N)
+void permuteToDyadic(const keel::f64 *in, keel::f64 *out, keel::usize N, int log2N)
 {
     for (keel::usize i = 0; i < N; ++i)
         out[i] = in[bitReverse(i, log2N)];
@@ -94,7 +94,7 @@ void permuteToDyadic(const double *in, double *out, keel::usize N, int log2N)
 // Permute from natural Hadamard order to sequency (Walsh).
 // Probed against MATLAB: sequency[i] = dyadic[g(i)] where g(i) = i XOR (i>>1).
 // Combined transform from natural: sequency[i] = natural[bitrev(g(i))].
-void permuteToSequency(const double *in, double *out, keel::usize N, int log2N)
+void permuteToSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, int log2N)
 {
     for (keel::usize i = 0; i < N; ++i) {
         const keel::usize g = i ^ (i >> 1);
@@ -108,7 +108,7 @@ void permuteToSequency(const double *in, double *out, keel::usize N, int log2N)
 // (bitrev is its own inverse). For sequency the inverse is:
 //   natural[bitrev(g(i))] = sequency[i]  →  natural[k] = sequency[i]
 //   with k = bitrev(g(i)). The inverse mapping inverts both steps.
-void unpermuteFromSequency(const double *in, double *out, keel::usize N, int log2N)
+void unpermuteFromSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, int log2N)
 {
     // Forward: out_seq[i] = in_nat[bitrev(g(i))].
     // Inverse: in_nat[k]  = out_seq[i] where bitrev(g(i)) = k.
@@ -134,13 +134,13 @@ keel::usize resolveLen(keel::usize L, keel::usize n)
 // Apply fwht / ifwht to one column of length L (source `srcCol`), writing
 // to `dstCol` (length N where N = resolveLen(L, n)). `forward` toggles
 // the 1/N scaling.
-void transformOneColumn(const double *srcCol, keel::usize L,
-                         double *dstCol, keel::usize N, int log2N,
+void transformOneColumn(const keel::f64 *srcCol, keel::usize L,
+                         keel::f64 *dstCol, keel::usize N, int log2N,
                          keel::StringRef ordering, bool forward,
                          keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> buf(N, 0.0, scratch.allocator());
+    keel::Array<keel::f64> buf(N, 0.0, scratch.allocator());
 
     if (forward) {
         // Forward: copy / truncate / zero-pad input.
@@ -149,7 +149,7 @@ void transformOneColumn(const double *srcCol, keel::usize L,
     } else {
         // Inverse: input is already in `ordering`; undo permutation
         // into natural order before applying the butterfly.
-        keel::Array<double> raw(N, 0.0, scratch.allocator());
+        keel::Array<keel::f64> raw(N, 0.0, scratch.allocator());
         const keel::usize toCopy = std::min(L, N);
         for (keel::usize i = 0; i < toCopy; ++i) raw[i] = srcCol[i];
         if (ordering == "hadamard") {
@@ -166,7 +166,7 @@ void transformOneColumn(const double *srcCol, keel::usize L,
 
     if (forward) {
         // Normalise + permute into requested ordering.
-        const double inv = 1.0 / keel::as<double>(N);
+        const keel::f64 inv = 1.0 / keel::as<keel::f64>(N);
         for (keel::usize i = 0; i < N; ++i) buf[i] *= inv;
         if (ordering == "hadamard") {
             for (keel::usize i = 0; i < N; ++i) dstCol[i] = buf[i];
@@ -221,10 +221,10 @@ Value runWalshHadamard(const Value &x, keel::usize n,
     Value out = isRowVec
         ? Value::matrix(1, N, ValueType::DOUBLE, mr)
         : Value::matrix(N, nCols, ValueType::DOUBLE, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> srcCol(L, 0.0, scratch.allocator());
+    keel::Array<keel::f64> srcCol(L, 0.0, scratch.allocator());
 
     for (keel::usize c = 0; c < nCols; ++c) {
         // Gather source column.
@@ -237,7 +237,7 @@ Value runWalshHadamard(const Value &x, keel::usize n,
         }
 
         // Output column. For row-vector input the "column" lives flat.
-        double *dstCol = isRowVec ? od : od + c * N;
+        keel::f64 *dstCol = isRowVec ? od : od + c * N;
         transformOneColumn(srcCol.data(), L, dstCol, N, log2N,
                             ordering, forward, mr);
     }

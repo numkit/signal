@@ -25,53 +25,53 @@ namespace numkit::signal {
 
 namespace {
 
-constexpr double kLowPct  = 0.10;   // lower state boundary fraction
-constexpr double kHighPct = 0.90;   // upper state boundary fraction
-constexpr double kMidPct  = 0.50;   // mid-reference level
+constexpr keel::f64 kLowPct  = 0.10;   // lower state boundary fraction
+constexpr keel::f64 kHighPct = 0.90;   // upper state boundary fraction
+constexpr keel::f64 kMidPct  = 0.50;   // mid-reference level
 constexpr int    kHistBins = 100;
 
-double scalarOrDefault(const Value &v, double dflt)
+keel::f64 scalarOrDefault(const Value &v, keel::f64 dflt)
 {
     return v.isEmpty() ? dflt : v.toScalar();
 }
 
 // Read x as a contiguous double array. If x is not DOUBLE, copy via
 // elemAsDouble. Returns the buffer (heap) and length.
-keel::Array<double> readVec(const Value &x)
+keel::Array<keel::f64> readVec(const Value &x)
 {
     const keel::usize n = x.numel();
-    keel::Array<double> v(n);
+    keel::Array<keel::f64> v(n);
     if (n == 0) return v;
     if (x.type() == ValueType::DOUBLE) {
-        std::memcpy(v.data(), x.doubleData(), n * sizeof(double));
+        std::memcpy(v.data(), x.doubleData(), n * sizeof(keel::f64));
     } else {
         for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     }
     return v;
 }
 
-Value colVec(keel::ArrayRef<double> v, keel::Allocator *mr)
+Value colVec(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     if (v.empty()) return Value::matrix(0, 1, ValueType::DOUBLE, mr);
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
-    std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
+    std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
     return out;
 }
 
 // Histogram-mode state level estimate. Returns [low, high]. For flat
 // inputs (range 0) returns [val, val].
-struct LowHigh { double low; double high; };
+struct LowHigh { keel::f64 low; keel::f64 high; };
 
-LowHigh stateLevelsCalc(const double *x, keel::usize n)
+LowHigh stateLevelsCalc(const keel::f64 *x, keel::usize n)
 {
     if (n == 0) return {0.0, 0.0};
-    double xmin = x[0], xmax = x[0];
+    keel::f64 xmin = x[0], xmax = x[0];
     for (keel::usize i = 1; i < n; ++i) {
         if (x[i] < xmin) xmin = x[i];
         if (x[i] > xmax) xmax = x[i];
     }
     if (!(xmax > xmin)) return {xmin, xmax};
-    const double width = (xmax - xmin) / kHistBins;
+    const keel::f64 width = (xmax - xmin) / kHistBins;
     keel::Array<int> hist(kHistBins, 0);
     for (keel::usize i = 0; i < n; ++i) {
         int b = keel::as<int>((x[i] - xmin) / width);
@@ -79,7 +79,7 @@ LowHigh stateLevelsCalc(const double *x, keel::usize n)
         if (b < 0) b = 0;
         hist[b]++;
     }
-    const double mid = (xmin + xmax) * 0.5;
+    const keel::f64 mid = (xmin + xmax) * 0.5;
     const int splitBin = keel::as<int>((mid - xmin) / width);
     int lowBin = 0, highBin = kHistBins - 1;
     int lowMax = -1, highMax = -1;
@@ -96,17 +96,17 @@ LowHigh stateLevelsCalc(const double *x, keel::usize n)
 // Linearly interpolate the sample index where x crosses `level` between
 // indices i and i+1 (assumes x[i] and x[i+1] straddle level). Returns
 // fractional 0-based index.
-double crossingIdx(const double *x, keel::usize i, double level)
+keel::f64 crossingIdx(const keel::f64 *x, keel::usize i, keel::f64 level)
 {
-    const double a = x[i], b = x[i + 1];
-    if (a == b) return keel::as<double>(i);
+    const keel::f64 a = x[i], b = x[i + 1];
+    if (a == b) return keel::as<keel::f64>(i);
     return i + (level - a) / (b - a);
 }
 
 // Convert a fractional sample index to time given a sample rate. With
 // fs nullptr/empty, returns the 1-based fractional sample number
 // (matches MATLAB's "no fs" idiom: index returned as t).
-double idxToTime(double idx, double fs)
+keel::f64 idxToTime(keel::f64 idx, keel::f64 fs)
 {
     if (fs > 0.0) return idx / fs;
     return idx + 1.0;  // 1-based sample index, fractional
@@ -121,28 +121,28 @@ double idxToTime(double idx, double fs)
 // trailing boundary.
 struct Transition {
     int sign;        // +1 rising, -1 falling
-    double startIdx; // crossing of trailing boundary (10% for rising)
-    double endIdx;   // crossing of leading boundary (90% for rising)
+    keel::f64 startIdx; // crossing of trailing boundary (10% for rising)
+    keel::f64 endIdx;   // crossing of leading boundary (90% for rising)
 };
 
 keel::Array<Transition>
-findTransitions(const double *x, keel::usize n, double low, double high)
+findTransitions(const keel::f64 *x, keel::usize n, keel::f64 low, keel::f64 high)
 {
     keel::Array<Transition> out;
     if (n < 2 || !(high > low)) return out;
-    const double range = high - low;
-    const double trail = low + kLowPct * range;
-    const double lead  = low + kHighPct * range;
+    const keel::f64 range = high - low;
+    const keel::f64 trail = low + kLowPct * range;
+    const keel::f64 lead  = low + kHighPct * range;
 
     enum class State { Below, Mid, Above };
-    auto classify = [&](double v) -> State {
+    auto classify = [&](keel::f64 v) -> State {
         if (v <= trail) return State::Below;
         if (v >= lead)  return State::Above;
         return State::Mid;
     };
 
     State curState = classify(x[0]);
-    double pendingStart = 0.0;
+    keel::f64 pendingStart = 0.0;
     bool inRise = false, inFall = false;
     for (keel::usize i = 1; i < n; ++i) {
         State s = classify(x[i]);
@@ -196,12 +196,12 @@ findTransitions(const double *x, keel::usize n, double low, double high)
 
 // Midcross helper: every fractional sample where x crosses `level`.
 // Each crossing is counted once (no duplicate if x stays on level).
-keel::Array<double>
-midcrossesAt(const double *x, keel::usize n, double level)
+keel::Array<keel::f64>
+midcrossesAt(const keel::f64 *x, keel::usize n, keel::f64 level)
 {
-    keel::Array<double> out;
+    keel::Array<keel::f64> out;
     for (keel::usize i = 0; i + 1 < n; ++i) {
-        const double a = x[i], b = x[i + 1];
+        const keel::f64 a = x[i], b = x[i + 1];
         if ((a < level && b >= level) || (a > level && b <= level)
             || (a == level && b != level && i == 0)) {
             out.push_back(crossingIdx(x, i, level));
@@ -230,10 +230,10 @@ Value midcross(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
-    const double mid = lh.low + kMidPct * (lh.high - lh.low);
+    const keel::f64 mid = lh.low + kMidPct * (lh.high - lh.low);
     const auto idx = midcrossesAt(v.data(), v.size(), mid);
-    const double f = scalarOrDefault(fs, 0.0);
-    keel::Array<double> times(idx.size(), mr);
+    const keel::f64 f = scalarOrDefault(fs, 0.0);
+    keel::Array<keel::f64> times(idx.size(), mr);
     for (keel::usize i = 0; i < idx.size(); ++i) times[i] = idxToTime(idx[i], f);
     return colVec(times, mr);
 }
@@ -245,8 +245,8 @@ Value risetime(const Value &x, const Value &fs, keel::Allocator *mr)
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double f = scalarOrDefault(fs, 1.0);
-    keel::Array<double> out(mr);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    keel::Array<keel::f64> out(mr);
     for (const auto &t : trs)
         if (t.sign > 0) out.push_back((t.endIdx - t.startIdx) / std::max(f, 1.0));
     return colVec(out, mr);
@@ -257,8 +257,8 @@ Value falltime(const Value &x, const Value &fs, keel::Allocator *mr)
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double f = scalarOrDefault(fs, 1.0);
-    keel::Array<double> out(mr);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    keel::Array<keel::f64> out(mr);
     for (const auto &t : trs)
         if (t.sign < 0) out.push_back((t.endIdx - t.startIdx) / std::max(f, 1.0));
     return colVec(out, mr);
@@ -269,11 +269,11 @@ Value slewrate(const Value &x, const Value &fs, keel::Allocator *mr)
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double f = scalarOrDefault(fs, 1.0);
-    const double range = (lh.high - lh.low) * (kHighPct - kLowPct);
-    keel::Array<double> out(mr);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    const keel::f64 range = (lh.high - lh.low) * (kHighPct - kLowPct);
+    keel::Array<keel::f64> out(mr);
     for (const auto &t : trs) {
-        const double dur = (t.endIdx - t.startIdx) / std::max(f, 1.0);
+        const keel::f64 dur = (t.endIdx - t.startIdx) / std::max(f, 1.0);
         if (dur > 0.0) out.push_back(t.sign * range / dur);
         else           out.push_back(0.0);
     }
@@ -291,8 +291,8 @@ Value overshoot(const Value &x, const Value &fs, keel::Allocator *mr)
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double range = lh.high - lh.low;
-    keel::Array<double> out(mr);
+    const keel::f64 range = lh.high - lh.low;
+    keel::Array<keel::f64> out(mr);
     if (range <= 0.0) return colVec(out, mr);
     for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
@@ -305,7 +305,7 @@ Value overshoot(const Value &x, const Value &fs, keel::Allocator *mr)
             break;
         }
         if (wbeg >= wend) continue;
-        double peak = v[wbeg];
+        keel::f64 peak = v[wbeg];
         for (keel::usize i = wbeg + 1; i < wend; ++i)
             if (v[i] > peak) peak = v[i];
         out.push_back(100.0 * (peak - lh.high) / range);
@@ -319,8 +319,8 @@ Value undershoot(const Value &x, const Value &fs, keel::Allocator *mr)
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double range = lh.high - lh.low;
-    keel::Array<double> out(mr);
+    const keel::f64 range = lh.high - lh.low;
+    keel::Array<keel::f64> out(mr);
     if (range <= 0.0) return colVec(out, mr);
     for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
@@ -332,7 +332,7 @@ Value undershoot(const Value &x, const Value &fs, keel::Allocator *mr)
             break;
         }
         if (wbeg >= wend) continue;
-        double trough = v[wbeg];
+        keel::f64 trough = v[wbeg];
         for (keel::usize i = wbeg + 1; i < wend; ++i)
             if (v[i] < trough) trough = v[i];
         out.push_back(100.0 * (lh.low - trough) / range);
@@ -344,19 +344,19 @@ Value undershoot(const Value &x, const Value &fs, keel::Allocator *mr)
 // Time from the start of each transition until x stays within `tol`
 // of the destination state for the rest of the post-transition window.
 
-Value settlingtime(const Value &x, const Value &fs, double tol, keel::Allocator *mr)
+Value settlingtime(const Value &x, const Value &fs, keel::f64 tol, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double range = lh.high - lh.low;
-    const double f = scalarOrDefault(fs, 1.0);
-    keel::Array<double> out(mr);
+    const keel::f64 range = lh.high - lh.low;
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    keel::Array<keel::f64> out(mr);
     if (range <= 0.0) return colVec(out, mr);
     for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
-        const double dest = (t.sign > 0) ? lh.high : lh.low;
-        const double band = tol * range;
+        const keel::f64 dest = (t.sign > 0) ? lh.high : lh.low;
+        const keel::f64 band = tol * range;
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
             wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
@@ -368,7 +368,7 @@ Value settlingtime(const Value &x, const Value &fs, double tol, keel::Allocator 
              i + 1 < wend && i < v.size(); ++i) {
             if (keel::abs(v[i] - dest) > band) lastOut = i;
         }
-        const double settled = keel::as<double>(lastOut) - t.startIdx;
+        const keel::f64 settled = keel::as<keel::f64>(lastOut) - t.startIdx;
         out.push_back(std::max(0.0, settled) / std::max(f, 1.0));
     }
     return colVec(out, mr);
@@ -381,12 +381,12 @@ namespace {
 
 // Build a list of (idx, dir) pairs: dir = +1 for rising mid-cross, -1
 // for falling mid-cross. Used by the pulse-shape metrics below.
-keel::Array<std::pair<double, int>>
-midCrossesDirected(const double *x, keel::usize n, double mid)
+keel::Array<std::pair<keel::f64, int>>
+midCrossesDirected(const keel::f64 *x, keel::usize n, keel::f64 mid)
 {
-    keel::Array<std::pair<double, int>> out;
+    keel::Array<std::pair<keel::f64, int>> out;
     for (keel::usize i = 0; i + 1 < n; ++i) {
-        const double a = x[i], b = x[i + 1];
+        const keel::f64 a = x[i], b = x[i + 1];
         if (a < mid && b >= mid)      out.emplace_back(crossingIdx(x, i, mid), +1);
         else if (a > mid && b <= mid) out.emplace_back(crossingIdx(x, i, mid), -1);
     }
@@ -399,10 +399,10 @@ Value pulsewidth(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
-    const double mid = lh.low + kMidPct * (lh.high - lh.low);
+    const keel::f64 mid = lh.low + kMidPct * (lh.high - lh.low);
     auto crs = midCrossesDirected(v.data(), v.size(), mid);
-    const double f = scalarOrDefault(fs, 1.0);
-    keel::Array<double> out(mr);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    keel::Array<keel::f64> out(mr);
     // A pulse runs from a +1 crossing to the next -1 crossing.
     for (keel::usize i = 0; i + 1 < crs.size(); ++i) {
         if (crs[i].second == +1 && crs[i + 1].second == -1)
@@ -415,12 +415,12 @@ Value pulseperiod(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
-    const double mid = lh.low + kMidPct * (lh.high - lh.low);
+    const keel::f64 mid = lh.low + kMidPct * (lh.high - lh.low);
     auto crs = midCrossesDirected(v.data(), v.size(), mid);
-    const double f = scalarOrDefault(fs, 1.0);
-    keel::Array<double> out(mr);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    keel::Array<keel::f64> out(mr);
     // Period: from one rising mid-cross to the next rising mid-cross.
-    keel::Array<double> rising(mr);
+    keel::Array<keel::f64> rising(mr);
     for (const auto &c : crs) if (c.second == +1) rising.push_back(c.first);
     for (keel::usize i = 0; i + 1 < rising.size(); ++i)
         out.push_back((rising[i + 1] - rising[i]) / std::max(f, 1.0));
@@ -431,10 +431,10 @@ Value pulsesep(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
-    const double mid = lh.low + kMidPct * (lh.high - lh.low);
+    const keel::f64 mid = lh.low + kMidPct * (lh.high - lh.low);
     auto crs = midCrossesDirected(v.data(), v.size(), mid);
-    const double f = scalarOrDefault(fs, 1.0);
-    keel::Array<double> out(mr);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
+    keel::Array<keel::f64> out(mr);
     // Separation: trailing edge of one pulse to leading edge of the next.
     for (keel::usize i = 0; i + 1 < crs.size(); ++i) {
         if (crs[i].second == -1 && crs[i + 1].second == +1)
@@ -447,18 +447,18 @@ Value dutycycle(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto lh = stateLevelsCalc(v.data(), v.size());
-    const double mid = lh.low + kMidPct * (lh.high - lh.low);
+    const keel::f64 mid = lh.low + kMidPct * (lh.high - lh.low);
     auto crs = midCrossesDirected(v.data(), v.size(), mid);
-    const double f = scalarOrDefault(fs, 1.0);
+    const keel::f64 f = scalarOrDefault(fs, 1.0);
     (void)f;  // ratio is unitless; fs cancels.
-    keel::Array<double> out(mr);
+    keel::Array<keel::f64> out(mr);
     // Duty cycle: pulsewidth / pulseperiod for each pulse.
     // Walk +1, -1, +1 triples.
     for (keel::usize i = 0; i + 2 < crs.size(); ++i) {
         if (crs[i].second == +1 && crs[i + 1].second == -1
             && crs[i + 2].second == +1) {
-            const double width  = crs[i + 1].first - crs[i].first;
-            const double period = crs[i + 2].first - crs[i].first;
+            const keel::f64 width  = crs[i + 1].first - crs[i].first;
+            const keel::f64 period = crs[i + 2].first - crs[i].first;
             if (period > 0) out.push_back(width / period);
         }
     }
@@ -491,20 +491,20 @@ void pulseRiseFall(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
     auto v = readVec(args[0]);
     auto lh = stateLevelsCalc(v.data(), v.size());
     auto trs = findTransitions(v.data(), v.size(), lh.low, lh.high);
-    const double f = scalarOrDefault(fsv, 1.0);
-    const double range = lh.high - lh.low;
-    const double LL = lh.low + kLowPct  * range;   // lower (10%) reference level
-    const double UL = lh.low + kHighPct * range;   // upper (90%) reference level
+    const keel::f64 f = scalarOrDefault(fsv, 1.0);
+    const keel::f64 range = lh.high - lh.low;
+    const keel::f64 LL = lh.low + kLowPct  * range;   // lower (10%) reference level
+    const keel::f64 UL = lh.low + kHighPct * range;   // upper (90%) reference level
 
-    keel::Array<double> dur(mr), ltv(mr), utv(mr);
+    keel::Array<keel::f64> dur(mr), ltv(mr), utv(mr);
     for (const auto &t : trs) {
         if (rising && t.sign <= 0) continue;
         if (!rising && t.sign >= 0) continue;
         // Transition struct stores startIdx = first crossing in time,
         // endIdx = second. For a rise that is (lower, upper); for a fall it
         // is (upper, lower). Map to MATLAB's lower/upper crossing times.
-        const double lowerCrossIdx = rising ? t.startIdx : t.endIdx;
-        const double upperCrossIdx = rising ? t.endIdx   : t.startIdx;
+        const keel::f64 lowerCrossIdx = rising ? t.startIdx : t.endIdx;
+        const keel::f64 upperCrossIdx = rising ? t.endIdx   : t.startIdx;
         dur.push_back((t.endIdx - t.startIdx) / std::max(f, 1.0));
         ltv.push_back(idxToTime(lowerCrossIdx, f));
         utv.push_back(idxToTime(upperCrossIdx, f));

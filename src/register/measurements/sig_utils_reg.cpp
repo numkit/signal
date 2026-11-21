@@ -26,7 +26,7 @@ void seqperiod_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                    keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "seqperiod");
-    double tol = 1e-10;
+    keel::f64 tol = 1e-10;
     if (args.size() >= 2) tol = args[1].toScalar();
     auto [p, nr] = seqperiod(args[0], tol, ctx.engine->allocator());
     outs[0] = p;
@@ -37,7 +37,7 @@ void zerocrossrate_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                        keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, "zerocrossrate");  // no max: name-value tail in the reference
-    double level = 0.0;
+    keel::f64 level = 0.0;
     if (args.size() >= 2) level = args[1].toScalar();
     auto [r, c] = zerocrossrate(args[0], level, ctx.engine->allocator());
     outs[0] = r;
@@ -48,8 +48,8 @@ void cusum_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 6, "cusum");
-    const double climit = (args.size() >= 2) ? args[1].toScalar() : 5.0;
-    const double mshift = (args.size() >= 3) ? args[2].toScalar() : 1.0;
+    const keel::f64 climit = (args.size() >= 2) ? args[1].toScalar() : 5.0;
+    const keel::f64 mshift = (args.size() >= 3) ? args[2].toScalar() : 1.0;
     CusumResult R = cusum(args[0], climit, mshift,
                           (args.size() >= 4) ? args[3] : Value::Empty,
                           (args.size() >= 5) ? args[4] : Value::Empty,

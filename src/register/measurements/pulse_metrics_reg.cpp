@@ -44,7 +44,7 @@ void settlingtime_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
 {
     argcheck::checkNargin(args.size(), 1, "settlingtime");  // no max: name-value tail in the reference
     const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
-    double tol = 0.02;
+    keel::f64 tol = 0.02;
     if (args.size() >= 3 && !args[2].isEmpty()) tol = args[2].toScalar();
     outs[0] = settlingtime(args[0], fs, tol, ctx.engine->allocator());
 }

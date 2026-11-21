@@ -25,37 +25,37 @@ namespace {
 
 // Trim trailing zeros from a polynomial coefficient vector. Returns
 // the kept length (1 = constant, 0 = empty input).
-keel::usize trimTrailingZeros(keel::Array<double> &v)
+keel::usize trimTrailingZeros(keel::Array<keel::f64> &v)
 {
     while (v.size() > 1 && keel::abs(v.back()) < 1e-15) v.pop_back();
     return v.size();
 }
 
 // Convolve two real polynomials (coefficient-wise multiplication).
-keel::Array<double> polyConv(keel::ArrayRef<double> a, keel::ArrayRef<double> b)
+keel::Array<keel::f64> polyConv(keel::ArrayRef<keel::f64> a, keel::ArrayRef<keel::f64> b)
 {
     if (a.empty() || b.empty()) return {};
-    keel::Array<double> out(a.size() + b.size() - 1, 0.0);
+    keel::Array<keel::f64> out(a.size() + b.size() - 1, 0.0);
     for (keel::usize i = 0; i < a.size(); ++i)
         for (keel::usize j = 0; j < b.size(); ++j)
             out[i + j] += a[i] * b[j];
     return out;
 }
 
-Value rowFromVec(keel::ArrayRef<double> v, keel::Allocator *mr)
+Value rowFromVec(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     for (keel::usize i = 0; i < v.size(); ++i) dst[i] = v[i];
     return out;
 }
 
 // Append row's roots (as Complex) to the running list.
-void appendRoots(const double *coeffs, keel::usize n, keel::Array<keel::c64> &out, keel::Allocator *mr)
+void appendRoots(const keel::f64 *coeffs, keel::usize n, keel::Array<keel::c64> &out, keel::Allocator *mr)
 {
     // Build a 1×n DOUBLE Value to feed roots(). Trim trailing zeros so
     // roots() doesn't add spurious roots at 0.
-    keel::Array<double> trimmed(keel::ArrayRef<double>(coeffs, n), mr);
+    keel::Array<keel::f64> trimmed(keel::ArrayRef<keel::f64>(coeffs, n), mr);
     trimTrailingZeros(trimmed);
     if (trimmed.size() < 2) return;
     auto p = Value::matrix(1, trimmed.size(), ValueType::DOUBLE, mr);
@@ -66,7 +66,7 @@ void appendRoots(const double *coeffs, keel::usize n, keel::Array<keel::c64> &ou
         const keel::c64 *src = r.complexData();
         for (keel::usize i = 0; i < r.numel(); ++i) out.push_back(src[i]);
     } else {
-        const double *src = r.doubleData();
+        const keel::f64 *src = r.doubleData();
         for (keel::usize i = 0; i < r.numel(); ++i) out.emplace_back(src[i], 0.0);
     }
 }
@@ -83,7 +83,7 @@ Value complexColFromVec(keel::ArrayRef<keel::c64> v, keel::Allocator *mr)
         return out;
     }
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     for (keel::usize i = 0; i < v.size(); ++i) dst[i] = v[i].real();
     return out;
 }
@@ -109,16 +109,16 @@ void sos2zp_argcheck(const Value &sos)
 
 // ── sos2tf ────────────────────────────────────────────────────────────
 std::tuple<Value, Value>
-sos2tf(const Value &sos, double g, keel::Allocator *mr)
+sos2tf(const Value &sos, keel::f64 g, keel::Allocator *mr)
 {
     sos2tf_argcheck(sos);
     const keel::usize L = sos.dims().rows();
-    keel::Array<double> b({1.0}, mr), a({1.0}, mr);
+    keel::Array<keel::f64> b({1.0}, mr), a({1.0}, mr);
     for (keel::usize i = 0; i < L; ++i) {
-        const double bs[3] = {sos(i, 0), sos(i, 1), sos(i, 2)};
-        const double as[3] = {sos(i, 3), sos(i, 4), sos(i, 5)};
-        b = polyConv(b, keel::ArrayRef<double>(bs, 3));
-        a = polyConv(a, keel::ArrayRef<double>(as, 3));
+        const keel::f64 bs[3] = {sos(i, 0), sos(i, 1), sos(i, 2)};
+        const keel::f64 as[3] = {sos(i, 3), sos(i, 4), sos(i, 5)};
+        b = polyConv(b, keel::ArrayRef<keel::f64>(bs, 3));
+        a = polyConv(a, keel::ArrayRef<keel::f64>(as, 3));
     }
     if (g != 1.0)
         for (auto &v : b) v *= g;
@@ -126,16 +126,16 @@ sos2tf(const Value &sos, double g, keel::Allocator *mr)
 }
 
 // ── sos2zp ────────────────────────────────────────────────────────────
-std::tuple<Value, Value, double>
-sos2zp(const Value &sos, double g, keel::Allocator *mr)
+std::tuple<Value, Value, keel::f64>
+sos2zp(const Value &sos, keel::f64 g, keel::Allocator *mr)
 {
     sos2zp_argcheck(sos);
     const keel::usize L = sos.dims().rows();
     keel::Array<keel::c64> zeros(mr), poles(mr);
-    double gain = g;
+    keel::f64 gain = g;
     for (keel::usize i = 0; i < L; ++i) {
-        const double bArr[3] = {sos(i, 0), sos(i, 1), sos(i, 2)};
-        const double aArr[3] = {sos(i, 3), sos(i, 4), sos(i, 5)};
+        const keel::f64 bArr[3] = {sos(i, 0), sos(i, 1), sos(i, 2)};
+        const keel::f64 aArr[3] = {sos(i, 3), sos(i, 4), sos(i, 5)};
         appendRoots(bArr, 3, zeros, mr);
         appendRoots(aArr, 3, poles, mr);
         // Per-section gain factor: b0 / a0 for that section.
@@ -148,7 +148,7 @@ sos2zp(const Value &sos, double g, keel::Allocator *mr)
 }
 
 // ── tf2zpk ────────────────────────────────────────────────────────────
-std::tuple<Value, Value, double>
+std::tuple<Value, Value, keel::f64>
 tf2zpk(const Value &b, const Value &a, keel::Allocator *mr)
 {
     auto [z, p, k] = numkit::builtin::tf2zp(b, a, mr);
@@ -163,20 +163,20 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
     if (a.numel() == 0)
         throw Error("tf2ss: denominator a must be non-empty",
                      0, 0, "tf2ss", "", "numkit:tf2ss:badArg");
-    const double a0 = a.elemAsDouble(0);
+    const keel::f64 a0 = a.elemAsDouble(0);
     if (keel::abs(a0) < 1e-15)
         throw Error("tf2ss: a(1) must be non-zero",
                      0, 0, "tf2ss", "", "numkit:tf2ss:badArg");
 
     // Normalise so a(1) = 1.
     const keel::usize na = a.numel();
-    keel::Array<double> ah(na, mr);
+    keel::Array<keel::f64> ah(na, mr);
     for (keel::usize i = 0; i < na; ++i) ah[i] = a.elemAsDouble(i) / a0;
 
     // Pad b to the same length as a (left-pad with zeros — matches
     // MATLAB convention for proper rationals).
     const keel::usize nb = b.numel();
-    keel::Array<double> bh(na, 0.0, mr);
+    keel::Array<keel::f64> bh(na, 0.0, mr);
     if (nb >= na) {
         for (keel::usize i = 0; i < na; ++i)
             bh[i] = b.elemAsDouble(nb - na + i) / a0;
@@ -193,7 +193,7 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
 
     // Direct feed-through D = bh[0]   (since b is normalised + padded
     // to length N+1, this is the leading coeff).
-    const double D = bh[0];
+    const keel::f64 D = bh[0];
 
     // MATLAB tf2ss returns the controller canonical form:
     //   A = [-a2 -a3 ... -a(N+1);
@@ -207,7 +207,7 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
     // Here ah[0]=1 (post-normalisation) and ah[1..N] are -a2..-a(N+1)
     // when negated.
     auto AVal = Value::matrix(N, N, ValueType::DOUBLE, mr);
-    double *Ap = AVal.doubleDataMut();
+    keel::f64 *Ap = AVal.doubleDataMut();
     std::fill(Ap, Ap + N * N, 0.0);
     // Top row (column-major: Ap[r + c*N]).
     for (keel::usize j = 0; j < N; ++j)
@@ -218,13 +218,13 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
 
     // B: column vector with 1 in FIRST entry.
     auto BVal = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    double *Bp = BVal.doubleDataMut();
+    keel::f64 *Bp = BVal.doubleDataMut();
     std::fill(Bp, Bp + N, 0.0);
     Bp[0] = 1.0;
 
     // C: 1xN row, C(j) = bh[j+1] - ah[j+1]*D for j = 0..N-1.
     auto CVal = Value::matrix(1, N, ValueType::DOUBLE, mr);
-    double *Cp = CVal.doubleDataMut();
+    keel::f64 *Cp = CVal.doubleDataMut();
     for (keel::usize j = 0; j < N; ++j)
         Cp[j] = bh[j + 1] - ah[j + 1] * D;
 
@@ -239,7 +239,7 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
 //   b = numerator built from the resolvent (a*D + C * adj(zI - A) * B)
 // This is heavy linear algebra; use Faddeev's algorithm.
 std::tuple<Value, Value>
-ss2tf(const Value &A, const Value &B, const Value &C, double D,
+ss2tf(const Value &A, const Value &B, const Value &C, keel::f64 D,
       keel::Allocator *mr)
 {
     if (A.dims().rows() != A.dims().cols())
@@ -253,7 +253,7 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
         throw Error("ss2tf: C must be 1×N",
                      0, 0, "ss2tf", "", "numkit:ss2tf:badShape");
 
-    const double Dscalar = D;
+    const keel::f64 Dscalar = D;
 
     // Faddeev–LeVerrier:
     //   M_0 = I,   c_n = 1
@@ -263,33 +263,33 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
     //   p(λ) = c_0 + c_1 λ + ... + c_n λ^n   (with c_n = 1).
     // We also accumulate b(λ) = D * a(λ) + Σ C * M_k * B * λ^k.
 
-    auto matMul = [N](keel::ArrayRef<double> X,
-                      keel::ArrayRef<double> Y,
-                      keel::Array<double> &out) {
+    auto matMul = [N](keel::ArrayRef<keel::f64> X,
+                      keel::ArrayRef<keel::f64> Y,
+                      keel::Array<keel::f64> &out) {
         out.assign(N * N, 0.0);
         for (keel::usize i = 0; i < N; ++i)
             for (keel::usize j = 0; j < N; ++j) {
-                double s = 0.0;
+                keel::f64 s = 0.0;
                 for (keel::usize k = 0; k < N; ++k)
                     s += X[k * N + i] * Y[j * N + k];   // column-major
                 out[j * N + i] = s;
             }
     };
-    auto matVec = [N](keel::ArrayRef<double> X,
-                      const double *y,
-                      keel::Array<double> &out) {
+    auto matVec = [N](keel::ArrayRef<keel::f64> X,
+                      const keel::f64 *y,
+                      keel::Array<keel::f64> &out) {
         out.assign(N, 0.0);
         for (keel::usize i = 0; i < N; ++i)
             for (keel::usize k = 0; k < N; ++k)
                 out[i] += X[k * N + i] * y[k];
     };
 
-    keel::Array<double> A_(N * N, mr);
+    keel::Array<keel::f64> A_(N * N, mr);
     for (keel::usize i = 0; i < N; ++i)
         for (keel::usize j = 0; j < N; ++j)
             A_[j * N + i] = A(i, j);
-    const double *Bp = B.doubleData();
-    const double *Cp = C.doubleData();
+    const keel::f64 *Bp = B.doubleData();
+    const keel::f64 *Cp = C.doubleData();
 
     // Faddeev–LeVerrier driving the characteristic polynomial AND
     // adj(sI - A) = sum_{k=0}^{N-1} M_k s^{N-1-k}.
@@ -298,17 +298,17 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
     // k=0..N-1 and then placed into b_coeffs[N-1-k]:
     //   b_coeffs[N]       = D
     //   b_coeffs[N-1-k]   = D · a_coeffs[N-1-k] + (C · M_k · B)
-    keel::Array<double> M(N * N, 0.0, mr), AM(N * N, mr);
+    keel::Array<keel::f64> M(N * N, 0.0, mr), AM(N * N, mr);
     for (keel::usize i = 0; i < N; ++i) M[i * N + i] = 1.0;   // M_0 = I
 
-    keel::Array<double> a_coeffs(N + 1, 0.0, mr);
+    keel::Array<keel::f64> a_coeffs(N + 1, 0.0, mr);
     a_coeffs[N] = 1.0;
-    keel::Array<double> CMB(N, 0.0, mr);
+    keel::Array<keel::f64> CMB(N, 0.0, mr);
 
-    keel::Array<double> tmp(N, mr);
-    auto dotCMB = [&](keel::ArrayRef<double> Mat) {
+    keel::Array<keel::f64> tmp(N, mr);
+    auto dotCMB = [&](keel::ArrayRef<keel::f64> Mat) {
         matVec(Mat, Bp, tmp);
-        double s = 0.0;
+        keel::f64 s = 0.0;
         for (keel::usize i = 0; i < N; ++i) s += Cp[i] * tmp[i];
         return s;
     };
@@ -316,9 +316,9 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
 
     for (keel::usize k = 1; k <= N; ++k) {
         matMul(A_, M, AM);
-        double trace = 0.0;
+        keel::f64 trace = 0.0;
         for (keel::usize i = 0; i < N; ++i) trace += AM[i * N + i];
-        const double ck = -trace / keel::as<double>(k);
+        const keel::f64 ck = -trace / keel::as<keel::f64>(k);
         a_coeffs[N - k] = ck;
         // M_k = AM + ck * I
         for (keel::usize i = 0; i < N * N; ++i) M[i] = AM[i];
@@ -327,7 +327,7 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
         if (k < N) CMB[k] = dotCMB(M);
     }
 
-    keel::Array<double> b_coeffs(N + 1, 0.0, mr);
+    keel::Array<keel::f64> b_coeffs(N + 1, 0.0, mr);
     b_coeffs[N] = Dscalar;
     for (keel::usize k = 0; k < N; ++k)
         b_coeffs[N - 1 - k] = Dscalar * a_coeffs[N - 1 - k] + CMB[k];
@@ -340,8 +340,8 @@ ss2tf(const Value &A, const Value &B, const Value &C, double D,
 }
 
 // ── ss2zp ─────────────────────────────────────────────────────────────
-std::tuple<Value, Value, double>
-ss2zp(const Value &A, const Value &B, const Value &C, double D,
+std::tuple<Value, Value, keel::f64>
+ss2zp(const Value &A, const Value &B, const Value &C, keel::f64 D,
       keel::Allocator *mr)
 {
     auto [b, a] = ss2tf(A, B, C, D, mr);
@@ -350,7 +350,7 @@ ss2zp(const Value &A, const Value &B, const Value &C, double D,
 
 // ── zp2ss ─────────────────────────────────────────────────────────────
 std::tuple<Value, Value, Value, Value>
-zp2ss(const Value &z, const Value &p, double k, keel::Allocator *mr)
+zp2ss(const Value &z, const Value &p, keel::f64 k, keel::Allocator *mr)
 {
     auto [b, a] = numkit::builtin::zp2tf(z, p, k, mr);
     return tf2ss(b, a, mr);
@@ -358,14 +358,14 @@ zp2ss(const Value &z, const Value &p, double k, keel::Allocator *mr)
 
 // ── sos2ss ────────────────────────────────────────────────────────────
 std::tuple<Value, Value, Value, Value>
-sos2ss(const Value &sos, double g, keel::Allocator *mr)
+sos2ss(const Value &sos, keel::f64 g, keel::Allocator *mr)
 {
     auto [b, a] = sos2tf(sos, g, mr);
     return tf2ss(b, a, mr);
 }
 
 // ── ss2sos ────────────────────────────────────────────────────────────
-Value ss2sos(const Value &A, const Value &B, const Value &C, double D,
+Value ss2sos(const Value &A, const Value &B, const Value &C, keel::f64 D,
              keel::Allocator *mr)
 {
     auto [b, a] = ss2tf(A, B, C, D, mr);
@@ -376,7 +376,7 @@ Value ss2sos(const Value &A, const Value &B, const Value &C, double D,
 // Cascaded transfer function (NUM, DEN, SV) → zero/pole/gain.
 // Loops over each section: tf2zpk(NUM(i,:), DEN(i,:)) → accumulate.
 // Final gain = prod(SV) * prod(per-section gains).
-std::tuple<Value, Value, double>
+std::tuple<Value, Value, keel::f64>
 ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
 {
     // Vector inputs → reshape to single-row "section".
@@ -394,7 +394,7 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
                     0, 0, "ctf2zp", "", "numkit:ctf2zp:Empty");
 
     // SV defaults to 1 if not provided.
-    keel::Array<double> sv(mr);
+    keel::Array<keel::f64> sv(mr);
     if (SV.isEmpty() || SV.isEmpty()) {
         sv.assign(K + 1, 1.0);
     } else if (SV.numel() == 1) {
@@ -413,7 +413,7 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
     auto extractRow = [&](const Value &M, keel::usize i, keel::usize Krows) {
         const keel::usize cols = colsOf(M);
         Value row = Value::matrix(1, cols, ValueType::DOUBLE, mr);
-        double *rd = row.doubleDataMut();
+        keel::f64 *rd = row.doubleDataMut();
         if (M.dims().rows() == 1 && M.dims().cols() > 1) {
             // Vector input — used for all sections.
             for (keel::usize k = 0; k < cols; ++k) rd[k] = M.elemAsDouble(k);
@@ -428,7 +428,7 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
     };
 
     keel::Array<keel::c64> zeros(mr), poles(mr);
-    double gainAccum = 1.0;
+    keel::f64 gainAccum = 1.0;
     for (keel::usize i = 0; i < K; ++i) {
         Value brow = extractRow(NUM, std::min(i, Knum - 1), Knum);
         Value arow = extractRow(DEN, std::min(i, Kden - 1), Kden);
@@ -453,8 +453,8 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
         gainAccum *= gsec;
     }
     // Multiply overall gain by prod(SV).
-    double svProd = 1.0;
-    for (double v : sv) svProd *= v;
+    keel::f64 svProd = 1.0;
+    for (keel::f64 v : sv) svProd *= v;
     gainAccum *= svProd;
 
     // Build output Z, P as complex column vectors.
@@ -501,12 +501,12 @@ inline keel::c64 sfs_elemAsComplex(const Value &v, keel::usize i)
 inline keel::c64 sfs_sign(keel::c64 x)
 {
     if (x.imag() == 0.0) {
-        const double r = x.real();
+        const keel::f64 r = x.real();
         if (r > 0.0) return keel::c64(1.0, 0.0);
         if (r < 0.0) return keel::c64(-1.0, 0.0);
         return keel::c64(0.0, 0.0);
     }
-    const double mag = keel::abs(x);
+    const keel::f64 mag = keel::abs(x);
     if (mag == 0.0) return keel::c64(0.0, 0.0);
     return x / mag;
 }
@@ -546,9 +546,9 @@ Value scaleFilterSections(const Value &CTFNum, const Value &SV,
                                     : sfs_elemAsComplex(SV, K);
 
     // K-th root of the overall gain magnitude.
-    const double root = (K == 0)
+    const keel::f64 root = (K == 0)
         ? 0.0
-        : std::pow(keel::abs(overall), 1.0 / keel::as<double>(K));
+        : std::pow(keel::abs(overall), 1.0 / keel::as<keel::f64>(K));
 
     // Sign of the overall gain — concentrated on the last section.
     const keel::c64 sgn = sfs_sign(overall);
@@ -569,9 +569,9 @@ Value scaleFilterSections(const Value &CTFNum, const Value &SV,
         }
     } else {
         // Real fast path — neither input is complex.
-        double *od = out.doubleDataMut();
+        keel::f64 *od = out.doubleDataMut();
         for (keel::usize k = 0; k < K; ++k) {
-            double factor = vectorG ? root * SV.elemAsDouble(k) : root;
+            keel::f64 factor = vectorG ? root * SV.elemAsDouble(k) : root;
             if (k + 1 == K)
                 factor *= sgn.real();
             for (keel::usize j = 0; j < Q; ++j) {

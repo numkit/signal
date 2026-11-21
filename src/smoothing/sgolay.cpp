@@ -21,14 +21,14 @@ namespace {
 
 // Solve A · X = B in place (Gauss-Jordan with partial pivoting).
 // A is N×N row-major, B is N×M row-major.
-void gaussJordan(double *A, double *B, int N, int M)
+void gaussJordan(keel::f64 *A, keel::f64 *B, int N, int M)
 {
     for (int k = 0; k < N; ++k) {
         // Pivot.
         int piv = k;
-        double maxAbs = keel::abs(A[k * N + k]);
+        keel::f64 maxAbs = keel::abs(A[k * N + k]);
         for (int r = k + 1; r < N; ++r) {
-            const double v = keel::abs(A[r * N + k]);
+            const keel::f64 v = keel::abs(A[r * N + k]);
             if (v > maxAbs) { maxAbs = v; piv = r; }
         }
         if (maxAbs < 1e-300)
@@ -40,13 +40,13 @@ void gaussJordan(double *A, double *B, int N, int M)
             for (int c = 0; c < M; ++c) std::swap(B[k * M + c], B[piv * M + c]);
         }
         // Normalise pivot row.
-        const double inv = 1.0 / A[k * N + k];
+        const keel::f64 inv = 1.0 / A[k * N + k];
         for (int c = 0; c < N; ++c) A[k * N + c] *= inv;
         for (int c = 0; c < M; ++c) B[k * M + c] *= inv;
         // Eliminate.
         for (int r = 0; r < N; ++r) {
             if (r == k) continue;
-            const double f = A[r * N + k];
+            const keel::f64 f = A[r * N + k];
             if (f == 0.0) continue;
             for (int c = 0; c < N; ++c) A[r * N + c] -= f * A[k * N + c];
             for (int c = 0; c < M; ++c) B[r * M + c] -= f * B[k * M + c];
@@ -56,15 +56,15 @@ void gaussJordan(double *A, double *B, int N, int M)
 
 // Build the (framelen × (order+1)) Vandermonde matrix V where
 // V[i, k] = (i - center)^k for i = 0..framelen-1 and k = 0..order.
-keel::Array<double> buildVandermonde(int order, int framelen, keel::Allocator *mr)
+keel::Array<keel::f64> buildVandermonde(int order, int framelen, keel::Allocator *mr)
 {
     const int n = framelen;
     const int p = order + 1;
-    keel::Array<double> V(n * p, mr);
-    const double half = keel::as<double>(framelen / 2);
+    keel::Array<keel::f64> V(n * p, mr);
+    const keel::f64 half = keel::as<keel::f64>(framelen / 2);
     for (int i = 0; i < n; ++i) {
-        double v = 1.0;
-        const double x = keel::as<double>(i) - half;
+        keel::f64 v = 1.0;
+        const keel::f64 x = keel::as<keel::f64>(i) - half;
         for (int k = 0; k < p; ++k) {
             V[i * p + k] = v;
             v *= x;
@@ -78,9 +78,9 @@ keel::Array<double> buildVandermonde(int order, int framelen, keel::Allocator *m
 // row r of B gives the filter coefficients for sample r in the window:
 // y_r = B[r, :] · x_window. `w` is nullptr (unweighted, W = I) or a
 // framelen-length vector of positive weights.
-keel::Array<double> buildProjection(int order, int framelen,
+keel::Array<keel::f64> buildProjection(int order, int framelen,
                                    keel::Allocator *mr,
-                                   const double *w = nullptr)
+                                   const keel::f64 *w = nullptr)
 {
     const int n = framelen;
     const int p = order + 1;
@@ -88,27 +88,27 @@ keel::Array<double> buildProjection(int order, int framelen,
 
     // Form V'·W·V  (p × p) and V'·W  (p × n) on the side. With w == nullptr
     // the weight factor is 1.0 and this reduces to the ordinary V'V / V'.
-    keel::Array<double> VtV(p * p, mr);
-    keel::Array<double> Vt (p * n, mr);
+    keel::Array<keel::f64> VtV(p * p, mr);
+    keel::Array<keel::f64> Vt (p * n, mr);
     for (int k = 0; k < p; ++k)
         for (int i = 0; i < n; ++i)
             Vt[k * n + i] = V[i * p + k] * (w ? w[i] : 1.0);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j) {
-            double s = 0.0;
+            keel::f64 s = 0.0;
             for (int t = 0; t < n; ++t)
                 s += V[t * p + i] * (w ? w[t] : 1.0) * V[t * p + j];
             VtV[i * p + j] = s;
         }
 
     // Solve VtV · X = Vt → X is p × n; then B = V · X (n × n).
-    keel::Array<double> X(Vt, mr);
+    keel::Array<keel::f64> X(Vt, mr);
     gaussJordan(VtV.data(), X.data(), p, n);
 
-    keel::Array<double> B(n * n, mr);
+    keel::Array<keel::f64> B(n * n, mr);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j) {
-            double s = 0.0;
+            keel::f64 s = 0.0;
             for (int k = 0; k < p; ++k)
                 s += V[i * p + k] * X[k * n + j];
             B[i * n + j] = s;
@@ -121,34 +121,34 @@ keel::Array<double> buildProjection(int order, int framelen,
 // the polynomial coefficient a_j (a_1 = value, a_2 = 1st-deriv term, …) at
 // the central point. This is the unweighted second output of MATLAB's
 // [B,G] = sgolay(order,framelen).
-keel::Array<double> buildDiffMatrix(int order, int framelen, keel::Allocator *mr)
+keel::Array<keel::f64> buildDiffMatrix(int order, int framelen, keel::Allocator *mr)
 {
     const int n = framelen;
     const int p = order + 1;
     auto V = buildVandermonde(order, framelen, mr);      // n × p
 
     // VtV = V'·V (p × p).
-    keel::Array<double> VtV(p * p, mr);
+    keel::Array<keel::f64> VtV(p * p, mr);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j) {
-            double s = 0.0;
+            keel::f64 s = 0.0;
             for (int t = 0; t < n; ++t)
                 s += V[t * p + i] * V[t * p + j];
             VtV[i * p + j] = s;
         }
 
     // Invert VtV: solve VtV · inv = I.
-    keel::Array<double> inv(p * p, mr);
+    keel::Array<keel::f64> inv(p * p, mr);
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j)
             inv[i * p + j] = (i == j) ? 1.0 : 0.0;
     gaussJordan(VtV.data(), inv.data(), p, p);           // inv := (V'V)^-1
 
     // G = V · inv (n × p).
-    keel::Array<double> G(n * p, mr);
+    keel::Array<keel::f64> G(n * p, mr);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < p; ++j) {
-            double s = 0.0;
+            keel::f64 s = 0.0;
             for (int k = 0; k < p; ++k)
                 s += V[i * p + k] * inv[k * p + j];
             G[i * p + j] = s;
@@ -183,7 +183,7 @@ Value sgolay(int order, int framelen, keel::Allocator *mr)
     auto B = buildProjection(order, framelen, scratch.allocator());
     // Convert row-major B to column-major Value (R = framelen, C = framelen).
     auto out = Value::matrix(framelen, framelen, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     for (int i = 0; i < framelen; ++i)
         for (int j = 0; j < framelen; ++j)
             dst[j * framelen + i] = B[i * framelen + j];
@@ -199,7 +199,7 @@ Value sgolayDiff(int order, int framelen, keel::Allocator *mr)
     auto G = buildDiffMatrix(order, framelen, scratch.allocator());   // row-major n × p
     // Convert row-major G to column-major Value (R = framelen, C = order+1).
     auto out = Value::matrix(framelen, p, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     for (int i = 0; i < framelen; ++i)
         for (int j = 0; j < p; ++j)
             dst[j * framelen + i] = G[i * p + j];
@@ -212,28 +212,28 @@ namespace {
 // matrix B (row-major). Interior samples use the central (symmetric) row
 // of B; the edges use the asymmetric rows so no zero-padding artefacts
 // appear. n must be >= framelen.
-void sgolayfiltSlice(const double *src, double *dst, int n,
-                     const double *B, int framelen)
+void sgolayfiltSlice(const keel::f64 *src, keel::f64 *dst, int n,
+                     const keel::f64 *B, int framelen)
 {
     const int half = framelen / 2;
-    const double *Bcenter = &B[half * framelen];
+    const keel::f64 *Bcenter = &B[half * framelen];
     for (int i = half; i < n - half; ++i) {
-        double s = 0.0;
+        keel::f64 s = 0.0;
         for (int k = 0; k < framelen; ++k)
             s += Bcenter[k] * src[i - half + k];
         dst[i] = s;
     }
     for (int i = 0; i < half; ++i) {                 // leading edge
-        const double *Brow = &B[i * framelen];
-        double s = 0.0;
+        const keel::f64 *Brow = &B[i * framelen];
+        keel::f64 s = 0.0;
         for (int k = 0; k < framelen; ++k)
             s += Brow[k] * src[k];
         dst[i] = s;
     }
     for (int i = n - half; i < n; ++i) {             // trailing edge
         const int rowIdx = framelen - 1 - (n - 1 - i);
-        const double *Brow = &B[rowIdx * framelen];
-        double s = 0.0;
+        const keel::f64 *Brow = &B[rowIdx * framelen];
+        keel::f64 s = 0.0;
         for (int k = 0; k < framelen; ++k)
             s += Brow[k] * src[n - framelen + k];
         dst[i] = s;
@@ -244,7 +244,7 @@ void sgolayfiltSlice(const double *src, double *dst, int n,
 // 0 = auto = first non-singleton dimension, matching MATLAB), with an
 // optional framelen-length weight vector `w` (nullptr = unweighted).
 Value sgolayfiltImpl(const Value &x, int order, int framelen,
-                     const double *w, int dim, keel::Allocator *mr)
+                     const keel::f64 *w, int dim, keel::Allocator *mr)
 {
     if (x.type() == ValueType::COMPLEX)
         throw Error("sgolayfilt: complex inputs are not supported",
@@ -271,10 +271,10 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
 
     auto out = createLike(x, ValueType::DOUBLE, mr);
     if (x.numel() == 0) return out;
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
 
     // Gather source as DOUBLE (column-major).
-    auto src = keel::Array<double>(x.numel(), scratch.allocator());
+    auto src = keel::Array<keel::f64>(x.numel(), scratch.allocator());
     for (keel::usize i = 0; i < x.numel(); ++i) src[i] = x.elemAsDouble(i);
 
     if (useDim == 1) {
@@ -284,8 +284,8 @@ Value sgolayfiltImpl(const Value &x, int order, int framelen,
                             keel::as<int>(R), B.data(), framelen);
     } else {
         // Each row is strided by R: gather → filter → scatter.
-        auto rbuf = keel::Array<double>(C, scratch.allocator());
-        auto obuf = keel::Array<double>(C, scratch.allocator());
+        auto rbuf = keel::Array<keel::f64>(C, scratch.allocator());
+        auto obuf = keel::Array<keel::f64>(C, scratch.allocator());
         for (keel::usize r = 0; r < R; ++r) {
             for (keel::usize c = 0; c < C; ++c) rbuf[c] = src[r + c * R];
             sgolayfiltSlice(rbuf.data(), obuf.data(),
@@ -315,9 +315,9 @@ Value sgolayfilt(const Value &x, int order, int framelen,
         throw Error("sgolayfilt: weights must have length framelen",
                      0, 0, "sgolayfilt", "", "numkit:sgolayfilt:weightsLen");
     keel::ArenaTemp wa = keel::get_scratch(mr);
-    auto w = keel::Array<double>(framelen, wa.allocator());
+    auto w = keel::Array<keel::f64>(framelen, wa.allocator());
     for (int i = 0; i < framelen; ++i) {
-        const double wi = weights.elemAsDouble(i);
+        const keel::f64 wi = weights.elemAsDouble(i);
         if (!(wi > 0.0))
             throw Error("sgolayfilt: weights must be real and positive",
                          0, 0, "sgolayfilt", "", "numkit:sgolayfilt:weights");

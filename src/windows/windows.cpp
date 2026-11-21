@@ -17,7 +17,7 @@ namespace numkit::signal {
 
 namespace {
 
-void gausswin_argcheck(double alpha)
+void gausswin_argcheck(keel::f64 alpha)
 {
     if (alpha <= 0)
         throw Error("gausswin: alpha must be positive",
@@ -47,7 +47,7 @@ Value blackman(keel::usize N, keel::Allocator *mr)
     return r;
 }
 
-Value kaiser(keel::usize N, double beta, keel::Allocator *mr)
+Value kaiser(keel::usize N, keel::f64 beta, keel::Allocator *mr)
 {
     auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     keel::signal::kaiser({r.doubleDataMut(), N}, beta);
@@ -75,7 +75,7 @@ Value triang(keel::usize N, keel::Allocator *mr)
     return r;
 }
 
-Value tukeywin(keel::usize N, double r, keel::Allocator *mr)
+Value tukeywin(keel::usize N, keel::f64 r, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     keel::signal::tukeywin({out.doubleDataMut(), N}, r);
@@ -89,7 +89,7 @@ Value flattopwin(keel::usize N, keel::Allocator *mr)
     return out;
 }
 
-Value gausswin(keel::usize N, double alpha, keel::Allocator *mr)
+Value gausswin(keel::usize N, keel::f64 alpha, keel::Allocator *mr)
 {
     gausswin_argcheck(alpha);
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
@@ -97,7 +97,7 @@ Value gausswin(keel::usize N, double alpha, keel::Allocator *mr)
     return out;
 }
 
-Value chebwin(keel::usize N, double at, keel::Allocator *mr)
+Value chebwin(keel::usize N, keel::f64 at, keel::Allocator *mr)
 {
     if (at <= 0)
         throw Error("chebwin: at must be positive (sidelobe attenuation in dB)",
@@ -121,7 +121,7 @@ Value nuttallwin(keel::usize N, keel::Allocator *mr)
     return out;
 }
 
-Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
+Value taylorwin(keel::usize N, int nbar, keel::f64 sll, keel::Allocator *mr)
 {
     if (sll >= 0)
         throw Error("taylorwin: sll must be negative (peak sidelobe in dB)",
@@ -156,7 +156,7 @@ Value barthannwin(keel::usize N, keel::Allocator *mr)
     return out;
 }
 
-std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
+std::pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
                              keel::Allocator *mr)
 {
     if (N == 0 || k == 0) {

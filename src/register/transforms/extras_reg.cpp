@@ -52,10 +52,10 @@ void bitrevorder_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         Value I = isRow
                     ? Value::matrix(1, n, ValueType::DOUBLE, mr)
                     : Value::matrix(n, 1, ValueType::DOUBLE, mr);
-        double *id = I.doubleDataMut();
+        keel::f64 *id = I.doubleDataMut();
         for (keel::usize i = 0; i < n; ++i) {
             // dst[bitReverse(i, bits)] = i+1 (1-based MATLAB index).
-            id[bitReverse(i, bits)] = keel::as<double>(i + 1);
+            id[bitReverse(i, bits)] = keel::as<keel::f64>(i + 1);
         }
         outs[1] = std::move(I);
     }
@@ -90,7 +90,7 @@ void cceps_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 {
     argcheck::checkNargin(args.size(), 1, 2, "cceps");
     auto *mr = ctx.engine->allocator();
-    double nd = 0.0;
+    keel::f64 nd = 0.0;
     outs[0] = cceps(args[0], &nd, mr);
     if (nargout >= 2)   // [xhat, nd] = cceps(x): samples of (circular) delay removed
         outs[1] = Value::scalar(nd, mr);

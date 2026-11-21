@@ -48,7 +48,7 @@ void iscola_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     if (args[1].numel() != 1)
         throw Error("iscola: noverlap must be a scalar",
                      0, 0, "iscola", "", "numkit:iscola:badOverlap");
-    const double novS = args[1].toScalar();
+    const keel::f64 novS = args[1].toScalar();
     if (!(novS >= 0.0))
         throw Error("iscola: noverlap must be non-negative",
                      0, 0, "iscola", "", "numkit:iscola:badOverlap");
@@ -106,16 +106,16 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     // convention uses fs = 2*pi, so f spans [0, pi] and t = centre/(2*pi).
     // The core builds the normalized axes (f = k*2*pi/nfft, t = centre in
     // samples); rescale both here so f and t honour fs.
-    double fs = 2.0 * M_PI;
+    keel::f64 fs = 2.0 * M_PI;
     if (args.size() >= 5 && !args[4].isEmpty())
         fs = args[4].toScalar();
     {
         const keel::usize nFreqs  = F.numel();
         const keel::usize nfftEff = (nFreqs > 1) ? (nFreqs - 1) * 2 : 1;
-        double *fd = F.doubleDataMut();
+        keel::f64 *fd = F.doubleDataMut();
         for (keel::usize i = 0; i < nFreqs; ++i)
-            fd[i] = keel::as<double>(i) * fs / keel::as<double>(nfftEff);
-        double *td = T.doubleDataMut();
+            fd[i] = keel::as<keel::f64>(i) * fs / keel::as<keel::f64>(nfftEff);
+        keel::f64 *td = T.doubleDataMut();
         for (keel::usize j = 0; j < T.numel(); ++j)
             td[j] /= fs;
     }
@@ -135,30 +135,30 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         // Window coefficients — replicate the core's default (hamming of
         // length floor(nx/4.5)) when none was supplied; keep in sync with
         // resolveWindow() in this TU.
-        keel::Array<double> win(mr);
+        keel::Array<keel::f64> win(mr);
         if (!window.isEmpty() && window.numel() > 0) {
             const keel::usize L = window.numel();
             win.resize(L);
             for (keel::usize i = 0; i < L; ++i) win[i] = window.elemAsDouble(i);
         } else {
             keel::usize L = std::max<keel::usize>(
-                1, keel::as<keel::usize>(std::floor(keel::as<double>(nx) / 4.5)));
+                1, keel::as<keel::usize>(std::floor(keel::as<keel::f64>(nx) / 4.5)));
             if (L > nx && nx > 0) L = nx;
             win.resize(L);
             if (L == 1) win[0] = 1.0;
             else for (keel::usize i = 0; i < L; ++i)
                 win[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (L - 1));
         }
-        double U = 0.0;
-        for (double w : win) U += w * w;
+        keel::f64 U = 0.0;
+        for (keel::f64 w : win) U += w * w;
         const keel::usize nfftEff = (R > 1) ? (R - 1) * 2 : 1;
         const bool nyquist = (nfftEff % 2 == 0);   // last bin is Nyquist
-        const double denom = fs * U;
+        const keel::f64 denom = fs * U;
         PS = Value::matrix(R, C, ValueType::DOUBLE, mr);
         const keel::c64 *sd = S.complexData();
-        double *pd = PS.doubleDataMut();
+        keel::f64 *pd = PS.doubleDataMut();
         for (keel::usize k = 0; k < R; ++k) {
-            const double c = (k == 0 || (nyquist && k == R - 1)) ? 1.0 : 2.0;
+            const keel::f64 c = (k == 0 || (nyquist && k == R - 1)) ? 1.0 : 2.0;
             for (keel::usize m = 0; m < C; ++m) {
                 const keel::c64 v = sd[m * R + k];
                 pd[m * R + k] = c * keel::norm(v) / denom;
@@ -167,11 +167,11 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
 
         if (nargout > 4) {
             const keel::usize L = win.size();
-            keel::Array<double> wt(L, mr);
-            keel::Array<double> wd(L, mr);
-            const double halfL = 0.5 * keel::as<double>(L > 0 ? L - 1 : 0);
+            keel::Array<keel::f64> wt(L, mr);
+            keel::Array<keel::f64> wd(L, mr);
+            const keel::f64 halfL = 0.5 * keel::as<keel::f64>(L > 0 ? L - 1 : 0);
             for (keel::usize i = 0; i < L; ++i)
-                wt[i] = (keel::as<double>(i) - halfL) * win[i];
+                wt[i] = (keel::as<keel::f64>(i) - halfL) * win[i];
 
             if (L <= 1) {
                 if (L == 1) wd[0] = 0.0;
@@ -179,10 +179,10 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                 wd[0] = wd[1] = win[1] - win[0];
             } else {
                 // Not-a-knot cubic spline nodal first derivatives on 0..L-1.
-                keel::Array<double> sub(L, 1.0, mr);
-                keel::Array<double> diag(L, 4.0, mr);
-                keel::Array<double> sup(L, 1.0, mr);
-                keel::Array<double> rhs(L, 0.0, mr);
+                keel::Array<keel::f64> sub(L, 1.0, mr);
+                keel::Array<keel::f64> diag(L, 4.0, mr);
+                keel::Array<keel::f64> sup(L, 1.0, mr);
+                keel::Array<keel::f64> rhs(L, 0.0, mr);
                 diag[0] = 1.0;
                 sup[0]  = 2.0;
                 rhs[0]  = -2.5 * win[0] + 2.0 * win[1] + 0.5 * win[2];
@@ -193,7 +193,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                 rhs[L - 1]  = 2.5 * win[L - 1] - 2.0 * win[L - 2] - 0.5 * win[L - 3];
 
                 for (keel::usize i = 1; i < L; ++i) {
-                    const double factor = sub[i] / diag[i - 1];
+                    const keel::f64 factor = sub[i] / diag[i - 1];
                     diag[i] -= factor * sup[i - 1];
                     rhs[i]  -= factor * rhs[i - 1];
                 }
@@ -204,23 +204,23 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
 
             FC = Value::matrix(R, C, ValueType::DOUBLE, mr);
             TC = Value::matrix(R, C, ValueType::DOUBLE, mr);
-            double *fcd = FC.doubleDataMut();
-            double *tcd = TC.doubleDataMut();
-            const double *fd = F.doubleData();
-            const double *td = T.doubleData();
-            const double *xd = args[0].doubleData();
+            keel::f64 *fcd = FC.doubleDataMut();
+            keel::f64 *tcd = TC.doubleDataMut();
+            const keel::f64 *fd = F.doubleData();
+            const keel::f64 *td = T.doubleData();
+            const keel::f64 *xd = args[0].doubleData();
             const keel::usize novEff = (noverlap == 0) ? (L / 2) : noverlap;
             const keel::usize step   = (L > novEff) ? (L - novEff) : 1;
 
             Value frameT = Value::matrix(nfftEff, 1, ValueType::DOUBLE, mr);
             Value frameD = Value::matrix(nfftEff, 1, ValueType::DOUBLE, mr);
-            double *fTd = frameT.doubleDataMut();
-            double *fDd = frameD.doubleDataMut();
+            keel::f64 *fTd = frameT.doubleDataMut();
+            keel::f64 *fDd = frameD.doubleDataMut();
 
             for (keel::usize m = 0; m < C; ++m) {
                 const keel::usize start = m * step;
                 for (keel::usize i = 0; i < L; ++i) {
-                    const double xv = xd[start + i];
+                    const keel::f64 xv = xd[start + i];
                     fTd[i] = xv * wt[i];
                     fDd[i] = xv * wd[i];
                 }
@@ -234,12 +234,12 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                 const keel::c64 *sdd_ptr = Sd.complexData();
                 for (keel::usize k = 0; k < R; ++k) {
                     const keel::c64 s_val = sd[m * R + k];
-                    const double mag2 = keel::norm(s_val);
+                    const keel::f64 mag2 = keel::norm(s_val);
                     if (mag2 > 0.0) {
                         const keel::c64 st_cs = std_ptr[k] * keel::conj(s_val);
                         const keel::c64 sd_cs = sdd_ptr[k] * keel::conj(s_val);
                         tcd[m * R + k] = td[m] + st_cs.real() / (mag2 * fs);
-                        const double f_raw = fd[k] - (sd_cs.imag() / (2.0 * M_PI * mag2)) * fs;
+                        const keel::f64 f_raw = fd[k] - (sd_cs.imag() / (2.0 * M_PI * mag2)) * fs;
                         fcd[m * R + k] = std::fmod(std::fmod(f_raw, fs) + fs, fs);
                     } else {
                         tcd[m * R + k] = td[m];
@@ -255,10 +255,10 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         const keel::usize R = S.dims().rows();
         const keel::usize C = S.dims().cols();
         Value pdb = Value::matrix(R, C, ValueType::DOUBLE, ctx.engine->allocator());
-        const double *pd = PS.doubleData();
-        double *pdb_data = pdb.doubleDataMut();
+        const keel::f64 *pd = PS.doubleData();
+        keel::f64 *pdb_data = pdb.doubleDataMut();
         for (keel::usize i = 0; i < R * C; ++i) {
-            double v = pd[i];
+            keel::f64 v = pd[i];
             if (v < 1e-15) v = 1e-15;
             pdb_data[i] = 10.0 * std::log10(v);
         }
@@ -325,7 +325,7 @@ static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
 
 // Optional positional `fs` between `x` and any NV-pairs. Returns the
 // index where NV-pairs start (1 if no fs, 2 if fs consumed).
-static keel::usize parseOptionalFs(keel::ArrayRef<Value> args, bool &fsGiven, double &fs)
+static keel::usize parseOptionalFs(keel::ArrayRef<Value> args, bool &fsGiven, keel::f64 &fs)
 {
     fsGiven = false;
     fs = 1.0;
@@ -342,35 +342,35 @@ static keel::usize parseOptionalFs(keel::ArrayRef<Value> args, bool &fsGiven, do
 // `[s, f, ...] = stft(...)`. The angular spacing is `f_scale / NFFT`
 // where `f_scale = fs` when given, else `2*pi` (radians/sample default).
 static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
-                           bool fsGiven, double fs,
+                           bool fsGiven, keel::f64 fs,
                            keel::Allocator *mr)
 {
-    const double f_scale = fsGiven ? fs : (2.0 * M_PI);
-    const double df      = f_scale / keel::as<double>(NFFT);
+    const keel::f64 f_scale = fsGiven ? fs : (2.0 * M_PI);
+    const keel::f64 df      = f_scale / keel::as<keel::f64>(NFFT);
     if (range == "onesided") {
         const keel::usize nF = NFFT / 2 + 1;
         Value f = Value::matrix(nF, 1, ValueType::DOUBLE, mr);
-        double *fd = f.doubleDataMut();
+        keel::f64 *fd = f.doubleDataMut();
         for (keel::usize k = 0; k < nF; ++k)
-            fd[k] = keel::as<double>(k) * df;
+            fd[k] = keel::as<keel::f64>(k) * df;
         return f;
     }
     if (range == "centered") {
         Value f = Value::matrix(NFFT, 1, ValueType::DOUBLE, mr);
-        double *fd = f.doubleDataMut();
+        keel::f64 *fd = f.doubleDataMut();
         // Even N: bins are [-N/2+1, ..., N/2] (Nyquist at end).
         // Odd  N: bins are [-(N-1)/2, ..., (N-1)/2].
         const long long Nll = keel::as<long long>(NFFT);
         const long long lo  = (Nll % 2 == 0) ? -(Nll / 2 - 1) : -((Nll - 1) / 2);
         for (long long k = 0; k < Nll; ++k)
-            fd[k] = keel::as<double>(lo + k) * df;
+            fd[k] = keel::as<keel::f64>(lo + k) * df;
         return f;
     }
     // twosided: bins 0, 1, ..., N-1.
     Value f = Value::matrix(NFFT, 1, ValueType::DOUBLE, mr);
-    double *fd = f.doubleDataMut();
+    keel::f64 *fd = f.doubleDataMut();
     for (keel::usize k = 0; k < NFFT; ++k)
-        fd[k] = keel::as<double>(k) * df;
+        fd[k] = keel::as<keel::f64>(k) * df;
     return f;
 }
 
@@ -378,15 +378,15 @@ static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
 // each frame's centre at sample `(M/2 + k*hop)` (0-based), scaled by
 // `1/fs_t` where `fs_t = fs` if given else 1 (samples).
 static Value buildTimeAxisStft(keel::usize M, keel::usize hop, keel::usize K,
-                               bool fsGiven, double fs,
+                               bool fsGiven, keel::f64 fs,
                                keel::Allocator *mr)
 {
-    const double tscale = fsGiven ? fs : 1.0;
-    const double half_M = 0.5 * keel::as<double>(M);
+    const keel::f64 tscale = fsGiven ? fs : 1.0;
+    const keel::f64 half_M = 0.5 * keel::as<keel::f64>(M);
     Value t = Value::matrix(K, 1, ValueType::DOUBLE, mr);
-    double *td = t.doubleDataMut();
+    keel::f64 *td = t.doubleDataMut();
     for (keel::usize k = 0; k < K; ++k)
-        td[k] = (half_M + keel::as<double>(k * hop)) / tscale;
+        td[k] = (half_M + keel::as<keel::f64>(k * hop)) / tscale;
     return t;
 }
 
@@ -404,7 +404,7 @@ void stft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     auto *mr = ctx.engine->allocator();
 
     bool fsGiven = false;
-    double fs    = 1.0;
+    keel::f64 fs    = 1.0;
     const keel::usize nvStart = parseOptionalFs(args, fsGiven, fs);
 
     Value window           = Value();
@@ -437,7 +437,7 @@ void istft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     auto *mr = ctx.engine->allocator();
 
     bool fsGiven = false;
-    double fs    = 1.0;
+    keel::f64 fs    = 1.0;
     const keel::usize nvStart = parseOptionalFs(args, fsGiven, fs);
 
     Value window           = Value();
@@ -450,11 +450,11 @@ void istft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     if (nargout > 1) {
         // t = (0 : Nout-1) / fs_t. Reconstructed length is in outs[0]'s rows.
         const keel::usize Nout = outs[0].dims().rows();
-        const double tscale    = fsGiven ? fs : 1.0;
+        const keel::f64 tscale    = fsGiven ? fs : 1.0;
         Value t = Value::matrix(Nout, 1, ValueType::DOUBLE, mr);
-        double *td = t.doubleDataMut();
+        keel::f64 *td = t.doubleDataMut();
         for (keel::usize i = 0; i < Nout; ++i)
-            td[i] = keel::as<double>(i) / tscale;
+            td[i] = keel::as<keel::f64>(i) / tscale;
         outs[1] = std::move(t);
     }
 }

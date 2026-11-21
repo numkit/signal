@@ -42,7 +42,7 @@ namespace {
 keel::Array<keel::c64> orderRootsCanonical(keel::Array<keel::c64> v, bool byAbsReal,
                                     bool keyDesc, bool negFirst)
 {
-    keel::Array<std::pair<double, keel::c64>> uppers;
+    keel::Array<std::pair<keel::f64, keel::c64>> uppers;
     keel::Array<keel::c64> reals;
     keel::Array<keel::u8> used(v.size(), 0);
     for (keel::usize i = 0; i < v.size(); ++i) {
@@ -52,7 +52,7 @@ keel::Array<keel::c64> orderRootsCanonical(keel::Array<keel::c64> v, bool byAbsR
             if (keel::abs(v[j] - keel::conj(v[i])) <= 1e-10 * (1.0 + keel::abs(v[i]))) {
                 used[i] = used[j] = 1;
                 const keel::c64 up = v[i].imag() > 0.0 ? v[i] : v[j];
-                const double key = byAbsReal ? keel::abs(up.real()) : up.imag();
+                const keel::f64 key = byAbsReal ? keel::abs(up.real()) : up.imag();
                 uppers.emplace_back(key, up);
                 break;
             }
@@ -89,10 +89,10 @@ keel::Array<keel::c64> readComplexVec(const Value &v)
     return out;
 }
 
-keel::Array<double> readVec(const Value &v)
+keel::Array<keel::f64> readVec(const Value &v)
 {
     const keel::usize n = v.numel();
-    keel::Array<double> out(n);
+    keel::Array<keel::f64> out(n);
     for (keel::usize i = 0; i < n; ++i) out[i] = v.elemAsDouble(i);
     return out;
 }
@@ -111,10 +111,10 @@ Value packComplexCol(keel::ArrayRef<keel::c64> v, keel::Allocator *mr)
     return out;
 }
 
-Value packDoubleRow(keel::ArrayRef<double> v, keel::Allocator *mr)
+Value packDoubleRow(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
-    if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(double));
+    if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
     return out;
 }
 
@@ -132,7 +132,7 @@ buttap(int N, keel::Allocator *mr)
     keel::Array<keel::c64> z;  // no zeros
     keel::Array<keel::c64> p(N);
     for (int k = 1; k <= N; ++k) {
-        const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N) + 0.5 * M_PI;
+        const keel::f64 theta = M_PI * (2.0 * k - 1.0) / (2.0 * N) + 0.5 * M_PI;
         p[k - 1] = keel::exp(keel::c64(0.0, theta));
     }
     p = orderRootsCanonical(std::move(p), /*byAbsReal=*/false,
@@ -143,25 +143,25 @@ buttap(int N, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value, Value>
-cheb1ap(int N, double Rp, keel::Allocator *mr)
+cheb1ap(int N, keel::f64 Rp, keel::Allocator *mr)
 {
     // Chebyshev type I prototype. Passband ripple Rp dB.
     // ε² = 10^(Rp/10) - 1.
     // Poles: pₖ = -sinh(μ) sin(θₖ) + j cosh(μ) cos(θₖ),
     //   where μ = asinh(1/ε)/N, θₖ = π(2k-1)/(2N).
-    const double eps = std::sqrt(std::pow(10.0, Rp / 10.0) - 1.0);
-    const double mu = std::asinh(1.0 / eps) / keel::as<double>(N);
+    const keel::f64 eps = std::sqrt(std::pow(10.0, Rp / 10.0) - 1.0);
+    const keel::f64 mu = std::asinh(1.0 / eps) / keel::as<keel::f64>(N);
     keel::Array<keel::c64> z;
     keel::Array<keel::c64> p(N);
     for (int k = 1; k <= N; ++k) {
-        const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
+        const keel::f64 theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
         p[k - 1] = keel::c64(-std::sinh(mu) * std::sin(theta),
                       std::cosh(mu) * std::cos(theta));
     }
     // Gain: prod(-poles) / sqrt(1+ε²)  [for odd N: prod(-poles)]
     keel::c64 kc(1.0, 0.0);
     for (auto &pp : p) kc *= -pp;
-    double k = kc.real();
+    keel::f64 k = kc.real();
     if ((N % 2) == 0) k /= std::sqrt(1.0 + eps * eps);
     return std::make_tuple(packComplexCol(z, mr),
                            packComplexCol(p, mr),
@@ -177,15 +177,15 @@ namespace ellip_detail {
 
 // Complete elliptic integral K(m) via arithmetic-geometric mean.
 // m is the parameter (m = k², 0 <= m <= 1).
-inline double ellipKm(double m)
+inline keel::f64 ellipKm(keel::f64 m)
 {
-    if (m >= 1.0) return std::numeric_limits<double>::infinity();
+    if (m >= 1.0) return std::numeric_limits<keel::f64>::infinity();
     if (m <= 0.0) return M_PI / 2.0;
-    double a = 1.0;
-    double b = std::sqrt(1.0 - m);
+    keel::f64 a = 1.0;
+    keel::f64 b = std::sqrt(1.0 - m);
     for (int i = 0; i < 64; ++i) {
-        const double an = 0.5 * (a + b);
-        const double bn = std::sqrt(a * b);
+        const keel::f64 an = 0.5 * (a + b);
+        const keel::f64 bn = std::sqrt(a * b);
         if (keel::abs(an - bn) < 1e-17 * an) { a = an; break; }
         a = an; b = bn;
     }
@@ -193,37 +193,37 @@ inline double ellipKm(double m)
 }
 
 // Jacobi sn/cn/dn at REAL u with REAL modulus k (m = k²).
-struct SnCnDn { double sn, cn, dn; };
-inline SnCnDn ellipjReal(double u, double k)
+struct SnCnDn { keel::f64 sn, cn, dn; };
+inline SnCnDn ellipjReal(keel::f64 u, keel::f64 k)
 {
-    const double m = k * k;
+    const keel::f64 m = k * k;
     if (m == 0.0) return { std::sin(u), std::cos(u), 1.0 };
     if (m == 1.0) {
-        const double t  = std::tanh(u);
-        const double s  = 1.0 / std::cosh(u);
+        const keel::f64 t  = std::tanh(u);
+        const keel::f64 s  = 1.0 / std::cosh(u);
         return { t, s, s };
     }
     constexpr int kMax = 16;
-    double a[kMax + 1], c[kMax + 1];
+    keel::f64 a[kMax + 1], c[kMax + 1];
     a[0] = 1.0;
-    double b = std::sqrt(1.0 - m);
+    keel::f64 b = std::sqrt(1.0 - m);
     c[0] = std::sqrt(m);
     int n = 0;
     for (int i = 1; i <= kMax; ++i) {
-        const double an  = 0.5 * (a[i - 1] + b);
-        const double bn  = std::sqrt(a[i - 1] * b);
-        const double cn_ = 0.5 * (a[i - 1] - b);
+        const keel::f64 an  = 0.5 * (a[i - 1] + b);
+        const keel::f64 bn  = std::sqrt(a[i - 1] * b);
+        const keel::f64 cn_ = 0.5 * (a[i - 1] - b);
         a[i] = an;
         c[i] = cn_;
         b    = bn;
         n    = i;
         if (keel::abs(cn_) < 1e-15 * keel::abs(an)) break;
     }
-    double phi = std::ldexp(a[n] * u, n);
+    keel::f64 phi = std::ldexp(a[n] * u, n);
     for (int i = n; i >= 1; --i) {
         phi = 0.5 * (phi + std::asin((c[i] / a[i]) * std::sin(phi)));
     }
-    const double sn = std::sin(phi);
+    const keel::f64 sn = std::sin(phi);
     return { sn, std::cos(phi), std::sqrt(1.0 - m * sn * sn) };
 }
 
@@ -231,10 +231,10 @@ inline SnCnDn ellipjReal(double u, double k)
 // absolute units (range [0, K(k)] for z in [0, 1]). Bisection -- robust
 // even when k is very close to 1 (where Newton diverges because sn
 // saturates at ±1 and cn*dn -> 0).
-inline double asnReal(double z, double k)
+inline keel::f64 asnReal(keel::f64 z, keel::f64 k)
 {
     if (z == 0.0) return 0.0;
-    const double sign = (z < 0.0) ? -1.0 : 1.0;
+    const keel::f64 sign = (z < 0.0) ? -1.0 : 1.0;
     z = keel::abs(z);
     if (z >= 1.0) {
         // sn = 1 at u = K(k); for z > 1 saturate there.
@@ -244,10 +244,10 @@ inline double asnReal(double z, double k)
     if (k >= 1.0 - 1e-12) {
         return sign * std::atanh(z);
     }
-    const double Kval = ellipKm(k * k);
-    double lo = 0.0, hi = Kval;
+    const keel::f64 Kval = ellipKm(k * k);
+    keel::f64 lo = 0.0, hi = Kval;
     for (int it = 0; it < 200; ++it) {
-        const double mid = 0.5 * (lo + hi);
+        const keel::f64 mid = 0.5 * (lo + hi);
         auto j = ellipjReal(mid, k);
         if (j.sn < z) lo = mid;
         else          hi = mid;
@@ -259,17 +259,17 @@ inline double asnReal(double z, double k)
 // Solve degree equation for k given (N, k1):
 //   K(k')/K(k) = (1/N) * K(k1')/K(k1)
 // K(k')/K(k) is monotonically DECREASING in k on (0, 1), so bisect.
-inline double ellipdeg(int N, double k1)
+inline keel::f64 ellipdeg(int N, keel::f64 k1)
 {
-    const double K1  = ellipKm(k1 * k1);
-    const double K1p = ellipKm(1.0 - k1 * k1);
-    const double target = K1p / K1 / keel::as<double>(N);
-    double lo = 1e-15, hi = 1.0 - 1e-15;
+    const keel::f64 K1  = ellipKm(k1 * k1);
+    const keel::f64 K1p = ellipKm(1.0 - k1 * k1);
+    const keel::f64 target = K1p / K1 / keel::as<keel::f64>(N);
+    keel::f64 lo = 1e-15, hi = 1.0 - 1e-15;
     for (int it = 0; it < 200; ++it) {
-        const double mid = 0.5 * (lo + hi);
-        const double Kmid  = ellipKm(mid * mid);
-        const double Kpmid = ellipKm(1.0 - mid * mid);
-        const double ratio = Kpmid / Kmid;
+        const keel::f64 mid = 0.5 * (lo + hi);
+        const keel::f64 Kmid  = ellipKm(mid * mid);
+        const keel::f64 Kpmid = ellipKm(1.0 - mid * mid);
+        const keel::f64 ratio = Kpmid / Kmid;
         if (ratio > target) lo = mid;
         else                hi = mid;
         if (hi - lo < 1e-15 * (1.0 + keel::abs(mid))) break;
@@ -285,14 +285,14 @@ inline double ellipdeg(int N, double k1)
 //   dn(x+jy, k) = (dx*cy*dy - j*k^2*sx*cx*sy) / D
 //   D = cy^2 + k^2*sx^2*sy^2
 // where (sx,cx,dx) = ellipjReal(x, k) and (sy,cy,dy) = ellipjReal(y, k').
-inline keel::c64 cdComplex(keel::c64 uc, double k)
+inline keel::c64 cdComplex(keel::c64 uc, keel::f64 k)
 {
-    const double x = uc.real();
-    const double y = uc.imag();
-    const double kp = std::sqrt(1.0 - k * k);
+    const keel::f64 x = uc.real();
+    const keel::f64 y = uc.imag();
+    const keel::f64 kp = std::sqrt(1.0 - k * k);
     const auto X = ellipjReal(x, k);
     const auto Y = ellipjReal(y, kp);
-    const double D = Y.cn * Y.cn + k * k * X.sn * X.sn * Y.sn * Y.sn;
+    const keel::f64 D = Y.cn * Y.cn + k * k * X.sn * X.sn * Y.sn * Y.sn;
     if (keel::abs(D) < 1e-300) return keel::c64(0.0, 0.0);
     keel::c64 cn(  X.cn * Y.cn / D,                 -X.sn * X.dn * Y.sn * Y.dn / D);
     keel::c64 dn(  X.dn * Y.cn * Y.dn / D,          -k * k * X.sn * X.cn * Y.sn / D);
@@ -320,7 +320,7 @@ inline keel::c64 cdComplex(keel::c64 uc, double k)
 //   7. gain = real(prod(-poles) / prod(-zeros)),
 //      divide by sqrt(1+eps^2) when N is even.
 std::tuple<Value, Value, Value>
-ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
+ellipap(int N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr)
 {
     if (N <= 0)
         return std::make_tuple(packComplexCol(keel::ArrayRef<keel::c64>{}, mr),
@@ -331,13 +331,13 @@ ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
                                packComplexCol(keel::ArrayRef<keel::c64>{}, mr),
                                Value::scalar(1.0, mr));
 
-    const double eps2  = std::pow(10.0, Rp / 10.0) - 1.0;
-    const double eps   = std::sqrt(eps2);
-    const double Astop = std::pow(10.0, Rs / 10.0) - 1.0;
-    const double k1    = eps / std::sqrt(Astop);
-    const double k     = ellip_detail::ellipdeg(N, k1);
-    const double K     = ellip_detail::ellipKm(k * k);
-    const double k1p   = std::sqrt(1.0 - k1 * k1);
+    const keel::f64 eps2  = std::pow(10.0, Rp / 10.0) - 1.0;
+    const keel::f64 eps   = std::sqrt(eps2);
+    const keel::f64 Astop = std::pow(10.0, Rs / 10.0) - 1.0;
+    const keel::f64 k1    = eps / std::sqrt(Astop);
+    const keel::f64 k     = ellip_detail::ellipdeg(N, k1);
+    const keel::f64 K     = ellip_detail::ellipKm(k * k);
+    const keel::f64 k1p   = std::sqrt(1.0 - k1 * k1);
     // v0: solve sn(j*v_abs, k1) = j/eps  via imaginary-arg identity:
     //   sn(j*v, k1) = j * sn(v, k1') / cn(v, k1')
     // setting that = j/eps gives sn(v, k1') = 1/sqrt(1+eps^2).
@@ -346,10 +346,10 @@ ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
     //   v0_norm = asn(arg, k1') / N / K(k1)
     // Multiplying by K(k) brings v0 to absolute K(k)-units, which is
     // what the pole formulas below expect.
-    const double K1 = ellip_detail::ellipKm(k1 * k1);
-    const double v0 =
+    const keel::f64 K1 = ellip_detail::ellipKm(k1 * k1);
+    const keel::f64 v0 =
         ellip_detail::asnReal(1.0 / std::sqrt(1.0 + eps2), k1p)
-        * K / (keel::as<double>(N) * K1);
+        * K / (keel::as<keel::f64>(N) * K1);
 
     const int L = N / 2;
     keel::Array<keel::c64> zeros, poles;
@@ -357,10 +357,10 @@ ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
     poles.reserve(N);
 
     for (int i = 1; i <= L; ++i) {
-        const double ui_abs = (2.0 * i - 1.0) / N * K;
+        const keel::f64 ui_abs = (2.0 * i - 1.0) / N * K;
         const auto Z = ellip_detail::ellipjReal(ui_abs, k);
-        const double zeta = Z.cn / Z.dn;       // cd(ui_abs, k)
-        const double zim = 1.0 / (k * zeta);   // 1/(k*cd)
+        const keel::f64 zeta = Z.cn / Z.dn;       // cd(ui_abs, k)
+        const keel::f64 zim = 1.0 / (k * zeta);   // 1/(k*cd)
         zeros.emplace_back(0.0,  zim);
         zeros.emplace_back(0.0, -zim);
 
@@ -372,9 +372,9 @@ ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
     if ((N % 2) == 1) {
         // Odd N: real pole = j * sn(j*v0, k) = j * j * sn(v0, k')/cn(v0, k')
         //       = -sn(v0, k')/cn(v0, k')   (negative real)
-        const double kp = std::sqrt(1.0 - k * k);
+        const keel::f64 kp = std::sqrt(1.0 - k * k);
         const auto V = ellip_detail::ellipjReal(v0, kp);
-        const double real_pole = -V.sn / V.cn;
+        const keel::f64 real_pole = -V.sn / V.cn;
         poles.emplace_back(real_pole, 0.0);
     }
 
@@ -389,7 +389,7 @@ ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
     keel::c64 num(1.0, 0.0), den(1.0, 0.0);
     for (auto &p : poles) num *= -p;
     for (auto &z : zeros) den *= -z;
-    double gain = (keel::abs(den) > 0) ? (num / den).real() : num.real();
+    keel::f64 gain = (keel::abs(den) > 0) ? (num / den).real() : num.real();
     if ((N % 2) == 0) gain /= std::sqrt(1.0 + eps2);
 
     return std::make_tuple(packComplexCol(zeros, mr),
@@ -398,19 +398,19 @@ ellipap(int N, double Rp, double Rs, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value, Value>
-cheb2ap(int N, double Rs, keel::Allocator *mr)
+cheb2ap(int N, keel::f64 Rs, keel::Allocator *mr)
 {
     // Chebyshev type II ("inverse"): zeros on imaginary axis.
     // Stopband attenuation Rs dB.
     // δ = 1/√(10^(Rs/10) - 1)
     // μ = asinh(1/δ)/N
     // Type-I poles (then inverted to type-II), zeros on imag axis.
-    const double delta = 1.0 / std::sqrt(std::pow(10.0, Rs / 10.0) - 1.0);
-    const double mu = std::asinh(1.0 / delta) / keel::as<double>(N);
+    const keel::f64 delta = 1.0 / std::sqrt(std::pow(10.0, Rs / 10.0) - 1.0);
+    const keel::f64 mu = std::asinh(1.0 / delta) / keel::as<keel::f64>(N);
 
     keel::Array<keel::c64> p(N), z;
     for (int k = 1; k <= N; ++k) {
-        const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
+        const keel::f64 theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
         // Type-I pole, then invert.
         const keel::c64 p1(-std::sinh(mu) * std::sin(theta),
                      std::cosh(mu) * std::cos(theta));
@@ -420,8 +420,8 @@ cheb2ap(int N, double Rs, keel::Allocator *mr)
     // corresponds to a zero at infinity — drops out for odd N at the
     // centre k = (N+1)/2).
     for (int k = 1; k <= N; ++k) {
-        const double theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
-        const double c = std::cos(theta);
+        const keel::f64 theta = M_PI * (2.0 * k - 1.0) / (2.0 * N);
+        const keel::f64 c = std::cos(theta);
         if (keel::abs(c) < 1e-12) continue;
         z.push_back(keel::c64(0.0, 1.0 / c));
     }
@@ -432,7 +432,7 @@ cheb2ap(int N, double Rs, keel::Allocator *mr)
     keel::c64 num(1.0, 0.0), den(1.0, 0.0);
     for (auto &pp : p) num *= -pp;
     for (auto &zz : z) den *= -zz;
-    const double k = (keel::abs(den) > 0)
+    const keel::f64 k = (keel::abs(den) > 0)
                      ? (num / den).real() : num.real();
     return std::make_tuple(packComplexCol(z, mr),
                            packComplexCol(p, mr),
@@ -520,7 +520,7 @@ besselap(int N, keel::Allocator *mr)
 // ════════════════════════════════════════════════════════════════════
 
 std::tuple<Value, Value, Value>
-lp2lp(const Value &z, const Value &p, double k, double Wo, keel::Allocator *mr)
+lp2lp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::Allocator *mr)
 {
     // s → s/Wo: poles and zeros scale by Wo; gain scales by Wo^(N-M).
     auto zv = readComplexVec(z);
@@ -529,14 +529,14 @@ lp2lp(const Value &z, const Value &p, double k, double Wo, keel::Allocator *mr)
     const int N = keel::as<int>(pv.size());
     for (auto &zz : zv) zz *= Wo;
     for (auto &pp : pv) pp *= Wo;
-    const double kn = k * std::pow(Wo, N - M);
+    const keel::f64 kn = k * std::pow(Wo, N - M);
     return std::make_tuple(packComplexCol(zv, mr),
                            packComplexCol(pv, mr),
                            Value::scalar(kn, mr));
 }
 
 std::tuple<Value, Value, Value>
-lp2hp(const Value &z, const Value &p, double k, double Wo, keel::Allocator *mr)
+lp2hp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::Allocator *mr)
 {
     // s → Wo/s: each zero/pole becomes Wo/old. Add (N-M) zeros at 0.
     auto zv = readComplexVec(z);
@@ -548,7 +548,7 @@ lp2hp(const Value &z, const Value &p, double k, double Wo, keel::Allocator *mr)
     for (auto &pp : pv) { Pp *= -pp; pp = Wo / pp; }
     // Gain: k * prod(-z) / prod(-p)  (these are the constant terms of
     // the original prototype; flips sign when we substitute Wo/s).
-    const double kn = k * (Pz / Pp).real();
+    const keel::f64 kn = k * (Pz / Pp).real();
     // Add zeros at origin to balance the pole count.
     for (int i = 0; i < N - M; ++i) zv.push_back(keel::c64(0.0, 0.0));
     return std::make_tuple(packComplexCol(zv, mr),
@@ -557,7 +557,7 @@ lp2hp(const Value &z, const Value &p, double k, double Wo, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value, Value>
-lp2bp(const Value &z, const Value &p, double k, double Wo, double Bw, keel::Allocator *mr)
+lp2bp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::f64 Bw, keel::Allocator *mr)
 {
     // s → (s² + Wo²) / (Bw·s). Each prototype zero/pole maps to TWO
     // new zeros/poles, plus M new zeros at origin.
@@ -578,14 +578,14 @@ lp2bp(const Value &z, const Value &p, double k, double Wo, double Bw, keel::Allo
     for (auto &pp : pv) { auto [r1, r2] = mapPair(pp); np.push_back(r1); np.push_back(r2); }
     // Add (N - M) zeros at origin.
     for (int i = 0; i < N - M; ++i) nz.push_back(keel::c64(0.0, 0.0));
-    const double kn = k * std::pow(Bw, N - M);
+    const keel::f64 kn = k * std::pow(Bw, N - M);
     return std::make_tuple(packComplexCol(nz, mr),
                            packComplexCol(np, mr),
                            Value::scalar(kn, mr));
 }
 
 std::tuple<Value, Value, Value>
-lp2bs(const Value &z, const Value &p, double k, double Wo, double Bw, keel::Allocator *mr)
+lp2bs(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::f64 Bw, keel::Allocator *mr)
 {
     // s → Bw·s / (s² + Wo²). Each prototype root maps to two new
     // roots; M new zeros at ±jWo from finite-zero substitution.
@@ -612,7 +612,7 @@ lp2bs(const Value &z, const Value &p, double k, double Wo, double Bw, keel::Allo
         nz.push_back(keel::c64(0.0,  Wo));
         nz.push_back(keel::c64(0.0, -Wo));
     }
-    const double kn = k * (Pz / Pp).real();
+    const keel::f64 kn = k * (Pz / Pp).real();
     return std::make_tuple(packComplexCol(nz, mr),
                            packComplexCol(np, mr),
                            Value::scalar(kn, mr));
@@ -623,7 +623,7 @@ lp2bs(const Value &z, const Value &p, double k, double Wo, double Bw, keel::Allo
 // ════════════════════════════════════════════════════════════════════
 
 std::tuple<Value, Value>
-bilinear(const Value &b, const Value &a, double fs, double fp, keel::Allocator *mr)
+bilinear(const Value &b, const Value &a, keel::f64 fs, keel::f64 fp, keel::Allocator *mr)
 {
     // Standard bilinear: substitute s ↔ 2·fs·(z-1)/(z+1) into b(s)/a(s).
     // With prewarp frequency fp, scale fs to preserve the response at fp.
@@ -635,7 +635,7 @@ bilinear(const Value &b, const Value &a, double fs, double fp, keel::Allocator *
         return std::make_tuple(packDoubleRow({}, mr),
                                packDoubleRow({}, mr));
 
-    double fsEff = fs;
+    keel::f64 fsEff = fs;
     if (fp > 0.0) {
         // Prewarp: choose the bilinear scale so the analog response at fp
         // maps EXACTLY onto the digital response at fp. MATLAB's scale is
@@ -643,25 +643,25 @@ bilinear(const Value &b, const Value &a, double fs, double fp, keel::Allocator *
         // Since K is formed below as 2·fsEff, fsEff = π·fp / tan(π·fp/fs)
         //   = Wp / (2·tan(Wp/(2·fs))),  Wp = 2π·fp.
         // (The previous form omitted the /2, double-scaling K by 2×.)
-        const double Wp = 2.0 * M_PI * fp;
+        const keel::f64 Wp = 2.0 * M_PI * fp;
         fsEff = Wp / (2.0 * std::tan(Wp / (2.0 * fs)));
     }
-    const double K = 2.0 * fsEff;
+    const keel::f64 K = 2.0 * fsEff;
 
     // Compose (z+1)^Na * b(K(z-1)/(z+1)) and (z+1)^Nb * a(K(z-1)/(z+1)),
     // then divide both by (z+1)^max so the digital coefficients have
     // matching length.
     const int M = std::max(Na, Nb);
-    auto subst = [&](keel::ArrayRef<double> c, int deg, int order) {
+    auto subst = [&](keel::ArrayRef<keel::f64> c, int deg, int order) {
         // Build poly in z. deg = original degree of c.
         // (z+1)^order is multiplied out, then for each c[i] we add
         // c[i] * K^i * (z-1)^i * (z+1)^(order-i).
-        keel::Array<double> r(order + 1, 0.0, mr);
+        keel::Array<keel::f64> r(order + 1, 0.0, mr);
         // Helper: polynomial power (z+a)^p where a = ±1.
-        auto polyPow = [mr](double a, int p) {
-            keel::Array<double> r({1.0}, mr);
+        auto polyPow = [mr](keel::f64 a, int p) {
+            keel::Array<keel::f64> r({1.0}, mr);
             for (int i = 0; i < p; ++i) {
-                keel::Array<double> nr(r.size() + 1, 0.0, mr);
+                keel::Array<keel::f64> nr(r.size() + 1, 0.0, mr);
                 for (keel::usize j = 0; j < r.size(); ++j) {
                     nr[j]     += r[j];
                     nr[j + 1] += a * r[j];
@@ -670,27 +670,27 @@ bilinear(const Value &b, const Value &a, double fs, double fp, keel::Allocator *
             }
             return r;
         };
-        keel::Array<double> Kpow(deg + 1, mr);
+        keel::Array<keel::f64> Kpow(deg + 1, mr);
         Kpow[0] = 1.0;
         for (int i = 1; i <= deg; ++i) Kpow[i] = Kpow[i - 1] * K;
         for (int i = 0; i <= deg; ++i) {
             const auto pa = polyPow(-1.0, i);          // (z-1)^i
             const auto pb = polyPow( 1.0, order - i);  // (z+1)^(order-i)
             // Convolve pa, pb, then add c[i]*Kpow[i] * conv to r.
-            keel::Array<double> conv(pa.size() + pb.size() - 1, 0.0, mr);
+            keel::Array<keel::f64> conv(pa.size() + pb.size() - 1, 0.0, mr);
             for (keel::usize j = 0; j < pa.size(); ++j)
                 for (keel::usize k = 0; k < pb.size(); ++k)
                     conv[j + k] += pa[j] * pb[k];
-            const double scale = c[deg - i] * Kpow[i];
+            const keel::f64 scale = c[deg - i] * Kpow[i];
             for (keel::usize j = 0; j < conv.size(); ++j) r[j] += scale * conv[j];
         }
         return r;
     };
 
-    keel::Array<double> Bd = subst(bv, Nb, M);
-    keel::Array<double> Ad = subst(av, Na, M);
+    keel::Array<keel::f64> Bd = subst(bv, Nb, M);
+    keel::Array<keel::f64> Ad = subst(av, Na, M);
     // Normalise so Ad[0] = 1 (matches MATLAB convention).
-    const double a0 = Ad.empty() ? 1.0 : Ad[0];
+    const keel::f64 a0 = Ad.empty() ? 1.0 : Ad[0];
     if (keel::abs(a0) > 1e-300) {
         for (auto &x : Bd) x /= a0;
         for (auto &x : Ad) x /= a0;
@@ -721,7 +721,7 @@ namespace {
 
 // Horner evaluation of a real polynomial p (coefficients high → low) at
 // a complex point.
-[[maybe_unused]] inline keel::c64 hornerReal(keel::ArrayRef<double> p, keel::c64 x) {
+[[maybe_unused]] inline keel::c64 hornerReal(keel::ArrayRef<keel::f64> p, keel::c64 x) {
     keel::c64 r(0.0, 0.0);
     for (auto c : p) r = r * x + keel::c64(c, 0.0);
     return r;
@@ -753,13 +753,13 @@ void impinvar_argcheck(const Value &b, const Value &a)
 } // anonymous
 
 std::tuple<Value, Value>
-impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Allocator *mr)
+impinvar(const Value &b, const Value &a, keel::f64 fs, keel::f64 /*tol*/, keel::Allocator *mr)
 {
     impinvar_argcheck(b, a);
     auto bv = readVec(b);
     auto av = readVec(a);
     const int N = keel::as<int>(av.size()) - 1;
-    const double T = 1.0 / fs;
+    const keel::f64 T = 1.0 / fs;
 
     // 1) Roots of a → analog poles.
     Value pV = ::numkit::builtin::roots(a, mr);
@@ -781,7 +781,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
 
     // Taylor coefficients of a real polynomial (high→low) about s = p:
     //   t[j] = P^{(j)}(p)/j!  (repeated synthetic division by (s - p)).
-    auto taylorAbout = [mr](keel::ArrayRef<double> cHL, keel::c64 p) {
+    auto taylorAbout = [mr](keel::ArrayRef<keel::f64> cHL, keel::c64 p) {
         keel::Array<keel::c64> c(cHL.size(), mr);
         for (keel::usize i = 0; i < cHL.size(); ++i) c[i] = keel::c64(cHL[i], 0.0);
         keel::Array<keel::c64> t(mr);
@@ -803,7 +803,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
     //    exact: an m-fold root of a is a SIMPLE root of a^{(m-1)}, so
     //    s -= a^{(m-1)}(s)/a^{(m)}(s) = s - t_{m-1}/(m·t_m) converges cleanly
     //    (→ exactly -1 for (s+1)³), which also makes a_d / residues exact.
-    const double ptol = 1e-3;
+    const keel::f64 ptol = 1e-3;
     auto samePole = [&](keel::c64 q, keel::c64 p) {
         return keel::abs(q - p) <= ptol * std::max(1.0, keel::abs(p));
     };
@@ -816,12 +816,12 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
             keel::c64 sum = pv[k]; int m = 1; used[k] = 1;
             for (int j = k + 1; j < N; ++j)
                 if (!used[j] && samePole(pv[j], pv[k])) { used[j] = 1; sum += pv[j]; ++m; }
-            keel::c64 p = sum / double(m);                  // centroid = true pole
+            keel::c64 p = sum / keel::f64(m);                  // centroid = true pole
             if (m >= 2) {                            // Newton-refine on a^{(m-1)}
                 for (int it = 0; it < 12; ++it) {
                     const keel::Array<keel::c64> t = taylorAbout(av, p);
                     if ((keel::usize)m >= t.size()) break;
-                    const keel::c64 den = double(m) * t[m];
+                    const keel::c64 den = keel::f64(m) * t[m];
                     if (keel::abs(den) < 1e-300) break;
                     const keel::c64 step = t[m - 1] / den;
                     p -= step;
@@ -854,11 +854,11 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
         const keel::Array<keel::c64> &Nm = Npoly[m];
         keel::Array<keel::c64> s(Nm.size() + 1, keel::c64(0.0, 0.0), mr);   // (1-w)N_m' + m·N_m
         for (keel::usize i = 1; i < Nm.size(); ++i) {          // N_m'(w): w^i → i·w^{i-1}
-            const keel::c64 d = double(i) * Nm[i];
+            const keel::c64 d = keel::f64(i) * Nm[i];
             s[i - 1] += d;                                // ·1
             s[i]     += -d;                               // ·(-w)
         }
-        for (keel::usize i = 0; i < Nm.size(); ++i) s[i] += double(m) * Nm[i];
+        for (keel::usize i = 0; i < Nm.size(); ++i) s[i] += keel::f64(m) * Nm[i];
         keel::Array<keel::c64> Nm1(s.size() + 1, keel::c64(0.0, 0.0), mr);  // · w (shift)
         for (keel::usize i = 0; i < s.size(); ++i) Nm1[i + 1] = s[i];
         Npoly[m + 1] = std::move(Nm1);
@@ -895,7 +895,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
 
         for (int m = 1; m <= M; ++m) {
             const keel::c64 rm = cc[M - m];
-            double fact = 1.0;                 // (m-1)!
+            keel::f64 fact = 1.0;                 // (m-1)!
             for (int q = 2; q < m; ++q) fact *= q;
             const keel::c64 scale = rm * std::pow(T, m) / fact;
             // N_m(α z⁻¹): w^i → α^i z⁻ⁱ.
@@ -912,7 +912,7 @@ impinvar(const Value &b, const Value &a, double fs, double /*tol*/, keel::Alloca
     }
 
     // 7) Real row vectors (imag parts cancel for a real analog filter).
-    keel::Array<double> ad_d(N + 1, mr), bd_d(keel::as<keel::usize>(N), mr);
+    keel::Array<keel::f64> ad_d(N + 1, mr), bd_d(keel::as<keel::usize>(N), mr);
     for (int i = 0; i <= N; ++i) ad_d[i] = ad[i].real();
     for (int i = 0; i < N; ++i)  bd_d[i] = bd[i].real();
     return std::make_tuple(packDoubleRow(bd_d, mr), packDoubleRow(ad_d, mr));

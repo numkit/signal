@@ -24,7 +24,7 @@ namespace numkit::signal {
 
 namespace {
 
-double readReal(const Value &v, keel::usize i)
+keel::f64 readReal(const Value &v, keel::usize i)
 {
     return v.elemAsDouble(i);
 }
@@ -44,7 +44,7 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
     }
     auto out = Value::matrix(1, n, ValueType::DOUBLE, mr);
     if (n == 0) return out;
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     std::fill(dst, dst + n, 0.0);
 
     // Fast path: when n ≥ nx + ny - 1 (the default form), circular
@@ -57,8 +57,8 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
         // axis. Pad with zeros past nx / ny.
         auto xp = Value::matrix(n, 1, ValueType::DOUBLE, mr);
         auto yp = Value::matrix(n, 1, ValueType::DOUBLE, mr);
-        double *xd = xp.doubleDataMut();
-        double *yd = yp.doubleDataMut();
+        keel::f64 *xd = xp.doubleDataMut();
+        keel::f64 *yd = yp.doubleDataMut();
         std::fill(xd, xd + n, 0.0);
         std::fill(yd, yd + n, 0.0);
         for (keel::usize i = 0; i < nx; ++i) xd[i] = readReal(x, i);
@@ -86,7 +86,7 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
             const keel::c64 *zd = z.complexData();
             for (keel::usize k = 0; k < n; ++k) dst[k] = zd[k].real();
         } else {
-            const double *zd = z.doubleData();
+            const keel::f64 *zd = z.doubleData();
             for (keel::usize k = 0; k < n; ++k) dst[k] = zd[k];
         }
         return out;
@@ -95,11 +95,11 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
     // Slow path: n < nx + ny - 1 means actual aliased circular conv;
     // use the direct O(n²) loop.
     for (keel::usize k = 0; k < n; ++k) {
-        double s = 0.0;
+        keel::f64 s = 0.0;
         for (keel::usize i = 0; i < n; ++i) {
-            const double xi = (i < nx) ? readReal(x, i) : 0.0;
+            const keel::f64 xi = (i < nx) ? readReal(x, i) : 0.0;
             const keel::usize j = (k + n - i) % n;     // (k - i) mod n
-            const double yj = (j < ny) ? readReal(y, j) : 0.0;
+            const keel::f64 yj = (j < ny) ? readReal(y, j) : 0.0;
             s += xi * yj;
         }
         dst[k] = s;
@@ -245,7 +245,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
         return outC;
     }
     auto out = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     std::fill(dst, dst + rOut * cOut, 0.0);
 
     // FFT-based fast path: cross-correlation == conv2(A, flip(B)). Pad
@@ -259,8 +259,8 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
     if (useFft) {
         auto Ap = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
         auto Bf = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
-        double *ad = Ap.doubleDataMut();
-        double *bd = Bf.doubleDataMut();
+        keel::f64 *ad = Ap.doubleDataMut();
+        keel::f64 *bd = Bf.doubleDataMut();
         std::fill(ad, ad + cellsOut, 0.0);
         std::fill(bd, bd + cellsOut, 0.0);
         // Place A in the top-left.
@@ -284,7 +284,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
             const keel::c64 *zr = z.complexData();
             for (keel::usize k = 0; k < cellsOut; ++k) dst[k] = zr[k].real();
         } else {
-            std::memcpy(dst, z.doubleData(), cellsOut * sizeof(double));
+            std::memcpy(dst, z.doubleData(), cellsOut * sizeof(keel::f64));
         }
         return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }
@@ -292,7 +292,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
     // Direct path for small inputs.
     for (keel::usize i = 0; i < rA; ++i) {
         for (keel::usize j = 0; j < cA; ++j) {
-            const double a = Av(i, j);
+            const keel::f64 a = Av(i, j);
             if (a == 0.0) continue;
             for (keel::usize p = 0; p < rB; ++p) {
                 const long kRow = keel::as<long>(i) - keel::as<long>(p) + keel::as<long>(rB) - 1;
@@ -313,14 +313,14 @@ long finddelay(const Value &x, const Value &y, long max_lag, keel::Allocator *mr
 {
     auto [c, lags] = xcorr(x, y, mr);
     const keel::usize n = c.numel();
-    const double *cp = c.doubleData();
-    const double *lp = lags.doubleData();
+    const keel::f64 *cp = c.doubleData();
+    const keel::f64 *lp = lags.doubleData();
     long best_lag = 0;
-    double best_mag = -1.0;
+    keel::f64 best_mag = -1.0;
     for (keel::usize i = 0; i < n; ++i) {
         const long lag = keel::as<long>(lp[i]);
         if (max_lag > 0 && keel::abs(lag) > max_lag) continue;
-        const double mag = keel::abs(cp[i]);
+        const keel::f64 mag = keel::abs(cp[i]);
         if (mag > best_mag) {
             best_mag = mag;
             best_lag = lag;
@@ -351,7 +351,7 @@ alignsignals(const Value &x, const Value &y, long max_lag, keel::Allocator *mr)
         auto out = isRow
                     ? Value::matrix(1, finalLen, ValueType::DOUBLE, mr)
                     : Value::matrix(finalLen, 1, ValueType::DOUBLE, mr);
-        double *dst = out.doubleDataMut();
+        keel::f64 *dst = out.doubleDataMut();
         std::fill(dst, dst + finalLen, 0.0);
         const keel::usize n = src.numel();
         for (keel::usize i = 0; i < n; ++i)

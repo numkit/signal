@@ -32,7 +32,7 @@ namespace detail {
 // Fc/Fs marshalling for modulate/demod: real scalars. expectedReal alone
 // would pass a CHAR scalar through as its ASCII code â€” the reference
 // rejects non-numeric scalars, so gate the class first.
-static double carrierArg(const Value &v, int argNum, const char *name,
+static keel::f64 carrierArg(const Value &v, int argNum, const char *name,
                          const char *fn)
 {
     if (v.isChar() || v.isString() || v.isCell() || v.isStruct())
@@ -45,8 +45,8 @@ static double carrierArg(const Value &v, int argNum, const char *name,
 void demod_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "demod");
-    const double Fc = carrierArg(args[1], 2, "Fc", "demod");
-    const double Fs = carrierArg(args[2], 3, "Fs", "demod");
+    const keel::f64 Fc = carrierArg(args[1], 2, "Fc", "demod");
+    const keel::f64 Fs = carrierArg(args[2], 3, "Fs", "demod");
     if (!args[3].isChar() && !args[3].isString())
         throw Error("demod: method must be a string",
                     0, 0, "demod", "", "numkit:demod:BadMethodType");
@@ -58,8 +58,8 @@ void demod_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
 void modulate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "modulate");
-    const double Fc = carrierArg(args[1], 2, "Fc", "modulate");
-    const double Fs = carrierArg(args[2], 3, "Fs", "modulate");
+    const keel::f64 Fc = carrierArg(args[1], 2, "Fc", "modulate");
+    const keel::f64 Fs = carrierArg(args[2], 3, "Fs", "modulate");
     if (!args[3].isChar() && !args[3].isString())
         throw Error("modulate: method must be a string",
                     0, 0, "modulate", "", "numkit:modulate:BadMethodType");
@@ -72,7 +72,7 @@ void vco_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArray
 {
     argcheck::checkNargin(args.size(), 1, 3, "vco");
     auto *mr = ctx.engine->allocator();
-    double fs = 1.0;
+    keel::f64 fs = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty()) fs = args[2].toScalar();
     if (args.size() >= 2 && !args[1].isEmpty()) {
         const Value &rng = args[1];
@@ -92,22 +92,22 @@ void vco_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArray
 void rectpuls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "rectpuls");
-    const double w = (args.size() >= 2) ? args[1].toScalar() : 1.0;
+    const keel::f64 w = (args.size() >= 2) ? args[1].toScalar() : 1.0;
     outs[0] = rectpuls(args[0], w, ctx.engine->allocator());
 }
 
 void tripuls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "tripuls");
-    const double w = (args.size() >= 2) ? args[1].toScalar() : 1.0;
+    const keel::f64 w = (args.size() >= 2) ? args[1].toScalar() : 1.0;
     outs[0] = tripuls(args[0], w, ctx.engine->allocator());
 }
 
 void gauspuls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 5, "gauspuls");
-    const double fc = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1000.0;
-    const double bw = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 0.5;
+    const keel::f64 fc = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1000.0;
+    const keel::f64 bw = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 0.5;
     outs[0] = gauspuls(args[0], fc, bw, ctx.engine->allocator());
 }
 
@@ -129,14 +129,14 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         const keel::usize nt = tv.numel();
         const keel::usize nd = dv.numel();
         keel::ArenaTemp scratch = keel::get_scratch(mr);
-        keel::Array<double> tbuf(nt, scratch.allocator());
-        keel::Array<double> dbuf(nd, scratch.allocator());
+        keel::Array<keel::f64> tbuf(nt, scratch.allocator());
+        keel::Array<keel::f64> dbuf(nd, scratch.allocator());
         for (keel::usize i = 0; i < nt; ++i) tbuf[i] = tv.elemAsDouble(i);
         for (keel::usize i = 0; i < nd; ++i) dbuf[i] = dv.elemAsDouble(i);
 
         Value r = pulstranHandle(
-            keel::ArrayRef<double>(tbuf.data(), nt),
-            keel::ArrayRef<double>(dbuf.data(), nd),
+            keel::ArrayRef<keel::f64>(tbuf.data(), nt),
+            keel::ArrayRef<keel::f64>(dbuf.data(), nd),
             cb, mr);
 
         // MATLAB convention: output shape mirrors t's shape.
@@ -154,22 +154,22 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         throw Error("pulstran: 3rd argument must be a string name or a function handle",
                      0, 0, "pulstran", "", "numkit:pulstran:fnType");
     const keel::String fnName = args[2].toString();
-    const double fcOrW = (args.size() >= 4) ? args[3].toScalar() : 1.0;
-    const double bw    = (args.size() >= 5) ? args[4].toScalar() : 0.5;
+    const keel::f64 fcOrW = (args.size() >= 4) ? args[3].toScalar() : 1.0;
+    const keel::f64 bw    = (args.size() >= 5) ? args[4].toScalar() : 0.5;
     outs[0] = pulstran(args[0], args[1], fnName, fcOrW, bw, mr);
 }
 
 void square_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "square");
-    const double duty = (args.size() >= 2) ? args[1].toScalar() : 50.0;
+    const keel::f64 duty = (args.size() >= 2) ? args[1].toScalar() : 50.0;
     outs[0] = square(args[0], duty, ctx.engine->allocator());
 }
 
 void sawtooth_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "sawtooth");
-    const double width = (args.size() >= 2) ? args[1].toScalar() : 1.0;
+    const keel::f64 width = (args.size() >= 2) ? args[1].toScalar() : 1.0;
     outs[0] = sawtooth(args[0], width, ctx.engine->allocator());
 }
 
@@ -182,7 +182,7 @@ void sinc_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
 void gmonopuls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "gmonopuls");
-    const double fc = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1000.0;
+    const keel::f64 fc = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 1000.0;
     outs[0] = gmonopuls(args[0], fc, ctx.engine->allocator());
 }
 
@@ -196,9 +196,9 @@ void diric_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
 void chirp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 8, "chirp");
-    const double f0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 0.0;
-    const double t1 = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
-    const double f1 = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 100.0;
+    const keel::f64 f0 = (args.size() >= 2 && !args[1].isEmpty()) ? args[1].toScalar() : 0.0;
+    const keel::f64 t1 = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
+    const keel::f64 f1 = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 100.0;
     keel::String method = keel::String::from("linear");
     if (args.size() >= 5) {
         if (!args[4].isChar() && !args[4].isString())

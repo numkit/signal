@@ -17,7 +17,7 @@ namespace numkit::signal {
 
 // Length-override / dim wrapper for an arbitrary DCT type (1..4), forward or
 // inverse. type==2 forward / type==3 inverse coincide with dct()/idct().
-Value dctTyped(const Value &x, int n, int dim, double type, bool inverse,
+Value dctTyped(const Value &x, int n, int dim, keel::f64 type, bool inverse,
                keel::Allocator *mr);
 
 } // namespace numkit::signal

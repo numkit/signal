@@ -38,15 +38,15 @@ void freqz_argcheck(const Value &b, const Value &a)
 } // namespace
 
 std::tuple<Value, Value>
-freqz(const Value &b, const Value &a, keel::usize npts, bool whole, double fs, keel::Allocator *mr)
+freqz(const Value &b, const Value &a, keel::usize npts, bool whole, keel::f64 fs, keel::Allocator *mr)
 {
     freqz_argcheck(b, a);
     const bool bCplx = b.isComplex();
     const bool aCplx = a.isComplex();
     const keel::c64 *bc = bCplx ? b.complexData() : nullptr;
     const keel::c64 *ac = aCplx ? a.complexData() : nullptr;
-    const double *bd = bCplx ? nullptr : b.doubleData();
-    const double *ad = aCplx ? nullptr : a.doubleData();
+    const keel::f64 *bd = bCplx ? nullptr : b.doubleData();
+    const keel::f64 *ad = aCplx ? nullptr : a.doubleData();
     const keel::usize nb = b.numel(), na = a.numel();
 
     auto W = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
@@ -59,10 +59,10 @@ freqz(const Value &b, const Value &a, keel::usize npts, bool whole, double fs, k
     // normalised radian frequencies; when fs > 0 (the freqz(b,a,n,fs)
     // form) the RETURNED frequency vector is rescaled to Hz over [0, fs/2)
     // (or [0, fs) with 'whole') — i.e. f = w * fs / (2π).
-    const double span   = whole ? (2.0 * M_PI) : M_PI;
-    const double hzSpan = whole ? fs : (0.5 * fs);
+    const keel::f64 span   = whole ? (2.0 * M_PI) : M_PI;
+    const keel::f64 hzSpan = whole ? fs : (0.5 * fs);
     for (keel::usize k = 0; k < npts; ++k) {
-        const double w = span * k / npts;
+        const keel::f64 w = span * k / npts;
         W.doubleDataMut()[k] = (fs > 0.0) ? (hzSpan * k / npts) : w;
 
         const keel::c64 ejw(std::cos(w), -std::sin(w));
@@ -92,11 +92,11 @@ freqz(const Value &b, const Value &a, const Value &wvec, keel::Allocator *mr)
     const bool aCplx = a.isComplex();
     const keel::c64 *bc = bCplx ? b.complexData() : nullptr;
     const keel::c64 *ac = aCplx ? a.complexData() : nullptr;
-    const double *bd = bCplx ? nullptr : b.doubleData();
-    const double *ad = aCplx ? nullptr : a.doubleData();
+    const keel::f64 *bd = bCplx ? nullptr : b.doubleData();
+    const keel::f64 *ad = aCplx ? nullptr : a.doubleData();
     const keel::usize nb = b.numel(), na = a.numel();
     const keel::usize n = wvec.numel();
-    const double *wd = wvec.doubleData();
+    const keel::f64 *wd = wvec.doubleData();
 
     // MATLAB R2025b (probed): H and W preserve w's orientation — a row w
     // yields a row H, a column w a column H.
@@ -104,7 +104,7 @@ freqz(const Value &b, const Value &a, const Value &wvec, keel::Allocator *mr)
     auto W = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
     auto H = Value::complexMatrix(rows, cols, mr);
     for (keel::usize k = 0; k < n; ++k) {
-        const double w = wd[k];
+        const keel::f64 w = wd[k];
         W.doubleDataMut()[k] = w;
         const keel::c64 ejw(std::cos(w), -std::sin(w));
         keel::c64 num(0, 0), den(0, 0);
@@ -127,14 +127,14 @@ namespace {
 
 // Local unwrap (default tolerance π) — keeps phasez free of inter-file
 // dependencies on filter_analysis/unwrap.cpp's Value-typed unwrap().
-void unwrapInPlace(double *p, keel::usize n)
+void unwrapInPlace(keel::f64 *p, keel::usize n)
 {
     if (n < 2) return;
-    constexpr double kPi  = M_PI;
-    constexpr double k2Pi = 2.0 * M_PI;
-    double offset = 0.0;
+    constexpr keel::f64 kPi  = M_PI;
+    constexpr keel::f64 k2Pi = 2.0 * M_PI;
+    keel::f64 offset = 0.0;
     for (keel::usize i = 1; i < n; ++i) {
-        const double diff = p[i] + offset - p[i - 1];
+        const keel::f64 diff = p[i] + offset - p[i - 1];
         if (diff >  kPi) offset -= k2Pi;
         else if (diff < -kPi) offset += k2Pi;
         p[i] += offset;
@@ -144,21 +144,21 @@ void unwrapInPlace(double *p, keel::usize n)
 } // namespace
 
 std::tuple<Value, Value>
-phasez(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allocator *mr)
+phasez(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::Allocator *mr)
 {
     auto [H, W] = freqz(b, a, npts, /*whole=*/false, fs, mr);
     auto phi = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     const keel::c64 *hd = H.complexData();
-    double *pd = phi.doubleDataMut();
+    keel::f64 *pd = phi.doubleDataMut();
     // MATLAB convention: when |H(w)| is exactly zero, phase is
     // undefined and reported as NaN. Use a tiny epsilon to catch the
     // numerical zeros that come out of the freqz polynomial sum.
-    constexpr double kZeroEps = 1e-300;
+    constexpr keel::f64 kZeroEps = 1e-300;
     for (keel::usize k = 0; k < npts; ++k) {
-        const double mag2 = hd[k].real() * hd[k].real()
+        const keel::f64 mag2 = hd[k].real() * hd[k].real()
                           + hd[k].imag() * hd[k].imag();
         if (mag2 < kZeroEps)
-            pd[k] = std::numeric_limits<double>::quiet_NaN();
+            pd[k] = std::numeric_limits<keel::f64>::quiet_NaN();
         else
             pd[k] = std::atan2(hd[k].imag(), hd[k].real());
     }
@@ -167,7 +167,7 @@ phasez(const Value &b, const Value &a, keel::usize npts, double fs, keel::Alloca
 }
 
 std::tuple<Value, Value>
-grpdelay(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allocator *mr)
+grpdelay(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::Allocator *mr)
 {
     // EXACT group delay (MATLAB's method), NOT a finite-difference of the
     // phase. For H(z) = B(z)/A(z), form the combined polynomial
@@ -176,8 +176,8 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allo
     //   gd(w) = -d/dw arg(H) = Re{ CR(e^jw) / C(e^jw) } - (na - 1),
     // where CR has coefficients n*c[n]. This is exact at every frequency
     // (the old phase finite-difference was wildly off at small npts).
-    const double *bd = b.doubleData();
-    const double *ad = a.doubleData();
+    const keel::f64 *bd = b.doubleData();
+    const keel::f64 *ad = a.doubleData();
     const keel::usize nb = b.numel(), na = a.numel();
 
     auto W  = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
@@ -187,30 +187,30 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, double fs, keel::Allo
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     const keel::usize nc = nb + na - 1;
-    auto c = keel::Array<double>(nc, scratch.allocator());
+    auto c = keel::Array<keel::f64>(nc, scratch.allocator());
     for (keel::usize i = 0; i < nc; ++i) c[i] = 0.0;
     for (keel::usize i = 0; i < nb; ++i)
         for (keel::usize j = 0; j < na; ++j)
             c[i + j] += bd[i] * ad[na - 1 - j];   // conv(b, reverse(a))
 
-    double *wp = W.doubleDataMut();
-    double *g  = gd.doubleDataMut();
-    const double offset = keel::as<double>(na) - 1.0;
+    keel::f64 *wp = W.doubleDataMut();
+    keel::f64 *g  = gd.doubleDataMut();
+    const keel::f64 offset = keel::as<keel::f64>(na) - 1.0;
     // fs > 0 (grpdelay(b,a,n,fs)): return the frequency vector in Hz over
     // [0, fs/2). The group delay (in samples) is evaluated from the same
     // normalised w and is unchanged.
-    const double hzSpan = 0.5 * fs;
+    const keel::f64 hzSpan = 0.5 * fs;
     for (keel::usize k = 0; k < npts; ++k) {
-        const double w = M_PI * keel::as<double>(k) / keel::as<double>(npts);
-        wp[k] = (fs > 0.0) ? (hzSpan * keel::as<double>(k) / keel::as<double>(npts)) : w;
+        const keel::f64 w = M_PI * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts);
+        wp[k] = (fs > 0.0) ? (hzSpan * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts)) : w;
         const keel::c64 ejw(std::cos(w), -std::sin(w));
         keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
         for (keel::usize n = 0; n < nc; ++n) {
             C  += c[n] * ejwk;
-            CR += (keel::as<double>(n) * c[n]) * ejwk;
+            CR += (keel::as<keel::f64>(n) * c[n]) * ejwk;
             ejwk *= ejw;
         }
-        const double cmag2 = C.real() * C.real() + C.imag() * C.imag();
+        const keel::f64 cmag2 = C.real() * C.real() + C.imag() * C.imag();
         g[k] = (cmag2 < 1e-300) ? 0.0 : ((CR / C).real() - offset);
     }
     return std::make_tuple(std::move(gd), std::move(W));

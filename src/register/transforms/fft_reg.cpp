@@ -171,7 +171,7 @@ static void extractSizeArg(const Value &v, keel::Array<keel::usize> &dst)
     const keel::usize n = v.numel();
     dst.resize(n);
     for (keel::usize i = 0; i < n; ++i) {
-        const double d = v.elemAsDouble(i);
+        const keel::f64 d = v.elemAsDouble(i);
         if (d <= 0 || d != std::floor(d))
             throw Error("fftn: size entries must be positive integers",
                          0, 0, "fftn", "", "numkit:fftn:badSize");

@@ -35,7 +35,7 @@ namespace numkit::signal {
 namespace {
 
 // 1-D real vector accessor that handles both row and column orientation.
-double readReal(const Value &v, keel::usize i) { return v.elemAsDouble(i); }
+keel::f64 readReal(const Value &v, keel::usize i) { return v.elemAsDouble(i); }
 
 // Allocate a real row/column vector matching the orientation of `like`.
 Value sameOrientReal(const Value &like, keel::usize n, keel::Allocator *mr)
@@ -46,7 +46,7 @@ Value sameOrientReal(const Value &like, keel::usize n, keel::Allocator *mr)
             : Value::matrix(n, 1, ValueType::DOUBLE, mr);
 }
 
-void intfilt_argcheck(keel::usize r, keel::usize n, double alpha)
+void intfilt_argcheck(keel::usize r, keel::usize n, keel::f64 alpha)
 {
     if (r < 1)
         throw Error("intfilt: r must be >= 1",
@@ -77,7 +77,7 @@ void interp_argcheck(const Value &x, keel::usize n)
 } // namespace
 
 // ── intfilt (FIR design) ──────────────────────────────────────────────
-Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
+Value intfilt(keel::usize r, keel::usize n, keel::f64 alpha, keel::Allocator *mr)
 {
     intfilt_argcheck(r, n, alpha);
 
@@ -89,18 +89,18 @@ Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
     if (2 * n * r < 1) return Value::matrix(1, 1, ValueType::DOUBLE, mr);
     const long Ntaps = keel::as<long>(2 * n * r) - 1;
     const int  order = keel::as<int>(Ntaps - 1);   // even (2RL-2)
-    const double R   = keel::as<double>(r);
+    const keel::f64 R   = keel::as<keel::f64>(r);
 
-    keel::Array<double> F(mr), M(mr);
+    keel::Array<keel::f64> F(mr), M(mr);
     if (alpha == 1.0) {
         M = {R, R, 0.0, 0.0};
         F = {0.0, 1.0 / (2.0 * R), 1.0 / (2.0 * R), 0.5};
     } else {
-        const double hw = alpha / (2.0 * R);          // half passband width
+        const keel::f64 hw = alpha / (2.0 * R);          // half passband width
         M = {R, R};
         F = {0.0, hw};
-        for (keel::usize k = 1; keel::as<double>(k) / R <= 0.5 + 1e-9; ++k) {
-            const double f = keel::as<double>(k) / R;
+        for (keel::usize k = 1; keel::as<keel::f64>(k) / R <= 0.5 + 1e-9; ++k) {
+            const keel::f64 f = keel::as<keel::f64>(k) / R;
             F.push_back(f - hw);
             F.push_back(f + hw);
             M.push_back(0.0);
@@ -111,8 +111,8 @@ Value intfilt(keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
     // nk's firls normalises frequency to Nyquist = 1 → scale F by 2.
     Value Fv = Value::matrix(1, F.size(), ValueType::DOUBLE, mr);
     Value Mv = Value::matrix(1, M.size(), ValueType::DOUBLE, mr);
-    double *fd = Fv.doubleDataMut();
-    double *md = Mv.doubleDataMut();
+    keel::f64 *fd = Fv.doubleDataMut();
+    keel::f64 *md = Mv.doubleDataMut();
     for (keel::usize i = 0; i < F.size(); ++i) { fd[i] = F[i] * 2.0; md[i] = M[i]; }
     return firls(order, Fv, Mv, mr);
 }
@@ -138,14 +138,14 @@ Value upfirdn(const Value &x, const Value &h, keel::usize p, keel::usize q, keel
     const keel::usize outLen = (convLen + q - 1) / q;   // ceil(convLen / q)
 
     keel::ArenaTemp local = keel::get_scratch(mr);
-    auto convOut = keel::Array<double>(convLen, local.allocator());
+    auto convOut = keel::Array<keel::f64>(convLen, local.allocator());
     std::fill(convOut.begin(), convOut.end(), 0.0);
 
     // Direct upsample-then-convolve in one pass: x[i] sits at upsampled
     // position i*p, so each x[i] contributes h[j] to output position
     // i*p + j.
     for (keel::usize i = 0; i < Lx; ++i) {
-        const double xi = readReal(x, i);
+        const keel::f64 xi = readReal(x, i);
         if (xi == 0.0) continue;
         const keel::usize base = i * p;
         for (keel::usize j = 0; j < Lh; ++j) {
@@ -154,7 +154,7 @@ Value upfirdn(const Value &x, const Value &h, keel::usize p, keel::usize q, keel
     }
 
     auto out = sameOrientReal(x, outLen, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     for (keel::usize k = 0; k < outLen; ++k) {
         od[k] = convOut[k * q];
     }
@@ -162,13 +162,13 @@ Value upfirdn(const Value &x, const Value &h, keel::usize p, keel::usize q, keel
 }
 
 // ── interp ────────────────────────────────────────────────────────────
-Value interp(const Value &x, keel::usize r, keel::usize n, double alpha, keel::Allocator *mr)
+Value interp(const Value &x, keel::usize r, keel::usize n, keel::f64 alpha, keel::Allocator *mr)
 {
     interp_argcheck(x, n);
     if (r == 1) {
         // Pass-through: copy x.
         auto out = sameOrientReal(x, x.numel(), mr);
-        std::memcpy(out.doubleDataMut(), x.doubleData(), x.numel() * sizeof(double));
+        std::memcpy(out.doubleDataMut(), x.doubleData(), x.numel() * sizeof(keel::f64));
         return out;
     }
     auto h = intfilt(r, n, alpha, mr);
@@ -179,8 +179,8 @@ Value interp(const Value &x, keel::usize r, keel::usize n, double alpha, keel::A
     const keel::usize target = x.numel() * r;
     const keel::usize leadDelay = n * r;
     auto trimmed = sameOrientReal(x, target, mr);
-    double *dst = trimmed.doubleDataMut();
-    const double *src = y.doubleData();
+    keel::f64 *dst = trimmed.doubleDataMut();
+    const keel::f64 *src = y.doubleData();
     const keel::usize srcN = y.numel();
     for (keel::usize i = 0; i < target; ++i) {
         const keel::usize j = i + leadDelay;
@@ -226,7 +226,7 @@ Value fftfilt(const Value &b, const Value &x, keel::usize nfft, keel::Allocator 
     fftRadix2(Bf.data(), nfft, W_fwd.data());
 
     auto Xf  = keel::Array<keel::c64>(nfft, scratch.allocator());
-    const double invN = 1.0 / keel::as<double>(nfft);
+    const keel::f64 invN = 1.0 / keel::as<keel::f64>(nfft);
 
     if (isCx) {
         const bool row = (x.dims().rows() == 1 && x.dims().cols() >= 1);
@@ -253,7 +253,7 @@ Value fftfilt(const Value &b, const Value &x, keel::usize nfft, keel::Allocator 
     }
 
     auto out = sameOrientReal(x, nx, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     std::fill(dst, dst + nx, 0.0);
 
     for (keel::usize pos = 0; pos < nx; pos += blockL) {

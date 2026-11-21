@@ -29,7 +29,7 @@ void envspectrum_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                      keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 8, "envspectrum");
-    double fs = 0.0;
+    keel::f64 fs = 0.0;
     if (args.size() >= 2 && !args[1].isEmpty()) fs = args[1].toScalar();
     auto [Es, F] = envspectrum(args[0], fs, ctx.engine->allocator());
     outs[0] = std::move(Es);
@@ -40,7 +40,7 @@ void tachorpm_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "tachorpm");  // reference takes name-value options past arg 4 (unimplemented)
-    const double fs = args[1].toScalar();
+    const keel::f64 fs = args[1].toScalar();
     const Value &thr = (args.size() >= 3) ? args[2] : Value::Empty;
     int ppr = 1;
     if (args.size() >= 4 && !args[3].isEmpty())
@@ -68,7 +68,7 @@ void rainflow_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
 namespace {
 
 std::tuple<Value, Value>
-tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
+tsa_matlab_form(keel::Allocator *mr, const Value &x, keel::f64 fs,
                 const Value &tPulse)
 {
     const keel::usize nx = x.numel();
@@ -78,36 +78,36 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
             Value::matrix(0, 1, ValueType::DOUBLE, mr),
             Value::matrix(0, 1, ValueType::DOUBLE, mr));
     }
-    const double *xd = x.doubleData();
-    keel::Array<double> tv(np, mr);
+    const keel::f64 *xd = x.doubleData();
+    keel::Array<keel::f64> tv(np, mr);
     for (keel::usize i = 0; i < np; ++i) tv[i] = tPulse.elemAsDouble(i);
 
     // Decide output length L = nominal samples per revolution. Use the
     // floor of the average inter-pulse interval times fs, matching
     // MATLAB's default behaviour.
-    const double T_total = tv[np - 1] - tv[0];
+    const keel::f64 T_total = tv[np - 1] - tv[0];
     const keel::usize nRev = np - 1;
-    const double T_avg = T_total / keel::as<double>(nRev);
+    const keel::f64 T_avg = T_total / keel::as<keel::f64>(nRev);
     keel::usize L = keel::as<keel::usize>(std::floor(T_avg * fs));
     if (L < 1) L = 1;
 
     // For each revolution, linear-interpolate x onto an L-point grid
     // that spans [tv[i], tv[i+1]) and accumulate.
-    keel::Array<double> avg(L, 0.0, mr);
+    keel::Array<keel::f64> avg(L, 0.0, mr);
     keel::usize nValidRevs = 0;
     for (keel::usize r = 0; r < nRev; ++r) {
-        const double t0 = tv[r];
-        const double t1 = tv[r + 1];
-        const double dur = t1 - t0;
+        const keel::f64 t0 = tv[r];
+        const keel::f64 t1 = tv[r + 1];
+        const keel::f64 dur = t1 - t0;
         if (dur <= 0.0) continue;
         bool revOK = true;
-        keel::Array<double> sample(L, 0.0, mr);
+        keel::Array<keel::f64> sample(L, 0.0, mr);
         for (keel::usize k = 0; k < L; ++k) {
-            const double tk = t0 + dur * keel::as<double>(k)
-                                    / keel::as<double>(L);
-            const double idxF = tk * fs;
+            const keel::f64 tk = t0 + dur * keel::as<keel::f64>(k)
+                                    / keel::as<keel::f64>(L);
+            const keel::f64 idxF = tk * fs;
             const long  i0   = keel::as<long>(std::floor(idxF));
-            const double frac = idxF - keel::as<double>(i0);
+            const keel::f64 frac = idxF - keel::as<keel::f64>(i0);
             if (i0 < 0 || keel::as<keel::usize>(i0 + 1) >= nx) { revOK = false; break; }
             sample[k] = (1.0 - frac) * xd[i0] + frac * xd[i0 + 1];
         }
@@ -117,16 +117,16 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, double fs,
     }
     if (nValidRevs > 0) {
         for (keel::usize k = 0; k < L; ++k)
-            avg[k] /= keel::as<double>(nValidRevs);
+            avg[k] /= keel::as<keel::f64>(nValidRevs);
     }
 
     auto Ya = Value::matrix(L, 1, ValueType::DOUBLE, mr);
     auto Ta = Value::matrix(L, 1, ValueType::DOUBLE, mr);
-    double *ya = Ya.doubleDataMut();
-    double *ta = Ta.doubleDataMut();
+    keel::f64 *ya = Ya.doubleDataMut();
+    keel::f64 *ta = Ta.doubleDataMut();
     for (keel::usize k = 0; k < L; ++k) {
         ya[k] = avg[k];
-        ta[k] = T_avg * keel::as<double>(k) / keel::as<double>(L);
+        ta[k] = T_avg * keel::as<keel::f64>(k) / keel::as<keel::f64>(L);
     }
     return std::make_tuple(std::move(Ya), std::move(Ta));
 }
@@ -137,7 +137,7 @@ void tsa_reg(keel::ArrayRef<Value> args, keel::usize nargout,
              keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "tsa");  // args 4..5: legacy nk continuous-rpm form; reference: 3 numerical + name-value
-    const double fs = args[1].toScalar();
+    const keel::f64 fs = args[1].toScalar();
     if (args.size() == 3) {
         // MATLAB form: tsa(x, fs, tPulse)
         auto [avg, th] = tsa_matlab_form(ctx.engine->allocator(),
@@ -147,7 +147,7 @@ void tsa_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         return;
     }
     // 4+ args -> legacy nk form (continuous rpm signal).
-    const double fs_rpm = args[3].toScalar();
+    const keel::f64 fs_rpm = args[3].toScalar();
     int npr = 1024;
     if (args.size() >= 5 && !args[4].isEmpty())
         npr = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[4], 5, "npr", "tsa"), 5, "npr", "tsa");

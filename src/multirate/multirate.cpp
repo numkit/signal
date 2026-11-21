@@ -100,19 +100,19 @@ namespace {
 
 // Windowed-sinc lowpass FIR, Hamming window, cutoff wc (radians).
 // Normalized so DC gain is 1. Order is filtLen - 1; filtLen must be >= 2.
-[[maybe_unused]] keel::Array<double> designLowpassFir(keel::usize filtLen, double wc, keel::Allocator *mr)
+[[maybe_unused]] keel::Array<keel::f64> designLowpassFir(keel::usize filtLen, keel::f64 wc, keel::Allocator *mr)
 {
     const keel::usize filtOrder = filtLen - 1;
-    const double half = filtOrder / 2.0;
+    const keel::f64 half = filtOrder / 2.0;
 
-    keel::Array<double> h(filtLen, mr);
-    double hSum = 0.0;
+    keel::Array<keel::f64> h(filtLen, mr);
+    keel::f64 hSum = 0.0;
     for (keel::usize i = 0; i < filtLen; ++i) {
-        const double n = i - half;
-        const double sinc = (keel::abs(n) < 1e-12)
+        const keel::f64 n = i - half;
+        const keel::f64 sinc = (keel::abs(n) < 1e-12)
                                 ? wc / M_PI
                                 : std::sin(wc * n) / (M_PI * n);
-        const double win = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / filtOrder);
+        const keel::f64 win = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / filtOrder);
         h[i] = sinc * win;
         hSum += h[i];
     }
@@ -123,10 +123,10 @@ namespace {
 
 // Direct Form II transposed FIR apply — matches filter.cpp's core for
 // the a = [1] denominator case. Used by decimate and resample.
-[[maybe_unused]] keel::Array<double> applyFirDf2t(const double *h, keel::usize filtLen, const double *x, keel::usize nx, keel::Allocator *mr)
+[[maybe_unused]] keel::Array<keel::f64> applyFirDf2t(const keel::f64 *h, keel::usize filtLen, const keel::f64 *x, keel::usize nx, keel::Allocator *mr)
 {
-    keel::Array<double> out(nx, mr);
-    keel::Array<double> z(filtLen, mr);
+    keel::Array<keel::f64> out(nx, mr);
+    keel::Array<keel::f64> z(filtLen, mr);
     for (keel::usize n = 0; n < nx; ++n) {
         out[n] = h[0] * x[n] + z[0];
         for (keel::usize i = 1; i < filtLen; ++i)
@@ -217,8 +217,8 @@ Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
         const keel::usize nx = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
         Value xi = createLike(x, ValueType::DOUBLE, mr);
-        double *xrd = xr.doubleDataMut();
-        double *xid = xi.doubleDataMut();
+        keel::f64 *xrd = xr.doubleDataMut();
+        keel::f64 *xid = xi.doubleDataMut();
         const keel::c64 *xcd = x.complexData();
         for (keel::usize i = 0; i < nx; ++i) {
             xrd[i] = xcd[i].real();
@@ -228,8 +228,8 @@ Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
         Value yi = decimate(xi, factor, mr);
         Value out = createLike(yr, ValueType::COMPLEX, mr);
         keel::c64 *od = out.complexDataMut();
-        const double *yrd = yr.doubleData();
-        const double *yid = yi.doubleData();
+        const keel::f64 *yrd = yr.doubleData();
+        const keel::f64 *yid = yi.doubleData();
         for (keel::usize i = 0; i < yr.numel(); ++i)
             od[i] = keel::c64(yrd[i], yid[i]);
         return out;
@@ -245,16 +245,16 @@ Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
         return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
     }
 
-    auto [b, a] = cheby1(8, 0.05, Value::scalar(0.8 / keel::as<double>(factor), mr),
+    auto [b, a] = cheby1(8, 0.05, Value::scalar(0.8 / keel::as<keel::f64>(factor), mr),
                          FilterType::Lowpass, /*analog=*/false, mr);
     Value filtered = filtfilt(b, a, xD, mr);
-    const double *fd = filtered.doubleData();
+    const keel::f64 *fd = filtered.doubleData();
 
     const keel::usize outLen = (nx + factor - 1) / factor;
     const keel::usize nbeg = (nx - 1) % factor;
     auto r = isRow ? Value::matrix(1, outLen, ValueType::DOUBLE, mr)
                    : Value::matrix(outLen, 1, ValueType::DOUBLE, mr);
-    double *rd = r.doubleDataMut();
+    keel::f64 *rd = r.doubleDataMut();
     for (keel::usize i = 0; i < outLen; ++i)
         rd[i] = fd[nbeg + i * factor];
     return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
@@ -267,7 +267,7 @@ Value resample(const Value &x, keel::usize p, keel::usize q, keel::Allocator *mr
     return resample(x, p, q, 10, 5.0, mr);
 }
 
-Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double beta_in, keel::Allocator *mr)
+Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, keel::f64 beta_in, keel::Allocator *mr)
 {
     detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
@@ -278,8 +278,8 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double
         const keel::usize nx = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
         Value xi = createLike(x, ValueType::DOUBLE, mr);
-        double *xrd = xr.doubleDataMut();
-        double *xid = xi.doubleDataMut();
+        keel::f64 *xrd = xr.doubleDataMut();
+        keel::f64 *xid = xi.doubleDataMut();
         const keel::c64 *xcd = x.complexData();
         for (keel::usize i = 0; i < nx; ++i) {
             xrd[i] = xcd[i].real();
@@ -289,8 +289,8 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double
         Value yi = resample(xi, p, q, n_order, beta_in, mr);
         Value out = createLike(yr, ValueType::COMPLEX, mr);
         keel::c64 *od = out.complexDataMut();
-        const double *yrd = yr.doubleData();
-        const double *yid = yi.doubleData();
+        const keel::f64 *yrd = yr.doubleData();
+        const keel::f64 *yid = yi.doubleData();
         for (keel::usize i = 0; i < yr.numel(); ++i)
             od[i] = keel::c64(yrd[i], yid[i]);
         return out;
@@ -310,24 +310,24 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double
     //   h = p · firls(L-1,[0 2fc 2fc 1],[1 1 0 0]) · kaiser(L,beta) / sum(·)
     // (normalised so sum(h) = p — the interpolation gain).
     const int    N    = (n_order > 0) ? n_order : 10;
-    const double beta = beta_in;
+    const keel::f64 beta = beta_in;
     const keel::usize pqmax = std::max(p, q);
-    const double fc = 1.0 / (2.0 * keel::as<double>(pqmax));
+    const keel::f64 fc = 1.0 / (2.0 * keel::as<keel::f64>(pqmax));
     const int    L  = 2 * N * keel::as<int>(pqmax) + 1;
 
     Value F = Value::matrix(1, 4, ValueType::DOUBLE, mr);
-    { double *f = F.doubleDataMut(); f[0] = 0.0; f[1] = 2.0 * fc; f[2] = 2.0 * fc; f[3] = 1.0; }
+    { keel::f64 *f = F.doubleDataMut(); f[0] = 0.0; f[1] = 2.0 * fc; f[2] = 2.0 * fc; f[3] = 1.0; }
     Value A = Value::matrix(1, 4, ValueType::DOUBLE, mr);
-    { double *a = A.doubleDataMut(); a[0] = 1.0; a[1] = 1.0; a[2] = 0.0; a[3] = 0.0; }
+    { keel::f64 *a = A.doubleDataMut(); a[0] = 1.0; a[1] = 1.0; a[2] = 0.0; a[3] = 0.0; }
 
     Value fb = firls(L - 1, F, A, mr);                   // length L
     Value kw = kaiser(keel::as<keel::usize>(L), beta, mr); // length L
-    const double *fbd = fb.doubleData();
-    const double *kwd = kw.doubleData();
+    const keel::f64 *fbd = fb.doubleData();
+    const keel::f64 *kwd = kw.doubleData();
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    auto fk = keel::Array<double>(L, scratch.allocator());
-    double sumfk = 0.0;
+    auto fk = keel::Array<keel::f64>(L, scratch.allocator());
+    keel::f64 sumfk = 0.0;
     for (int i = 0; i < L; ++i) { fk[i] = fbd[i] * kwd[i]; sumfk += fk[i]; }
 
     // Front-pad the filter so the group delay lands on an output sample.
@@ -338,15 +338,15 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double
     Value hh = Value::matrix(1, keel::as<keel::usize>(nz) + keel::as<keel::usize>(L),
                              ValueType::DOUBLE, mr);
     {
-        double *hd = hh.doubleDataMut();
+        keel::f64 *hd = hh.doubleDataMut();
         for (long long i = 0; i < nz; ++i) hd[i] = 0.0;
-        const double scale = keel::as<double>(p) / sumfk;
+        const keel::f64 scale = keel::as<keel::f64>(p) / sumfk;
         for (int i = 0; i < L; ++i) hd[nz + i] = scale * fk[i];
     }
 
     Value yfull = upfirdn(xD, hh, p, q, mr);
     const keel::usize  yfn = yfull.numel();
-    const double *yfd = yfull.doubleData();
+    const keel::f64 *yfd = yfull.doubleData();
 
     const long long delay = Lhalf2 / keel::as<long long>(q);     // floor(ceil(Lhalf2)/q)
     const long long Ly    = keel::as<long long>((nx * p + q - 1) / q); // ceil(Lx·p/q)
@@ -354,7 +354,7 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, double
 
     Value r = isRow ? Value::matrix(1, outLen, ValueType::DOUBLE, mr)
                     : Value::matrix(outLen, 1, ValueType::DOUBLE, mr);
-    double *rd = r.doubleDataMut();
+    keel::f64 *rd = r.doubleDataMut();
     for (keel::usize i = 0; i < outLen; ++i) {
         const long long idx = delay + keel::as<long long>(i);
         rd[i] = (idx >= 0 && keel::as<keel::usize>(idx) < yfn) ? yfd[idx] : 0.0;

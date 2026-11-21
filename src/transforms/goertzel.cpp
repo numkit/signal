@@ -40,7 +40,7 @@ Value goertzel(const Value &x, const Value &ind, keel::Allocator *mr)
 
     const bool xComplex = x.isComplex();
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> id(M, scratch.allocator());
+    keel::Array<keel::f64> id(M, scratch.allocator());
     for (keel::usize j = 0; j < M; ++j) id[j] = ind.elemAsDouble(j);
 
     keel::c64 *od = r.complexDataMut();
@@ -50,12 +50,12 @@ Value goertzel(const Value &x, const Value &ind, keel::Allocator *mr)
             od[m] = keel::signal::goertzel_bin_c64(xRef, id[m] - 1.0);
         }
     } else if (x.type() == ValueType::DOUBLE) {
-        const keel::ArrayRef<double> xRef(x.doubleData(), N);
+        const keel::ArrayRef<keel::f64> xRef(x.doubleData(), N);
         for (keel::usize m = 0; m < M; ++m) {
             od[m] = keel::signal::goertzel_bin(xRef, id[m] - 1.0);
         }
     } else {
-        keel::Array<double> xr(N, scratch.allocator());
+        keel::Array<keel::f64> xr(N, scratch.allocator());
         for (keel::usize i = 0; i < N; ++i) xr[i] = x.elemAsDouble(i);
         for (keel::usize m = 0; m < M; ++m) {
             od[m] = keel::signal::goertzel_bin(xr, id[m] - 1.0);

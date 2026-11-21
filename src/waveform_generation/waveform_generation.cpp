@@ -31,53 +31,53 @@ namespace numkit::signal {
 
 namespace {
 
-double gauspulsAlpha(double fc, double bw)
+keel::f64 gauspulsAlpha(keel::f64 fc, keel::f64 bw)
 {
     // MATLAB: gauspuls envelope is exp(-α·t²) where α is chosen so that
     // the spectrum hits -6 dB (bwr) at the bandwidth edge. With bwr = -6 dB
     // hard-coded, α = -(π·bw·fc)² / (4·log(0.5)).
-    constexpr double kPi = 3.14159265358979323846;
-    const double pifb = kPi * fc * bw;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
+    const keel::f64 pifb = kPi * fc * bw;
     return -(pifb * pifb) / (4.0 * std::log(0.5));
 }
 
-double rectpulsScalar(double tv, double w)
+keel::f64 rectpulsScalar(keel::f64 tv, keel::f64 w)
 {
-    const double half = 0.5 * w;
-    const double a = keel::abs(tv);
+    const keel::f64 half = 0.5 * w;
+    const keel::f64 a = keel::abs(tv);
     if (a < half) return 1.0;
     return 0.0;  // boundary and outside
 }
 
-double tripulsScalar(double tv, double w)
+keel::f64 tripulsScalar(keel::f64 tv, keel::f64 w)
 {
-    const double half = 0.5 * w;
-    const double a = keel::abs(tv);
+    const keel::f64 half = 0.5 * w;
+    const keel::f64 a = keel::abs(tv);
     if (a >= half) return 0.0;
     return 1.0 - a / half;
 }
 
-double gauspulsScalar(double tv, double fc, double alpha)
+keel::f64 gauspulsScalar(keel::f64 tv, keel::f64 fc, keel::f64 alpha)
 {
-    constexpr double kTwoPi = 6.28318530717958647692;
+    constexpr keel::f64 kTwoPi = 6.28318530717958647692;
     return std::exp(-alpha * tv * tv) * std::cos(kTwoPi * fc * tv);
 }
 
-void rectpuls_argcheck(double w)
+void rectpuls_argcheck(keel::f64 w)
 {
     if (w <= 0)
         throw Error("rectpuls: width w must be positive",
                      0, 0, "rectpuls", "", "numkit:rectpuls:badWidth");
 }
 
-void tripuls_argcheck(double w)
+void tripuls_argcheck(keel::f64 w)
 {
     if (w <= 0)
         throw Error("tripuls: width w must be positive",
                      0, 0, "tripuls", "", "numkit:tripuls:badWidth");
 }
 
-void gauspuls_argcheck(double fc, double bw)
+void gauspuls_argcheck(keel::f64 fc, keel::f64 bw)
 {
     if (fc <= 0 || bw <= 0)
         throw Error("gauspuls: fc and bw must be positive",
@@ -86,56 +86,56 @@ void gauspuls_argcheck(double fc, double bw)
 
 } // namespace
 
-Value rectpuls(const Value &t, double w, keel::Allocator *mr)
+Value rectpuls(const Value &t, keel::f64 w, keel::Allocator *mr)
 {
     rectpuls_argcheck(w);
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i)
         dst[i] = rectpulsScalar(t.elemAsDouble(i), w);
     return out;
 }
 
-Value tripuls(const Value &t, double w, keel::Allocator *mr)
+Value tripuls(const Value &t, keel::f64 w, keel::Allocator *mr)
 {
     tripuls_argcheck(w);
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i)
         dst[i] = tripulsScalar(t.elemAsDouble(i), w);
     return out;
 }
 
-Value gauspuls(const Value &t, double fc, double bw, keel::Allocator *mr)
+Value gauspuls(const Value &t, keel::f64 fc, keel::f64 bw, keel::Allocator *mr)
 {
     gauspuls_argcheck(fc, bw);
-    const double alpha = gauspulsAlpha(fc, bw);
+    const keel::f64 alpha = gauspulsAlpha(fc, bw);
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i)
         dst[i] = gauspulsScalar(t.elemAsDouble(i), fc, alpha);
     return out;
 }
 
-Value pulstranHandle(keel::ArrayRef<double> t, keel::ArrayRef<double> d,
+Value pulstranHandle(keel::ArrayRef<keel::f64> t, keel::ArrayRef<keel::f64> d,
                      FnHandle fn, keel::Allocator *mr)
 {
     const keel::usize n  = t.size();
     const keel::usize nd = d.size();
 
     Value out = Value::matrix(n, 1, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
-    if (n) std::memset(dst, 0, n * sizeof(double));
+    keel::f64 *dst = out.doubleDataMut();
+    if (n) std::memset(dst, 0, n * sizeof(keel::f64));
 
     // Per-iteration shifted-`t` buffer (row vector, matching MATLAB
     // convention for the callback input).
     Value shifted = Value::matrix(1, n, ValueType::DOUBLE, mr);
-    double *sh = shifted.doubleDataMut();
+    keel::f64 *sh = shifted.doubleDataMut();
     for (keel::usize k = 0; k < nd; ++k) {
-        const double dk = d[k];
+        const keel::f64 dk = d[k];
         for (keel::usize i = 0; i < n; ++i)
             sh[i] = t[i] - dk;
         Value r;
@@ -154,37 +154,37 @@ Value pulstranHandle(keel::ArrayRef<double> t, keel::ArrayRef<double> d,
 }
 
 Value pulstran(const Value &t, const Value &d, keel::StringRef fnName,
-               double fcOrW, double bw, keel::Allocator *mr)
+               keel::f64 fcOrW, keel::f64 bw, keel::Allocator *mr)
 {
     auto out = createLike(t, ValueType::DOUBLE, mr);
     const keel::usize n = t.numel();
-    std::memset(out.doubleDataMut(), 0, n * sizeof(double));
-    double *dst = out.doubleDataMut();
+    std::memset(out.doubleDataMut(), 0, n * sizeof(keel::f64));
+    keel::f64 *dst = out.doubleDataMut();
 
     keel::String lower;
     lower.reserve(fnName.size());
     for (char c : fnName)
         lower.push_back(keel::to_ascii_lower(c));
 
-    auto applyKernel = [&](double (*kernel)(double, double, double),
-                           double a, double b) {
+    auto applyKernel = [&](keel::f64 (*kernel)(keel::f64, keel::f64, keel::f64),
+                           keel::f64 a, keel::f64 b) {
         const keel::usize nd = d.numel();
         for (keel::usize k = 0; k < nd; ++k) {
-            const double dk = d.elemAsDouble(k);
+            const keel::f64 dk = d.elemAsDouble(k);
             for (keel::usize i = 0; i < n; ++i)
                 dst[i] += kernel(t.elemAsDouble(i) - dk, a, b);
         }
     };
 
     if (lower == "rectpuls") {
-        applyKernel([](double tv, double w, double) { return rectpulsScalar(tv, w); },
+        applyKernel([](keel::f64 tv, keel::f64 w, keel::f64) { return rectpulsScalar(tv, w); },
                     fcOrW, 0.0);
     } else if (lower == "tripuls") {
-        applyKernel([](double tv, double w, double) { return tripulsScalar(tv, w); },
+        applyKernel([](keel::f64 tv, keel::f64 w, keel::f64) { return tripulsScalar(tv, w); },
                     fcOrW, 0.0);
     } else if (lower == "gauspuls") {
-        const double alpha = gauspulsAlpha(fcOrW, bw);
-        applyKernel([](double tv, double fc, double a) { return gauspulsScalar(tv, fc, a); },
+        const keel::f64 alpha = gauspulsAlpha(fcOrW, bw);
+        applyKernel([](keel::f64 tv, keel::f64 fc, keel::f64 a) { return gauspulsScalar(tv, fc, a); },
                     fcOrW, alpha);
     } else {
         throw Error(keel::format("pulstran: unsupported pulse function '{}' (built-ins: 'rectpuls'/'tripuls'/'gauspuls'). Custom handles need the engine callback API (planned).", fnName),
@@ -193,37 +193,37 @@ Value pulstran(const Value &t, const Value &d, keel::StringRef fnName,
     return out;
 }
 
-Value square(const Value &t, double duty, keel::Allocator *mr)
+Value square(const Value &t, keel::f64 duty, keel::Allocator *mr)
 {
     if (duty < 0.0 || duty > 100.0)
         throw Error("square: duty cycle must be in [0, 100]",
                      0, 0, "square", "", "numkit:square:badDuty");
-    constexpr double kTwoPi = 6.28318530717958647692;
-    const double threshold = duty / 100.0;
+    constexpr keel::f64 kTwoPi = 6.28318530717958647692;
+    const keel::f64 threshold = duty / 100.0;
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i) {
-        const double tv = t.elemAsDouble(i);
+        const keel::f64 tv = t.elemAsDouble(i);
         // Wrap to [0, 1) within one period.
-        double frac = tv / kTwoPi;
+        keel::f64 frac = tv / kTwoPi;
         frac -= std::floor(frac);
         dst[i] = (frac < threshold) ? 1.0 : -1.0;
     }
     return out;
 }
 
-Value sawtooth(const Value &t, double width, keel::Allocator *mr)
+Value sawtooth(const Value &t, keel::f64 width, keel::Allocator *mr)
 {
     if (width < 0.0 || width > 1.0)
         throw Error("sawtooth: width must be in [0, 1]",
                      0, 0, "sawtooth", "", "numkit:sawtooth:badWidth");
-    constexpr double kTwoPi = 6.28318530717958647692;
+    constexpr keel::f64 kTwoPi = 6.28318530717958647692;
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i) {
-        double frac = t.elemAsDouble(i) / kTwoPi;
+        keel::f64 frac = t.elemAsDouble(i) / kTwoPi;
         frac -= std::floor(frac);   // [0, 1)
         // Rising portion: [0, width) → linear from -1 to +1.
         // Falling portion: [width, 1) → linear from +1 down to -1.
@@ -242,38 +242,38 @@ Value sawtooth(const Value &t, double width, keel::Allocator *mr)
 
 Value sinc(const Value &t, keel::Allocator *mr)
 {
-    constexpr double kPi = 3.14159265358979323846;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i) {
-        const double tv = t.elemAsDouble(i);
+        const keel::f64 tv = t.elemAsDouble(i);
         if (tv == 0.0) {
             dst[i] = 1.0;
         } else {
-            const double pt = kPi * tv;
+            const keel::f64 pt = kPi * tv;
             dst[i] = std::sin(pt) / pt;
         }
     }
     return out;
 }
 
-Value gmonopuls(const Value &t, double fc, keel::Allocator *mr)
+Value gmonopuls(const Value &t, keel::f64 fc, keel::Allocator *mr)
 {
     if (fc <= 0)
         throw Error("gmonopuls: fc must be positive",
                      0, 0, "gmonopuls", "", "numkit:gmonopuls:badFc");
     // Standard normalised gmonopuls: y(t) = 2·√e·π·fc·t · exp(-2·(π·fc·t)²)
     // peaks at +1 when t = 1/(2π·fc).
-    constexpr double kPi = 3.14159265358979323846;
-    const double sqrtE = std::sqrt(std::exp(1.0));
-    const double k = 2.0 * sqrtE * kPi * fc;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
+    const keel::f64 sqrtE = std::sqrt(std::exp(1.0));
+    const keel::f64 k = 2.0 * sqrtE * kPi * fc;
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i) {
-        const double tv = t.elemAsDouble(i);
-        const double pft = kPi * fc * tv;
+        const keel::f64 tv = t.elemAsDouble(i);
+        const keel::f64 pft = kPi * fc * tv;
         dst[i] = k * tv * std::exp(-2.0 * pft * pft);
     }
     return out;
@@ -284,19 +284,19 @@ Value diric(const Value &x, int n, keel::Allocator *mr)
     if (n < 1)
         throw Error("diric: n must be a positive integer",
                      0, 0, "diric", "", "numkit:diric:badN");
-    constexpr double kTwoPi = 6.28318530717958647692;
+    constexpr keel::f64 kTwoPi = 6.28318530717958647692;
     auto out = createLike(x, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize N = x.numel();
     for (keel::usize i = 0; i < N; ++i) {
-        const double xv = x.elemAsDouble(i);
+        const keel::f64 xv = x.elemAsDouble(i);
         // Detect xv ≈ 2π·k by checking sin(x/2) ≈ 0.
-        const double s = std::sin(xv * 0.5);
+        const keel::f64 s = std::sin(xv * 0.5);
         if (keel::abs(s) < 1e-12) {
             const long k = std::lround(xv / kTwoPi);
             // Sign: (-1)^(k·(n-1))
             const long sign = ((k * (n - 1)) & 1) ? -1 : 1;
-            dst[i] = keel::as<double>(sign);
+            dst[i] = keel::as<keel::f64>(sign);
         } else {
             dst[i] = std::sin(n * xv * 0.5) / (n * s);
         }
@@ -304,7 +304,7 @@ Value diric(const Value &x, int n, keel::Allocator *mr)
     return out;
 }
 
-Value chirp(const Value &t, double f0, double t1, double f1,
+Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
             keel::StringRef method, keel::Allocator *mr)
 {
     if (t1 <= 0)
@@ -333,38 +333,38 @@ Value chirp(const Value &t, double f0, double t1, double f1,
     }
 
     auto out = createLike(t, ValueType::DOUBLE, mr);
-    double *dst = out.doubleDataMut();
+    keel::f64 *dst = out.doubleDataMut();
     const keel::usize N = t.numel();
 
-    constexpr double kTwoPi = 6.28318530717958647692;
+    constexpr keel::f64 kTwoPi = 6.28318530717958647692;
 
-    auto readT = [&](keel::usize i) -> double { return t.elemAsDouble(i); };
+    auto readT = [&](keel::usize i) -> keel::f64 { return t.elemAsDouble(i); };
 
     switch (mode) {
     case Mode::Linear: {
-        const double k = (f1 - f0) / t1;
+        const keel::f64 k = (f1 - f0) / t1;
         for (keel::usize i = 0; i < N; ++i) {
-            const double tv = readT(i);
-            const double phase = kTwoPi * (f0 * tv + 0.5 * k * tv * tv);
+            const keel::f64 tv = readT(i);
+            const keel::f64 phase = kTwoPi * (f0 * tv + 0.5 * k * tv * tv);
             dst[i] = std::cos(phase);
         }
         break;
     }
     case Mode::Quadratic: {
-        const double k = (f1 - f0) / (t1 * t1);
+        const keel::f64 k = (f1 - f0) / (t1 * t1);
         for (keel::usize i = 0; i < N; ++i) {
-            const double tv = readT(i);
-            const double phase = kTwoPi * (f0 * tv + (k / 3.0) * tv * tv * tv);
+            const keel::f64 tv = readT(i);
+            const keel::f64 phase = kTwoPi * (f0 * tv + (k / 3.0) * tv * tv * tv);
             dst[i] = std::cos(phase);
         }
         break;
     }
     case Mode::Logarithmic: {
-        const double beta = std::pow(f1 / f0, 1.0 / t1);
-        const double logBeta = std::log(beta);
+        const keel::f64 beta = std::pow(f1 / f0, 1.0 / t1);
+        const keel::f64 logBeta = std::log(beta);
         for (keel::usize i = 0; i < N; ++i) {
-            const double tv = readT(i);
-            const double phase = kTwoPi * f0 * (std::pow(beta, tv) - 1.0) / logBeta;
+            const keel::f64 tv = readT(i);
+            const keel::f64 phase = kTwoPi * f0 * (std::pow(beta, tv) - 1.0) / logBeta;
             dst[i] = std::cos(phase);
         }
         break;
@@ -385,11 +385,11 @@ Value chirp(const Value &t, double f0, double t1, double f1,
 // KNOWN GAPs: fm/pm modes (use hilbert which depends on toolboxes/signal::fft
 // sign-convention bug — same blocker as Cycle J / pitch LHS/SRH).
 // amssb / pwm / ptm/ppm / qam similarly deferred.
-Value demod(const Value &y, double Fc, double Fs,
+Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
             keel::StringRef method, const Value &opt,
             keel::Allocator *mr)
 {
-    constexpr double kPi = 3.14159265358979323846;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
     const ValueType vt = y.type();
     if (vt != ValueType::DOUBLE && vt != ValueType::SINGLE && vt != ValueType::COMPLEX)
         detail::throwInputType(y, "demod", "y", 1,
@@ -423,12 +423,12 @@ Value demod(const Value &y, double Fc, double Fs,
         // FM/PM share most: yq = hilbert(y) .* exp(-j·2π·Fc·t)
         // FM: x = (1/P1) · diff(unwrap(angle(yq))) prepended with 0
         // PM: x = (1/P1) · angle(yq)
-        double P1 = 1.0;
+        keel::f64 P1 = 1.0;
         if (!opt.isEmpty()) P1 = opt.toScalar();
 
         // Compute hilbert on y.
         Value yVal = Value::matrix(len, cols, ValueType::DOUBLE, mr);
-        double *yvd = yVal.doubleDataMut();
+        keel::f64 *yvd = yVal.doubleDataMut();
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
                 yvd[r + c * len] = isRowVec ? y.elemAsDouble(r)
@@ -439,17 +439,17 @@ Value demod(const Value &y, double Fc, double Fs,
         const keel::c64 *hd = h.complexData();
 
         Value out = Value::matrix(len, cols, ValueType::DOUBLE, mr);
-        double *od = out.doubleDataMut();
+        keel::f64 *od = out.doubleDataMut();
 
         if (m == "fm") {
             // FM: angle(yq) and unwrap, then differentiate
             for (keel::usize c = 0; c < cols; ++c) {
                 // yq[r] = hilbert(y)[r] · exp(-j·2π·Fc·t)
                 // angle(yq) = angle(hilbert(y)) - 2π·Fc·t
-                keel::Array<double> ang(len, mr);
+                keel::Array<keel::f64> ang(len, mr);
                 for (keel::usize r = 0; r < len; ++r) {
                     const keel::c64 hh = hd[r + c * len];
-                    const double t = keel::as<double>(r) / Fs;
+                    const keel::f64 t = keel::as<keel::f64>(r) / Fs;
                     const keel::c64 yq = hh * keel::polar(1.0, -2.0 * kPi * Fc * t);
                     ang[r] = keel::arg(yq);
                 }
@@ -468,7 +468,7 @@ Value demod(const Value &y, double Fc, double Fs,
             for (keel::usize c = 0; c < cols; ++c) {
                 for (keel::usize r = 0; r < len; ++r) {
                     const keel::c64 hh = hd[r + c * len];
-                    const double t = keel::as<double>(r) / Fs;
+                    const keel::f64 t = keel::as<keel::f64>(r) / Fs;
                     const keel::c64 yq = hh * keel::polar(1.0, -2.0 * kPi * Fc * t);
                     od[r + c * len] = (1.0 / P1) * keel::arg(yq);
                 }
@@ -484,11 +484,11 @@ Value demod(const Value &y, double Fc, double Fs,
 
     // Step 1: x = y .* cos(2π Fc t)
     Value mixed = Value::matrix(len, cols, ValueType::DOUBLE, mr);
-    double *md = mixed.doubleDataMut();
+    keel::f64 *md = mixed.doubleDataMut();
     for (keel::usize c = 0; c < cols; ++c) {
         for (keel::usize r = 0; r < len; ++r) {
-            const double t = keel::as<double>(r) / Fs;
-            const double yi = isRowVec ? y.elemAsDouble(r)
+            const keel::f64 t = keel::as<keel::f64>(r) / Fs;
+            const keel::f64 yi = isRowVec ? y.elemAsDouble(r)
                                         : y.elemAsDouble(r + c * len);
             md[r + c * len] = yi * std::cos(2.0 * kPi * Fc * t);
         }
@@ -496,7 +496,7 @@ Value demod(const Value &y, double Fc, double Fs,
 
     // Step 2: 5th-order Butterworth lowpass at cutoff 2*Fc/Fs (normalized).
     // butter() needs Wn ∈ (0, 1). For high Fc relative to Fs (Wn ≥ 1), skip filter.
-    const double Wn = Fc * 2.0 / Fs;
+    const keel::f64 Wn = Fc * 2.0 / Fs;
     Value out;
     if (Wn > 0.0 && Wn < 1.0) {
         auto [bp, ap] = numkit::signal::butter(5, Wn, "low", mr);
@@ -508,10 +508,10 @@ Value demod(const Value &y, double Fc, double Fs,
 
     // Step 3: amdsb-tc subtracts opt offset.
     if (m == "amdsb-tc") {
-        double offset = 0.0;
+        keel::f64 offset = 0.0;
         if (!opt.isEmpty()) offset = opt.toScalar();
         if (offset != 0.0) {
-            double *od = out.doubleDataMut();
+            keel::f64 *od = out.doubleDataMut();
             for (keel::usize i = 0; i < len * cols; ++i) od[i] -= offset;
         }
     }
@@ -530,11 +530,11 @@ Value demod(const Value &y, double Fc, double Fs,
 // Analog modulation. Supports am/amdsb-sc (alias)/amdsb-tc/fm/pm.
 // Matches MATLAB R2025b modulate.m for these 4 modes one-to-one.
 // amssb (uses hilbert), pwm/ptm/ppm/qam deferred — KNOWN GAPs.
-Value modulate(const Value &x, double Fc, double Fs,
+Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
                keel::StringRef method, const Value &opt,
                keel::Allocator *mr)
 {
-    constexpr double kPi = 3.14159265358979323846;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
     const ValueType vt = x.type();
     if (vt != ValueType::DOUBLE && vt != ValueType::SINGLE && vt != ValueType::COMPLEX)
         detail::throwInputType(x, "modulate", "x", 1,
@@ -556,9 +556,9 @@ Value modulate(const Value &x, double Fc, double Fs,
     const keel::usize len = isRowVec ? x.dims().cols() : x.dims().rows();
     const keel::usize cols = isRowVec ? 1 : x.dims().cols();
     Value out = Value::matrix(len, cols, ValueType::DOUBLE, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
 
-    auto getX = [&](keel::usize r, keel::usize c) -> double {
+    auto getX = [&](keel::usize r, keel::usize c) -> keel::f64 {
         if (isRowVec) return x.elemAsDouble(r);
         return x.elemAsDouble(r + c * len);
     };
@@ -566,7 +566,7 @@ Value modulate(const Value &x, double Fc, double Fs,
     if (m == "am" || m == "amdsb-sc") {
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = keel::as<double>(r) / Fs;
+                const keel::f64 t = keel::as<keel::f64>(r) / Fs;
                 od[r + c * len] = getX(r, c) * std::cos(2.0 * kPi * Fc * t);
             }
         }
@@ -574,7 +574,7 @@ Value modulate(const Value &x, double Fc, double Fs,
         // y = x .* cos(2π·Fc·t) + imag(hilbert(x)) .* sin(2π·Fc·t)
         // Compute hilbert of full signal first.
         Value xVal = Value::matrix(len, cols, ValueType::DOUBLE, mr);
-        double *xd = xVal.doubleDataMut();
+        keel::f64 *xd = xVal.doubleDataMut();
         for (keel::usize c = 0; c < cols; ++c)
             for (keel::usize r = 0; r < len; ++r)
                 xd[r + c * len] = getX(r, c);
@@ -582,66 +582,66 @@ Value modulate(const Value &x, double Fc, double Fs,
         const keel::c64 *hd = h.complexData();
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = keel::as<double>(r) / Fs;
-                const double cosT = std::cos(2.0 * kPi * Fc * t);
-                const double sinT = std::sin(2.0 * kPi * Fc * t);
-                const double xv = xd[r + c * len];
-                const double imagH = hd[r + c * len].imag();
+                const keel::f64 t = keel::as<keel::f64>(r) / Fs;
+                const keel::f64 cosT = std::cos(2.0 * kPi * Fc * t);
+                const keel::f64 sinT = std::sin(2.0 * kPi * Fc * t);
+                const keel::f64 xv = xd[r + c * len];
+                const keel::f64 imagH = hd[r + c * len].imag();
                 od[r + c * len] = xv * cosT + imagH * sinT;
             }
         }
     } else if (m == "amdsb-tc") {
-        double offset;
+        keel::f64 offset;
         if (!opt.isEmpty()) {
             offset = opt.toScalar();
         } else {
             offset = x.elemAsDouble(0);
             for (keel::usize i = 1; i < N; ++i) {
-                const double v = x.elemAsDouble(i);
+                const keel::f64 v = x.elemAsDouble(i);
                 if (v < offset) offset = v;
             }
         }
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = keel::as<double>(r) / Fs;
+                const keel::f64 t = keel::as<keel::f64>(r) / Fs;
                 od[r + c * len] = (getX(r, c) - offset) * std::cos(2.0 * kPi * Fc * t);
             }
         }
     } else if (m == "fm") {
-        double kf;
+        keel::f64 kf;
         if (!opt.isEmpty()) {
             kf = opt.toScalar();
         } else {
-            double xMax = 0.0;
+            keel::f64 xMax = 0.0;
             for (keel::usize i = 0; i < N; ++i) {
-                const double v = keel::abs(x.elemAsDouble(i));
+                const keel::f64 v = keel::abs(x.elemAsDouble(i));
                 if (v > xMax) xMax = v;
             }
             kf = (xMax > 0.0) ? (Fc / Fs) * 2.0 * kPi / xMax : 0.0;
         }
         for (keel::usize c = 0; c < cols; ++c) {
-            double cum = 0.0;
+            keel::f64 cum = 0.0;
             for (keel::usize r = 0; r < len; ++r) {
                 cum += getX(r, c);
-                const double t = keel::as<double>(r) / Fs;
+                const keel::f64 t = keel::as<keel::f64>(r) / Fs;
                 od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kf * cum);
             }
         }
     } else if (m == "pm") {
-        double kp;
+        keel::f64 kp;
         if (!opt.isEmpty()) {
             kp = opt.toScalar();
         } else {
-            double xMax = 0.0;
+            keel::f64 xMax = 0.0;
             for (keel::usize i = 0; i < N; ++i) {
-                const double v = keel::abs(x.elemAsDouble(i));
+                const keel::f64 v = keel::abs(x.elemAsDouble(i));
                 if (v > xMax) xMax = v;
             }
             kp = (xMax > 0.0) ? kPi / xMax : 0.0;
         }
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
-                const double t = keel::as<double>(r) / Fs;
+                const keel::f64 t = keel::as<keel::f64>(r) / Fs;
                 od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kp * getX(r, c));
             }
         }
@@ -670,17 +670,17 @@ Value modulate(const Value &x, double Fc, double Fs,
 namespace {
 // Shared body: `Fc` is the centre frequency, `range1` is the
 // instantaneous-modulation factor (rad / sample / unit-x).
-Value vcoImpl(const Value &x, double Fc, double range1, double fs,
+Value vcoImpl(const Value &x, keel::f64 Fc, keel::f64 range1, keel::f64 fs,
               keel::Allocator *mr)
 {
-    constexpr double kPi = 3.14159265358979323846;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
     if (fs <= 0.0)
         throw Error("vco: fs must be positive",
                     0, 0, "vco", "", "numkit:vco:BadFs");
     const keel::usize N = x.numel();
     // Range check: x ∈ [-1, 1].
     for (keel::usize i = 0; i < N; ++i) {
-        const double v = x.elemAsDouble(i);
+        const keel::f64 v = x.elemAsDouble(i);
         if (v > 1.0 || v < -1.0)
             throw Error("vco: x values must be in [-1, 1]",
                         0, 0, "vco", "", "numkit:vco:InvalidRange");
@@ -696,7 +696,7 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
                              ValueType::DOUBLE, mr);
     if (N == 0) return out;
 
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
 
     // Determine "rows" axis (along which integration runs):
     // - If x is column vector (or Nx1): integrate along rows (single channel).
@@ -710,12 +710,12 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
     const bool rowVec = (x.dims().rows() == 1 && x.dims().cols() > 1);
 
     for (keel::usize c = 0; c < C; ++c) {
-        double cum = 0.0;
+        keel::f64 cum = 0.0;
         for (keel::usize n = 0; n < R; ++n) {
             // Index into x: row vec → x[n]; column-major matrix → x[n + c*R].
             const keel::usize srcIdx = rowVec ? n : (n + c * R);
             cum += x.elemAsDouble(srcIdx);
-            const double t = keel::as<double>(n) / fs;
+            const keel::f64 t = keel::as<keel::f64>(n) / fs;
             od[srcIdx] = std::cos(2.0 * kPi * Fc * t + range1 * cum);
         }
     }
@@ -723,22 +723,22 @@ Value vcoImpl(const Value &x, double Fc, double range1, double fs,
 }
 } // anon
 
-Value vco(const Value &x, double fc, double fs,
+Value vco(const Value &x, keel::f64 fc, keel::f64 fs,
           keel::Allocator *mr)
 {
     // Centre-form: Fc = fc, range1 = (Fc / fs) * 2π.
-    constexpr double kPi = 3.14159265358979323846;
-    const double range1 = (fc / fs) * 2.0 * kPi;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
+    const keel::f64 range1 = (fc / fs) * 2.0 * kPi;
     return vcoImpl(x, fc, range1, fs, mr);
 }
 
-Value vco(const Value &x, double fmin, double fmax, double fs,
+Value vco(const Value &x, keel::f64 fmin, keel::f64 fmax, keel::f64 fs,
           keel::Allocator *mr)
 {
     // Range-form: Fc = mean(fmin, fmax), range1 = (fmax - Fc)/fs * 2π.
-    constexpr double kPi = 3.14159265358979323846;
-    const double fc     = 0.5 * (fmin + fmax);
-    const double range1 = (fmax - fc) / fs * 2.0 * kPi;
+    constexpr keel::f64 kPi = 3.14159265358979323846;
+    const keel::f64 fc     = 0.5 * (fmin + fmax);
+    const keel::f64 range1 = (fmax - fc) / fs * 2.0 * kPi;
     return vcoImpl(x, fc, range1, fs, mr);
 }
 

@@ -45,7 +45,7 @@ namespace numkit::signal {
 
 namespace {
 
-void cusum_argcheck(const Value &x, double climit, double mshift)
+void cusum_argcheck(const Value &x, keel::f64 climit, keel::f64 mshift)
 {
     (void)x;
     (void)climit;
@@ -56,7 +56,7 @@ void cusum_argcheck(const Value &x, double climit, double mshift)
 
 // ── seqperiod ─────────────────────────────────────────────────────────
 std::pair<Value, Value>
-seqperiod(const Value &x, double tol, keel::Allocator *mr)
+seqperiod(const Value &x, keel::f64 tol, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     if (N == 0) {
@@ -67,41 +67,41 @@ seqperiod(const Value &x, double tol, keel::Allocator *mr)
     for (keel::usize d = 1; d <= N; ++d) {
         bool ok = true;
         for (keel::usize i = d; i < N; ++i) {
-            const double dv = keel::abs(x.elemAsDouble(i) - x.elemAsDouble(i % d));
+            const keel::f64 dv = keel::abs(x.elemAsDouble(i) - x.elemAsDouble(i % d));
             if (dv > tol) { ok = false; break; }
         }
         if (ok) { period = d; break; }
     }
-    return {Value::scalar(keel::as<double>(period), mr),
-            Value::scalar(keel::as<double>(N) / keel::as<double>(period), mr)};
+    return {Value::scalar(keel::as<keel::f64>(period), mr),
+            Value::scalar(keel::as<keel::f64>(N) / keel::as<keel::f64>(period), mr)};
 }
 
 // ── zerocrossrate ─────────────────────────────────────────────────────
 // Count sign changes relative to `level` (default 0); add 0.5 boundary
 // half-credit (matches MATLAB R2025b default ZeroPositive=false).
 std::pair<Value, Value>
-zerocrossrate(const Value &x, double level, keel::Allocator *mr)
+zerocrossrate(const Value &x, keel::f64 level, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     if (N <= 1) {
         // Edge: no transitions possible; rate = 0.5 / N (boundary credit).
-        const double cnt = (N == 0) ? 0.0 : 0.5;
-        return {Value::scalar(N == 0 ? 0.0 : cnt / keel::as<double>(N), mr),
+        const keel::f64 cnt = (N == 0) ? 0.0 : 0.5;
+        return {Value::scalar(N == 0 ? 0.0 : cnt / keel::as<keel::f64>(N), mr),
                 Value::scalar(cnt, mr)};
     }
     long long crossings = 0;
-    double prev = x.elemAsDouble(0) - level;
+    keel::f64 prev = x.elemAsDouble(0) - level;
     int prev_sign = (prev > 0.0) ? 1 : (prev < 0.0 ? -1 : 0);
     for (keel::usize i = 1; i < N; ++i) {
-        const double v = x.elemAsDouble(i) - level;
+        const keel::f64 v = x.elemAsDouble(i) - level;
         const int s = (v > 0.0) ? 1 : (v < 0.0 ? -1 : 0);
         // Count any flip including via zero (treat zero as continuation,
         // matching MATLAB ZeroPositive=false: zero stays at previous sign).
         if (s != 0 && prev_sign != 0 && s != prev_sign) ++crossings;
         if (s != 0) prev_sign = s;
     }
-    const double count = keel::as<double>(crossings) + 0.5;
-    const double rate  = count / keel::as<double>(N);
+    const keel::f64 count = keel::as<keel::f64>(crossings) + 0.5;
+    const keel::f64 rate  = count / keel::as<keel::f64>(N);
     return {Value::scalar(rate, mr), Value::scalar(count, mr)};
 }
 
@@ -110,15 +110,15 @@ zerocrossrate(const Value &x, double level, keel::Allocator *mr)
 // API + CusumResult). Returns first indices where each one-sided cumulative
 // sum exceeds the climit threshold (in standard-deviation units).
 
-CusumResult cusum(const Value &x, double climit, double mshift,
+CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
                   const Value &tmean, const Value &tdev,
                   keel::Allocator *mr)
 {
     cusum_argcheck(x, climit, mshift);
     const bool have_tmean   = !tmean.isEmpty();
     const bool have_tdev    = !tdev.isEmpty();
-    const double tmean_user = have_tmean ? tmean.toScalar() : 0.0;
-    const double tdev_user  = have_tdev  ? tdev.toScalar()  : 0.0;
+    const keel::f64 tmean_user = have_tmean ? tmean.toScalar() : 0.0;
+    const keel::f64 tdev_user  = have_tdev  ? tdev.toScalar()  : 0.0;
     const keel::usize N = x.numel();
     CusumResult R;
     R.uppersum = Value::matrix(N, N == 0 ? 0 : 1, ValueType::DOUBLE, mr);
@@ -129,33 +129,33 @@ CusumResult cusum(const Value &x, double climit, double mshift,
 
     // Defaults: tmean = mean(x(1:25)), tdev = std(x(1:25)).
     const keel::usize baseN = std::min<keel::usize>(25, N);
-    double tmeanEff = tmean_user;
-    double tdevEff  = tdev_user;
+    keel::f64 tmeanEff = tmean_user;
+    keel::f64 tdevEff  = tdev_user;
     if (!have_tmean) {
-        double sum = 0.0;
+        keel::f64 sum = 0.0;
         for (keel::usize i = 0; i < baseN; ++i) sum += x.elemAsDouble(i);
-        tmeanEff = sum / keel::as<double>(baseN);
+        tmeanEff = sum / keel::as<keel::f64>(baseN);
     }
     if (!have_tdev) {
-        double sum = 0.0, sumsq = 0.0;
+        keel::f64 sum = 0.0, sumsq = 0.0;
         for (keel::usize i = 0; i < baseN; ++i) {
-            const double v = x.elemAsDouble(i);
+            const keel::f64 v = x.elemAsDouble(i);
             sum += v; sumsq += v * v;
         }
-        const double m = sum / keel::as<double>(baseN);
-        const double var = (sumsq - keel::as<double>(baseN) * m * m)
-                          / keel::as<double>(baseN > 1 ? baseN - 1 : 1);
+        const keel::f64 m = sum / keel::as<keel::f64>(baseN);
+        const keel::f64 var = (sumsq - keel::as<keel::f64>(baseN) * m * m)
+                          / keel::as<keel::f64>(baseN > 1 ? baseN - 1 : 1);
         tdevEff = std::sqrt(std::max(0.0, var));
     }
     if (tdevEff <= 0.0) tdevEff = 1.0;  // guard
 
-    double *us = R.uppersum.doubleDataMut();
-    double *ls = R.lowersum.doubleDataMut();
-    double up = 0.0, lo = 0.0;
+    keel::f64 *us = R.uppersum.doubleDataMut();
+    keel::f64 *ls = R.lowersum.doubleDataMut();
+    keel::f64 up = 0.0, lo = 0.0;
     long long iup_first = -1, ilo_first = -1;
-    const double half_shift = 0.5 * mshift;
+    const keel::f64 half_shift = 0.5 * mshift;
     for (keel::usize i = 0; i < N; ++i) {
-        const double z = (x.elemAsDouble(i) - tmeanEff) / tdevEff;
+        const keel::f64 z = (x.elemAsDouble(i) - tmeanEff) / tdevEff;
         up = std::max(0.0, up + z - half_shift);
         lo = std::max(0.0, lo - z - half_shift);
         us[i] = up;
@@ -163,8 +163,8 @@ CusumResult cusum(const Value &x, double climit, double mshift,
         if (iup_first < 0 && up > climit) iup_first = keel::as<long long>(i + 1);
         if (ilo_first < 0 && lo > climit) ilo_first = keel::as<long long>(i + 1);
     }
-    if (iup_first > 0) R.iupper = Value::scalar(keel::as<double>(iup_first), mr);
-    if (ilo_first > 0) R.ilower = Value::scalar(keel::as<double>(ilo_first), mr);
+    if (iup_first > 0) R.iupper = Value::scalar(keel::as<keel::f64>(iup_first), mr);
+    if (ilo_first > 0) R.ilower = Value::scalar(keel::as<keel::f64>(ilo_first), mr);
     return R;
 }
 

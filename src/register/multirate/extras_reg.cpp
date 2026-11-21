@@ -50,7 +50,7 @@ void interp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[2], 3, "n", "interp"), 3, "n", "interp"))
         : 4;
-    const double alpha = (args.size() >= 4) ? args[3].toScalar() : 0.5;
+    const keel::f64 alpha = (args.size() >= 4) ? args[3].toScalar() : 0.5;
     outs[0] = interp(args[0], r, n, alpha, ctx.engine->allocator());
 }
 
@@ -63,7 +63,7 @@ void intfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[1], 2, "n", "intfilt"), 2, "n", "intfilt"))
         : 4;
-    const double alpha = (args.size() >= 3) ? args[2].toScalar() : 0.5;
+    const keel::f64 alpha = (args.size() >= 3) ? args[2].toScalar() : 0.5;
     outs[0] = intfilt(r, n, alpha, ctx.engine->allocator());
 }
 

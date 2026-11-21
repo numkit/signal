@@ -81,8 +81,8 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
         const keel::usize N = x.numel();
         Value xr = createLike(x, ValueType::DOUBLE, mr);
         Value xi = createLike(x, ValueType::DOUBLE, mr);
-        double *xrd = xr.doubleDataMut();
-        double *xid = xi.doubleDataMut();
+        keel::f64 *xrd = xr.doubleDataMut();
+        keel::f64 *xid = xi.doubleDataMut();
         const keel::c64 *xcd = x.complexData();
         for (keel::usize i = 0; i < N; ++i) {
             xrd[i] = xcd[i].real();
@@ -92,8 +92,8 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
         Value yi = sosfilt(sosD, xi, mr);
         Value out = createLike(x, ValueType::COMPLEX, mr);
         keel::c64 *od = out.complexDataMut();
-        const double *yrd = yr.doubleData();
-        const double *yid = yi.doubleData();
+        const keel::f64 *yrd = yr.doubleData();
+        const keel::f64 *yid = yi.doubleData();
         for (keel::usize i = 0; i < N; ++i)
             od[i] = keel::c64(yrd[i], yid[i]);
         return out;
@@ -104,7 +104,7 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     const keel::usize L = sosD.dims().rows();
-    const keel::ArrayRef<double> sosRef(sosD.doubleData(), L * 6);
+    const keel::ArrayRef<keel::f64> sosRef(sosD.doubleData(), L * 6);
     if (xD.dims().isVector() || xD.isScalar()) {
         const keel::usize n = xD.numel();
         checkZeroLead(keel::signal::sosfilt_col_major(sosRef, L, {xD.doubleData(), n},
@@ -114,8 +114,8 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     }
     const keel::usize rows = xD.dims().rows();
     const keel::usize cols = xD.dims().cols();
-    const double *src = xD.doubleData();
-    double *dst = out.doubleDataMut();
+    const keel::f64 *src = xD.doubleData();
+    keel::f64 *dst = out.doubleDataMut();
     for (keel::usize c = 0; c < cols; ++c) {
         checkZeroLead(keel::signal::sosfilt_col_major(sosRef, L, {src + c * rows, rows},
                                                       {dst + c * rows, rows}, {}, mr),
@@ -135,7 +135,7 @@ Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     Value xD = detail::widenSingleToDouble(x, mr);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     const keel::usize L = sosD.dims().rows();
-    const keel::ArrayRef<double> sosRef(sosD.doubleData(), L * 6);
+    const keel::ArrayRef<keel::f64> sosRef(sosD.doubleData(), L * 6);
     if (xD.dims().isVector() || xD.isScalar()) {
         const keel::usize n = xD.numel();
         checkZeroLead(keel::signal::sosfiltfilt_col_major(sosRef, L, {xD.doubleData(), n},
@@ -145,8 +145,8 @@ Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
     }
     const keel::usize rows = xD.dims().rows();
     const keel::usize cols = xD.dims().cols();
-    const double *src = xD.doubleData();
-    double *dst = out.doubleDataMut();
+    const keel::f64 *src = xD.doubleData();
+    keel::f64 *dst = out.doubleDataMut();
     for (keel::usize c = 0; c < cols; ++c) {
         checkZeroLead(keel::signal::sosfiltfilt_col_major(sosRef, L, {src + c * rows, rows},
                                                           {dst + c * rows, rows}, mr),

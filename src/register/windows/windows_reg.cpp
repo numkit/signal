@@ -112,7 +112,7 @@ void kaiser_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 {
     argcheck::checkNargin(args.size(), 1, 2, "kaiser");
     const keel::usize N = argcheck::roundLength(args[0], 1, "N", "kaiser");
-    const double beta = (args.size() >= 2) ? args[1].toScalar() : 0.5;
+    const keel::f64 beta = (args.size() >= 2) ? args[1].toScalar() : 0.5;
     outs[0] = kaiser(N, beta, ctx.engine->allocator());
 }
 
@@ -147,7 +147,7 @@ void tukeywin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 {
     argcheck::checkNargin(args.size(), 1, 2, "tukeywin");
     const keel::usize N = windowN(args[0], "tukeywin");
-    const double r = (args.size() >= 2) ? args[1].toScalar() : 0.5;
+    const keel::f64 r = (args.size() >= 2) ? args[1].toScalar() : 0.5;
     outs[0] = tukeywin(N, r, ctx.engine->allocator());
 }
 
@@ -163,7 +163,7 @@ void gausswin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 {
     argcheck::checkNargin(args.size(), 1, 2, "gausswin");
     const keel::usize N = windowN(args[0], "gausswin");
-    const double alpha = (args.size() >= 2) ? args[1].toScalar() : 2.5;
+    const keel::f64 alpha = (args.size() >= 2) ? args[1].toScalar() : 2.5;
     outs[0] = gausswin(N, alpha, ctx.engine->allocator());
 }
 
@@ -171,7 +171,7 @@ void chebwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
 {
     argcheck::checkNargin(args.size(), 1, 3, "chebwin");
     const keel::usize N = windowN(args[0], "chebwin");
-    const double at = (args.size() >= 2) ? args[1].toScalar() : 100.0;
+    const keel::f64 at = (args.size() >= 2) ? args[1].toScalar() : 100.0;
     outs[0] = chebwin(N, at, ctx.engine->allocator());
 }
 
@@ -198,7 +198,7 @@ void taylorwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mu
         ? argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[1], 2, "nbar", "taylorwin"), 2, "nbar", "taylorwin")
         : 4;
-    const double sll = (args.size() >= 3) ? args[2].toScalar() : -30.0;
+    const keel::f64 sll = (args.size() >= 3) ? args[2].toScalar() : -30.0;
     outs[0] = taylorwin(N, nbar, sll, ctx.engine->allocator());
 }
 
@@ -229,7 +229,7 @@ void dpss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     argcheck::checkNargin(args.size(), 2, 4, "dpss");
     const keel::usize N = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[0], 1, "N", "dpss"), 1, "N", "dpss"));
-    const double nw = args[1].toScalar();
+    const keel::f64 nw = args[1].toScalar();
     keel::usize k = std::min(N, std::max<keel::usize>(1, keel::as<keel::usize>(std::llround(2.0 * nw))));
     if (args.size() >= 3 && args[2].isNumeric() && !args[2].isEmpty()) {
         k = std::min(N, keel::as<keel::usize>(std::max(1.0, std::round(args[2].elemAsDouble(args[2].numel() - 1)))));

@@ -102,10 +102,10 @@ Value binmask2sigroi(const Value &m, keel::Allocator *mr)
     const keel::usize N = starts.size();
     Value out = Value::matrix(N, N == 0 ? 0 : 2, ValueType::DOUBLE, mr);
     if (N == 0) return out;
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < N; ++i) {
-        od[i + 0 * N] = keel::as<double>(starts[i]);
-        od[i + 1 * N] = keel::as<double>(ends[i]);
+        od[i + 0 * N] = keel::as<keel::f64>(starts[i]);
+        od[i + 1 * N] = keel::as<keel::f64>(ends[i]);
     }
     return out;
 }
@@ -154,13 +154,13 @@ Value extendsigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
     const keel::usize N = roi.dims().rows();
     Value out = Value::matrix(N, N == 0 ? 0 : 2, ValueType::DOUBLE, mr);
     if (N == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < N; ++i) {
         keel::i64 s = roiStart(roi, i) - Lpre;
         keel::i64 e = roiEnd(roi, i)   + Lpost;
         if (s < 1) s = 1;
-        od[i + 0 * N] = keel::as<double>(s);
-        od[i + 1 * N] = keel::as<double>(e);
+        od[i + 0 * N] = keel::as<keel::f64>(s);
+        od[i + 1 * N] = keel::as<keel::f64>(e);
     }
     return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
@@ -184,10 +184,10 @@ Value shortensigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
     const keel::usize M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
     if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < M; ++i) {
-        od[i + 0 * M] = keel::as<double>(starts[i]);
-        od[i + 1 * M] = keel::as<double>(ends[i]);
+        od[i + 0 * M] = keel::as<keel::f64>(starts[i]);
+        od[i + 1 * M] = keel::as<keel::f64>(ends[i]);
     }
     return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
@@ -225,10 +225,10 @@ Value mergesigroi(const Value &roi, keel::i64 sep, keel::Allocator *mr)
     const keel::usize M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
     if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < M; ++i) {
-        od[i + 0 * M] = keel::as<double>(starts[i]);
-        od[i + 1 * M] = keel::as<double>(ends[i]);
+        od[i + 0 * M] = keel::as<keel::f64>(starts[i]);
+        od[i + 1 * M] = keel::as<keel::f64>(ends[i]);
     }
     return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
@@ -257,10 +257,10 @@ Value removesigroi(const Value &roi, keel::i64 maxLen,
     const keel::usize M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
     if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < M; ++i) {
-        od[i + 0 * M] = keel::as<double>(starts[i]);
-        od[i + 1 * M] = keel::as<double>(ends[i]);
+        od[i + 0 * M] = keel::as<keel::f64>(starts[i]);
+        od[i + 1 * M] = keel::as<keel::f64>(ends[i]);
     }
     return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
 }
@@ -309,7 +309,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
                                   totalLen == 0 ? 0 : 1,
                                   ValueType::DOUBLE, mr);
         if (totalLen == 0) return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
-        double *od = out.doubleDataMut();
+        keel::f64 *od = out.doubleDataMut();
         keel::usize pos = 0;
         for (keel::usize i = 0; i < N; ++i) {
             const keel::i64 s = std::max<keel::i64>(1, roiStart(roi, i));
@@ -341,7 +341,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
                                       segLen == 0 ? 0 : 1,
                                       ValueType::DOUBLE, mr);
             if (segLen > 0) {
-                double *sd = seg.doubleDataMut();
+                keel::f64 *sd = seg.doubleDataMut();
                 for (keel::i64 k = 0; k < segLen; ++k)
                     sd[k] = x.elemAsDouble(keel::as<keel::usize>(s - 1 + k));
             }
@@ -368,7 +368,7 @@ Value allocLogicalLike(const Value &x, keel::Allocator *mr)
 }
 } // anon
 
-Value sigrangebinmask(const Value &x, double threshold,
+Value sigrangebinmask(const Value &x, keel::f64 threshold,
                       keel::Allocator *mr)
 {
     Value out = allocLogicalLike(x, mr);
@@ -380,7 +380,7 @@ Value sigrangebinmask(const Value &x, double threshold,
     return out;
 }
 
-Value sigrangebinmask(const Value &x, double lo, double hi,
+Value sigrangebinmask(const Value &x, keel::f64 lo, keel::f64 hi,
                       keel::Allocator *mr)
 {
     Value out = allocLogicalLike(x, mr);
@@ -388,7 +388,7 @@ Value sigrangebinmask(const Value &x, double lo, double hi,
     if (L == 0) return out;
     keel::u8 *od = out.logicalDataMut();
     for (keel::usize i = 0; i < L; ++i) {
-        const double v = x.elemAsDouble(i);
+        const keel::f64 v = x.elemAsDouble(i);
         od[i] = (v >= lo && v <= hi) ? 1 : 0;
     }
     return out;

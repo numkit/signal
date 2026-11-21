@@ -61,7 +61,7 @@ void finddelay_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mu
               argcheck::expectedReal(args[2], 3, "maxlag", "finddelay"), 3, "maxlag", "finddelay")
         : 0;
     const long d = finddelay(args[0], args[1], max_lag, ctx.engine->allocator());
-    outs[0] = Value::scalar(keel::as<double>(d), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<keel::f64>(d), ctx.engine->allocator());
 }
 
 void alignsignals_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)

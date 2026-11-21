@@ -97,19 +97,19 @@ void filtord_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
     int n = (args.size() >= 2)
         ? filtord(args[0], args[1])
         : filtord(args[0]);
-    outs[0] = Value::scalar(keel::as<double>(n), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<keel::f64>(n), ctx.engine->allocator());
 }
 
 void firtype_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "firtype");
-    outs[0] = Value::scalar(keel::as<double>(firtype(args[0])), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<keel::f64>(firtype(args[0])), ctx.engine->allocator());
 }
 
 void filternorm_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "filternorm");
-    double p = 2.0;
+    keel::f64 p = 2.0;
     if (args.size() >= 3 && !args[2].isEmpty()) p = args[2].toScalar();
     outs[0] = Value::scalar(filternorm(args[0], args[1], p, ctx.engine->allocator()),
                             ctx.engine->allocator());
@@ -155,7 +155,7 @@ int firtype(const Value &b)
 }
 
 // â”€â”€ filternorm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-double filternorm(const Value &b, const Value &a, double pnorm, keel::Allocator *mr)
+keel::f64 filternorm(const Value &b, const Value &a, keel::f64 pnorm, keel::Allocator *mr)
 {
     constexpr keel::usize kNpts = 8192;
     auto [H, W] = freqz(b, a, kNpts, /*whole=*/false, /*fs=*/0.0, mr);
@@ -163,9 +163,9 @@ double filternorm(const Value &b, const Value &a, double pnorm, keel::Allocator 
 
     if (std::isinf(pnorm)) {
         // Lâˆž: max |H(e^{jw})| over the freqz grid.
-        double mx = 0.0;
+        keel::f64 mx = 0.0;
         for (keel::usize k = 0; k < kNpts; ++k) {
-            const double m = keel::abs(hd[k]);
+            const keel::f64 m = keel::abs(hd[k]);
             if (m > mx) mx = m;
         }
         return mx;
@@ -175,13 +175,13 @@ double filternorm(const Value &b, const Value &a, double pnorm, keel::Allocator 
                      0, 0, "filternorm", "", "numkit:filternorm:p");
     // L2: sqrt((1/Ï€) âˆ«_0^Ï€ |H|Â² dw) via trapezoidal rule on freqz grid.
     // freqz returns npts samples on [0, Ï€] inclusive â€” Î”w = Ï€/(npts-1).
-    double sum = 0.0;
+    keel::f64 sum = 0.0;
     for (keel::usize k = 0; k < kNpts; ++k) {
-        const double mag2 = keel::norm(hd[k]);  // |z|Â² for complex
-        const double w = (k == 0 || k == kNpts - 1) ? 0.5 : 1.0;
+        const keel::f64 mag2 = keel::norm(hd[k]);  // |z|Â² for complex
+        const keel::f64 w = (k == 0 || k == kNpts - 1) ? 0.5 : 1.0;
         sum += w * mag2;
     }
-    return std::sqrt(sum / keel::as<double>(kNpts - 1));
+    return std::sqrt(sum / keel::as<keel::f64>(kNpts - 1));
 }
 
 } // namespace numkit::signal

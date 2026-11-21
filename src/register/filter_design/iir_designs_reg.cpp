@@ -96,7 +96,7 @@ int iirOrder(const Value &v, const char *fn)
     if (v.isComplex())
         throw Error(keel::format("{}: filter order N must be real (argument is complex).", fn),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotReal", fn));
-    const double n = v.toScalar();
+    const keel::f64 n = v.toScalar();
     if (n != std::floor(n)) {
         const auto numStr = argcheck::detail::num(n);
         throw Error(keel::format("{}: filter order N must be a positive integer (got {}).", fn, numStr),
@@ -111,7 +111,7 @@ void cheby1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 {
     argcheck::checkNargin(args.size(), 3, 6, "cheby1");
     const int N = iirOrder(args[0], "cheby1");
-    const double R = args[1].toScalar();
+    const keel::f64 R = args[1].toScalar();
     const Value &Wn = args[2];
     auto t = parseTrailing(args, 3);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
@@ -129,7 +129,7 @@ void cheby2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 {
     argcheck::checkNargin(args.size(), 3, 6, "cheby2");
     const int N = iirOrder(args[0], "cheby2");
-    const double R = args[1].toScalar();
+    const keel::f64 R = args[1].toScalar();
     const Value &Wn = args[2];
     auto t = parseTrailing(args, 3);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
@@ -163,8 +163,8 @@ void ellip_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
 {
     argcheck::checkNargin(args.size(), 4, 7, "ellip");
     const int N = iirOrder(args[0], "ellip");
-    const double Rp  = args[1].toScalar();
-    const double Rs  = args[2].toScalar();
+    const keel::f64 Rp  = args[1].toScalar();
+    const keel::f64 Rs  = args[2].toScalar();
     const Value &Wn  = args[3];
     auto t = parseTrailing(args, 4);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
@@ -194,11 +194,11 @@ inline bool parseAnalogFromOrdArgs(keel::ArrayRef<Value> args, keel::usize start
         argcheck::checkNargin(args.size(), 4, 5, #name);                          \
         const Value &Wp = args[0];                                                \
         const Value &Ws = args[1];                                                \
-        const double Rp = args[2].toScalar();                                     \
-        const double Rs = args[3].toScalar();                                     \
+        const keel::f64 Rp = args[2].toScalar();                                     \
+        const keel::f64 Rs = args[3].toScalar();                                     \
         const bool analog = parseAnalogFromOrdArgs(args, 4);                      \
         auto [N, Wn] = name(Wp, Ws, Rp, Rs, analog, ctx.engine->allocator());     \
-        outs[0] = Value::scalar(keel::as<double>(N), ctx.engine->allocator()); \
+        outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator()); \
         if (nargout > 1) outs[1] = std::move(Wn);                                 \
     }
 
@@ -222,7 +222,7 @@ void ellipord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         analog = (s == "s" || s == "S");
     }
     auto [N, Wn] = ellipord(args[0], args[1], args[2].toScalar(), args[3].toScalar(), analog, ctx.engine->allocator());
-    outs[0] = Value::scalar(keel::as<double>(N), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator());
     if (nargout > 1) outs[1] = std::move(Wn);
 }
 
@@ -234,10 +234,10 @@ void firpmord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "firpmord");
-    double fs = 2.0;
+    keel::f64 fs = 2.0;
     if (args.size() >= 4 && !args[3].isEmpty()) fs = args[3].toScalar();
     auto [N, ff, aa, wts] = firpmord(args[0], args[1], args[2], fs, ctx.engine->allocator());
-    outs[0] = Value::scalar(keel::as<double>(N), ctx.engine->allocator());
+    outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator());
     if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(ff);
     if (nargout >= 3 && outs.size() >= 3) outs[2] = std::move(aa);
     if (nargout >= 4 && outs.size() >= 4) outs[3] = std::move(wts);
@@ -251,11 +251,11 @@ void kaiserord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                    keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "kaiserord");
-    double fs = 2.0;
+    keel::f64 fs = 2.0;
     if (args.size() >= 4 && !args[3].isEmpty()) fs = args[3].toScalar();
     auto [N, Wn, beta, ftype] = kaiserord(args[0], args[1], args[2], fs, ctx.engine->allocator());
     auto *mr = ctx.engine->allocator();
-    outs[0] = Value::scalar(keel::as<double>(N), mr);
+    outs[0] = Value::scalar(keel::as<keel::f64>(N), mr);
     if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(Wn);
     if (nargout >= 3 && outs.size() >= 3) outs[2] = Value::scalar(beta, mr);
     if (nargout >= 4 && outs.size() >= 4) {

@@ -70,7 +70,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     argcheck::checkNargin(args.size(), 1, 3, "fillgaps");
     keel::usize maxlen = 0;
     if (args.size() >= 2 && !args[1].isEmpty()) {
-        const double ml = argcheck::expectedReal(args[1], 2, "MAXLEN", "fillgaps");
+        const keel::f64 ml = argcheck::expectedReal(args[1], 2, "MAXLEN", "fillgaps");
         if (std::isinf(ml) && ml > 0.0) {
             maxlen = 0;
         } else {
@@ -90,7 +90,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
                             0, 0, "fillgaps", "", "numkit:fillgaps:invalidOrder");
             order = 0;
         } else {
-            const double ord = argcheck::expectedReal(args[2], 3, "ORDER", "fillgaps");
+            const keel::f64 ord = argcheck::expectedReal(args[2], 3, "ORDER", "fillgaps");
             if (std::isinf(ord) && ord > 0.0) {
                 order = 0;
             } else {

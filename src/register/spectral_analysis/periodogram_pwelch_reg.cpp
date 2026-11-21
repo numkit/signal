@@ -26,7 +26,7 @@ namespace detail {
 // MATLAB DSP-spectrum default fs = 2*pi (treats input as normalised
 // radian frequency). Explicit fs as the last positional argument
 // overrides this.
-constexpr double kDefaultFs = 2.0 * 3.14159265358979323846;
+constexpr keel::f64 kDefaultFs = 2.0 * 3.14159265358979323846;
 
 void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
@@ -43,10 +43,10 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         window = args[1];
     const keel::usize nfft = (firstStr > 2 && !args[2].isEmpty())
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "periodogram"), 3, "nfft", "periodogram")) : 0;
-    const double fs   = (firstStr > 3 && !args[3].isEmpty()) ? args[3].toScalar() : kDefaultFs;
+    const keel::f64 fs   = (firstStr > 3 && !args[3].isEmpty()) ? args[3].toScalar() : kDefaultFs;
 
     // 'ConfidenceLevel', p name-value pair (case-insensitive); MATLAB default 0.95.
-    double conf = 0.95;
+    keel::f64 conf = 0.95;
     for (keel::usize i = firstStr; i + 1 < args.size(); ++i) {
         if (!args[i].isChar()) continue;
         keel::String opt = args[i].toString();
@@ -85,7 +85,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[3], 4, "nfft", "pwelch"),
             4, "nfft", "pwelch")) : 0;
-    const double fs   = (args.size() >= 5 && !args[4].isEmpty()) ? args[4].toScalar() : kDefaultFs;
+    const keel::f64 fs   = (args.size() >= 5 && !args[4].isEmpty()) ? args[4].toScalar() : kDefaultFs;
 
     bool twoSided = args[0].isComplex();
     for (keel::usize i = 1; i < args.size(); ++i) {
@@ -102,9 +102,9 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
         const keel::usize fullN = (nfft > 0) ? nfft : ((nOne - 1) * 2);
         auto P2 = Value::matrix(fullN, 1, ValueType::DOUBLE, mr);
         auto F2 = Value::matrix(fullN, 1, ValueType::DOUBLE, mr);
-        const double *p1 = Pxx.doubleData();
-        double *p2 = P2.doubleDataMut();
-        double *f2 = F2.doubleDataMut();
+        const keel::f64 *p1 = Pxx.doubleData();
+        keel::f64 *p2 = P2.doubleDataMut();
+        keel::f64 *f2 = F2.doubleDataMut();
         p2[0] = p1[0];
         for (keel::usize k = 1; k < nOne; ++k) {
             if (fullN % 2 == 0 && k == fullN / 2) {
@@ -115,7 +115,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
             }
         }
         for (keel::usize k = 0; k < fullN; ++k)
-            f2[k] = fs * keel::as<double>(k) / keel::as<double>(fullN);
+            f2[k] = fs * keel::as<keel::f64>(k) / keel::as<keel::f64>(fullN);
         Pxx = std::move(P2);
         F = std::move(F2);
     }
@@ -137,7 +137,7 @@ void cpsd_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[4], 5, "nfft", "cpsd"),
             5, "nfft", "cpsd")) : 0;
-    const double fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
+    const keel::f64 fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
     auto [Pxy, F] = cpsd(args[0], args[1], window, noverlap, nfft, fs, ctx.engine->allocator());
     outs[0] = std::move(Pxy);
     if (nargout > 1) outs[1] = std::move(F);
@@ -156,7 +156,7 @@ void mscohere_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[4], 5, "nfft", "mscohere"),
             5, "nfft", "mscohere")) : 0;
-    const double fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
+    const keel::f64 fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
     auto [Cxy, F] = mscohere(args[0], args[1], window, noverlap, nfft, fs, ctx.engine->allocator());
     outs[0] = std::move(Cxy);
     if (nargout > 1) outs[1] = std::move(F);
@@ -175,7 +175,7 @@ void tfestimate_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutAr
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[4], 5, "nfft", "tfestimate"),
             5, "nfft", "tfestimate")) : 0;
-    const double fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
+    const keel::f64 fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
     auto [Txy, F] = tfestimate(args[0], args[1], window, noverlap, nfft, fs, ctx.engine->allocator());
     outs[0] = std::move(Txy);
     if (nargout > 1) outs[1] = std::move(F);

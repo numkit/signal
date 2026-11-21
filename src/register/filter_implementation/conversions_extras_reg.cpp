@@ -30,7 +30,7 @@ namespace detail {
 void sos2tf_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "sos2tf");
-    const double g = (args.size() >= 2) ? args[1].toScalar() : 1.0;
+    const keel::f64 g = (args.size() >= 2) ? args[1].toScalar() : 1.0;
     auto [b, a] = sos2tf(args[0], g, ctx.engine->allocator());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);
@@ -39,7 +39,7 @@ void sos2tf_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
 void sos2zp_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "sos2zp");
-    const double g = (args.size() >= 2) ? args[1].toScalar() : 1.0;
+    const keel::f64 g = (args.size() >= 2) ? args[1].toScalar() : 1.0;
     auto [z, p, gain] = sos2zp(args[0], g, ctx.engine->allocator());
     outs[0] = std::move(z);
     if (nargout > 1) outs[1] = std::move(p);
@@ -70,7 +70,7 @@ void tf2ss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 void ss2tf_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "ss2tf");
-    const double D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
+    const keel::f64 D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
     auto [b, a] = ss2tf(args[0], args[1], args[2], D, ctx.engine->allocator());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);
@@ -79,7 +79,7 @@ void ss2tf_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 void ss2zp_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "ss2zp");
-    const double D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
+    const keel::f64 D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
     auto [z, p, gain] = ss2zp(args[0], args[1], args[2], D, ctx.engine->allocator());
     outs[0] = std::move(z);
     if (nargout > 1) outs[1] = std::move(p);
@@ -99,7 +99,7 @@ void zp2ss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 void sos2ss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "sos2ss");
-    const double g = (args.size() >= 2) ? args[1].toScalar() : 1.0;
+    const keel::f64 g = (args.size() >= 2) ? args[1].toScalar() : 1.0;
     auto [A, B, C, D] = sos2ss(args[0], g, ctx.engine->allocator());
     outs[0] = std::move(A);
     if (nargout > 1) outs[1] = std::move(B);
@@ -110,7 +110,7 @@ void sos2ss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
 void ss2sos_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 7, "ss2sos");
-    const double D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
+    const keel::f64 D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
     outs[0] = ss2sos(args[0], args[1], args[2], D, ctx.engine->allocator());
 }
 

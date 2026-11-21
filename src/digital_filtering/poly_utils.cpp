@@ -168,7 +168,7 @@ Value polyscale(const Value &p, const Value &scale,
             }
         }
     } else {
-        double *dst = out.doubleDataMut();
+        keel::f64 *dst = out.doubleDataMut();
         for (keel::usize i = 0; i < m; ++i) {
             for (keel::usize k = 0; k < n; ++k) {
                 const keel::usize lin = k * m + i;
@@ -247,7 +247,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
             for (keel::usize k = 0; k < n; ++k)
                 dst[k] = elemAsComplex(a, k);
         } else {
-            double *dst = out.doubleDataMut();
+            keel::f64 *dst = out.doubleDataMut();
             for (keel::usize k = 0; k < n; ++k)
                 dst[k] = a.elemAsDouble(k);
         }
@@ -279,7 +279,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
     bool rootsComplex = false;
     for (keel::usize k = 0; k < nr; ++k) {
         keel::c64 r = elemAsComplex(rv, k);
-        const double mag = keel::abs(r);
+        const keel::f64 mag = keel::abs(r);
         if (mag > 1.0) {
             // Conjugate reciprocal: magnitude 1/|r|, unchanged angle.
             // 1/conj(r) = r / |r|^2.
@@ -304,7 +304,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
             rd[k] = stabRoots[k];
     } else {
         rootVec = Value::matrix(nr, 1, ValueType::DOUBLE, arena.allocator());
-        double *rd = rootVec.doubleDataMut();
+        keel::f64 *rd = rootVec.doubleDataMut();
         for (keel::usize k = 0; k < nr; ++k)
             rd[k] = stabRoots[k].real();
     }
@@ -324,8 +324,8 @@ Value polystab(const Value &a, keel::Allocator *mr)
         for (keel::usize k = 0; k < mlen; ++k)
             dst[k] = elemAsComplex(monic, k) * gain;
     } else {
-        double *dst = out.doubleDataMut();
-        const double g = gain.real();
+        keel::f64 *dst = out.doubleDataMut();
+        const keel::f64 g = gain.real();
         for (keel::usize k = 0; k < mlen; ++k)
             dst[k] = elemAsComplex(monic, k).real() * g;
     }

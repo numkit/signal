@@ -49,7 +49,7 @@ keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
     } else {
         // Non-power-of-two → general (mixed-radix / Bluestein) length-N FFT.
         Value xcol = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-        double *xd = xcol.doubleDataMut();
+        keel::f64 *xd = xcol.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i) xd[i] = x.elemAsDouble(i);
         Value X = fft(xcol, keel::as<int>(N), /*dim=*/0, mr);
         const keel::c64 *Xc = X.complexData();
@@ -65,7 +65,7 @@ keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
         // IFFT via conjugate trick: ifft(X) = conj(fft(conj(X)))/N.
         for (auto &v : buf) v = keel::conj(v);
         fftRadix2(mr, buf, -1);
-        const double invN = 1.0 / keel::as<double>(N);
+        const keel::f64 invN = 1.0 / keel::as<keel::f64>(N);
         for (auto &v : buf) v = keel::conj(v) * invN;
     } else {
         Value Xm = Value::matrix(N, 1, ValueType::COMPLEX, mr);
@@ -101,20 +101,20 @@ Value hilbert(const Value &x, keel::Allocator *mr)
 namespace {
 
 // Read x into a flat scratch buffer.
-keel::Array<double> read_real(const Value &x, keel::Allocator *mr)
+keel::Array<keel::f64> read_real(const Value &x, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
-    keel::Array<double> v(N, mr);
+    keel::Array<keel::f64> v(N, mr);
     for (keel::usize i = 0; i < N; ++i) v[i] = x.elemAsDouble(i);
     return v;
 }
 
 // |hilbert(x)| amplitude — used by the default and 'analytic' (no n) paths.
-keel::Array<double> ampl_fft_hilbert(const Value &x, keel::Allocator *mr)
+keel::Array<keel::f64> ampl_fft_hilbert(const Value &x, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     auto buf = hilbertBuf(x, mr);
-    keel::Array<double> a(N, mr);
+    keel::Array<keel::f64> a(N, mr);
     for (keel::usize i = 0; i < N; ++i) a[i] = keel::abs(buf[i]);
     return a;
 }
@@ -126,37 +126,37 @@ keel::Array<double> ampl_fft_hilbert(const Value &x, keel::Allocator *mr)
 //   firFilter = hfilt .* kaiser(n, 8)
 //   firFilter /= sum(real(firFilter))
 //   y = abs(conv2(x, firFilter, 'same'))
-keel::Array<double> ampl_fir(const Value &x_centered, keel::usize n, keel::Allocator *mr)
+keel::Array<keel::f64> ampl_fir(const Value &x_centered, keel::usize n, keel::Allocator *mr)
 {
     const keel::usize N = x_centered.numel();
     auto x = read_real(x_centered, mr);
 
     // Kaiser window via numkit::signal::kaiser (returns Value 1×n).
     Value kw = numkit::signal::kaiser(n, 8.0, mr);
-    const double *kd = kw.doubleData();
+    const keel::f64 *kd = kw.doubleData();
 
     // hfilt[k] = sinc(t_k) · exp(iπ·t_k), windowed.
     keel::Array<keel::c64> filt(n, mr);
     keel::c64 normR(0.0, 0.0);
     for (keel::usize k = 0; k < n; ++k) {
-        const double t = 0.5 * (double(k) - 0.5 * (double(n) - 1.0));
-        const double s = (std::fabs(t) < 1e-15)
+        const keel::f64 t = 0.5 * (keel::f64(k) - 0.5 * (keel::f64(n) - 1.0));
+        const keel::f64 s = (std::fabs(t) < 1e-15)
                          ? 1.0
                          : std::sin(M_PI * t) / (M_PI * t);
-        const double w = kd[k];
+        const keel::f64 w = kd[k];
         const keel::c64 h = keel::c64(s * w * std::cos(M_PI * t),
                                   s * w * std::sin(M_PI * t));
         filt[k] = h;
         normR += keel::c64(h.real(), 0.0);
     }
-    const double inv_norm = 1.0 / normR.real();
+    const keel::f64 inv_norm = 1.0 / normR.real();
     for (auto &c : filt) c *= inv_norm;
 
     // 'same' complex conv of length-N real signal with length-n complex
     // filter. Output length = N. MATLAB's conv2 'same' centers using
     // floor(n/2) for the leading offset (verified vs R2025b on n=8).
     const keel::usize pad = n / 2;
-    keel::Array<double> out(N, mr);
+    keel::Array<keel::f64> out(N, mr);
     for (keel::usize i = 0; i < N; ++i) {
         keel::c64 acc(0.0, 0.0);
         // y[i] = sum_k x[i+pad-k] · filt[k] (matching conv 'same').
@@ -172,7 +172,7 @@ keel::Array<double> ampl_fir(const Value &x_centered, keel::usize n, keel::Alloc
 }
 
 // envRMS — sliding-window RMS. y = sqrt(movmean(x², n)).
-keel::Array<double> ampl_rms(const Value &x_centered, keel::usize n, keel::Allocator *mr)
+keel::Array<keel::f64> ampl_rms(const Value &x_centered, keel::usize n, keel::Allocator *mr)
 {
     const keel::usize N = x_centered.numel();
     auto x = read_real(x_centered, mr);
@@ -183,14 +183,14 @@ keel::Array<double> ampl_rms(const Value &x_centered, keel::usize n, keel::Alloc
     // window to available samples.
     const long long left  = (long long)(n / 2);
     const long long right = (long long)(n - 1) - left;  // for even n: left = n/2, right = n/2-1
-    keel::Array<double> out(N, mr);
+    keel::Array<keel::f64> out(N, mr);
     for (keel::usize i = 0; i < N; ++i) {
         const long long lo = std::max((long long)0, (long long)i - left);
         const long long hi = std::min((long long)N - 1, (long long)i + right);
-        double s = 0.0;
+        keel::f64 s = 0.0;
         long long cnt = 0;
         for (long long j = lo; j <= hi; ++j) { s += x[(keel::usize)j] * x[(keel::usize)j]; ++cnt; }
-        out[i] = std::sqrt(s / double(cnt));
+        out[i] = std::sqrt(s / keel::f64(cnt));
     }
     return out;
 }
@@ -198,7 +198,7 @@ keel::Array<double> ampl_rms(const Value &x_centered, keel::usize n, keel::Alloc
 // findpeaks with MinPeakDistance ≥ n. Greedy: sort indices by value
 // descending, accept peak if no already-accepted peak is within n samples.
 // Returns indices (0-based) in ascending order.
-keel::Array<keel::usize> findpeaks_mindist(const keel::Array<double> &x, keel::usize n, keel::Allocator *mr)
+keel::Array<keel::usize> findpeaks_mindist(const keel::Array<keel::f64> &x, keel::usize n, keel::Allocator *mr)
 {
     const keel::usize N = x.size();
     keel::Array<keel::usize> peaks(mr);
@@ -233,15 +233,15 @@ keel::Array<keel::usize> findpeaks_mindist(const keel::Array<double> &x, keel::u
 // envPeak — spline through local maxima/minima with MinPeakDistance n.
 // MATLAB convention: if <2 peaks found, fallback to including endpoints.
 // No DC removal in peak mode.
-void env_peak(const Value &x, keel::usize n, keel::Array<double> &up, keel::Array<double> &lo, keel::Allocator *mr)
+void env_peak(const Value &x, keel::usize n, keel::Array<keel::f64> &up, keel::Array<keel::f64> &lo, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     auto v = read_real(x, mr);
-    keel::Array<double> neg(N, mr);
+    keel::Array<keel::f64> neg(N, mr);
     for (keel::usize i = 0; i < N; ++i) neg[i] = -v[i];
 
-    auto build_envelope = [&](const keel::Array<double> &sig,
-                              keel::Array<double> &out) {
+    auto build_envelope = [&](const keel::Array<keel::f64> &sig,
+                              keel::Array<keel::f64> &out) {
         keel::Array<keel::usize> peaks(mr);
         if (N > n + 1)
             peaks = findpeaks_mindist(sig, n, mr);
@@ -265,24 +265,24 @@ void env_peak(const Value &x, keel::usize n, keel::Array<double> &up, keel::Arra
         // 3-point case inline.
         out.resize(N);
         if (locs.size() == 3) {
-            const double x1 = double(locs[0] + 1);
-            const double x2 = double(locs[1] + 1);
-            const double x3 = double(locs[2] + 1);
-            const double y1 = sig[locs[0]];
-            const double y2 = sig[locs[1]];
-            const double y3 = sig[locs[2]];
+            const keel::f64 x1 = keel::f64(locs[0] + 1);
+            const keel::f64 x2 = keel::f64(locs[1] + 1);
+            const keel::f64 x3 = keel::f64(locs[2] + 1);
+            const keel::f64 y1 = sig[locs[0]];
+            const keel::f64 y2 = sig[locs[1]];
+            const keel::f64 y3 = sig[locs[2]];
             // Solve y = a·x² + b·x + c via Lagrange-style determinants.
-            const double det = (x1 - x2) * (x1 - x3) * (x2 - x3);
-            const double a = (y1 * (x2 - x3) - y2 * (x1 - x3) + y3 * (x1 - x2))
+            const keel::f64 det = (x1 - x2) * (x1 - x3) * (x2 - x3);
+            const keel::f64 a = (y1 * (x2 - x3) - y2 * (x1 - x3) + y3 * (x1 - x2))
                              / det;
-            const double b = (y1 * (x3 * x3 - x2 * x2)
+            const keel::f64 b = (y1 * (x3 * x3 - x2 * x2)
                               - y2 * (x3 * x3 - x1 * x1)
                               + y3 * (x2 * x2 - x1 * x1)) / det;
-            const double c = (y1 * (x2 * x2 * x3 - x2 * x3 * x3)
+            const keel::f64 c = (y1 * (x2 * x2 * x3 - x2 * x3 * x3)
                               - y2 * (x1 * x1 * x3 - x1 * x3 * x3)
                               + y3 * (x1 * x1 * x2 - x1 * x2 * x2)) / det;
             for (keel::usize i = 0; i < N; ++i) {
-                const double xi = double(i + 1);
+                const keel::f64 xi = keel::f64(i + 1);
                 out[i] = a * xi * xi + b * xi + c;
             }
             return;
@@ -291,14 +291,14 @@ void env_peak(const Value &x, keel::usize n, keel::Array<double> &up, keel::Arra
         Value x_loc = Value::matrix(locs.size(), 1, ValueType::DOUBLE, mr);
         Value y_loc = Value::matrix(locs.size(), 1, ValueType::DOUBLE, mr);
         Value xq    = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-        double *xd = x_loc.doubleDataMut();
-        double *yd = y_loc.doubleDataMut();
-        double *qd = xq.doubleDataMut();
+        keel::f64 *xd = x_loc.doubleDataMut();
+        keel::f64 *yd = y_loc.doubleDataMut();
+        keel::f64 *qd = xq.doubleDataMut();
         for (keel::usize i = 0; i < locs.size(); ++i) {
-            xd[i] = double(locs[i] + 1);
+            xd[i] = keel::f64(locs[i] + 1);
             yd[i] = sig[locs[i]];
         }
-        for (keel::usize i = 0; i < N; ++i) qd[i] = double(i + 1);
+        for (keel::usize i = 0; i < N; ++i) qd[i] = keel::f64(i + 1);
         Value yi = numkit::builtin::interp1(x_loc, y_loc, xq, "spline", mr);
         for (keel::usize i = 0; i < N; ++i) out[i] = yi.elemAsDouble(i);
     };
@@ -315,12 +315,12 @@ Value envelope(const Value &x, keel::Allocator *mr)
     const keel::usize N = x.numel();
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     auto v = read_real(x, scratch.allocator());
-    double xmean = 0.0;
-    for (double d : v) xmean += d;
-    xmean /= double(N);
+    keel::f64 xmean = 0.0;
+    for (keel::f64 d : v) xmean += d;
+    xmean /= keel::f64(N);
     Value xc = Value::matrix(N, 1, ValueType::DOUBLE, scratch.allocator());
     {
-        double *cd = xc.doubleDataMut();
+        keel::f64 *cd = xc.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i) cd[i] = v[i] - xmean;
     }
     auto a = ampl_fft_hilbert(xc, scratch.allocator());
@@ -342,7 +342,7 @@ envelope_full(const Value &x, int mode, keel::usize n, keel::Allocator *mr)
 
     if (mode == 3) {
         // Peak mode — no DC removal.
-        keel::Array<double> up(scratch.allocator()), lo(scratch.allocator());
+        keel::Array<keel::f64> up(scratch.allocator()), lo(scratch.allocator());
         env_peak(x, n, up, lo, scratch.allocator());
         Value yupper = createLike(x, ValueType::DOUBLE, mr);
         Value ylower = createLike(x, ValueType::DOUBLE, mr);
@@ -353,16 +353,16 @@ envelope_full(const Value &x, int mode, keel::usize n, keel::Allocator *mr)
 
     // Modes 0/1/2: remove DC, compute amplitude, restore.
     auto v = read_real(x, scratch.allocator());
-    double xmean = 0.0;
-    for (double d : v) xmean += d;
-    xmean /= double(N);
+    keel::f64 xmean = 0.0;
+    for (keel::f64 d : v) xmean += d;
+    xmean /= keel::f64(N);
     Value xc = Value::matrix(N, 1, ValueType::DOUBLE, scratch.allocator());
     {
-        double *cd = xc.doubleDataMut();
+        keel::f64 *cd = xc.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i) cd[i] = v[i] - xmean;
     }
 
-    keel::Array<double> a(scratch.allocator());
+    keel::Array<keel::f64> a(scratch.allocator());
     if      (mode == 0) a = ampl_fft_hilbert(xc, scratch.allocator());
     else if (mode == 1) a = ampl_fir(xc, n, scratch.allocator());
     else                a = ampl_rms(xc, n, scratch.allocator());

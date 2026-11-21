@@ -51,7 +51,7 @@ namespace detail {
         argcheck::checkNargin(args.size(), 2, 2, #name);                          \
         const int N = argcheck::expectedPositiveInteger(                     \
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
-        const double r = args[1].toScalar();                                    \
+        const keel::f64 r = args[1].toScalar();                                    \
         auto [z, p, k] = name(N, r, ctx.engine->allocator());                    \
         outs[0] = std::move(z);                                                  \
         if (nargout > 1) outs[1] = std::move(p);                                 \
@@ -69,8 +69,8 @@ void ellipap_reg(keel::ArrayRef<Value> args, keel::usize nargout,
 {
     argcheck::checkNargin(args.size(), 3, 3, "ellipap");
     const int N     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "ellipap"), 1, "N", "ellipap");
-    const double Rp = args[1].toScalar();
-    const double Rs = args[2].toScalar();
+    const keel::f64 Rp = args[1].toScalar();
+    const keel::f64 Rs = args[2].toScalar();
     auto [z, p, k] = ellipap(N, Rp, Rs, ctx.engine->allocator());
     outs[0] = std::move(z);
     if (nargout > 1) outs[1] = std::move(p);
@@ -93,7 +93,7 @@ static Value lp2StripLeadingZeros(const Value &b, keel::Allocator *mr)
     while (s + 1 < n && b.elemAsDouble(s) == 0.0) ++s;
     if (s == 0) return b;
     auto r = Value::matrix(1, n - s, ValueType::DOUBLE, mr);
-    double *d = r.doubleDataMut();
+    keel::f64 *d = r.doubleDataMut();
     for (keel::usize i = s; i < n; ++i) d[i - s] = b.elemAsDouble(i);
     return r;
 }
@@ -111,7 +111,7 @@ static Value lp2StripLeadingZeros(const Value &b, keel::Allocator *mr)
         auto *mr = ctx.engine->allocator();                                       \
         if (args.size() == 3) {                                                  \
             /* TF form: (b, a, Wo) -> (bt, at). */                               \
-            const double Wo = args[2].toScalar();                                \
+            const keel::f64 Wo = args[2].toScalar();                                \
             auto [z0, p0, k0] = tf2zpk(args[0], args[1], mr);                    \
             auto [zt, pt, kt] = fn(z0, p0, k0, Wo, mr);                          \
             auto [bt, at] = numkit::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
@@ -120,7 +120,7 @@ static Value lp2StripLeadingZeros(const Value &b, keel::Allocator *mr)
             if (nargout > 1) outs[1] = std::move(at);                            \
             return;                                                              \
         }                                                                        \
-        const double Wo = args[3].toScalar();                                   \
+        const keel::f64 Wo = args[3].toScalar();                                   \
         auto [z, p, k] = fn(args[0], args[1], args[2].toScalar(), Wo, mr);      \
         outs[0] = std::move(z);                                                  \
         if (nargout > 1) outs[1] = std::move(p);                                 \
@@ -143,8 +143,8 @@ NUMKIT_LP2X1_REG(lp2hp, lp2hp)
         auto *mr = ctx.engine->allocator();                                       \
         if (args.size() == 4) {                                                  \
             /* TF form: (b, a, Wo, Bw) -> (bt, at). */                           \
-            const double Wo = args[2].toScalar();                                \
-            const double Bw = args[3].toScalar();                                \
+            const keel::f64 Wo = args[2].toScalar();                                \
+            const keel::f64 Bw = args[3].toScalar();                                \
             auto [z0, p0, k0] = tf2zpk(args[0], args[1], mr);                    \
             auto [zt, pt, kt] = fn(z0, p0, k0, Wo, Bw, mr);                      \
             auto [bt, at] = numkit::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
@@ -156,8 +156,8 @@ NUMKIT_LP2X1_REG(lp2hp, lp2hp)
         if (args.size() < 5)                                                     \
             throw Error(#name ": requires (z, p, k, Wo, Bw) or (b, a, Wo, Bw)", \
                          0, 0, #name, "", "numkit:" #name ":nargin");                 \
-        const double Wo = args[3].toScalar();                                   \
-        const double Bw = args[4].toScalar();                                   \
+        const keel::f64 Wo = args[3].toScalar();                                   \
+        const keel::f64 Bw = args[4].toScalar();                                   \
         auto [z, p, k] = fn(args[0], args[1], args[2].toScalar(), Wo, Bw, mr);  \
         outs[0] = std::move(z);                                                  \
         if (nargout > 1) outs[1] = std::move(p);                                 \
@@ -172,8 +172,8 @@ NUMKIT_LP2X2_REG(lp2bs, lp2bs)
 void bilinear_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "bilinear");
-    const double fs = args[2].toScalar();
-    const double fp = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 0.0;
+    const keel::f64 fs = args[2].toScalar();
+    const keel::f64 fp = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 0.0;
     auto [bd, ad] = bilinear(args[0], args[1], fs, fp, ctx.engine->allocator());
     outs[0] = std::move(bd);
     if (nargout > 1) outs[1] = std::move(ad);
@@ -182,8 +182,8 @@ void bilinear_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
 void impinvar_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "impinvar");
-    const double fs  = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
-    const double tol = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 1e-3;
+    const keel::f64 fs  = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
+    const keel::f64 tol = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 1e-3;
     auto [bd, ad] = impinvar(args[0], args[1], fs, tol, ctx.engine->allocator());
     outs[0] = std::move(bd);
     if (nargout > 1) outs[1] = std::move(ad);
@@ -216,13 +216,13 @@ namespace {
 // linspace/logspace constructed as 10.^(lo + i*d)).
 
 struct FreqsRoot {
-    double re, im;
+    keel::f64 re, im;
 };
 
-keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
+keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, int npts)
 {
     using numkit::ops::polyRootsDurandKerner;
-    constexpr double kEps = 2.220446049250313e-16;
+    constexpr keel::f64 kEps = 2.220446049250313e-16;
     keel::Allocator *mr = keel::default_allocator();
     keel::ArenaTemp scratch = keel::get_scratch(mr);
 
@@ -249,8 +249,8 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
         if (keel::abs(keel::c64(r.re, r.im)) < 1e5 && r.im >= 0.0)
             ez.push_back(r);
 
-    auto log10v = [](double x) { return std::log10(x); };
-    double loNum = 1e300, hiNum = 0.0;
+    auto log10v = [](keel::f64 x) { return std::log10(x); };
+    keel::f64 loNum = 1e300, hiNum = 0.0;
     for (auto &r : ez) {
         const bool integ = keel::abs(keel::c64(r.re, r.im)) < 1e-10;
         loNum = std::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
@@ -266,15 +266,15 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
             anyRealDomZero = true;
     const int nLong = 200 + diffzp + (anyRealDomZero ? 10 : 0);
 
-    auto logspace = [](double l, double u, int n) {
-        keel::Array<double> v(n);
-        const double d = (u - l) / (n - 1);
+    auto logspace = [](keel::f64 l, keel::f64 u, int n) {
+        keel::Array<keel::f64> v(n);
+        const keel::f64 d = (u - l) / (n - 1);
         for (int i = 0; i < n; ++i)
             v[i] = std::pow(10.0, l + i * d);
         v[n - 1] = std::pow(10.0, u); // linspace forces the last point exactly
         return v;
     };
-    keel::Array<double> w = logspace(low, high, nLong); // the base LONG grid
+    keel::Array<keel::f64> w = logspace(low, high, nLong); // the base LONG grid
 
     // Oscillatory refinement (Im > |Re|), descending |Re| (stable).
     keel::Array<int> osc;
@@ -283,19 +283,19 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
             osc.push_back(keel::as<int>(k));
     std::stable_sort(osc.begin(), osc.end(),
                      [&](int x, int y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
-    const double npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
+    const keel::f64 npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
 
-    keel::Array<double> f = w.clone();
-    keel::Array<double> z;
+    keel::Array<keel::f64> f = w.clone();
+    keel::Array<keel::f64> z;
     for (int k : osc) {
-        const double r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
-                                   std::pow(10.0, keel::as<double>(low)));
-        const double r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
-        auto outside = [&](double x) { return x > r2 || x < r1; };
-        z.resize(std::remove_if(z.begin(), z.end(), [&](double x) { return !outside(x); }) - z.begin());
-        f.resize(std::remove_if(f.begin(), f.end(), [&](double x) { return !outside(x); }) - f.begin());
+        const keel::f64 r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
+                                   std::pow(10.0, keel::as<keel::f64>(low)));
+        const keel::f64 r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
+        auto outside = [&](keel::f64 x) { return x > r2 || x < r1; };
+        z.resize(std::remove_if(z.begin(), z.end(), [&](keel::f64 x) { return !outside(x); }) - z.begin());
+        f.resize(std::remove_if(f.begin(), f.end(), [&](keel::f64 x) { return !outside(x); }) - f.begin());
         long cnt = 0;
-        for (double x : w)
+        for (keel::f64 x : w)
             if (x >= r1 && x <= r2)
                 ++cnt;
         auto seg = logspace(std::log10(r1), std::log10(r2), keel::as<int>(cnt + npts2));
@@ -306,25 +306,25 @@ keel::Array<double> freqsAutoGridVec(const Value &b, const Value &a, int npts)
 
     // Resample to exactly 200 points at evenly spaced INDEX positions,
     // linear in log10 (the caller-side interp1 of the classic code).
-    keel::Array<double> lw(f.size());
+    keel::Array<keel::f64> lw(f.size());
     for (keel::usize i = 0; i < f.size(); ++i)
         lw[i] = std::log10(f[i]);
-    const double dxi = keel::as<double>(f.size() - 1) / (npts - 1);
-    keel::Array<double> out(npts);
+    const keel::f64 dxi = keel::as<keel::f64>(f.size() - 1) / (npts - 1);
+    keel::Array<keel::f64> out(npts);
     for (int i = 0; i < npts; ++i) {
         // 1-based index into lw; the last sample is EXACTLY the last knot
         // (linspace-forced), where interp1 returns log10(w_long(end)) as-is
         // and the pow round-trip gives back the exact decade endpoint.
-        const double x = (i == npts - 1) ? keel::as<double>(f.size()) : 1.0 + i * dxi;
+        const keel::f64 x = (i == npts - 1) ? keel::as<keel::f64>(f.size()) : 1.0 + i * dxi;
         const keel::usize j = keel::as<keel::usize>(x) - 1;
-        const double t = x - (j + 1);
+        const keel::f64 t = x - (j + 1);
         // At the last sample (x == f.size(), t == 0) the upper knot j+1
         // is one past the end â€” clamp it so the read stays in bounds
         // (the value is unchanged: t == 0 kills the difference). The
         // unclamped read was benign in Release but tripped the MSVC
         // Debug iterator assert (bugs/closed/signal/freqs-autogrid-debug-oob).
         const keel::usize j2 = std::min(j + 1, lw.size() - 1);
-        const double lv = lw[j] + t * (lw[j2] - lw[j]);
+        const keel::f64 lv = lw[j] + t * (lw[j2] - lw[j]);
         out[i] = std::pow(10.0, lv);
     }
     return out;
@@ -335,7 +335,7 @@ Value freqsAutoGrid(const Value &b, const Value &a, keel::Allocator *mr,
 {
     auto v = freqsAutoGridVec(b, a, npts);
     Value w = Value::matrix(1, npts, ValueType::DOUBLE, mr);
-    double *wd = w.doubleDataMut();
+    keel::f64 *wd = w.doubleDataMut();
     for (int i = 0; i < npts; ++i)
         wd[i] = v[i];
     return w;

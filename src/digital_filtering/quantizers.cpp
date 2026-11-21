@@ -60,7 +60,7 @@ Value allocLikeIntType(const Value &u, ValueType vt, keel::Allocator *mr)
 }
 
 // Floor-and-clip helper: returns floor(x), clamped to [lo, hi].
-inline double floorClip(double x, double lo, double hi)
+inline keel::f64 floorClip(keel::f64 x, keel::f64 lo, keel::f64 hi)
 {
     if (x < lo) return lo;
     if (x > hi) return hi;
@@ -69,7 +69,7 @@ inline double floorClip(double x, double lo, double hi)
 
 } // anon
 
-Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocator *mr)
+Value uencode(const Value &u, int N, keel::f64 V, bool signedOutput, keel::Allocator *mr)
 {
     if (N < 2 || N > 32)
         throw Error("uencode: N must be in [2, 32]",
@@ -78,10 +78,10 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocato
         throw Error("uencode: V must be positive",
                     0, 0, "uencode", "", "numkit:uencode:NeedPosRealScalar");
 
-    const double Q = std::pow(2.0, N) - 1.0;
-    const double T = (Q + 1.0) / (2.0 * V);
-    const double signMax = std::pow(2.0, N - 1) - 1.0;
-    const double signMin = -(1.0 + signMax);
+    const keel::f64 Q = std::pow(2.0, N) - 1.0;
+    const keel::f64 T = (Q + 1.0) / (2.0 * V);
+    const keel::f64 signMax = std::pow(2.0, N - 1) - 1.0;
+    const keel::f64 signMin = -(1.0 + signMax);
 
     const ValueType vt = signedOutput ? pickSignedType(N) : pickUnsignedType(N);
     Value out = allocLikeIntType(u, vt, mr);
@@ -89,7 +89,7 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocato
     if (M == 0) return out;
 
     // Helper to write one element into the typed buffer.
-    auto writeElem = [&](keel::usize i, double v) {
+    auto writeElem = [&](keel::usize i, keel::f64 v) {
         switch (vt) {
             case ValueType::UINT8:  out.uint8DataMut()[i]  = keel::as<keel::u8>(v); break;
             case ValueType::UINT16: out.uint16DataMut()[i] = keel::as<keel::u16>(v); break;
@@ -102,14 +102,14 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocato
     };
 
     for (keel::usize i = 0; i < M; ++i) {
-        const double ui = u.elemAsDouble(i);
-        double scaled = (ui + V) * T;
+        const keel::f64 ui = u.elemAsDouble(i);
+        keel::f64 scaled = (ui + V) * T;
         if (signedOutput) {
-            double shifted = scaled + signMin;
+            keel::f64 shifted = scaled + signMin;
             shifted = floorClip(shifted, signMin, signMax);
             writeElem(i, shifted);
         } else {
-            const double clipped = floorClip(scaled, 0.0, Q);
+            const keel::f64 clipped = floorClip(scaled, 0.0, Q);
             writeElem(i, clipped);
         }
     }
@@ -119,7 +119,7 @@ Value uencode(const Value &u, int N, double V, bool signedOutput, keel::Allocato
 // udecode domain checks (all content validation lives here so the
 // interpreter and direct-C++ calls cross the same contract; the reg only
 // marshals). Rejection classes probed vs R2025b.
-static void udecode_argcheck(const Value &u, int N, double V)
+static void udecode_argcheck(const Value &u, int N, keel::f64 V)
 {
     if (N < 2 || N > 32)
         throw Error("udecode: N must be in [2, 32]",
@@ -139,32 +139,32 @@ static void udecode_argcheck(const Value &u, int N, double V)
                     0, 0, "udecode", "", "numkit:udecode:BadInputType");
 }
 
-Value udecode(const Value &u, int N, double V, bool wrapOnOverflow, keel::Allocator *mr)
+Value udecode(const Value &u, int N, keel::f64 V, bool wrapOnOverflow, keel::Allocator *mr)
 {
     udecode_argcheck(u, N, V);
     const bool isSigned = (u.type() == ValueType::INT8 || u.type() == ValueType::INT16
                            || u.type() == ValueType::INT32);
 
-    const double W = isSigned ? std::pow(2.0, N - 1) : 0.0;
-    const double T = V * std::pow(2.0, 1.0 - N);
-    const double upper = isSigned ? (std::pow(2.0, N - 1) - 1.0)
+    const keel::f64 W = isSigned ? std::pow(2.0, N - 1) : 0.0;
+    const keel::f64 T = V * std::pow(2.0, 1.0 - N);
+    const keel::f64 upper = isSigned ? (std::pow(2.0, N - 1) - 1.0)
                                     : (std::pow(2.0, N) - 1.0);
-    const double lower = isSigned ? -std::pow(2.0, N - 1) : 0.0;
-    const double mod2N = std::pow(2.0, N);
+    const keel::f64 lower = isSigned ? -std::pow(2.0, N - 1) : 0.0;
+    const keel::f64 mod2N = std::pow(2.0, N);
 
     Value out = (u.dims().is3D())
                 ? Value::matrix3d(u.dims().rows(), u.dims().cols(),
                                    u.dims().pages(), ValueType::DOUBLE, mr)
                 : Value::matrix(u.dims().rows(), u.dims().cols(),
                                  ValueType::DOUBLE, mr);
-    double *od = out.doubleDataMut();
+    keel::f64 *od = out.doubleDataMut();
     const keel::usize M = u.numel();
     for (keel::usize i = 0; i < M; ++i) {
-        double v = u.elemAsDouble(i);  // promotes int → double
+        keel::f64 v = u.elemAsDouble(i);  // promotes int → double
         if (wrapOnOverflow) {
             // mod((v - lower), 2^N) + lower (matches MATLAB sign convention)
-            const double shifted = v - lower;
-            double m = std::fmod(shifted, mod2N);
+            const keel::f64 shifted = v - lower;
+            keel::f64 m = std::fmod(shifted, mod2N);
             if (m < 0.0) m += mod2N;
             v = m + lower;
         } else {

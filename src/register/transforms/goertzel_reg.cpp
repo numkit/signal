@@ -39,9 +39,9 @@ void goertzel_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         const keel::usize rows = x.dims().rows();
         const keel::usize cols = x.dims().cols();
         Value ind = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
-        double *id = ind.doubleDataMut();
+        keel::f64 *id = ind.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i)
-            id[i] = keel::as<double>(i + 1);
+            id[i] = keel::as<keel::f64>(i + 1);
         outs[0] = goertzel(x, ind, mr);
         return;
     }

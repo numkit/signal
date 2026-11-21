@@ -15,10 +15,10 @@
 namespace numkit::signal {
 
 // Strip trailing (near-)zero coefficients from a polynomial Value → array.
-keel::Array<double> trimTrailingZeros(const Value &p);
+keel::Array<keel::f64> trimTrailingZeros(const Value &p);
 
 // True if v is (anti)symmetric: v[i] == scale * v[n-1-i] within tol.
-bool isSymmetric(keel::ArrayRef<double> v, double scale = 1.0,
-                 double tol = 1e-9);
+bool isSymmetric(keel::ArrayRef<keel::f64> v, keel::f64 scale = 1.0,
+                 keel::f64 tol = 1e-9);
 
 } // namespace numkit::signal

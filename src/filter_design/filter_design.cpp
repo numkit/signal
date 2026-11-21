@@ -38,10 +38,10 @@ namespace {
 // Extract a numeric Value (any class) into a contiguous double row on
 // the supplied arena. Mirrors the `extractRow` lambda that used to be
 // duplicated in every filter_design dispatcher.
-keel::Array<double> valueToDoubleRow(const Value &v, const keel::ArenaTemp &arena)
+keel::Array<keel::f64> valueToDoubleRow(const Value &v, const keel::ArenaTemp &arena)
 {
     const keel::usize n = v.numel();
-    keel::Array<double> dst(n, arena.allocator());
+    keel::Array<keel::f64> dst(n, arena.allocator());
     for (keel::usize i = 0; i < n; ++i)
         dst[i] = v.elemAsDouble(i);
     return dst;
@@ -52,7 +52,7 @@ keel::Array<keel::c64> butterworthPoles(int N, keel::Allocator *mr)
     keel::Array<keel::c64> poles(mr);
     poles.reserve(N);
     for (int k = 0; k < N; ++k) {
-        const double theta = M_PI * (2.0 * k + N + 1) / (2.0 * N);
+        const keel::f64 theta = M_PI * (2.0 * k + N + 1) / (2.0 * N);
         poles.emplace_back(std::cos(theta), std::sin(theta));
     }
     return poles;
@@ -65,7 +65,7 @@ using numkit::ops::polyExpandFromRoots;
 // real-coefficient digital (b, a). Caller is responsible for the analog
 // → analog transformations (LP scale, LP→HP); this function just maps
 // each s-plane root through z = (2+s)/(2-s).
-void bilinearTransformPZ(const keel::c64 *sPoles, keel::usize pN, const keel::c64 *sZeros, keel::usize zN, keel::Array<double> &bOut, keel::Array<double> &aOut, keel::Allocator *mr)
+void bilinearTransformPZ(const keel::c64 *sPoles, keel::usize pN, const keel::c64 *sZeros, keel::usize zN, keel::Array<keel::f64> &bOut, keel::Array<keel::f64> &aOut, keel::Allocator *mr)
 {
     keel::Array<keel::c64> zPoles(pN, mr);
     for (keel::usize i = 0; i < pN; ++i) {
@@ -91,7 +91,7 @@ void bilinearTransformPZ(const keel::c64 *sPoles, keel::usize pN, const keel::c6
 
 // Normalise b so that |H(z0)| == 1 at the reference frequency z0 (== 1
 // for LP, == -1 for HP).
-void normaliseAtRef(keel::Array<double> &b, const keel::Array<double> &a,
+void normaliseAtRef(keel::Array<keel::f64> &b, const keel::Array<keel::f64> &a,
                     keel::c64 z0)
 {
     keel::c64 num(0, 0), den(0, 0);
@@ -101,15 +101,15 @@ void normaliseAtRef(keel::Array<double> &b, const keel::Array<double> &a,
         if (i < a.size()) den += a[i] * zk;
         zk *= z0;
     }
-    const double mag = keel::abs(num / den);
+    const keel::f64 mag = keel::abs(num / den);
     if (mag > 0.0)
-        for (double &v : b) v /= mag;
+        for (keel::f64 &v : b) v /= mag;
 }
 
 } // anonymous namespace
 
 std::tuple<Value, Value>
-butter(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
+butter(int N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
 {
     if (Wn <= 0.0 || Wn >= 1.0)
         throw Error("butter: Wn must be between 0 and 1",
@@ -119,7 +119,7 @@ butter(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
                      0, 0, "butter", "", "numkit:butter:badType");
 
     // Pre-warp the digital cutoff to the analog domain.
-    const double Wa = 2.0 * std::tan(M_PI * Wn / 2.0);
+    const keel::f64 Wa = 2.0 * std::tan(M_PI * Wn / 2.0);
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     auto sPoles = butterworthPoles(N, scratch.allocator());   // unit-cutoff prototype
@@ -138,7 +138,7 @@ butter(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
         sZ.assign(N, keel::c64(0.0, 0.0));
     }
 
-    keel::Array<double> b(scratch.allocator()), a(scratch.allocator());
+    keel::Array<keel::f64> b(scratch.allocator()), a(scratch.allocator());
     bilinearTransformPZ(sP.data(), sP.size(), sZ.data(), sZ.size(), b, a, scratch.allocator());
 
     // Normalise the gain at the reference frequency: DC (z=1) for LP,
@@ -163,17 +163,17 @@ namespace {
 // Solve A·x = b for symmetric positive-definite A via Cholesky
 // (in-place on copies in scratch). A is n×n row-major.
 // Returns false on non-PD pivot.
-bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_out, keel::Allocator *mr)
+bool solveSPD(const keel::f64 *A_in, keel::usize n, const keel::f64 *b_in, keel::f64 *x_out, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> L(n * n, scratch.allocator());
-    keel::Array<double> y(n, scratch.allocator());
+    keel::Array<keel::f64> L(n * n, scratch.allocator());
+    keel::Array<keel::f64> y(n, scratch.allocator());
 
     // Cholesky: L·L' = A
     bool cholOk = true;
     for (keel::usize i = 0; i < n && cholOk; ++i) {
         for (keel::usize j = 0; j <= i; ++j) {
-            double s = A_in[i * n + j];
+            keel::f64 s = A_in[i * n + j];
             for (keel::usize k = 0; k < j; ++k)
                 s -= L[i * n + k] * L[j * n + k];
             if (i == j) {
@@ -187,7 +187,7 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
     if (cholOk) {
         // Forward solve L·y = b
         for (keel::usize i = 0; i < n; ++i) {
-            double s = b_in[i];
+            keel::f64 s = b_in[i];
             for (keel::usize k = 0; k < i; ++k)
                 s -= L[i * n + k] * y[k];
             y[i] = s / L[i * n + i];
@@ -195,7 +195,7 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
         // Back solve L'·x = y
         for (keel::usize ii = 0; ii < n; ++ii) {
             keel::usize i = n - 1 - ii;
-            double s = y[i];
+            keel::f64 s = y[i];
             for (keel::usize k = i + 1; k < n; ++k)
                 s -= L[k * n + i] * x_out[k];
             x_out[i] = s / L[i * n + i];
@@ -209,9 +209,9 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
     for (keel::usize i = 0; i < n; ++i)     y[i] = b_in[i];
     for (keel::usize k = 0; k < n; ++k) {
         keel::usize piv = k;
-        double maxAbs = keel::abs(L[k * n + k]);
+        keel::f64 maxAbs = keel::abs(L[k * n + k]);
         for (keel::usize i = k + 1; i < n; ++i) {
-            double v = keel::abs(L[i * n + k]);
+            keel::f64 v = keel::abs(L[i * n + k]);
             if (v > maxAbs) { maxAbs = v; piv = i; }
         }
         if (piv != k) {
@@ -219,10 +219,10 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
                 std::swap(L[k * n + j], L[piv * n + j]);
             std::swap(y[k], y[piv]);
         }
-        double diag = L[k * n + k];
+        keel::f64 diag = L[k * n + k];
         if (keel::abs(diag) < 1e-15) diag = (diag >= 0.0 ? 1e-15 : -1e-15);
         for (keel::usize i = k + 1; i < n; ++i) {
-            double factor = L[i * n + k] / diag;
+            keel::f64 factor = L[i * n + k] / diag;
             L[i * n + k] = 0.0;
             for (keel::usize j = k + 1; j < n; ++j)
                 L[i * n + j] -= factor * L[k * n + j];
@@ -231,10 +231,10 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
     }
     for (keel::usize ii = 0; ii < n; ++ii) {
         keel::usize i = n - 1 - ii;
-        double s = y[i];
+        keel::f64 s = y[i];
         for (keel::usize j = i + 1; j < n; ++j)
             s -= L[i * n + j] * x_out[j];
-        double diag = L[i * n + i];
+        keel::f64 diag = L[i * n + i];
         if (keel::abs(diag) < 1e-15) diag = (diag >= 0.0 ? 1e-15 : -1e-15);
         x_out[i] = s / diag;
     }
@@ -244,7 +244,7 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
 // Antiderivative of cos(k·ω):
 //   k == 0: ω
 //   k != 0: sin(k·ω)/k
-[[maybe_unused]] inline double Ic(int k, double w)
+[[maybe_unused]] inline keel::f64 Ic(int k, keel::f64 w)
 {
     return (k == 0) ? w : std::sin(k * w) / k;
 }
@@ -252,39 +252,39 @@ bool solveSPD(const double *A_in, keel::usize n, const double *b_in, double *x_o
 // Antiderivative of (ω - ω0)·cos(k·ω) (for the linear-amp segment):
 //   k == 0: (ω - ω0)²/2
 //   k != 0: (ω - ω0)·sin(k·ω)/k + cos(k·ω)/k²
-[[maybe_unused]] inline double Iclin(int k, double w, double w0)
+[[maybe_unused]] inline keel::f64 Iclin(int k, keel::f64 w, keel::f64 w0)
 {
     if (k == 0) {
-        const double d = w - w0;
+        const keel::f64 d = w - w0;
         return 0.5 * d * d;
     }
-    return (w - w0) * std::sin(k * w) / k + std::cos(k * w) / (double(k) * k);
+    return (w - w0) * std::sin(k * w) / k + std::cos(k * w) / (keel::f64(k) * k);
 }
 
 // Antiderivative of cos(alpha·ω) for real alpha >= 0:
-inline double IcReal(double alpha, double w)
+inline keel::f64 IcReal(keel::f64 alpha, keel::f64 w)
 {
     return (keel::abs(alpha) < 1e-15) ? w : std::sin(alpha * w) / alpha;
 }
 
 // Antiderivative of (ω - ω0)·cos(alpha·ω) for real alpha >= 0:
-inline double IclinReal(double alpha, double w, double w0)
+inline keel::f64 IclinReal(keel::f64 alpha, keel::f64 w, keel::f64 w0)
 {
     if (keel::abs(alpha) < 1e-15) {
-        const double d = w - w0;
+        const keel::f64 d = w - w0;
         return 0.5 * d * d;
     }
     return (w - w0) * std::sin(alpha * w) / alpha + std::cos(alpha * w) / (alpha * alpha);
 }
 
 // Antiderivative of sin(alpha·ω) for real alpha > 0:
-inline double IsReal(double alpha, double w)
+inline keel::f64 IsReal(keel::f64 alpha, keel::f64 w)
 {
     return -std::cos(alpha * w) / alpha;
 }
 
 // Antiderivative of (ω - ω0)·sin(alpha·ω) for real alpha > 0:
-inline double IslinReal(double alpha, double w, double w0)
+inline keel::f64 IslinReal(keel::f64 alpha, keel::f64 w, keel::f64 w0)
 {
     return -(w - w0) * std::cos(alpha * w) / alpha + std::sin(alpha * w) / (alpha * alpha);
 }
@@ -314,8 +314,8 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     auto Fv = valueToDoubleRow(Farg, scratch);
     auto Av = valueToDoubleRow(Aarg, scratch);
-    const double *F = Fv.data();
-    const double *A = Av.data();
+    const keel::f64 *F = Fv.data();
+    const keel::f64 *A = Av.data();
     const keel::usize Fn = Fv.size();
     const keel::usize An = Av.size();
 
@@ -335,13 +335,13 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
                         0, 0, "firls", "", "numkit:firls:badF");
 
     const keel::usize numBands = Fn / 2;
-    keel::Array<double> Wv(numBands, 1.0, scratch.allocator());
+    keel::Array<keel::f64> Wv(numBands, 1.0, scratch.allocator());
     if (!Warg.isEmpty()) {
         if (Warg.numel() != numBands)
             throw Error("firls: W must have one weight per frequency band",
                         0, 0, "firls", "", "numkit:firls:badWLen");
         for (keel::usize k = 0; k < numBands; ++k) {
-            const double wk = Warg.elemAsDouble(k);
+            const keel::f64 wk = Warg.elemAsDouble(k);
             if (!(wk > 0.0) || !std::isfinite(wk))
                 throw Error("firls: weights W must be positive and finite",
                             0, 0, "firls", "", "numkit:firls:badW");
@@ -358,51 +358,51 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
     const keel::usize K = (!oddN && !antiSym) ? keel::as<keel::usize>(N / 2 + 1)
                         : (!oddN &&  antiSym) ? keel::as<keel::usize>(N / 2)
                                               : keel::as<keel::usize>((N + 1) / 2);
-    keel::Array<double> alpha(K, 0.0, scratch.allocator());
+    keel::Array<keel::f64> alpha(K, 0.0, scratch.allocator());
     for (keel::usize i = 0; i < K; ++i) {
-        if (!oddN && !antiSym)      alpha[i] = keel::as<double>(i);
-        else if (!oddN && antiSym)  alpha[i] = keel::as<double>(i + 1);
-        else                        alpha[i] = keel::as<double>(i) + 0.5;
+        if (!oddN && !antiSym)      alpha[i] = keel::as<keel::f64>(i);
+        else if (!oddN && antiSym)  alpha[i] = keel::as<keel::f64>(i + 1);
+        else                        alpha[i] = keel::as<keel::f64>(i) + 0.5;
     }
 
-    keel::Array<double> Q(K * K, 0.0, scratch.allocator());
-    keel::Array<double> bvec(K, 0.0, scratch.allocator());
+    keel::Array<keel::f64> Q(K * K, 0.0, scratch.allocator());
+    keel::Array<keel::f64> bvec(K, 0.0, scratch.allocator());
 
     for (keel::usize k = 0; k < numBands; ++k) {
-        const double w1 = M_PI * F[2 * k];
-        const double w2 = M_PI * F[2 * k + 1];
+        const keel::f64 w1 = M_PI * F[2 * k];
+        const keel::f64 w2 = M_PI * F[2 * k + 1];
         if (w2 <= w1) continue;
-        const double wk = Wv[k];
-        const double D1 = A[2 * k];
-        const double D2 = A[2 * k + 1];
-        const double slope = (D2 - D1) / (w2 - w1);
+        const keel::f64 wk = Wv[k];
+        const keel::f64 D1 = A[2 * k];
+        const keel::f64 D2 = A[2 * k + 1];
+        const keel::f64 slope = (D2 - D1) / (w2 - w1);
 
         for (keel::usize i = 0; i < K; ++i) {
-            const double ai = alpha[i];
+            const keel::f64 ai = alpha[i];
             for (keel::usize j = 0; j < K; ++j) {
-                const double aj = alpha[j];
-                const double sij = ai + aj;
-                const double dij = keel::abs(ai - aj);
-                const double Iplus  = IcReal(sij, w2) - IcReal(sij, w1);
-                const double Iminus = IcReal(dij, w2) - IcReal(dij, w1);
+                const keel::f64 aj = alpha[j];
+                const keel::f64 sij = ai + aj;
+                const keel::f64 dij = keel::abs(ai - aj);
+                const keel::f64 Iplus  = IcReal(sij, w2) - IcReal(sij, w1);
+                const keel::f64 Iminus = IcReal(dij, w2) - IcReal(dij, w1);
                 if (!antiSym)
                     Q[i * K + j] += wk * (Iminus + Iplus) / (2.0 * M_PI);
                 else
                     Q[i * K + j] += wk * (Iminus - Iplus) / (2.0 * M_PI);
             }
             if (!antiSym) {
-                const double Iconst = D1 * (IcReal(ai, w2) - IcReal(ai, w1)) / M_PI;
-                const double Ilin   = slope * (IclinReal(ai, w2, w1) - IclinReal(ai, w1, w1)) / M_PI;
+                const keel::f64 Iconst = D1 * (IcReal(ai, w2) - IcReal(ai, w1)) / M_PI;
+                const keel::f64 Ilin   = slope * (IclinReal(ai, w2, w1) - IclinReal(ai, w1, w1)) / M_PI;
                 bvec[i] += wk * (Iconst + Ilin);
             } else {
-                const double Iconst = D1 * (IsReal(ai, w2) - IsReal(ai, w1)) / M_PI;
-                const double Ilin   = slope * (IslinReal(ai, w2, w1) - IslinReal(ai, w1, w1)) / M_PI;
+                const keel::f64 Iconst = D1 * (IsReal(ai, w2) - IsReal(ai, w1)) / M_PI;
+                const keel::f64 Ilin   = slope * (IslinReal(ai, w2, w1) - IslinReal(ai, w1, w1)) / M_PI;
                 bvec[i] += wk * (Iconst + Ilin);
             }
         }
     }
 
-    keel::Array<double> c(K, 0.0, scratch.allocator());
+    keel::Array<keel::f64> c(K, 0.0, scratch.allocator());
     if (!solveSPD(Q.data(), K, bvec.data(), c.data(), scratch.allocator()))
         throw Error("firls: Q matrix is not positive-definite",
                     0, 0, "firls", "", "numkit:firls:singular");
@@ -415,7 +415,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         const keel::usize M = keel::as<keel::usize>(N / 2);
         bd[M] = c[0];
         for (keel::usize k = 1; k <= M; ++k) {
-            const double v = 0.5 * c[k];
+            const keel::f64 v = 0.5 * c[k];
             bd[M - k] = v;
             bd[M + k] = v;
         }
@@ -423,7 +423,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         // Type II
         const keel::usize M = keel::as<keel::usize>((N - 1) / 2);
         for (keel::usize k = 0; k <= M; ++k) {
-            const double v = 0.5 * c[k];
+            const keel::f64 v = 0.5 * c[k];
             bd[M - k] = v;
             bd[M + 1 + k] = v;
         }
@@ -432,7 +432,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         const keel::usize M = keel::as<keel::usize>(N / 2);
         bd[M] = 0.0;
         for (keel::usize k = 0; k < M; ++k) {
-            const double v = 0.5 * c[k];
+            const keel::f64 v = 0.5 * c[k];
             bd[M - (k + 1)] =  v;
             bd[M + (k + 1)] = -v;
         }
@@ -440,7 +440,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
         // Type IV
         const keel::usize M = keel::as<keel::usize>((N - 1) / 2);
         for (keel::usize k = 0; k <= M; ++k) {
-            const double v = 0.5 * c[k];
+            const keel::f64 v = 0.5 * c[k];
             bd[M - k]     =  v;
             bd[M + 1 + k] = -v;
         }
@@ -461,9 +461,9 @@ namespace {
 // inside (0, 1), type one of the shipped forms. The bandpass/stop/
 // DC-0/DC-1/NOSCALE/SCALE vocabulary is an unported parity gap and is
 // rejected, not silently accepted.
-void fir1_argcheck(int N, double Wn, keel::StringRef type)
+void fir1_argcheck(int N, keel::f64 Wn, keel::StringRef type)
 {
-    argcheck::expectedPositive(keel::as<double>(N), 1, "n", "fir1");
+    argcheck::expectedPositive(keel::as<keel::f64>(N), 1, "n", "fir1");
     argcheck::expectedPositive(Wn, 2, "Wn", "fir1");
     if (Wn >= 1.0) {
         const auto numStr = argcheck::detail::num(Wn);
@@ -477,23 +477,23 @@ void fir1_argcheck(int N, double Wn, keel::StringRef type)
 
 } // namespace
 
-Value fir1(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
+Value fir1(int N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
 {
     fir1_argcheck(N, Wn, type);
 
     const keel::usize filtLen = N + 1;
-    const double wc = M_PI * Wn;
-    const double half = N / 2.0;
+    const keel::f64 wc = M_PI * Wn;
+    const keel::f64 half = N / 2.0;
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    auto h = keel::Array<double>(filtLen, scratch.allocator());
-    double hSum = 0.0;
+    auto h = keel::Array<keel::f64>(filtLen, scratch.allocator());
+    keel::f64 hSum = 0.0;
 
     for (keel::usize i = 0; i < filtLen; ++i) {
-        const double n = i - half;
-        const double sinc = (keel::abs(n) < 1e-12) ? wc / M_PI
+        const keel::f64 n = i - half;
+        const keel::f64 sinc = (keel::abs(n) < 1e-12) ? wc / M_PI
                                                   : std::sin(wc * n) / (M_PI * n);
-        const double win = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / N);
+        const keel::f64 win = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / N);
         h[i] = sinc * win;
         hSum += h[i];
     }
@@ -518,7 +518,7 @@ Value fir1(int N, double Wn, keel::StringRef type, keel::Allocator *mr)
 Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
            const Value &window, bool scale, keel::Allocator *mr)
 {
-    argcheck::expectedPositive(keel::as<double>(N), 1, "n", "fir1");
+    argcheck::expectedPositive(keel::as<keel::f64>(N), 1, "n", "fir1");
     if (!Wn.isNumeric() || Wn.isComplex() || Wn.isEmpty() || !Wn.dims().isVector())
         throw Error("fir1: cutoff frequency Wn must be a real non-empty vector.",
                     0, 0, "fir1", "", "numkit:fir1:invalidWn");
@@ -534,7 +534,7 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
         return fir1(N, Wn.elemAsDouble(0), type, mr);
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    keel::Array<double> w(nw, scratch.allocator());
+    keel::Array<keel::f64> w(nw, scratch.allocator());
     for (keel::usize k = 0; k < nw; ++k) {
         w[k] = Wn.elemAsDouble(k);
         if (!(w[k] > 0.0 && w[k] < 1.0))
@@ -567,42 +567,42 @@ Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
                     0, 0, "fir1", "", "numkit:fir1:badWindowLength");
 
     // Build passband intervals [fL, fR] in normalized [0, 1].
-    keel::Array<double> edges(nw + 2, scratch.allocator());
+    keel::Array<keel::f64> edges(nw + 2, scratch.allocator());
     edges[0] = 0.0;
     for (keel::usize k = 0; k < nw; ++k)
         edges[k + 1] = w[k];
     edges[nw + 1] = 1.0;
 
-    const double half = N / 2.0;
-    keel::Array<double> h(filtLen, 0.0, scratch.allocator());
+    const keel::f64 half = N / 2.0;
+    keel::Array<keel::f64> h(filtLen, 0.0, scratch.allocator());
     for (keel::usize b = 0; b <= nw; ++b) {
         const bool isPass = (b % 2 == 0) ? firstBandPass : !firstBandPass;
         if (!isPass) continue;
-        const double fL = edges[b];
-        const double fR = edges[b + 1];
+        const keel::f64 fL = edges[b];
+        const keel::f64 fR = edges[b + 1];
         for (keel::usize i = 0; i < filtLen; ++i) {
-            const double n = keel::as<double>(i) - half;
-            const double sR = (keel::abs(n) < 1e-12) ? fR : std::sin(M_PI * fR * n) / (M_PI * n);
-            const double sL = (keel::abs(n) < 1e-12) ? fL : std::sin(M_PI * fL * n) / (M_PI * n);
+            const keel::f64 n = keel::as<keel::f64>(i) - half;
+            const keel::f64 sR = (keel::abs(n) < 1e-12) ? fR : std::sin(M_PI * fR * n) / (M_PI * n);
+            const keel::f64 sL = (keel::abs(n) < 1e-12) ? fL : std::sin(M_PI * fL * n) / (M_PI * n);
             h[i] += (sR - sL);
         }
     }
 
     for (keel::usize i = 0; i < filtLen; ++i) {
-        const double win = window.isEmpty()
-            ? (N == 0 ? 1.0 : (0.54 - 0.46 * std::cos(2.0 * M_PI * keel::as<double>(i) / keel::as<double>(N))))
+        const keel::f64 win = window.isEmpty()
+            ? (N == 0 ? 1.0 : (0.54 - 0.46 * std::cos(2.0 * M_PI * keel::as<keel::f64>(i) / keel::as<keel::f64>(N))))
             : window.elemAsDouble(i);
         h[i] *= win;
     }
 
     if (scale) {
-        double f0 = 0.0;
+        keel::f64 f0 = 0.0;
         if (!firstBandPass) {
             f0 = (edges[2] == 1.0) ? 1.0 : 0.5 * (edges[1] + edges[2]);
         }
-        double gain = 0.0;
+        keel::f64 gain = 0.0;
         for (keel::usize i = 0; i < filtLen; ++i)
-            gain += h[i] * std::cos(M_PI * f0 * (keel::as<double>(i) - half));
+            gain += h[i] * std::cos(M_PI * f0 * (keel::as<keel::f64>(i) - half));
         if (keel::abs(gain) > 1e-15) {
             for (keel::usize i = 0; i < filtLen; ++i)
                 h[i] /= gain;
@@ -635,7 +635,7 @@ cell2sos(const Value &C, keel::Allocator *mr)
     }
 
     // Detect leading-scalar gain section.
-    double g = 1.0;
+    keel::f64 g = 1.0;
     keel::usize startIdx = 0;
     {
         const Value &first = C.cellAt(0);
@@ -643,8 +643,8 @@ cell2sos(const Value &C, keel::Allocator *mr)
             const Value &b0 = first.cellAt(0);
             const Value &a0 = first.cellAt(1);
             if (b0.numel() == 1 && a0.numel() == 1) {
-                const double bv = b0.toScalar();
-                const double av = a0.toScalar();
+                const keel::f64 bv = b0.toScalar();
+                const keel::f64 av = a0.toScalar();
                 if (av != 0.0) {
                     g = bv / av;
                     startIdx = 1;
@@ -659,7 +659,7 @@ cell2sos(const Value &C, keel::Allocator *mr)
         return {S, Value::scalar(g, mr)};
     }
 
-    double *Sd = S.doubleDataMut();
+    keel::f64 *Sd = S.doubleDataMut();
     std::fill(Sd, Sd + outRows * 6, 0.0);
     for (keel::usize i = 0; i < outRows; ++i) {
         const Value &pair = C.cellAt(startIdx + i);
@@ -708,7 +708,7 @@ int nextPow2Int(int v)
 }
 
 // Read a short real vector (row or column) into a ScratchVec<double>.
-void readVec(const Value &v, keel::Array<double> &out)
+void readVec(const Value &v, keel::Array<keel::f64> &out)
 {
     const keel::usize n = v.numel();
     out.resize(n);
@@ -729,7 +729,7 @@ Value fir2(int n, const Value &f, const Value &m,
                             "numkit:fir2:BadN");
 
     // ── 2. Read and validate f, m ──────────────────────────────────────
-    keel::Array<double> fv(0, arena.allocator()), mv(0, arena.allocator());
+    keel::Array<keel::f64> fv(0, arena.allocator()), mv(0, arena.allocator());
     readVec(f, fv);
     readVec(m, mv);
 
@@ -795,7 +795,7 @@ Value fir2(int n, const Value &f, const Value &m,
         H[k] = keel::c64(0.0, 0.0);
 
     // Helper: range-checked 1-based store into H.
-    auto putH = [&](int j1, double val) {
+    auto putH = [&](int j1, keel::f64 val) {
         if (j1 < 1 || j1 > npt1)
             throw numkit::Error("Internal grid index out of range.", 0, 0,
                                 "fir2", "", "numkit:fir2:SignalErr");
@@ -806,7 +806,7 @@ Value fir2(int n, const Value &f, const Value &m,
     int nb = 1;  // 1-based start of the next segment
 
     for (keel::usize i = 0; i + 1 < nf; ++i) {
-        const double df = fv[i + 1] - fv[i];
+        const keel::f64 df = fv[i + 1] - fv[i];
         int ne;
         if (df == 0.0) {
             // Duplicated frequency — a response discontinuity. Back up
@@ -822,12 +822,12 @@ Value fir2(int n, const Value &f, const Value &m,
                                 "fir2", "", "numkit:fir2:SignalErr");
 
         for (int j = nb; j <= ne; ++j) {
-            double inc;
+            keel::f64 inc;
             if (ne == nb)
                 inc = 0.0;
             else
-                inc = keel::as<double>(j - nb)
-                      / keel::as<double>(ne - nb);
+                inc = keel::as<keel::f64>(j - nb)
+                      / keel::as<keel::f64>(ne - nb);
             putH(j, inc * mv[i + 1] + (1.0 - inc) * mv[i]);
         }
         nb = ne + 1;
@@ -835,9 +835,9 @@ Value fir2(int n, const Value &f, const Value &m,
 
     // ── 7. Linear-phase delay (spec §2.4) ──────────────────────────────
     // Multiply by a pure delay of dt = (nn-1)/2 samples.
-    const double dt = (nn - 1) / 2.0;
+    const keel::f64 dt = (nn - 1) / 2.0;
     for (int k = 0; k <= npt; ++k) {
-        const double phase = -M_PI * dt * k / npt;
+        const keel::f64 phase = -M_PI * dt * k / npt;
         H[k] *= keel::c64(std::cos(phase), std::sin(phase));
     }
 
@@ -858,10 +858,10 @@ Value fir2(int n, const Value &f, const Value &m,
 
     // ── 9. Take the first nn samples and window (spec §2.5) ────────────
     Value b = Value::matrix(1, keel::as<keel::usize>(nn), ValueType::DOUBLE, mr);
-    double *bd = b.doubleDataMut();
+    keel::f64 *bd = b.doubleDataMut();
 
     // The window: user-supplied or a default Hamming of length nn.
-    keel::Array<double> win(0, arena.allocator());
+    keel::Array<keel::f64> win(0, arena.allocator());
     if (!opts.window.isEmpty()) {
         if (keel::as<int>(opts.window.numel()) != nn)
             throw numkit::Error("The window length must equal the filter "
@@ -885,7 +885,7 @@ Value fir2(int n, const Value &f, const Value &m,
         for (int k = 0; k < nn; ++k)
             bd[k] = td[k].real() * win[k];
     } else {
-        const double *td = timeDom.doubleData();
+        const keel::f64 *td = timeDom.doubleData();
         for (int k = 0; k < nn; ++k)
             bd[k] = td[k] * win[k];
     }
@@ -916,14 +916,14 @@ namespace {
 
 // Barycentric Lagrange eval of degree-(m-1) polynomial defined by
 // (x_k, y_k) and precomputed weights g_k = 1/Π_{j≠k}(x_k - x_j).
-inline double bary_eval(const double *xk, const double *yk, const double *gk,
-                        keel::usize m, double x)
+inline keel::f64 bary_eval(const keel::f64 *xk, const keel::f64 *yk, const keel::f64 *gk,
+                        keel::usize m, keel::f64 x)
 {
     for (keel::usize k = 0; k < m; ++k)
         if (std::fabs(x - xk[k]) < 1e-15) return yk[k];
-    double num = 0.0, den = 0.0;
+    keel::f64 num = 0.0, den = 0.0;
     for (keel::usize k = 0; k < m; ++k) {
-        const double t = gk[k] / (x - xk[k]);
+        const keel::f64 t = gk[k] / (x - xk[k]);
         num += t * yk[k];
         den += t;
     }
@@ -931,15 +931,15 @@ inline double bary_eval(const double *xk, const double *yk, const double *gk,
 }
 
 struct PMGridPoint {
-    double w;     // ω in [0, π]
-    double D;     // desired amplitude
-    double W;     // weight
+    keel::f64 w;     // ω in [0, π]
+    keel::f64 D;     // desired amplitude
+    keel::f64 W;     // weight
     int    band;  // index of source band
 };
 
 } // anonymous namespace
 
-std::tuple<Value, double>
+std::tuple<Value, keel::f64>
 firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
       keel::StringRef ftype, keel::Allocator *mr)
 {
@@ -951,9 +951,9 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     auto Fv = valueToDoubleRow(Farg, arena);
     auto Av = valueToDoubleRow(Aarg, arena);
     auto Wv = valueToDoubleRow(Warg, arena);
-    const double *F = Fv.data();
-    const double *A = Av.data();
-    const double *W = Wv.empty() ? nullptr : Wv.data();
+    const keel::f64 *F = Fv.data();
+    const keel::f64 *A = Av.data();
+    const keel::f64 *W = Wv.empty() ? nullptr : Wv.data();
     const keel::usize Fn = Fv.size();
     const keel::usize An = Av.size();
     const keel::usize Wn = Wv.size();
@@ -1016,33 +1016,33 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     constexpr int lgrid = 16;              // dense-grid density per extremal
 
     // Total fractional width across all bands (proportional grid alloc).
-    double totalWidth = 0.0;
+    keel::f64 totalWidth = 0.0;
     for (keel::usize k = 0; k < numBands; ++k)
         totalWidth += F[2 * k + 1] - F[2 * k];
     if (totalWidth <= 0.0)
         throw Error("firpm: all bands have zero width",
                     0, 0, "firpm", "", "numkit:firpm:badF");
 
-    double df = 1.0 / (keel::as<double>(lgrid) * keel::as<double>(r));
-    if (totalWidth / df < keel::as<double>(nExtr + 4 * numBands)) {
-        df = totalWidth / keel::as<double>(lgrid * r);
+    keel::f64 df = 1.0 / (keel::as<keel::f64>(lgrid) * keel::as<keel::f64>(r));
+    if (totalWidth / df < keel::as<keel::f64>(nExtr + 4 * numBands)) {
+        df = totalWidth / keel::as<keel::f64>(lgrid * r);
     }
 
     keel::Array<PMGridPoint> grid(arena.allocator());
     grid.reserve(keel::as<keel::usize>(totalWidth / df) + 4 * numBands);
 
     for (keel::usize k = 0; k < numBands; ++k) {
-        const double f1 = F[2 * k], f2 = F[2 * k + 1];
-        const double bw = f2 - f1;
+        const keel::f64 f1 = F[2 * k], f2 = F[2 * k + 1];
+        const keel::f64 bw = f2 - f1;
         if (bw <= 0.0) continue;
-        const double a1 = A[2 * k], a2 = A[2 * k + 1];
-        const double wt = (W ? W[k] : 1.0);
+        const keel::f64 a1 = A[2 * k], a2 = A[2 * k + 1];
+        const keel::f64 wt = (W ? W[k] : 1.0);
         if (wt <= 0.0)
             throw Error("firpm: weights must be positive",
                         0, 0, "firpm", "", "numkit:firpm:badW");
 
-        keel::Array<double> fBand(arena.allocator());
-        double fCur = ((filterType == TYPE_III || filterType == TYPE_IV) && k == 0 && f1 == 0.0)
+        keel::Array<keel::f64> fBand(arena.allocator());
+        keel::f64 fCur = ((filterType == TYPE_III || filterType == TYPE_IV) && k == 0 && f1 == 0.0)
                       ? df
                       : f1;
         while (fCur <= f2 + 1e-15) {
@@ -1064,12 +1064,12 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         // user weight.
         const bool diffActive = isDiff && std::fabs(a2) >= 1e-4;
         for (keel::usize i = 0; i < fBand.size(); ++i) {
-            const double f_norm = fBand[i];
-            const double t = (bw > 0.0) ? ((f_norm - f1) / bw) : 0.0;
+            const keel::f64 f_norm = fBand[i];
+            const keel::f64 t = (bw > 0.0) ? ((f_norm - f1) / bw) : 0.0;
             PMGridPoint p;
             p.w = M_PI * f_norm;
-            const double D_raw = a1 + t * (a2 - a1);
-            double Q = 1.0;
+            const keel::f64 D_raw = a1 + t * (a2 - a1);
+            keel::f64 Q = 1.0;
             switch (filterType) {
                 case TYPE_I:
                     Q = 1.0;
@@ -1087,7 +1087,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
                     Q = std::sin(0.5 * p.w);
                     break;
             }
-            double W_eff = wt;
+            keel::f64 W_eff = wt;
             if (diffActive) {
                 if (f_norm < 1e-12) continue;
                 W_eff = wt / (0.5 * f_norm);
@@ -1131,11 +1131,11 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         keel::Array<keel::usize> perBand(numBands, arena.allocator());
         keel::usize assigned = 0;
         for (keel::usize k = 0; k < numBands; ++k) {
-            const double bw = F[2 * k + 1] - F[2 * k];
+            const keel::f64 bw = F[2 * k + 1] - F[2 * k];
             keel::usize n =
                 std::max<keel::usize>(2,
                     keel::as<keel::usize>(std::round(
-                        double(nExtr) * bw / totalWidth)));
+                        keel::f64(nExtr) * bw / totalWidth)));
             perBand[k] = n;
             assigned   += n;
         }
@@ -1170,32 +1170,32 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     }
 
     // Per-iteration scratch.
-    keel::Array<double> xk(nExtr, arena.allocator()), gammak(nExtr, arena.allocator()), Ck(nExtr, arena.allocator());
-    keel::Array<double> xkP(r, arena.allocator()), CkP(r, arena.allocator()), gkP(r, arena.allocator());
-    keel::Array<double> err_grid(grid.size(), arena.allocator());
+    keel::Array<keel::f64> xk(nExtr, arena.allocator()), gammak(nExtr, arena.allocator()), Ck(nExtr, arena.allocator());
+    keel::Array<keel::f64> xkP(r, arena.allocator()), CkP(r, arena.allocator()), gkP(r, arena.allocator());
+    keel::Array<keel::f64> err_grid(grid.size(), arena.allocator());
     keel::Array<keel::usize> newExtr(arena.allocator());
     newExtr.reserve(nExtr + 8);
 
-    double delta = 0.0;
+    keel::f64 delta = 0.0;
     constexpr int kMaxIter = 50;
-    constexpr double kConvTol = 1e-9;
+    constexpr keel::f64 kConvTol = 1e-9;
 
     for (int iter = 0; iter < kMaxIter; ++iter) {
         // (a) Lagrange weights γk on extremal x's.
         for (keel::usize k = 0; k < nExtr; ++k)
             xk[k] = std::cos(grid[extr[k]].w);
         for (keel::usize k = 0; k < nExtr; ++k) {
-            double prod = 1.0;
+            keel::f64 prod = 1.0;
             for (keel::usize j = 0; j < nExtr; ++j)
                 if (j != k) prod *= (xk[k] - xk[j]);
             gammak[k] = 1.0 / prod;
         }
 
         // (b) δ — peak ripple of current Chebyshev approximation.
-        double num = 0.0, den = 0.0;
+        keel::f64 num = 0.0, den = 0.0;
         for (keel::usize k = 0; k < nExtr; ++k) {
             num += gammak[k] * grid[extr[k]].D;
-            const double sg = (k % 2 == 0) ? 1.0 : -1.0;
+            const keel::f64 sg = (k % 2 == 0) ? 1.0 : -1.0;
             den += sg * gammak[k] / grid[extr[k]].W;
         }
         delta = num / den;
@@ -1203,7 +1203,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         // (c) C_k — interpolation values for polynomial through L+1 of the
         //     extremals (last one's residual matches the δ alternation).
         for (keel::usize k = 0; k < nExtr; ++k) {
-            const double sg = (k % 2 == 0) ? 1.0 : -1.0;
+            const keel::f64 sg = (k % 2 == 0) ? 1.0 : -1.0;
             Ck[k] = grid[extr[k]].D - sg * delta / grid[extr[k]].W;
         }
 
@@ -1213,7 +1213,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
             CkP[k] = Ck[k];
         }
         for (keel::usize k = 0; k < r; ++k) {
-            double prod = 1.0;
+            keel::f64 prod = 1.0;
             for (keel::usize j = 0; j < r; ++j)
                 if (j != k) prod *= (xkP[k] - xkP[j]);
             gkP[k] = 1.0 / prod;
@@ -1225,12 +1225,12 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
             for (keel::usize k = 0; k < nExtr; ++k)
                 if (extr[k] == i) { extrIdx = int(k); break; }
             if (extrIdx >= 0) {
-                const double sg = (extrIdx % 2 == 0) ? 1.0 : -1.0;
+                const keel::f64 sg = (extrIdx % 2 == 0) ? 1.0 : -1.0;
                 err_grid[i] = sg * delta;
                 continue;
             }
-            const double xi = std::cos(grid[i].w);
-            const double Hi = bary_eval(xkP.data(), CkP.data(), gkP.data(), r, xi);
+            const keel::f64 xi = std::cos(grid[i].w);
+            const keel::f64 Hi = bary_eval(xkP.data(), CkP.data(), gkP.data(), r, xi);
             err_grid[i] = grid[i].W * (grid[i].D - Hi);
         }
 
@@ -1245,14 +1245,14 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
             keel::Array<keel::usize> peaks(arena.allocator());
             peaks.reserve(grid.size() / 2 + 8);
             for (keel::usize i = 0; i < grid.size(); ++i) {
-                const double absE = std::fabs(err_grid[i]);
+                const keel::f64 absE = std::fabs(err_grid[i]);
                 const bool sameBandLeft  =
                     (i > 0) && (grid[i - 1].band == grid[i].band);
                 const bool sameBandRight =
                     (i + 1 < grid.size()) && (grid[i + 1].band == grid[i].band);
-                const double absL =
+                const keel::f64 absL =
                     sameBandLeft ? std::fabs(err_grid[i - 1]) : -1.0;
-                const double absR =
+                const keel::f64 absR =
                     sameBandRight ? std::fabs(err_grid[i + 1]) : -1.0;
                 bool isPeak;
                 if (!sameBandLeft || !sameBandRight) {
@@ -1271,8 +1271,8 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
             }
             for (keel::usize i : peaks) {
                 if (newExtr.empty()) { newExtr.push_back(i); continue; }
-                const double eLast = err_grid[newExtr.back()];
-                const double e     = err_grid[i];
+                const keel::f64 eLast = err_grid[newExtr.back()];
+                const keel::f64 e     = err_grid[i];
                 if ((e >= 0.0) == (eLast >= 0.0)) {
                     if (std::fabs(e) > std::fabs(eLast)) newExtr.back() = i;
                 } else {
@@ -1293,12 +1293,12 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         }
 
         // Convergence: max|E| should equal |δ|.
-        double maxE = 0.0;
+        keel::f64 maxE = 0.0;
         for (keel::usize i = 0; i < grid.size(); ++i) {
-            const double v = std::fabs(err_grid[i]);
+            const keel::f64 v = std::fabs(err_grid[i]);
             if (v > maxE) maxE = v;
         }
-        const double dAbs    = std::fabs(delta);
+        const keel::f64 dAbs    = std::fabs(delta);
         const bool   converged = (maxE - dAbs) < kConvTol * (dAbs > 0.0 ? dAbs : 1.0);
 
         for (keel::usize k = 0; k < nExtr; ++k) extr[k] = newExtr[k];
@@ -1310,22 +1310,22 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     for (keel::usize k = 0; k < nExtr; ++k)
         xk[k] = std::cos(grid[extr[k]].w);
     for (keel::usize k = 0; k < nExtr; ++k) {
-        double prod = 1.0;
+        keel::f64 prod = 1.0;
         for (keel::usize j = 0; j < nExtr; ++j)
             if (j != k) prod *= (xk[k] - xk[j]);
         gammak[k] = 1.0 / prod;
     }
     {
-        double num = 0.0, den = 0.0;
+        keel::f64 num = 0.0, den = 0.0;
         for (keel::usize k = 0; k < nExtr; ++k) {
             num += gammak[k] * grid[extr[k]].D;
-            const double sg = (k % 2 == 0) ? 1.0 : -1.0;
+            const keel::f64 sg = (k % 2 == 0) ? 1.0 : -1.0;
             den += sg * gammak[k] / grid[extr[k]].W;
         }
         delta = num / den;
     }
     for (keel::usize k = 0; k < nExtr; ++k) {
-        const double sg = (k % 2 == 0) ? 1.0 : -1.0;
+        const keel::f64 sg = (k % 2 == 0) ? 1.0 : -1.0;
         Ck[k] = grid[extr[k]].D - sg * delta / grid[extr[k]].W;
     }
     for (keel::usize k = 0; k < r; ++k) {
@@ -1333,17 +1333,17 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         CkP[k] = Ck[k];
     }
     for (keel::usize k = 0; k < r; ++k) {
-        double prod = 1.0;
+        keel::f64 prod = 1.0;
         for (keel::usize j = 0; j < r; ++j)
             if (j != k) prod *= (xkP[k] - xkP[j]);
         gkP[k] = 1.0 / prod;
     }
 
     // Sample H at the L+1 cosine nodes ωm = π·m/L for m=0..L.
-    keel::Array<double> Hs(L + 1, arena.allocator());
+    keel::Array<keel::f64> Hs(L + 1, arena.allocator());
     for (keel::usize m = 0; m <= L; ++m) {
-        const double wm = M_PI * double(m) / double(L);
-        const double xm = std::cos(wm);
+        const keel::f64 wm = M_PI * keel::f64(m) / keel::f64(L);
+        const keel::f64 xm = std::cos(wm);
         Hs[m] = bary_eval(xkP.data(), CkP.data(), gkP.data(), r, xm);
     }
 
@@ -1352,25 +1352,25 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     // T_k requires endpoint scaling c_0 = c_L = 2 (halved coefficient):
     //   a[k] = (2/(L·c_k)) · [½H[0] + ½(-1)^k·H[L]
     //                         + Σ_{m=1..L-1} H[m]·cos(π·k·m/L)]
-    keel::Array<double> a(L + 1, arena.allocator());
+    keel::Array<keel::f64> a(L + 1, arena.allocator());
     for (keel::usize k = 0; k <= L; ++k) {
-        double sum = 0.5 * Hs[0]
+        keel::f64 sum = 0.5 * Hs[0]
                    + 0.5 * Hs[L] * ((k % 2 == 0) ? 1.0 : -1.0);
         for (keel::usize m = 1; m < L; ++m)
-            sum += Hs[m] * std::cos(M_PI * double(k) * double(m) / double(L));
-        const double ck = (k == 0 || k == L) ? 2.0 : 1.0;
-        a[k] = (2.0 / (double(L) * ck)) * sum;
+            sum += Hs[m] * std::cos(M_PI * keel::f64(k) * keel::f64(m) / keel::f64(L));
+        const keel::f64 ck = (k == 0 || k == L) ? 2.0 : 1.0;
+        a[k] = (2.0 / (keel::f64(L) * ck)) * sum;
     }
 
     Value bOut = Value::matrix(1, keel::usize(N) + 1, ValueType::DOUBLE, mr);
-    double *bd = bOut.doubleDataMut();
+    keel::f64 *bd = bOut.doubleDataMut();
     for (keel::usize i = 0; i <= keel::as<keel::usize>(N); ++i) bd[i] = 0.0;
 
     if (filterType == TYPE_I) {
         // Type I (even N): h[L] = a[0], h[L±k] = a[k]/2.
         bd[L] = a[0];
         for (keel::usize k = 1; k <= L; ++k) {
-            const double v = 0.5 * a[k];
+            const keel::f64 v = 0.5 * a[k];
             bd[L - k] = v;
             bd[L + k] = v;
         }
@@ -1380,13 +1380,13 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         //   cos(kω) · cos(ω/2) = ½ [cos((k+½)ω) + cos((k-½)ω)]
         //   b[0] = a[0] + a[1]/2,  b[n] = (a[n] + a[n+1])/2 for 1≤n≤L-1,
         //   b[L] = a[L]/2,  h[L - n] = b[n]/2,  h[L+1+n] = h[L-n].
-        keel::Array<double> b(L + 1, arena.allocator());
+        keel::Array<keel::f64> b(L + 1, arena.allocator());
         b[0] = a[0] + (L >= 1 ? 0.5 * a[1] : 0.0);
         for (keel::usize n = 1; n + 1 <= L; ++n)
             b[n] = 0.5 * (a[n] + a[n + 1]);
         if (L >= 1) b[L] = 0.5 * a[L];
         for (keel::usize n = 0; n <= L; ++n) {
-            const double v = 0.5 * b[n];
+            const keel::f64 v = 0.5 * b[n];
             bd[L - n]        = v;
             bd[L + 1 + n]    = v;
         }
@@ -1401,14 +1401,14 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         //   c[L+1] = a[L]/2
         // h[Lh - n] = c[n]/2 for n=1..Lh, h[Lh] = 0, h[Lh + n] = -h[Lh - n].
         const keel::usize Lh = L + 1;
-        keel::Array<double> c(Lh + 1, 0.0, arena.allocator());
+        keel::Array<keel::f64> c(Lh + 1, 0.0, arena.allocator());
         if (L + 1 >= 1) {
-            const double a2 = (L >= 2) ? a[2] : 0.0;
+            const keel::f64 a2 = (L >= 2) ? a[2] : 0.0;
             c[1] = a[0] - 0.5 * a2;
         }
         for (keel::usize n = 2; n <= Lh; ++n) {
-            const double am1 = (n - 1 <= L) ? a[n - 1] : 0.0;
-            const double ap1 = (n + 1 <= L) ? a[n + 1] : 0.0;
+            const keel::f64 am1 = (n - 1 <= L) ? a[n - 1] : 0.0;
+            const keel::f64 ap1 = (n + 1 <= L) ? a[n + 1] : 0.0;
             c[n] = 0.5 * am1 - 0.5 * ap1;
         }
         bd[Lh] = 0.0;
@@ -1417,7 +1417,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         // → A > 0 in passband → low-index h is negative for the
         // linear-phase decomposition e^(-jωN/2)·jA used by MATLAB).
         for (keel::usize n = 1; n <= Lh; ++n) {
-            const double v = 0.5 * c[n];
+            const keel::f64 v = 0.5 * c[n];
             bd[Lh - n] = -v;
             bd[Lh + n] =  v;
         }
@@ -1433,7 +1433,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         //              d[n] = (a[n-1] - a[n])/2  for 2 ≤ n ≤ L,
         //              d[L+1] = a[L]/2.
         // h[L - n + 1] = d[n]/2 for n=1..L+1, mirror: h[L+1+m] = -h[L-m].
-        keel::Array<double> dvec(L + 2, 0.0, arena.allocator());
+        keel::Array<keel::f64> dvec(L + 2, 0.0, arena.allocator());
         if (L >= 1) dvec[1] = a[0] - 0.5 * a[1];
         else        dvec[1] = a[0];
         for (keel::usize n = 2; n <= L; ++n)
@@ -1442,7 +1442,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         else        dvec[L + 1] = 0.0;
         // Same sign convention as Type III.
         for (keel::usize n = 1; n <= L + 1; ++n) {
-            const double v = 0.5 * dvec[n];
+            const keel::f64 v = 0.5 * dvec[n];
             const keel::usize lo = L + 1 - n;   // h[L - n + 1] in 0-based
             bd[lo]            = -v;
             bd[(N) - lo]      =  v;  // mirror about (N+1)/2-1/2
