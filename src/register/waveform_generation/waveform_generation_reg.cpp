@@ -32,7 +32,7 @@ namespace detail {
 // Fc/Fs marshalling for modulate/demod: real scalars. expectedReal alone
 // would pass a CHAR scalar through as its ASCII code â€” the reference
 // rejects non-numeric scalars, so gate the class first.
-static keel::f64 carrierArg(const Value &v, int argNum, const char *name,
+static keel::f64 carrierArg(const Value &v, keel::i32 argNum, const char *name,
                          const char *fn)
 {
     if (v.isChar() || v.isString() || v.isCell() || v.isStruct())
@@ -189,7 +189,7 @@ void gmonopuls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mu
 void diric_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 2, "diric");
-    const int n = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "n", "diric"), 2, "n", "diric");
+    const keel::i32 n = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "n", "diric"), 2, "n", "diric");
     outs[0] = diric(args[0], n, ctx.engine->allocator());
 }
 

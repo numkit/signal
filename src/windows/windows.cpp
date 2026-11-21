@@ -121,7 +121,7 @@ Value nuttallwin(keel::usize N, keel::Allocator *mr)
     return out;
 }
 
-Value taylorwin(keel::usize N, int nbar, keel::f64 sll, keel::Allocator *mr)
+Value taylorwin(keel::usize N, keel::i32 nbar, keel::f64 sll, keel::Allocator *mr)
 {
     if (sll >= 0)
         throw Error("taylorwin: sll must be negative (peak sidelobe in dB)",

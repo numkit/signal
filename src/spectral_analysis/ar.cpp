@@ -38,7 +38,7 @@ namespace numkit::signal {
 
 namespace {
 
-void ar_argcheck(const Value &x, int p, const char *fn) {
+void ar_argcheck(const Value &x, keel::i32 p, const char *fn) {
     if (p < 1)
         throw Error(keel::format("{}: order p must be ≥ 1", fn),
                     0, 0, fn, "", "numkit:ar:order");
@@ -116,7 +116,7 @@ YWFit yuleWalkerFit(const Value &x, keel::usize pp) {
 } // anonymous
 
 std::tuple<Value, Value>
-pyulear(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
+pyulear(const Value &x, keel::i32 p, keel::usize nfft, keel::Allocator *mr)
 {
     ar_argcheck(x, p, "pyulear");
     if (nfft == 0) nfft = 256;
@@ -131,7 +131,7 @@ pyulear(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
 // stack was even on the parity map.
 
 std::tuple<Value, Value>
-pburg(const Value &x, int p, keel::usize nfft, keel::Allocator *mr)
+pburg(const Value &x, keel::i32 p, keel::usize nfft, keel::Allocator *mr)
 {
     ar_argcheck(x, p, "pburg");
     const keel::usize N = x.numel();

@@ -51,8 +51,8 @@ Value idct(const Value &x, keel::Allocator *mr = nullptr);
 /// Value Y = dct(matrix, -1, 1);   // per-column DCT of a 2-D matrix
 /// @endcode
 Value dct(const Value &                x,
-          int                          n,
-          int                          dim,
+          keel::i32                          n,
+          keel::i32                          dim,
           keel::Allocator *  mr = nullptr);
 
 /// @brief Inverse DCT-II with explicit length / axis.
@@ -67,7 +67,7 @@ Value dct(const Value &                x,
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     DOUBLE array with `dim` axis replaced by length `n`.
 /// @see dct
-Value idct(const Value &x, int n, int dim,
+Value idct(const Value &x, keel::i32 n, keel::i32 dim,
            keel::Allocator *mr = nullptr);
 
 

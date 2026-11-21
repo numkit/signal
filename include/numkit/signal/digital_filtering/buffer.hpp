@@ -34,7 +34,7 @@ namespace numkit::signal {
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     Frame matrix `Y`.
 /// @see buffer2
-Value buffer(const Value &x, int n, int p = 0,
+Value buffer(const Value &x, keel::i32 n, keel::i32 p = 0,
              const Value &opt = Value::Empty,
              keel::Allocator *mr = nullptr);
 
@@ -52,7 +52,7 @@ Value buffer(const Value &x, int n, int p = 0,
 /// @return     Tuple `(Y, Z)`.
 /// @see buffer
 std::tuple<Value, Value>
-buffer2(const Value &x, int n, int p = 0,
+buffer2(const Value &x, keel::i32 n, keel::i32 p = 0,
         const Value &opt = Value::Empty,
         keel::Allocator *mr = nullptr);
 

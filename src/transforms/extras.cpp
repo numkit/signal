@@ -55,7 +55,7 @@ bool isPow2(keel::usize n) { return n > 0 && (n & (n - 1)) == 0; }
 // padded spectral null sends log|X| to ~-690 and smears it across every
 // output sample), so the historical nextPow2 path produced garbage for
 // non-power-of-two lengths.
-void dftExact(keel::c64 *buf, keel::usize n, int dir, keel::Allocator *mr)
+void dftExact(keel::c64 *buf, keel::usize n, keel::i32 dir, keel::Allocator *mr)
 {
     if (n <= 1) return;
     if (isPow2(n)) { fftRadix2(mr, buf, n, dir); return; }

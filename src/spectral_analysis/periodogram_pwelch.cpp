@@ -90,7 +90,7 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, keel::f64 fs,
             const keel::f64 *xd = x.doubleData();
             for (keel::usize i = 0; i < N; ++i) xw[i] = xd[i] * win[i];
         }
-        Xv   = fft(xwin, keel::as<int>(nfft), /*dim=*/0, mr);
+        Xv   = fft(xwin, keel::as<keel::i32>(nfft), /*dim=*/0, mr);
         spec = Xv.complexData();
     }
 

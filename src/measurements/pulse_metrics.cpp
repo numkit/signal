@@ -28,7 +28,7 @@ namespace {
 constexpr keel::f64 kLowPct  = 0.10;   // lower state boundary fraction
 constexpr keel::f64 kHighPct = 0.90;   // upper state boundary fraction
 constexpr keel::f64 kMidPct  = 0.50;   // mid-reference level
-constexpr int    kHistBins = 100;
+constexpr keel::i32    kHistBins = 100;
 
 keel::f64 scalarOrDefault(const Value &v, keel::f64 dflt)
 {
@@ -72,20 +72,20 @@ LowHigh stateLevelsCalc(const keel::f64 *x, keel::usize n)
     }
     if (!(xmax > xmin)) return {xmin, xmax};
     const keel::f64 width = (xmax - xmin) / kHistBins;
-    keel::Array<int> hist(kHistBins, 0);
+    keel::Array<keel::i32> hist(kHistBins, 0);
     for (keel::usize i = 0; i < n; ++i) {
-        int b = keel::as<int>((x[i] - xmin) / width);
+        keel::i32 b = keel::as<keel::i32>((x[i] - xmin) / width);
         if (b >= kHistBins) b = kHistBins - 1;
         if (b < 0) b = 0;
         hist[b]++;
     }
     const keel::f64 mid = (xmin + xmax) * 0.5;
-    const int splitBin = keel::as<int>((mid - xmin) / width);
-    int lowBin = 0, highBin = kHistBins - 1;
-    int lowMax = -1, highMax = -1;
-    for (int b = 0; b < splitBin; ++b)
+    const keel::i32 splitBin = keel::as<keel::i32>((mid - xmin) / width);
+    keel::i32 lowBin = 0, highBin = kHistBins - 1;
+    keel::i32 lowMax = -1, highMax = -1;
+    for (keel::i32 b = 0; b < splitBin; ++b)
         if (hist[b] > lowMax) { lowMax = hist[b]; lowBin = b; }
-    for (int b = splitBin; b < kHistBins; ++b)
+    for (keel::i32 b = splitBin; b < kHistBins; ++b)
         if (hist[b] > highMax) { highMax = hist[b]; highBin = b; }
     return {
         xmin + (lowBin  + 0.5) * width,
@@ -120,7 +120,7 @@ keel::f64 idxToTime(keel::f64 idx, keel::f64 fs)
 // cross and the leading-boundary cross, x must not re-cross the
 // trailing boundary.
 struct Transition {
-    int sign;        // +1 rising, -1 falling
+    keel::i32 sign;        // +1 rising, -1 falling
     keel::f64 startIdx; // crossing of trailing boundary (10% for rising)
     keel::f64 endIdx;   // crossing of leading boundary (90% for rising)
 };
@@ -381,10 +381,10 @@ namespace {
 
 // Build a list of (idx, dir) pairs: dir = +1 for rising mid-cross, -1
 // for falling mid-cross. Used by the pulse-shape metrics below.
-keel::Array<std::pair<keel::f64, int>>
+keel::Array<std::pair<keel::f64, keel::i32>>
 midCrossesDirected(const keel::f64 *x, keel::usize n, keel::f64 mid)
 {
-    keel::Array<std::pair<keel::f64, int>> out;
+    keel::Array<std::pair<keel::f64, keel::i32>> out;
     for (keel::usize i = 0; i + 1 < n; ++i) {
         const keel::f64 a = x[i], b = x[i + 1];
         if (a < mid && b >= mid)      out.emplace_back(crossingIdx(x, i, mid), +1);

@@ -39,7 +39,7 @@ void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         && !args[1].isChar() && !args[1].isString()) {
         // k = 0 is LEGAL (the reference answers an all-NaN signal â€”
         // probed R2025b); only negative k is rejected.
-        const long kv = argcheck::expectedInteger(
+        const keel::i64 kv = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "k", "medfilt1"), 2, "k", "medfilt1");
         if (kv < 0)
             throw Error("medfilt1: window length must be nonnegative",

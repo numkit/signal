@@ -26,7 +26,7 @@ void pyulear_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 8, "pyulear");
-    const int p     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pyulear"), 2, "p", "pyulear");
+    const keel::i32 p     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pyulear"), 2, "p", "pyulear");
     const keel::usize nf = (args.size() >= 3 && !args[2].isEmpty())
                       ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pyulear"), 3, "nfft", "pyulear")) : 0;
     auto [Pxx, F] = pyulear(args[0], p, nf, ctx.engine->allocator());
@@ -38,7 +38,7 @@ void pburg_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 8, "pburg");
-    const int p     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pburg"), 2, "p", "pburg");
+    const keel::i32 p     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "p", "pburg"), 2, "p", "pburg");
     const keel::usize nf = (args.size() >= 3 && !args[2].isEmpty())
                       ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pburg"), 3, "nfft", "pburg")) : 0;
     auto [Pxx, F] = pburg(args[0], p, nf, ctx.engine->allocator());

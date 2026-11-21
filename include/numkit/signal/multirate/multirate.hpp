@@ -95,7 +95,7 @@ Value resample(const Value &                x,
 Value resample(const Value &                x,
                keel::usize                       p,
                keel::usize                       q,
-               int                          n,
+               keel::i32                          n,
                keel::f64                       beta = 5.0,
                keel::Allocator *  mr = nullptr);
 

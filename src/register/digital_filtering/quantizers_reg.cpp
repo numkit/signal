@@ -35,7 +35,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 2, 4, "uencode");
     // Marshalling only â€” the [2, 32] range contract lives in the
     // uencode compute (nk:uencode:BadN).
-    const int N = keel::as<int>(argcheck::expectedInteger(
+    const keel::i32 N = keel::as<keel::i32>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "uencode"), 2, "N", "uencode"));
     keel::f64 V = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty())
@@ -44,7 +44,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     if (args.size() >= 4 && !args[3].isEmpty()) {
         keel::String s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
-                        [](unsigned char c) { return keel::to_ascii_lower(c); });
+                        [](keel::u8 c) { return keel::to_ascii_lower(c); });
         if (s == "signed")        signedOut = true;
         else if (s == "unsigned") signedOut = false;
         else throw Error("uencode: 4th arg must be 'signed' or 'unsigned'",
@@ -59,7 +59,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 2, 4, "udecode");
     // Marshalling only: the [2, 32] range and V positivity contracts
     // live in udecode_argcheck (compute side).
-    const int N = keel::as<int>(argcheck::expectedInteger(
+    const keel::i32 N = keel::as<keel::i32>(argcheck::expectedInteger(
         argcheck::expectedReal(args[1], 2, "N", "udecode"), 2, "N", "udecode"));
     keel::f64 V = 1.0;
     if (args.size() >= 3 && !args[2].isEmpty())
@@ -68,7 +68,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     if (args.size() >= 4 && !args[3].isEmpty()) {
         keel::String s = args[3].toString();
         std::transform(s.begin(), s.end(), s.begin(),
-                        [](unsigned char c) { return keel::to_ascii_lower(c); });
+                        [](keel::u8 c) { return keel::to_ascii_lower(c); });
         if (s == "wrap")          wrap = true;
         else if (s == "saturate") wrap = false;
         else throw Error("udecode: 4th arg must be 'saturate' or 'wrap'",

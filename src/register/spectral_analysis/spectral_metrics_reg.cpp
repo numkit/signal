@@ -128,11 +128,11 @@ static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
                         0, 0, caller, "", keel::format("numkit:{}:missingOptionValue", caller));
         const Value &val = args[i + 1];
         if (key == "leakage") {
-            opts.leakage = argcheck::expectedReal(val, keel::as<int>(i + 2), "Leakage", caller);
+            opts.leakage = argcheck::expectedReal(val, keel::as<keel::i32>(i + 2), "Leakage", caller);
         } else if (key == "overlappercent") {
-            opts.overlapPercent = argcheck::expectedReal(val, keel::as<int>(i + 2), "OverlapPercent", caller);
+            opts.overlapPercent = argcheck::expectedReal(val, keel::as<keel::i32>(i + 2), "OverlapPercent", caller);
         } else if (key == "timeresolution") {
-            opts.timeResolution = argcheck::expectedReal(val, keel::as<int>(i + 2), "TimeResolution", caller);
+            opts.timeResolution = argcheck::expectedReal(val, keel::as<keel::i32>(i + 2), "TimeResolution", caller);
         } else if (key == "frequencylimits") {
             if (val.numel() != 2 || val.isComplex() || val.isChar() || val.isString())
                 throw Error(keel::format("{}: 'FrequencyLimits' must be a 2-element real vector", caller),

@@ -42,7 +42,7 @@ void tachorpm_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     argcheck::checkNargin(args.size(), 2, 4, "tachorpm");  // reference takes name-value options past arg 4 (unimplemented)
     const keel::f64 fs = args[1].toScalar();
     const Value &thr = (args.size() >= 3) ? args[2] : Value::Empty;
-    int ppr = 1;
+    keel::i32 ppr = 1;
     if (args.size() >= 4 && !args[3].isEmpty())
         ppr = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "ppr", "tachorpm"), 4, "ppr", "tachorpm");
     auto [rpm, t] = tachorpm(args[0], fs, thr, ppr, ctx.engine->allocator());
@@ -106,7 +106,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, keel::f64 fs,
             const keel::f64 tk = t0 + dur * keel::as<keel::f64>(k)
                                     / keel::as<keel::f64>(L);
             const keel::f64 idxF = tk * fs;
-            const long  i0   = keel::as<long>(std::floor(idxF));
+            const keel::i64  i0   = keel::as<keel::i64>(std::floor(idxF));
             const keel::f64 frac = idxF - keel::as<keel::f64>(i0);
             if (i0 < 0 || keel::as<keel::usize>(i0 + 1) >= nx) { revOK = false; break; }
             sample[k] = (1.0 - frac) * xd[i0] + frac * xd[i0 + 1];
@@ -148,7 +148,7 @@ void tsa_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     }
     // 4+ args -> legacy nk form (continuous rpm signal).
     const keel::f64 fs_rpm = args[3].toScalar();
-    int npr = 1024;
+    keel::i32 npr = 1024;
     if (args.size() >= 5 && !args[4].isEmpty())
         npr = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[4], 5, "npr", "tsa"), 5, "npr", "tsa");
     auto [avg, th] = tsa(args[0], fs, args[2], fs_rpm, npr, ctx.engine->allocator());

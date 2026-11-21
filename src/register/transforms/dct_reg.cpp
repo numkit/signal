@@ -28,7 +28,7 @@ namespace detail {
 // MATLAB syntax: dct(X), dct(X, n), dct(X, n, dim). 'Type' name-value
 // is parsed separately (currently not implemented; explicit error to
 // surface the unsupported branch instead of silently doing Type-II).
-struct DctArgs { int n; int dim; bool hasType; keel::f64 typeVal; };
+struct DctArgs { keel::i32 n; keel::i32 dim; bool hasType; keel::f64 typeVal; };
 static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
 {
     DctArgs a{0, 0, false, 2.0};
@@ -49,8 +49,8 @@ static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
         }
         if (pos == 1)
             a.n = argcheck::expectedPositiveInteger(
-                argcheck::expectedReal(args[pos], int(pos) + 1, "n", fn),
-                int(pos) + 1, "n", fn);
+                argcheck::expectedReal(args[pos], keel::i32(pos) + 1, "n", fn),
+                keel::i32(pos) + 1, "n", fn);
         else if (pos == 2)
             a.dim = argcheck::dimArg(args[pos], fn);
         else

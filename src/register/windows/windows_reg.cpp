@@ -44,7 +44,7 @@ keel::usize parseSflag(keel::ArrayRef<Value> args, bool &periodic)
     if (!last.isChar() && !last.isString()) return args.size();
     keel::String s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return keel::to_ascii_lower(c); });
+                   [](keel::u8 c) { return keel::to_ascii_lower(c); });
     if (s == "symmetric") return args.size() - 1;
     if (s == "periodic") { periodic = true; return args.size() - 1; }
     return args.size();   // not an sflag â€” leave for caller
@@ -76,7 +76,7 @@ void parseTypeNameOnly(keel::ArrayRef<Value> args, const char *fn)
     if (!last.isChar() && !last.isString()) return;
     keel::String s = last.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return keel::to_ascii_lower(c); });
+                   [](keel::u8 c) { return keel::to_ascii_lower(c); });
     if (s != "double" && s != "single")
         throw Error(keel::format("{}: Expected TYPENAME to match one of these values: 'double', 'single' (got '{}')", fn, s),
                     0, 0, fn, "", keel::format("numkit:{}:typeName", fn));
@@ -194,7 +194,7 @@ void taylorwin_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mu
 {
     argcheck::checkNargin(args.size(), 1, 3, "taylorwin");
     const keel::usize N = windowN(args[0], "taylorwin");
-    const int nbar = (args.size() >= 2)
+    const keel::i32 nbar = (args.size() >= 2)
         ? argcheck::expectedPositiveInteger(
               argcheck::expectedReal(args[1], 2, "nbar", "taylorwin"), 2, "nbar", "taylorwin")
         : 4;

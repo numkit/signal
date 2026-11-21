@@ -39,7 +39,7 @@ void lowpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
         return;
     }
     const keel::f64 fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
-    const int order = (args.size() >= 4)
+    const keel::i32 order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "lowpass"), 4, "order", "lowpass") : 8;
     outs[0] = lowpass(args[0], args[1].toScalar(), fs, order, ctx.engine->allocator());
 }
@@ -53,7 +53,7 @@ void highpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         return;
     }
     const keel::f64 fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
-    const int order = (args.size() >= 4)
+    const keel::i32 order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "highpass"), 4, "order", "highpass") : 8;
     outs[0] = highpass(args[0], args[1].toScalar(), fs, order, ctx.engine->allocator());
 }
@@ -65,7 +65,7 @@ void bandpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         throw Error("bandpass: cutoff must be a 2-element [flo fhi]",
                      0, 0, "bandpass", "", "numkit:bandpass:badCutoff");
     const keel::f64 fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
-    const int order = (args.size() >= 4)
+    const keel::i32 order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandpass"), 4, "order", "bandpass") : 8;
     outs[0] = bandpass(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->allocator());
 }
@@ -77,7 +77,7 @@ void bandstop_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         throw Error("bandstop: cutoff must be a 2-element [flo fhi]",
                      0, 0, "bandstop", "", "numkit:bandstop:badCutoff");
     const keel::f64 fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
-    const int order = (args.size() >= 4)
+    const keel::i32 order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandstop"), 4, "order", "bandstop") : 8;
     outs[0] = bandstop(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->allocator());
 }

@@ -51,7 +51,7 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         if (!args[i].isChar()) continue;
         keel::String opt = args[i].toString();
         std::transform(opt.begin(), opt.end(), opt.begin(),
-                       [](unsigned char c) { return keel::to_ascii_lower(c); });
+                       [](keel::u8 c) { return keel::to_ascii_lower(c); });
         if (opt == "confidencelevel")
             conf = args[i + 1].toScalar();
     }

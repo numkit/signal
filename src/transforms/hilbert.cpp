@@ -51,7 +51,7 @@ keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
         Value xcol = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         keel::f64 *xd = xcol.doubleDataMut();
         for (keel::usize i = 0; i < N; ++i) xd[i] = x.elemAsDouble(i);
-        Value X = fft(xcol, keel::as<int>(N), /*dim=*/0, mr);
+        Value X = fft(xcol, keel::as<keel::i32>(N), /*dim=*/0, mr);
         const keel::c64 *Xc = X.complexData();
         std::copy(Xc, Xc + N, buf.begin());
     }
@@ -70,7 +70,7 @@ keel::Array<keel::c64> hilbertBuf(const Value &x, keel::Allocator *mr)
     } else {
         Value Xm = Value::matrix(N, 1, ValueType::COMPLEX, mr);
         std::copy(buf.begin(), buf.end(), Xm.complexDataMut());
-        Value zt = ifft(Xm, keel::as<int>(N), /*dim=*/0, mr);
+        Value zt = ifft(Xm, keel::as<keel::i32>(N), /*dim=*/0, mr);
         const keel::c64 *zc = zt.complexData();
         std::copy(zc, zc + N, buf.begin());
     }
@@ -161,8 +161,8 @@ keel::Array<keel::f64> ampl_fir(const Value &x_centered, keel::usize n, keel::Al
         keel::c64 acc(0.0, 0.0);
         // y[i] = sum_k x[i+pad-k] · filt[k] (matching conv 'same').
         for (keel::usize k = 0; k < n; ++k) {
-            const long long src = (long long)i + (long long)pad
-                                  - (long long)k;
+            const keel::i64 src = (keel::i64)i + (keel::i64)pad
+                                  - (keel::i64)k;
             if (src >= 0 && (keel::usize)src < N)
                 acc += filt[k] * x[(keel::usize)src];
         }
@@ -181,15 +181,15 @@ keel::Array<keel::f64> ampl_rms(const Value &x_centered, keel::usize n, keel::Al
     // default uses a centered window: for odd n, [-(n-1)/2 .. (n-1)/2];
     // for even n, [-n/2 .. n/2-1] (asymmetric). Edge handling: shrink
     // window to available samples.
-    const long long left  = (long long)(n / 2);
-    const long long right = (long long)(n - 1) - left;  // for even n: left = n/2, right = n/2-1
+    const keel::i64 left  = (keel::i64)(n / 2);
+    const keel::i64 right = (keel::i64)(n - 1) - left;  // for even n: left = n/2, right = n/2-1
     keel::Array<keel::f64> out(N, mr);
     for (keel::usize i = 0; i < N; ++i) {
-        const long long lo = std::max((long long)0, (long long)i - left);
-        const long long hi = std::min((long long)N - 1, (long long)i + right);
+        const keel::i64 lo = std::max((keel::i64)0, (keel::i64)i - left);
+        const keel::i64 hi = std::min((keel::i64)N - 1, (keel::i64)i + right);
         keel::f64 s = 0.0;
-        long long cnt = 0;
-        for (long long j = lo; j <= hi; ++j) { s += x[(keel::usize)j] * x[(keel::usize)j]; ++cnt; }
+        keel::i64 cnt = 0;
+        for (keel::i64 j = lo; j <= hi; ++j) { s += x[(keel::usize)j] * x[(keel::usize)j]; ++cnt; }
         out[i] = std::sqrt(s / keel::f64(cnt));
     }
     return out;
@@ -219,10 +219,10 @@ keel::Array<keel::usize> findpeaks_mindist(const keel::Array<keel::f64> &x, keel
     keel::Array<keel::u8> accepted(N, 0, mr);
     for (keel::usize idx : order) {
         bool ok = true;
-        const long long lo = (long long)idx - (long long)n;
-        const long long hi = (long long)idx + (long long)n;
-        for (long long j = std::max((long long)0, lo);
-             j <= std::min((long long)N - 1, hi); ++j)
+        const keel::i64 lo = (keel::i64)idx - (keel::i64)n;
+        const keel::i64 hi = (keel::i64)idx + (keel::i64)n;
+        for (keel::i64 j = std::max((keel::i64)0, lo);
+             j <= std::min((keel::i64)N - 1, hi); ++j)
             if (accepted[(keel::usize)j]) { ok = false; break; }
         if (ok) accepted[idx] = 1;
     }
@@ -335,7 +335,7 @@ Value envelope(const Value &x, keel::Allocator *mr)
 //   mode = 2 'rms'      (sliding RMS over n samples)
 //   mode = 3 'peak'     (spline through extrema with MinPeakDistance n)
 std::pair<Value, Value>
-envelope_full(const Value &x, int mode, keel::usize n, keel::Allocator *mr)
+envelope_full(const Value &x, keel::i32 mode, keel::usize n, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     keel::ArenaTemp scratch = keel::get_scratch(mr);

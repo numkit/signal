@@ -31,9 +31,9 @@ void buffer_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                 keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 4, "buffer");
-    const int n = argcheck::expectedPositiveInteger(
+    const keel::i32 n = argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "n", "buffer"), 2, "n", "buffer");
-    int p = 0;
+    keel::i32 p = 0;
     if (args.size() >= 3 && !args[2].isEmpty())
         p = argcheck::expectedInteger(
             argcheck::expectedReal(args[2], 3, "p", "buffer"), 3, "p", "buffer");

@@ -254,7 +254,7 @@ namespace {
 
 // Extract a column (`dim`=1) or row (`dim`=2) into a contiguous length-N
 // 1-D Value, padding with zeros / truncating to `nOut`.
-Value extractLine(const Value &x, int dim, keel::usize lineIdx, keel::usize nNative, keel::usize nOut, keel::Allocator *mr)
+Value extractLine(const Value &x, keel::i32 dim, keel::usize lineIdx, keel::usize nNative, keel::usize nOut, keel::Allocator *mr)
 {
     auto col = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
     keel::f64 *dst = col.doubleDataMut();
@@ -275,7 +275,7 @@ Value extractLine(const Value &x, int dim, keel::usize lineIdx, keel::usize nNat
 
 // Write a transformed 1-D length-`nOut` line into the (dim, lineIdx)
 // slot of the destination matrix.
-void writeLine(Value &dst, const Value &line, int dim, keel::usize lineIdx)
+void writeLine(Value &dst, const Value &line, keel::i32 dim, keel::usize lineIdx)
 {
     keel::f64 *outd = dst.doubleDataMut();
     const keel::f64 *src = line.doubleData();
@@ -290,7 +290,7 @@ void writeLine(Value &dst, const Value &line, int dim, keel::usize lineIdx)
 }
 
 // Resolve dim: 0 means "first non-singleton".
-int resolveDim(const Value &x, int dim)
+keel::i32 resolveDim(const Value &x, keel::i32 dim)
 {
     if (dim != 0) return dim;
     return (x.dims().rows() > 1) ? 1 : 2;  // matches MATLAB default
@@ -298,10 +298,10 @@ int resolveDim(const Value &x, int dim)
 
 } // anonymous
 
-Value dct(const Value &x, int n, int dim, keel::Allocator *mr)
+Value dct(const Value &x, keel::i32 n, keel::i32 dim, keel::Allocator *mr)
 {
     if (x.numel() == 0) return createLike(x, ValueType::DOUBLE, mr);
-    const int d = resolveDim(x, dim);
+    const keel::i32 d = resolveDim(x, dim);
     const keel::usize R = x.dims().rows();
     const keel::usize C = x.dims().cols();
     const keel::usize nNative = (d == 1) ? R : C;
@@ -318,10 +318,10 @@ Value dct(const Value &x, int n, int dim, keel::Allocator *mr)
     return out;
 }
 
-Value idct(const Value &x, int n, int dim, keel::Allocator *mr)
+Value idct(const Value &x, keel::i32 n, keel::i32 dim, keel::Allocator *mr)
 {
     if (x.numel() == 0) return createLike(x, ValueType::DOUBLE, mr);
-    const int d = resolveDim(x, dim);
+    const keel::i32 d = resolveDim(x, dim);
     const keel::usize R = x.dims().rows();
     const keel::usize C = x.dims().cols();
     const keel::usize nNative = (d == 1) ? R : C;
@@ -358,11 +358,11 @@ Value dctCore1D(const Value &line, keel::f64 type, bool inverse,
 // Length-override / dim wrapper for an arbitrary DCT type (mirrors
 // dct(x,n,dim) but routes each line through dctCore1D). External linkage
 // (declared in dct_detail.hpp) so dct_reg.cpp can route Type-1/3/4 here.
-Value dctTyped(const Value &x, int n, int dim, keel::f64 type, bool inverse,
+Value dctTyped(const Value &x, keel::i32 n, keel::i32 dim, keel::f64 type, bool inverse,
                keel::Allocator *mr)
 {
     if (x.numel() == 0) return createLike(x, ValueType::DOUBLE, mr);
-    const int d = resolveDim(x, dim);
+    const keel::i32 d = resolveDim(x, dim);
     const keel::usize R = x.dims().rows();
     const keel::usize C = x.dims().cols();
     const keel::usize nNative = (d == 1) ? R : C;

@@ -41,7 +41,7 @@ keel::f64 normaliseW(keel::f64 f, keel::f64 fs, const char *fnName)
     return w;
 }
 
-void validateOrder(int order, const char *fnName)
+void validateOrder(keel::i32 order, const char *fnName)
 {
     if (order < 1)
         throw Error(keel::format("{}: order must be >= 1", fnName),
@@ -53,7 +53,7 @@ void validateOrder(int order, const char *fnName)
 // produces under the lowpass/highpass/etc front-end.
 constexpr keel::f64 kDefaultRp = 0.1;     // passband ripple, dB
 constexpr keel::f64 kDefaultRs = 60.0;    // stopband attenuation, dB
-constexpr int    kDefaultIirOrder  = 7; // matches MATLAB IIR-branch default
+constexpr keel::i32    kDefaultIirOrder  = 7; // matches MATLAB IIR-branch default
 // (Steepness=0.85 only affects the FIR branch's transition width; the
 // IIR ellip path uses the passband edge directly as Wp.)
 
@@ -67,19 +67,19 @@ inline Value pairWn(keel::f64 w1, keel::f64 w2, keel::Allocator *mr) {
     return v;
 }
 
-void lowpass_argcheck(keel::f64 fpass, keel::f64 fs, int order)
+void lowpass_argcheck(keel::f64 fpass, keel::f64 fs, keel::i32 order)
 {
     validateOrder(order, "lowpass");
     (void)normaliseW(fpass, fs, "lowpass");
 }
 
-void highpass_argcheck(keel::f64 fpass, keel::f64 fs, int order)
+void highpass_argcheck(keel::f64 fpass, keel::f64 fs, keel::i32 order)
 {
     validateOrder(order, "highpass");
     (void)normaliseW(fpass, fs, "highpass");
 }
 
-void bandpass_argcheck(keel::f64 flo, keel::f64 fhi, keel::f64 fs, int order)
+void bandpass_argcheck(keel::f64 flo, keel::f64 fhi, keel::f64 fs, keel::i32 order)
 {
     validateOrder(order, "bandpass");
     if (!(flo < fhi))
@@ -89,7 +89,7 @@ void bandpass_argcheck(keel::f64 flo, keel::f64 fhi, keel::f64 fs, int order)
     (void)normaliseW(fhi, fs, "bandpass");
 }
 
-void bandstop_argcheck(keel::f64 flo, keel::f64 fhi, keel::f64 fs, int order)
+void bandstop_argcheck(keel::f64 flo, keel::f64 fhi, keel::f64 fs, keel::i32 order)
 {
     validateOrder(order, "bandstop");
     if (!(flo < fhi))
@@ -101,45 +101,45 @@ void bandstop_argcheck(keel::f64 flo, keel::f64 fhi, keel::f64 fs, int order)
 
 } // namespace
 
-Value lowpass(const Value &x, keel::f64 fpass, keel::f64 fs, int order, keel::Allocator *mr)
+Value lowpass(const Value &x, keel::f64 fpass, keel::f64 fs, keel::i32 order, keel::Allocator *mr)
 {
     lowpass_argcheck(fpass, fs, order);
     const keel::f64 Wp = normaliseW(fpass, fs, "lowpass");
     // honour explicit order; remap legacy default 8 -> 7 to match the reference engine
-    const int N = (order == 8) ? kDefaultIirOrder : order;
+    const keel::i32 N = (order == 8) ? kDefaultIirOrder : order;
     auto [b, a] = ellip(N, kDefaultRp, kDefaultRs, scalarWn(Wp, mr), FilterType::Lowpass, /*analog=*/false, mr);
     // SOS-form filtfilt is numerically stable for high-order IIR.
     auto sos = tf2sos(b, a, mr);
     return sosfiltfilt(sos, x, mr);
 }
 
-Value highpass(const Value &x, keel::f64 fpass, keel::f64 fs, int order, keel::Allocator *mr)
+Value highpass(const Value &x, keel::f64 fpass, keel::f64 fs, keel::i32 order, keel::Allocator *mr)
 {
     highpass_argcheck(fpass, fs, order);
     const keel::f64 Wp = normaliseW(fpass, fs, "highpass");
-    const int N = (order == 8) ? kDefaultIirOrder : order;
+    const keel::i32 N = (order == 8) ? kDefaultIirOrder : order;
     auto [b, a] = ellip(N, kDefaultRp, kDefaultRs, scalarWn(Wp, mr), FilterType::Highpass, /*analog=*/false, mr);
     auto sos = tf2sos(b, a, mr);
     return sosfiltfilt(sos, x, mr);
 }
 
-Value bandpass(const Value &x, keel::f64 flo, keel::f64 fhi, keel::f64 fs, int order, keel::Allocator *mr)
+Value bandpass(const Value &x, keel::f64 flo, keel::f64 fhi, keel::f64 fs, keel::i32 order, keel::Allocator *mr)
 {
     bandpass_argcheck(flo, fhi, fs, order);
     const keel::f64 Wlo = normaliseW(flo, fs, "bandpass");
     const keel::f64 Whi = normaliseW(fhi, fs, "bandpass");
-    const int N = (order == 8) ? kDefaultIirOrder : order;
+    const keel::i32 N = (order == 8) ? kDefaultIirOrder : order;
     auto [b, a] = ellip(N, kDefaultRp, kDefaultRs, pairWn(Wlo, Whi, mr), FilterType::Bandpass, /*analog=*/false, mr);
     auto sos = tf2sos(b, a, mr);
     return sosfiltfilt(sos, x, mr);
 }
 
-Value bandstop(const Value &x, keel::f64 flo, keel::f64 fhi, keel::f64 fs, int order, keel::Allocator *mr)
+Value bandstop(const Value &x, keel::f64 flo, keel::f64 fhi, keel::f64 fs, keel::i32 order, keel::Allocator *mr)
 {
     bandstop_argcheck(flo, fhi, fs, order);
     const keel::f64 Wlo = normaliseW(flo, fs, "bandstop");
     const keel::f64 Whi = normaliseW(fhi, fs, "bandstop");
-    const int N = (order == 8) ? kDefaultIirOrder : order;
+    const keel::i32 N = (order == 8) ? kDefaultIirOrder : order;
     auto [b, a] = ellip(N, kDefaultRp, kDefaultRs, pairWn(Wlo, Whi, mr), FilterType::Bandstop, /*analog=*/false, mr);
     auto sos = tf2sos(b, a, mr);
     return sosfiltfilt(sos, x, mr);

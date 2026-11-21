@@ -36,7 +36,7 @@ namespace detail {
                     keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 1, 1, #name);                          \
-        const int N = argcheck::expectedPositiveInteger(                     \
+        const keel::i32 N = argcheck::expectedPositiveInteger(                     \
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
         auto [z, p, k] = name(N, ctx.engine->allocator());                       \
         outs[0] = std::move(z);                                                  \
@@ -49,7 +49,7 @@ namespace detail {
                     keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 2, 2, #name);                          \
-        const int N = argcheck::expectedPositiveInteger(                     \
+        const keel::i32 N = argcheck::expectedPositiveInteger(                     \
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
         const keel::f64 r = args[1].toScalar();                                    \
         auto [z, p, k] = name(N, r, ctx.engine->allocator());                    \
@@ -68,7 +68,7 @@ void ellipap_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 3, "ellipap");
-    const int N     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "ellipap"), 1, "N", "ellipap");
+    const keel::i32 N     = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "ellipap"), 1, "N", "ellipap");
     const keel::f64 Rp = args[1].toScalar();
     const keel::f64 Rs = args[2].toScalar();
     auto [z, p, k] = ellipap(N, Rp, Rs, ctx.engine->allocator());
@@ -219,7 +219,7 @@ struct FreqsRoot {
     keel::f64 re, im;
 };
 
-keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, int npts)
+keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i32 npts)
 {
     using numkit::ops::polyRootsDurandKerner;
     constexpr keel::f64 kEps = 2.220446049250313e-16;
@@ -256,20 +256,20 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, int npts
         loNum = std::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
         hiNum = std::max(hiNum, 3.0 * keel::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
     }
-    const int low = keel::as<int>(std::round(log10v(0.1 * loNum) - 0.5));
-    const int high = keel::as<int>(std::round(log10v(hiNum) + 0.5));
+    const keel::i32 low = keel::as<keel::i32>(std::round(log10v(0.1 * loNum) - 0.5));
+    const keel::i32 high = keel::as<keel::i32>(std::round(log10v(hiNum) + 0.5));
 
-    const int diffzp = keel::as<int>(ep.size()) - keel::as<int>(tz.size());
+    const keel::i32 diffzp = keel::as<keel::i32>(ep.size()) - keel::as<keel::i32>(tz.size());
     bool anyRealDomZero = false;
     for (auto &r : tz)
         if (keel::abs(r.im) < keel::abs(r.re))
             anyRealDomZero = true;
-    const int nLong = 200 + diffzp + (anyRealDomZero ? 10 : 0);
+    const keel::i32 nLong = 200 + diffzp + (anyRealDomZero ? 10 : 0);
 
-    auto logspace = [](keel::f64 l, keel::f64 u, int n) {
+    auto logspace = [](keel::f64 l, keel::f64 u, keel::i32 n) {
         keel::Array<keel::f64> v(n);
         const keel::f64 d = (u - l) / (n - 1);
-        for (int i = 0; i < n; ++i)
+        for (keel::i32 i = 0; i < n; ++i)
             v[i] = std::pow(10.0, l + i * d);
         v[n - 1] = std::pow(10.0, u); // linspace forces the last point exactly
         return v;
@@ -277,28 +277,28 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, int npts
     keel::Array<keel::f64> w = logspace(low, high, nLong); // the base LONG grid
 
     // Oscillatory refinement (Im > |Re|), descending |Re| (stable).
-    keel::Array<int> osc;
+    keel::Array<keel::i32> osc;
     for (keel::usize k = 0; k < ez.size(); ++k)
         if (ez[k].im > keel::abs(ez[k].re))
-            osc.push_back(keel::as<int>(k));
+            osc.push_back(keel::as<keel::i32>(k));
     std::stable_sort(osc.begin(), osc.end(),
-                     [&](int x, int y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
+                     [&](keel::i32 x, keel::i32 y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
     const keel::f64 npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
 
     keel::Array<keel::f64> f = w.clone();
     keel::Array<keel::f64> z;
-    for (int k : osc) {
+    for (keel::i32 k : osc) {
         const keel::f64 r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
                                    std::pow(10.0, keel::as<keel::f64>(low)));
         const keel::f64 r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
         auto outside = [&](keel::f64 x) { return x > r2 || x < r1; };
         z.resize(std::remove_if(z.begin(), z.end(), [&](keel::f64 x) { return !outside(x); }) - z.begin());
         f.resize(std::remove_if(f.begin(), f.end(), [&](keel::f64 x) { return !outside(x); }) - f.begin());
-        long cnt = 0;
+        keel::i64 cnt = 0;
         for (keel::f64 x : w)
             if (x >= r1 && x <= r2)
                 ++cnt;
-        auto seg = logspace(std::log10(r1), std::log10(r2), keel::as<int>(cnt + npts2));
+        auto seg = logspace(std::log10(r1), std::log10(r2), keel::as<keel::i32>(cnt + npts2));
         z.append(seg.as_ref());
     }
     f.append(z.as_ref());
@@ -311,7 +311,7 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, int npts
         lw[i] = std::log10(f[i]);
     const keel::f64 dxi = keel::as<keel::f64>(f.size() - 1) / (npts - 1);
     keel::Array<keel::f64> out(npts);
-    for (int i = 0; i < npts; ++i) {
+    for (keel::i32 i = 0; i < npts; ++i) {
         // 1-based index into lw; the last sample is EXACTLY the last knot
         // (linspace-forced), where interp1 returns log10(w_long(end)) as-is
         // and the pow round-trip gives back the exact decade endpoint.
@@ -331,12 +331,12 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, int npts
 }
 
 Value freqsAutoGrid(const Value &b, const Value &a, keel::Allocator *mr,
-                    int npts = 200)
+                    keel::i32 npts = 200)
 {
     auto v = freqsAutoGridVec(b, a, npts);
     Value w = Value::matrix(1, npts, ValueType::DOUBLE, mr);
     keel::f64 *wd = w.doubleDataMut();
-    for (int i = 0; i < npts; ++i)
+    for (keel::i32 i = 0; i < npts; ++i)
         wd[i] = v[i];
     return w;
 }
@@ -360,7 +360,7 @@ void freqs_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     // form, resampled to n); only a VECTOR means "exactly these
     // frequencies" (bugs/closed/signal/freqs-scalar-w).
     if (args[2].numel() == 1 && !args[2].isChar() && !args[2].isString()) {
-        const int npts = std::max(2, argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "freqs"), 3, "n", "freqs"));
+        const keel::i32 npts = std::max(2, argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "freqs"), 3, "n", "freqs"));
         auto w = freqsAutoGrid(args[0], args[1], ctx.engine->allocator(), npts);
         outs[0] = freqs(args[0], args[1], w, ctx.engine->allocator());
         if (nargout > 1)

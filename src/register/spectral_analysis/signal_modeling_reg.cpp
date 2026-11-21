@@ -27,7 +27,7 @@ void levinson_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "levinson");
-    int n = -1;
+    keel::i32 n = -1;
     if (args.size() >= 2 && !args[1].isEmpty())
         n = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "n", "levinson"), 2, "n", "levinson");
     auto [a, e, k] = levinson(args[0], n, ctx.engine->allocator());
@@ -50,7 +50,7 @@ void rlevinson_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                     keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 2, 2, #name);                          \
-        const int p = argcheck::expectedInteger(                                  \
+        const keel::i32 p = argcheck::expectedInteger(                                  \
         argcheck::expectedReal(args[1], 2, "p", #name), 2, "p", #name);      \
         auto [a, e, k] = fn(args[0], p, ctx.engine->allocator());                \
         outs[0] = std::move(a);                                                  \
@@ -67,9 +67,9 @@ void lpc_reg(keel::ArrayRef<Value> args, keel::usize nargout,
              keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "lpc");
-    const int p = (args.size() >= 2 && !args[1].isEmpty())
-        ? keel::as<int>(argcheck::roundLength(args[1], 2, "p", "lpc"))
-        : keel::as<int>(args[0].numel() > 0 ? args[0].numel() - 1 : 0);
+    const keel::i32 p = (args.size() >= 2 && !args[1].isEmpty())
+        ? keel::as<keel::i32>(argcheck::roundLength(args[1], 2, "p", "lpc"))
+        : keel::as<keel::i32>(args[0].numel() > 0 ? args[0].numel() - 1 : 0);
     auto [a, g] = lpc(args[0], p, ctx.engine->allocator());
     outs[0] = std::move(a);
     if (nargout > 1) outs[1] = std::move(g);
@@ -157,7 +157,7 @@ NUMKIT_UNARY_CONV_REG(lsf2poly)
                     keel::MutArrayRef<Value> outs, CallContext &ctx)                        \
     {                                                                            \
         argcheck::checkNargin(args.size(), 2, 2, #name);                          \
-        const int p = argcheck::expectedInteger(                                  \
+        const keel::i32 p = argcheck::expectedInteger(                                  \
         argcheck::expectedReal(args[1], 2, "p", #name), 2, "p", #name);      \
         auto [a, e] = fn(args[0], p, ctx.engine->allocator());                   \
         outs[0] = std::move(a);                                                  \
@@ -173,8 +173,8 @@ void prony_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "prony");
-    const int nb = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "prony"), 2, "nb", "prony");
-    const int na = (args.size() >= 3 && !args[2].isEmpty())
+    const keel::i32 nb = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "prony"), 2, "nb", "prony");
+    const keel::i32 na = (args.size() >= 3 && !args[2].isEmpty())
         ? argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "prony"), 3, "na", "prony")
         : nb;
     auto [b, a] = prony(args[0], nb, na, ctx.engine->allocator());
@@ -188,9 +188,9 @@ void stmcb_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     argcheck::checkNargin(args.size(), 3, 6, "stmcb");
     if (args.size() >= 4 && ((!args[1].isScalar() && !args[1].isEmpty()) || args.size() == 6)) {
         // Two-signal form stmcb(y, x, nb, na [, niter [, ai]])
-        const int nb    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "stmcb"), 3, "nb", "stmcb");
-        const int na    = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "stmcb"), 4, "na", "stmcb");
-        const int niter = (args.size() >= 5 && !args[4].isEmpty())
+        const keel::i32 nb    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "stmcb"), 3, "nb", "stmcb");
+        const keel::i32 na    = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "stmcb"), 4, "na", "stmcb");
+        const keel::i32 niter = (args.size() >= 5 && !args[4].isEmpty())
                               ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[4], 5, "niter", "stmcb"), 5, "niter", "stmcb") : 5;
         const Value ai  = (args.size() >= 6) ? args[5] : Value();
         auto [b, a] = stmcb(args[0], args[1], nb, na, niter, ai, ctx.engine->allocator());
@@ -198,9 +198,9 @@ void stmcb_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         if (nargout > 1) outs[1] = std::move(a);
         return;
     }
-    const int nb    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "stmcb"), 2, "nb", "stmcb");
-    const int na    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "stmcb"), 3, "na", "stmcb");
-    const int niter = (args.size() >= 4 && !args[3].isEmpty())
+    const keel::i32 nb    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "stmcb"), 2, "nb", "stmcb");
+    const keel::i32 na    = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "stmcb"), 3, "na", "stmcb");
+    const keel::i32 niter = (args.size() >= 4 && !args[3].isEmpty())
                           ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "niter", "stmcb"), 4, "niter", "stmcb") : 5;
     const Value ai  = (args.size() >= 5) ? args[4] : Value();
     auto [b, a] = stmcb(args[0], Value(), nb, na, niter, ai, ctx.engine->allocator());
@@ -212,7 +212,7 @@ void corrmtx_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
                  keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "corrmtx");
-    const int m = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "m", "corrmtx"), 2, "m", "corrmtx");
+    const keel::i32 m = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "m", "corrmtx"), 2, "m", "corrmtx");
     outs[0] = corrmtx(args[0], m, ctx.engine->allocator());
 }
 
@@ -220,8 +220,8 @@ void invfreqs_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 9, "invfreqs");
-    const int nb = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "invfreqs"), 3, "nb", "invfreqs");
-    const int na = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "invfreqs"), 4, "na", "invfreqs");
+    const keel::i32 nb = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "invfreqs"), 3, "nb", "invfreqs");
+    const keel::i32 na = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "invfreqs"), 4, "na", "invfreqs");
     auto [b, a] = invfreqs(args[0], args[1], nb, na, ctx.engine->allocator());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);
@@ -231,8 +231,8 @@ void invfreqz_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                   keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 9, "invfreqz");
-    const int nb = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "invfreqz"), 3, "nb", "invfreqz");
-    const int na = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "invfreqz"), 4, "na", "invfreqz");
+    const keel::i32 nb = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "invfreqz"), 3, "nb", "invfreqz");
+    const keel::i32 na = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "invfreqz"), 4, "na", "invfreqz");
     auto [b, a] = invfreqz(args[0], args[1], nb, na, ctx.engine->allocator());
     outs[0] = std::move(b);
     if (nargout > 1) outs[1] = std::move(a);

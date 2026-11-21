@@ -31,7 +31,7 @@ void shiftdata_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                     keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "shiftdata");
-    int dim = 0;
+    keel::i32 dim = 0;
     if (args.size() >= 2 && !args[1].isEmpty())
         dim = argcheck::dimArg(args[1], "shiftdata");
     auto [shifted, permV, nshV] = shiftdata(args[0], dim, ctx.engine->allocator());

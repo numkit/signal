@@ -46,7 +46,7 @@ Value vecCol(keel::Allocator *mr, keel::ArrayRef<keel::f64> v)
     return out;
 }
 
-void tachorpm_argcheck(const Value &x, keel::f64 fs, int ppr)
+void tachorpm_argcheck(const Value &x, keel::f64 fs, keel::i32 ppr)
 {
     (void)x;
     (void)fs;
@@ -100,7 +100,7 @@ envspectrum(const Value &x, keel::f64 fs, keel::Allocator *mr)
 
 std::tuple<Value, Value>
 tachorpm(const Value &x, keel::f64 fs,
-         const Value &threshold, int ppr, keel::Allocator *mr)
+         const Value &threshold, keel::i32 ppr, keel::Allocator *mr)
 {
     tachorpm_argcheck(x, fs, ppr);
     auto v = readVec(x);
@@ -224,7 +224,7 @@ Value rainflow(const Value &x, keel::Allocator *mr)
 
 std::tuple<Value, Value>
 tsa(const Value &x, keel::f64 fs,
-    const Value &rpm, keel::f64 fs_rpm, int n_per_rev,
+    const Value &rpm, keel::f64 fs_rpm, keel::i32 n_per_rev,
     keel::Allocator *mr)
 {
     auto signal_v = readVec(x);
@@ -264,21 +264,21 @@ tsa(const Value &x, keel::f64 fs,
     //    n_per_rev bins per revolution.
     const keel::f64 twoPi = 2.0 * M_PI;
     keel::Array<keel::f64> sumBin(n_per_rev, 0.0, mr);
-    keel::Array<int> cntBin(n_per_rev, 0, mr);
+    keel::Array<keel::i32> cntBin(n_per_rev, 0, mr);
     for (keel::usize i = 0; i < N; ++i) {
         keel::f64 ang = std::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
-        int b = keel::as<int>(ang / twoPi * n_per_rev);
+        keel::i32 b = keel::as<keel::i32>(ang / twoPi * n_per_rev);
         if (b >= n_per_rev) b = n_per_rev - 1;
         sumBin[b] += signal_v[i];
         cntBin[b]++;
     }
     keel::Array<keel::f64> avg(n_per_rev, mr);
-    for (int b = 0; b < n_per_rev; ++b)
+    for (keel::i32 b = 0; b < n_per_rev; ++b)
         avg[b] = (cntBin[b] > 0) ? sumBin[b] / cntBin[b] : 0.0;
 
     keel::Array<keel::f64> th(n_per_rev, mr);
-    for (int b = 0; b < n_per_rev; ++b)
+    for (keel::i32 b = 0; b < n_per_rev; ++b)
         th[b] = twoPi * b / n_per_rev;
 
     return std::make_tuple(vecCol(mr, avg), vecCol(mr, th));

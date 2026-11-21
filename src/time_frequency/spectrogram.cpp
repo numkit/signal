@@ -253,7 +253,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
                     frameRd[i] = xr[start + i] * win[i];
                 for (keel::usize i = M; i < NFFT; ++i) frameRd[i] = 0.0;
             }
-            Value F = fft(frameV, keel::as<int>(NFFT), 1, mr);
+            Value F = fft(frameV, keel::as<keel::i32>(NFFT), 1, mr);
             const keel::c64 *Fd = F.complexData();
             if (isCentered) {
                 for (keel::usize r = 0; r < outRows; ++r)
@@ -347,7 +347,7 @@ const auto &d = S.dims();
             for (keel::usize r = 0; r < NFFT; ++r) Fd[r] = Sd[k * inRows + r];
         }
 
-        Value t = ifft(Fcol, keel::as<int>(NFFT), 1, mr);
+        Value t = ifft(Fcol, keel::as<keel::i32>(NFFT), 1, mr);
         // ifft may return DOUBLE or COMPLEX.
         const keel::c64     *tc = (t.type() == ValueType::COMPLEX) ? t.complexData() : nullptr;
         const keel::f64 *tr = (t.type() == ValueType::COMPLEX) ? nullptr        : t.doubleData();

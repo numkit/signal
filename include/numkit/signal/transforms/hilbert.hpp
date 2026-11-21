@@ -78,7 +78,7 @@ envelope_pair(const Value &                x,
 ///              spline-interpolated and generally asymmetric.
 std::pair<Value, Value>
 envelope_full(const Value &                x,
-              int                          mode,
+              keel::i32                          mode,
               keel::usize                  n,
               keel::Allocator *  mr = nullptr);
 

@@ -57,7 +57,7 @@ std::tuple<Value, Value>
 tachorpm(const Value &                x,
          keel::f64                       fs,
          const Value &                threshold = Value::Empty,
-         int                          ppr       = 1,
+         keel::i32                          ppr       = 1,
          keel::Allocator *  mr        = nullptr);
 
 /// Rainflow cycle counting (ASTM E1049-85).
@@ -96,7 +96,7 @@ tsa(const Value &                x,
     keel::f64                       fs,
     const Value &                rpm,
     keel::f64                       fs_rpm,
-    int                          n_per_rev = 1024,
+    keel::i32                          n_per_rev = 1024,
     keel::Allocator *  mr        = nullptr);
 
 

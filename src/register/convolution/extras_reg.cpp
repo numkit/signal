@@ -56,18 +56,18 @@ void xcorr2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 void finddelay_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "finddelay");
-    const long max_lag = (args.size() >= 3)
+    const keel::i64 max_lag = (args.size() >= 3)
         ? argcheck::expectedInteger(
               argcheck::expectedReal(args[2], 3, "maxlag", "finddelay"), 3, "maxlag", "finddelay")
         : 0;
-    const long d = finddelay(args[0], args[1], max_lag, ctx.engine->allocator());
+    const keel::i64 d = finddelay(args[0], args[1], max_lag, ctx.engine->allocator());
     outs[0] = Value::scalar(keel::as<keel::f64>(d), ctx.engine->allocator());
 }
 
 void alignsignals_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, "alignsignals");  // no max: name-value tail in the reference
-    const long max_lag = (args.size() >= 3)
+    const keel::i64 max_lag = (args.size() >= 3)
         ? argcheck::expectedInteger(
               argcheck::expectedReal(args[2], 3, "maxlag", "alignsignals"), 3, "maxlag", "alignsignals")
         : 0;

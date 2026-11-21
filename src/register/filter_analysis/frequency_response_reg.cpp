@@ -43,7 +43,7 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     keel::usize npts = 512;
     keel::f64 fs   = 0.0;
     bool   whole = false;
-    int    numericSeen = 0;
+    keel::i32    numericSeen = 0;
     const Value *wvec = nullptr;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
@@ -55,8 +55,8 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
                 wvec = &args[i];           // freqz(b,a,W): vector-w form
             else if (numericSeen == 0)
                 npts = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
-                    argcheck::expectedReal(args[i], int(i) + 1, "n", "freqz"),
-                    int(i) + 1, "n", "freqz"));
+                    argcheck::expectedReal(args[i], keel::i32(i) + 1, "n", "freqz"),
+                    keel::i32(i) + 1, "n", "freqz"));
             else if (numericSeen == 1) fs   = args[i].toScalar();
             ++numericSeen;
         }
@@ -83,13 +83,13 @@ void phasez_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     // n (1st numeric after b,a) and optional fs (2nd) — phasez(b,a,n,fs).
     keel::usize npts = 512;
     keel::f64 fs = 0.0;
-    int numericSeen = 0;
+    keel::i32 numericSeen = 0;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
             if (numericSeen == 0)
                 npts = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
-                    argcheck::expectedReal(args[i], int(i) + 1, "n", "phasez"),
-                    int(i) + 1, "n", "phasez"));
+                    argcheck::expectedReal(args[i], keel::i32(i) + 1, "n", "phasez"),
+                    keel::i32(i) + 1, "n", "phasez"));
         else if (numericSeen == 1) fs   = args[i].toScalar();
         ++numericSeen;
     }
@@ -106,7 +106,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     // n (1st numeric after b,a) and optional fs (2nd) — grpdelay(b,a,n,fs).
     keel::usize npts = 512;
     keel::f64 fs = 0.0;
-    int numericSeen = 0;
+    keel::i32 numericSeen = 0;
     const Value *fvec = nullptr;
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString() || args[i].isEmpty()) continue;
@@ -114,8 +114,8 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
             fvec = &args[i];
         else if (numericSeen == 0)
             npts = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
-                argcheck::expectedReal(args[i], int(i) + 1, "n", "grpdelay"),
-                int(i) + 1, "n", "grpdelay"));
+                argcheck::expectedReal(args[i], keel::i32(i) + 1, "n", "grpdelay"),
+                keel::i32(i) + 1, "n", "grpdelay"));
         else if (numericSeen == 1) fs = args[i].toScalar();
         ++numericSeen;
     }

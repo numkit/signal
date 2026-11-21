@@ -26,9 +26,9 @@ struct PeakOpts {
     bool   useMinDist = false;
     keel::f64 minProm    = 0.0;     // MinPeakProminence: keep if prominence >= minProm
     bool   useMinProm = false;
-    long   nPeaks     = -1;      // -1 => unlimited
-    int    sortMode   = 0;       // 0 none(location), 1 ascend(height), 2 descend(height)
-    int    widthRef   = 0;       // WidthReference: 0 'halfprom' (default), 1 'halfheight'
+    keel::i64   nPeaks     = -1;      // -1 => unlimited
+    keel::i32    sortMode   = 0;       // 0 none(location), 1 ascend(height), 2 descend(height)
+    keel::i32    widthRef   = 0;       // WidthReference: 0 'halfprom' (default), 1 'halfheight'
     keel::f64 minWidth   = 0.0;     // MinPeakWidth: keep if width >= minWidth
     keel::f64 maxWidth   = std::numeric_limits<keel::f64>::infinity(); // MaxPeakWidth: keep if width <= maxWidth
     bool   useWidthFilter = false;

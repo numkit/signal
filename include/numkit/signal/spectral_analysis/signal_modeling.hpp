@@ -43,7 +43,7 @@ namespace numkit::signal {
 /// @see rlevinson, aryule, poly2rc
 std::tuple<Value, Value, Value>
 levinson(const Value &                r,
-         int                          n  = -1,
+         keel::i32                          n  = -1,
          keel::Allocator *  mr = nullptr);
 
 /// Inverse Levinson recursion: recover autocorrelation from AR poly.
@@ -77,7 +77,7 @@ rlevinson(const Value &                a,
 /// @see arburg, levinson, pyulear
 std::tuple<Value, Value, Value>
 aryule(const Value &                x,
-       int                          p,
+       keel::i32                          p,
        keel::Allocator *  mr = nullptr);
 
 /// @brief Burg's AR(p) parameter estimation.
@@ -93,7 +93,7 @@ aryule(const Value &                x,
 ///            coefficients (see @ref levinson).
 /// @see aryule, pburg
 std::tuple<Value, Value, Value>
-arburg(const Value &x, int p,
+arburg(const Value &x, keel::i32 p,
        keel::Allocator *mr = nullptr);
 
 /// Linear-prediction coefficients (`aryule` alias + sqrt-error gain).
@@ -106,7 +106,7 @@ arburg(const Value &x, int p,
 /// @see aryule
 std::tuple<Value, Value>
 lpc(const Value &                x,
-    int                          p,
+    keel::i32                          p,
     keel::Allocator *  mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ Value rc2lar(const Value &                k,
 /// @see armcov, arburg
 std::tuple<Value, Value>
 arcov(const Value &                x,
-      int                          p,
+      keel::i32                          p,
       keel::Allocator *  mr = nullptr);
 
 /// @brief Modified-covariance AR estimation.
@@ -250,7 +250,7 @@ arcov(const Value &                x,
 /// @return    Tuple `(a, e)`.
 /// @see arcov, arburg
 std::tuple<Value, Value>
-armcov(const Value &x, int p,
+armcov(const Value &x, keel::i32 p,
        keel::Allocator *mr = nullptr);
 
 /// Prony IIR identification from impulse response.
@@ -267,8 +267,8 @@ armcov(const Value &x, int p,
 /// @return    Tuple `(b, a)`.
 std::tuple<Value, Value>
 prony(const Value &                h,
-      int                          nb,
-      int                          na,
+      keel::i32                          nb,
+      keel::i32                          na,
       keel::Allocator *  mr = nullptr);
 
 /// Steiglitz–McBride IIR identification (`[b, a] = stmcb(h, nb, na, niter)`).
@@ -287,9 +287,9 @@ prony(const Value &                h,
 /// @see prony, levinson, lpc
 std::tuple<Value, Value>
 stmcb(const Value &                h,
-      int                          nb,
-      int                          na,
-      int                          niter = 5,
+      keel::i32                          nb,
+      keel::i32                          na,
+      keel::i32                          niter = 5,
       keel::Allocator *  mr = nullptr);
 
 /// Steiglitz–McBride IIR identification with optional input signal `x` and
@@ -306,9 +306,9 @@ stmcb(const Value &                h,
 std::tuple<Value, Value>
 stmcb(const Value &                y,
       const Value &                x,
-      int                          nb,
-      int                          na,
-      int                          niter = 5,
+      keel::i32                          nb,
+      keel::i32                          na,
+      keel::i32                          niter = 5,
       const Value &                ai    = Value(),
       keel::Allocator *  mr    = nullptr);
 
@@ -323,7 +323,7 @@ stmcb(const Value &                y,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    `(n+m) × (m+1)` data matrix.
 Value corrmtx(const Value &                x,
-              int                          m,
+              keel::i32                          m,
               keel::Allocator *  mr = nullptr);
 
 /// MUSIC pseudospectrum (`[P, F] = pmusic(x, p, nfft, fs)`).
@@ -346,8 +346,8 @@ Value corrmtx(const Value &                x,
 /// @see peig, corrmtx, pwelch
 std::tuple<Value, Value>
 pmusic(const Value &                x,
-       int                          p,
-       int                          nfft = 256,
+       keel::i32                          p,
+       keel::i32                          nfft = 256,
        keel::f64                       fs   = 2.0 * 3.14159265358979323846,
        keel::Allocator *  mr   = nullptr);
 
@@ -365,8 +365,8 @@ pmusic(const Value &                x,
 /// @see pmusic
 std::tuple<Value, Value>
 peig(const Value &                x,
-     int                          p,
-     int                          nfft = 256,
+     keel::i32                          p,
+     keel::i32                          nfft = 256,
      keel::f64                       fs   = 2.0 * 3.14159265358979323846,
      keel::Allocator *  mr   = nullptr);
 
@@ -410,8 +410,8 @@ Value lsf2poly(const Value &                lsf,
 std::tuple<Value, Value>
 invfreqs(const Value &                H,
          const Value &                w,
-         int                          nb,
-         int                          na,
+         keel::i32                          nb,
+         keel::i32                          na,
          keel::Allocator *  mr = nullptr);
 
 /// @brief Digital counterpart of @ref invfreqs.
@@ -426,7 +426,7 @@ invfreqs(const Value &                H,
 /// @return    Tuple `(b, a)`.
 /// @see invfreqs, freqz
 std::tuple<Value, Value>
-invfreqz(const Value &H, const Value &w, int nb, int na,
+invfreqz(const Value &H, const Value &w, keel::i32 nb, keel::i32 na,
          keel::Allocator *mr = nullptr);
 
 

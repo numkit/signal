@@ -30,8 +30,8 @@ namespace numkit::signal {
 /// @throws          numkit::Error  on invalid `order` / `framelen`.
 ///
 /// @see sgolayfilt
-Value sgolay(int                          order,
-             int                          framelen,
+Value sgolay(keel::i32                          order,
+             keel::i32                          framelen,
              keel::Allocator *  mr = nullptr);
 
 /// Savitzky-Golay differentiation-filter matrix (the second output `G` of
@@ -51,8 +51,8 @@ Value sgolay(int                          order,
 /// @throws          numkit::Error  on invalid `order` / `framelen`.
 ///
 /// @see sgolay
-Value sgolayDiff(int                          order,
-                 int                          framelen,
+Value sgolayDiff(keel::i32                          order,
+                 keel::i32                          framelen,
                  keel::Allocator *  mr = nullptr);
 
 /// Savitzky-Golay smoothing of a 1-D signal.
@@ -79,8 +79,8 @@ Value sgolayDiff(int                          order,
 ///
 /// @see sgolay, medfilt1
 Value sgolayfilt(const Value &                x,
-                 int                          order,
-                 int                          framelen,
+                 keel::i32                          order,
+                 keel::i32                          framelen,
                  keel::Allocator *  mr = nullptr);
 
 /// Savitzky-Golay smoothing with optional weighting and dimension.
@@ -102,10 +102,10 @@ Value sgolayfilt(const Value &                x,
 ///
 /// @see sgolay, medfilt1
 Value sgolayfilt(const Value &                x,
-                 int                          order,
-                 int                          framelen,
+                 keel::i32                          order,
+                 keel::i32                          framelen,
                  const Value &                weights,
-                 int                          dim,
+                 keel::i32                          dim,
                  keel::Allocator *  mr = nullptr);
 
 

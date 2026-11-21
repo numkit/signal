@@ -40,7 +40,7 @@ namespace numkit::signal {
 ///
 /// @see cheb1ap, cheb2ap, besselap, ellipap
 std::tuple<Value, Value, Value>
-buttap(int N, keel::Allocator *mr = nullptr);
+buttap(keel::i32 N, keel::Allocator *mr = nullptr);
 
 /// Chebyshev type-I analog lowpass prototype.
 ///
@@ -51,7 +51,7 @@ buttap(int N, keel::Allocator *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
 std::tuple<Value, Value, Value>
-cheb1ap(int N, keel::f64 Rp, keel::Allocator *mr = nullptr);
+cheb1ap(keel::i32 N, keel::f64 Rp, keel::Allocator *mr = nullptr);
 
 /// Chebyshev type-II analog lowpass prototype.
 ///
@@ -63,7 +63,7 @@ cheb1ap(int N, keel::f64 Rp, keel::Allocator *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
 std::tuple<Value, Value, Value>
-cheb2ap(int N, keel::f64 Rs, keel::Allocator *mr = nullptr);
+cheb2ap(keel::i32 N, keel::f64 Rs, keel::Allocator *mr = nullptr);
 
 /// Bessel-Thompson analog lowpass prototype.
 ///
@@ -76,7 +76,7 @@ cheb2ap(int N, keel::f64 Rs, keel::Allocator *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)` — empty zeros, N poles, scalar gain.
 std::tuple<Value, Value, Value>
-besselap(int N, keel::Allocator *mr = nullptr);
+besselap(keel::i32 N, keel::Allocator *mr = nullptr);
 
 /// Elliptic (Cauer) analog lowpass prototype.
 ///
@@ -91,7 +91,7 @@ besselap(int N, keel::Allocator *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
 std::tuple<Value, Value, Value>
-ellipap(int N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr = nullptr);
+ellipap(keel::i32 N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
 // Lowpass → X frequency transformations on (z, p, k)

@@ -36,7 +36,7 @@ namespace numkit::signal {
 Value lowpass(const Value &                x,
               keel::f64                       fpass,
               keel::f64                       fs,
-              int                          order = 8,
+              keel::i32                          order = 8,
               keel::Allocator *  mr    = nullptr);
 
 /// One-call zero-phase Butterworth highpass filter.
@@ -52,7 +52,7 @@ Value lowpass(const Value &                x,
 Value highpass(const Value &                x,
                keel::f64                       fpass,
                keel::f64                       fs,
-               int                          order = 8,
+               keel::i32                          order = 8,
                keel::Allocator *  mr    = nullptr);
 
 /// One-call zero-phase Butterworth bandpass filter.
@@ -76,7 +76,7 @@ Value bandpass(const Value &                x,
                keel::f64                       flo,
                keel::f64                       fhi,
                keel::f64                       fs,
-               int                          order = 8,
+               keel::i32                          order = 8,
                keel::Allocator *  mr    = nullptr);
 
 /// One-call zero-phase Butterworth bandstop (notch) filter.
@@ -95,7 +95,7 @@ Value bandstop(const Value &                x,
                keel::f64                       flo,
                keel::f64                       fhi,
                keel::f64                       fs,
-               int                          order = 8,
+               keel::i32                          order = 8,
                keel::Allocator *  mr    = nullptr);
 
 

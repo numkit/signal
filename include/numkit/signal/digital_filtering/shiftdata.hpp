@@ -40,7 +40,7 @@ namespace numkit::signal {
 /// @see unshiftdata
 std::tuple<Value, Value, Value>
 shiftdata(const Value &                x,
-          int                          dim = 0,
+          keel::i32                          dim = 0,
           keel::Allocator *  mr  = nullptr);
 
 /// @brief Inverse of @ref shiftdata.

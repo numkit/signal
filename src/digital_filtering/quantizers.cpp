@@ -36,14 +36,14 @@ namespace numkit::signal {
 
 namespace {
 
-ValueType pickUnsignedType(int N)
+ValueType pickUnsignedType(keel::i32 N)
 {
     if (N <= 8)  return ValueType::UINT8;
     if (N <= 16) return ValueType::UINT16;
     return ValueType::UINT32;
 }
 
-ValueType pickSignedType(int N)
+ValueType pickSignedType(keel::i32 N)
 {
     if (N <= 8)  return ValueType::INT8;
     if (N <= 16) return ValueType::INT16;
@@ -69,7 +69,7 @@ inline keel::f64 floorClip(keel::f64 x, keel::f64 lo, keel::f64 hi)
 
 } // anon
 
-Value uencode(const Value &u, int N, keel::f64 V, bool signedOutput, keel::Allocator *mr)
+Value uencode(const Value &u, keel::i32 N, keel::f64 V, bool signedOutput, keel::Allocator *mr)
 {
     if (N < 2 || N > 32)
         throw Error("uencode: N must be in [2, 32]",
@@ -119,7 +119,7 @@ Value uencode(const Value &u, int N, keel::f64 V, bool signedOutput, keel::Alloc
 // udecode domain checks (all content validation lives here so the
 // interpreter and direct-C++ calls cross the same contract; the reg only
 // marshals). Rejection classes probed vs R2025b.
-static void udecode_argcheck(const Value &u, int N, keel::f64 V)
+static void udecode_argcheck(const Value &u, keel::i32 N, keel::f64 V)
 {
     if (N < 2 || N > 32)
         throw Error("udecode: N must be in [2, 32]",
@@ -139,7 +139,7 @@ static void udecode_argcheck(const Value &u, int N, keel::f64 V)
                     0, 0, "udecode", "", "numkit:udecode:BadInputType");
 }
 
-Value udecode(const Value &u, int N, keel::f64 V, bool wrapOnOverflow, keel::Allocator *mr)
+Value udecode(const Value &u, keel::i32 N, keel::f64 V, bool wrapOnOverflow, keel::Allocator *mr)
 {
     udecode_argcheck(u, N, V);
     const bool isSigned = (u.type() == ValueType::INT8 || u.type() == ValueType::INT16

@@ -38,7 +38,7 @@ inline FilterType parseFtype(const Value &v) {
     auto eq = [&](const char *t) {
         if (s.size() != std::strlen(t)) return false;
         for (keel::usize i = 0; i < s.size(); ++i)
-            if (keel::to_ascii_lower(s[i]) != (unsigned char)t[i]) return false;
+            if (keel::to_ascii_lower(s[i]) != (keel::u8)t[i]) return false;
         return true;
     };
     if (eq("low"))      return FilterType::Lowpass;
@@ -85,7 +85,7 @@ namespace {
 // iirOrder_argcheck). Note the family's own rejection classes: a
 // complex order is rejected as not-real, a fractional one as
 // not-integer (probed 2026-09-17).
-int iirOrder(const Value &v, const char *fn)
+keel::i32 iirOrder(const Value &v, const char *fn)
 {
     if (!v.isScalar()) {
         const Dims &d = v.dims();
@@ -102,7 +102,7 @@ int iirOrder(const Value &v, const char *fn)
         throw Error(keel::format("{}: filter order N must be a positive integer (got {}).", fn, numStr),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));
     }
-    return keel::as<int>(n);
+    return keel::as<keel::i32>(n);
 }
 
 } // namespace
@@ -110,7 +110,7 @@ int iirOrder(const Value &v, const char *fn)
 void cheby1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "cheby1");
-    const int N = iirOrder(args[0], "cheby1");
+    const keel::i32 N = iirOrder(args[0], "cheby1");
     const keel::f64 R = args[1].toScalar();
     const Value &Wn = args[2];
     auto t = parseTrailing(args, 3);
@@ -128,7 +128,7 @@ void cheby1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 void cheby2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "cheby2");
-    const int N = iirOrder(args[0], "cheby2");
+    const keel::i32 N = iirOrder(args[0], "cheby2");
     const keel::f64 R = args[1].toScalar();
     const Value &Wn = args[2];
     auto t = parseTrailing(args, 3);
@@ -146,7 +146,7 @@ void cheby2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
 void besself_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 5, "besself");
-    const int N = iirOrder(args[0], "besself");
+    const keel::i32 N = iirOrder(args[0], "besself");
     const Value &Wn = args[1];
     auto t = parseTrailing(args, 2);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);
@@ -162,7 +162,7 @@ void besself_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
 void ellip_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 7, "ellip");
-    const int N = iirOrder(args[0], "ellip");
+    const keel::i32 N = iirOrder(args[0], "ellip");
     const keel::f64 Rp  = args[1].toScalar();
     const keel::f64 Rs  = args[2].toScalar();
     const Value &Wn  = args[3];
@@ -272,7 +272,7 @@ void butter_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     // butter(N, Wn[, ftype][, 's']) â€” routed through the shared analog/
     // digital pipeline (bugs/closed/signal/butter-analog-flag-wn-domain.md).
     argcheck::checkNargin(args.size(), 2, 5, "butter");
-    const int N = iirOrder(args[0], "butter");
+    const keel::i32 N = iirOrder(args[0], "butter");
     const Value &Wn = args[1];
     auto t = parseTrailing(args, 2);
     auto ftype = defaultFtype(Wn, t.ftype, t.ftype_set);

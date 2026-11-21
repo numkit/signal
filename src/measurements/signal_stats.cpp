@@ -27,7 +27,7 @@ using ::numkit::ops::firstNonSingletonDim;
 using ::numkit::ops::resolveDim;   // 0 -> first non-singleton, else validate
 using ::numkit::ops::validateDim;
 
-int signal_stats_argcheck(const Value &x, int dim, const char *fn)
+keel::i32 signal_stats_argcheck(const Value &x, keel::i32 dim, const char *fn)
 {
     return resolveDim(x, dim, fn);
 }
@@ -35,9 +35,9 @@ int signal_stats_argcheck(const Value &x, int dim, const char *fn)
 } // namespace
 
 // ── rms ────────────────────────────────────────────────────────────────
-Value rms(const Value &x, int dim, keel::Allocator *mr)
+Value rms(const Value &x, keel::i32 dim, keel::Allocator *mr)
 {
-    const int d = signal_stats_argcheck(x, dim, "rms");
+    const keel::i32 d = signal_stats_argcheck(x, dim, "rms");
     return applyAlongDim(x, d,
         [](keel::usize /*outIdx*/, const keel::f64 *slice, keel::usize n) -> keel::f64 {
             if (n == 0) return std::numeric_limits<keel::f64>::quiet_NaN();
@@ -49,9 +49,9 @@ Value rms(const Value &x, int dim, keel::Allocator *mr)
 }
 
 // ── rssq ───────────────────────────────────────────────────────────────
-Value rssq(const Value &x, int dim, keel::Allocator *mr)
+Value rssq(const Value &x, keel::i32 dim, keel::Allocator *mr)
 {
-    const int d = signal_stats_argcheck(x, dim, "rssq");
+    const keel::i32 d = signal_stats_argcheck(x, dim, "rssq");
     return applyAlongDim(x, d,
         [](keel::usize /*outIdx*/, const keel::f64 *slice, keel::usize n) -> keel::f64 {
             keel::f64 s = 0.0;
@@ -62,9 +62,9 @@ Value rssq(const Value &x, int dim, keel::Allocator *mr)
 }
 
 // ── peak2peak ──────────────────────────────────────────────────────────
-Value peak2peak(const Value &x, int dim, keel::Allocator *mr)
+Value peak2peak(const Value &x, keel::i32 dim, keel::Allocator *mr)
 {
-    const int d = signal_stats_argcheck(x, dim, "peak2peak");
+    const keel::i32 d = signal_stats_argcheck(x, dim, "peak2peak");
     return applyAlongDim(x, d,
         [](keel::usize /*outIdx*/, const keel::f64 *slice, keel::usize n) -> keel::f64 {
             if (n == 0) return std::numeric_limits<keel::f64>::quiet_NaN();
@@ -82,9 +82,9 @@ Value peak2peak(const Value &x, int dim, keel::Allocator *mr)
 }
 
 // ── peak2rms ───────────────────────────────────────────────────────────
-Value peak2rms(const Value &x, int dim, keel::Allocator *mr)
+Value peak2rms(const Value &x, keel::i32 dim, keel::Allocator *mr)
 {
-    const int d = signal_stats_argcheck(x, dim, "peak2rms");
+    const keel::i32 d = signal_stats_argcheck(x, dim, "peak2rms");
     return applyAlongDim(x, d,
         [](keel::usize /*outIdx*/, const keel::f64 *slice, keel::usize n) -> keel::f64 {
             if (n == 0) return std::numeric_limits<keel::f64>::quiet_NaN();

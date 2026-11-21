@@ -36,7 +36,7 @@ namespace {
 
 // Classical Jacobi eigendecomposition of a D×D symmetric matrix A (row-major).
 // On exit A's diagonal holds the eigenvalues; V's columns are the eigenvectors.
-void pseudospectrum_argcheck(const Value &x, int p, int nfft, keel::f64 fs)
+void pseudospectrum_argcheck(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs)
 {
     (void)x;
     (void)p;
@@ -48,7 +48,7 @@ void jacobiEig(keel::Array<keel::f64> &A, keel::Array<keel::f64> &V, keel::usize
 {
     V.assign(D * D, 0.0);
     for (keel::usize i = 0; i < D; ++i) V[i * D + i] = 1.0;
-    for (int sweep = 0; sweep < 60; ++sweep) {
+    for (keel::i32 sweep = 0; sweep < 60; ++sweep) {
         keel::f64 off = 0.0;
         for (keel::usize p = 0; p < D; ++p)
             for (keel::usize q = p + 1; q < D; ++q) off += A[p * D + q] * A[p * D + q];
@@ -86,49 +86,49 @@ void jacobiEig(keel::Array<keel::f64> &A, keel::Array<keel::f64> &V, keel::usize
 }
 
 std::tuple<Value, Value>
-pseudospectrum(const Value &x, int p, int nfft, keel::f64 fs, bool eigWeight,
+pseudospectrum(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, bool eigWeight,
                keel::Allocator *mr)
 {
     pseudospectrum_argcheck(x, p, nfft, fs);
     if (p < 1) p = 1;
     if (nfft < 2) nfft = 256;
-    const int M = 2 * p;                       // correlation-matrix order (MATLAB default)
+    const keel::i32 M = 2 * p;                       // correlation-matrix order (MATLAB default)
 
     Value         Xc   = corrmtx(x, M - 1, mr);   // (N+M-1) × M data matrix; X'X = R
-    const int     rows = keel::as<int>(Xc.dims().rows());
+    const keel::i32     rows = keel::as<keel::i32>(Xc.dims().rows());
     const keel::f64 *Xd   = Xc.doubleData();         // column-major
 
     keel::Array<keel::f64> R(keel::as<keel::usize>(M) * M, 0.0, mr);
-    for (int i = 0; i < M; ++i)
-        for (int j = 0; j < M; ++j) {
+    for (keel::i32 i = 0; i < M; ++i)
+        for (keel::i32 j = 0; j < M; ++j) {
             keel::f64 s = 0.0;
-            for (int r = 0; r < rows; ++r) s += Xd[i * rows + r] * Xd[j * rows + r];
+            for (keel::i32 r = 0; r < rows; ++r) s += Xd[i * rows + r] * Xd[j * rows + r];
             R[i * M + j] = s;
         }
 
     keel::Array<keel::f64> V(mr);
     jacobiEig(R, V, keel::as<keel::usize>(M));
     keel::Array<keel::f64> lam(M, mr);
-    for (int i = 0; i < M; ++i) lam[i] = R[i * M + i];
+    for (keel::i32 i = 0; i < M; ++i) lam[i] = R[i * M + i];
 
     // Ascending eigenvalue order; noise subspace = the smallest (M-p) vectors.
-    keel::Array<int> ord(M, mr);
+    keel::Array<keel::i32> ord(M, mr);
     std::iota(ord.begin(), ord.end(), 0);
-    std::sort(ord.begin(), ord.end(), [&](int a, int b) { return lam[a] < lam[b]; });
-    const int nNoise = M - p;
+    std::sort(ord.begin(), ord.end(), [&](keel::i32 a, keel::i32 b) { return lam[a] < lam[b]; });
+    const keel::i32 nNoise = M - p;
 
-    const int nf = nfft / 2 + 1;
+    const keel::i32 nf = nfft / 2 + 1;
     Value     P  = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
     Value     F  = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
     keel::f64 *  Pd = P.doubleDataMut();
     keel::f64 *  Fd = F.doubleDataMut();
-    for (int k = 0; k < nf; ++k) {
+    for (keel::i32 k = 0; k < nf; ++k) {
         const keel::f64 w   = M_PI * k / (nf - 1);   // normalized angular freq [0, π]
         keel::f64       sum = 0.0;
-        for (int t = 0; t < nNoise; ++t) {
-            const int col = ord[t];
+        for (keel::i32 t = 0; t < nNoise; ++t) {
+            const keel::i32 col = ord[t];
             keel::f64    re = 0.0, im = 0.0;
-            for (int m = 0; m < M; ++m) {
+            for (keel::i32 m = 0; m < M; ++m) {
                 const keel::f64 v = V[keel::as<keel::usize>(m) * M + col];
                 re += v * std::cos(w * m);
                 im += v * std::sin(w * m);
@@ -146,13 +146,13 @@ pseudospectrum(const Value &x, int p, int nfft, keel::f64 fs, bool eigWeight,
 } // namespace
 
 std::tuple<Value, Value>
-pmusic(const Value &x, int p, int nfft, keel::f64 fs, keel::Allocator *mr)
+pmusic(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, keel::Allocator *mr)
 {
     return pseudospectrum(x, p, nfft, fs, /*eigWeight=*/false, mr);
 }
 
 std::tuple<Value, Value>
-peig(const Value &x, int p, int nfft, keel::f64 fs, keel::Allocator *mr)
+peig(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, keel::Allocator *mr)
 {
     return pseudospectrum(x, p, nfft, fs, /*eigWeight=*/true, mr);
 }

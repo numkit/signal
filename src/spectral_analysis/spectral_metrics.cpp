@@ -272,7 +272,7 @@ obw(const Value &x, const Value &fs, keel::f64 p, keel::Allocator *mr)
     // the length-N DFT through the general fft (Bluestein for non-pow2 N) and
     // form the one-sided PSD here: Pxx[k] = (2 if folded)·|X[k]|² / (fs·N),
     // which obeys Σ Pxx·df = mean(x²) (rectangular window power = N).
-    Value          Xv = fft(x, keel::as<int>(N), /*dim=*/0, mr);
+    Value          Xv = fft(x, keel::as<keel::i32>(N), /*dim=*/0, mr);
     const keel::c64 *X  = Xv.complexData();
     const keel::usize   nOut = N / 2 + 1;
     const keel::f64   fsHz = (fsv > 0.0) ? fsv : (2.0 * M_PI);  // rad/s when fs omitted
@@ -484,29 +484,29 @@ PsdPair computePsdKaiser(const Value &x, keel::f64 fs, keel::Allocator *mr)
     return p;
 }
 
-constexpr int kSkirtBins  = 8;   // half-width of fundamental skirt
-constexpr int kHarmonics  = 6;   // number of harmonics to track
-constexpr int kDcBins     = 8;   // DC bins to ignore when finding peak
+constexpr keel::i32 kSkirtBins  = 8;   // half-width of fundamental skirt
+constexpr keel::i32 kHarmonics  = 6;   // number of harmonics to track
+constexpr keel::i32 kDcBins     = 8;   // DC bins to ignore when finding peak
 
 // Sum P over [lo, hi) inclusive of lo, exclusive of hi (uses raw bin
 // values; for narrow peaks this is close to the trapezoidal estimate
 // times df, scaled identically across all sums so the ratio in dB is
 // unchanged).
-[[maybe_unused]] keel::f64 sumBins(keel::ArrayRef<keel::f64> P, int lo, int hi)
+[[maybe_unused]] keel::f64 sumBins(keel::ArrayRef<keel::f64> P, keel::i32 lo, keel::i32 hi)
 {
     if (lo < 0) lo = 0;
-    if (hi > keel::as<int>(P.size())) hi = keel::as<int>(P.size());
+    if (hi > keel::as<keel::i32>(P.size())) hi = keel::as<keel::i32>(P.size());
     keel::f64 s = 0.0;
-    for (int i = lo; i < hi; ++i) s += P[i];
+    for (keel::i32 i = lo; i < hi; ++i) s += P[i];
     return s;
 }
 
 // Find the bin of the dominant peak, ignoring the first kDcBins.
-int findFundamentalBin(keel::ArrayRef<keel::f64> P)
+keel::i32 findFundamentalBin(keel::ArrayRef<keel::f64> P)
 {
-    int pk = kDcBins;
+    keel::i32 pk = kDcBins;
     keel::f64 pkV = -1.0;
-    for (int i = kDcBins; i < keel::as<int>(P.size()); ++i)
+    for (keel::i32 i = kDcBins; i < keel::as<keel::i32>(P.size()); ++i)
         if (P[i] > pkV) { pkV = P[i]; pk = i; }
     return pk;
 }
@@ -516,34 +516,34 @@ struct HarmonicAnalysis {
     keel::f64 pHarm;    // sum of harmonic powers
     keel::f64 pNoise;   // remainder (everything else, excluding DC bins)
     keel::f64 pSpurMax; // largest single spur OUTSIDE the fundamental skirt
-    int    f0Bin;
+    keel::i32    f0Bin;
 };
 
 HarmonicAnalysis analyseHarmonics(keel::ArrayRef<keel::f64> P)
 {
-    const int nbins = keel::as<int>(P.size());
+    const keel::i32 nbins = keel::as<keel::i32>(P.size());
     HarmonicAnalysis r{0, 0, 0, 0, 0};
     if (nbins < 2) return r;
 
     r.f0Bin = findFundamentalBin(P);
-    const int f0 = r.f0Bin;
+    const keel::i32 f0 = r.f0Bin;
 
     // Mark which bins belong to the fundamental skirt or a harmonic
     // skirt. Everything else contributes to noise (after skipping DC
     // bins at the start).
     keel::Array<keel::u8> mark(nbins, 0); // 1=fund, 2=harm
-    for (int j = std::max(0, f0 - kSkirtBins);
+    for (keel::i32 j = std::max(0, f0 - kSkirtBins);
          j < std::min(nbins, f0 + kSkirtBins + 1); ++j) mark[j] = 1;
-    for (int n = 2; n <= kHarmonics; ++n) {
-        const int bin = n * f0;
+    for (keel::i32 n = 2; n <= kHarmonics; ++n) {
+        const keel::i32 bin = n * f0;
         if (bin >= nbins) break;
-        for (int j = std::max(0, bin - kSkirtBins);
+        for (keel::i32 j = std::max(0, bin - kSkirtBins);
              j < std::min(nbins, bin + kSkirtBins + 1); ++j) {
             if (mark[j] == 0) mark[j] = 2;
         }
     }
 
-    for (int i = 0; i < nbins; ++i) {
+    for (keel::i32 i = 0; i < nbins; ++i) {
         if (i < kDcBins && mark[i] == 0) continue; // ignore DC noise contrib
         if      (mark[i] == 1) r.pSig  += P[i];
         else if (mark[i] == 2) r.pHarm += P[i];
@@ -553,7 +553,7 @@ HarmonicAnalysis analyseHarmonics(keel::ArrayRef<keel::f64> P)
     // Largest spur: scan for local maxima OUTSIDE the fundamental skirt
     // and take the biggest peak value (not its surrounding bin sum —
     // sfdr is a single-bin / peak-to-peak metric).
-    for (int i = 1; i + 1 < nbins; ++i) {
+    for (keel::i32 i = 1; i + 1 < nbins; ++i) {
         if (mark[i] == 1) continue;        // skip fundamental skirt
         if (i < kDcBins) continue;
         if (P[i] >= P[i - 1] && P[i] >= P[i + 1] && P[i] > r.pSpurMax)
@@ -613,7 +613,7 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
         xwd[i] = x.elemAsDouble(i) * wi;
     }
     const keel::f64 rbw = (sumW > 0.0) ? (fsScalar * sumW2 / (sumW * sumW)) : 0.0;
-    Value Xv = fft(xw, keel::as<int>(n), 0, mr);
+    Value Xv = fft(xw, keel::as<keel::i32>(n), 0, mr);
     const keel::c64 *X = Xv.complexData();
     const keel::usize nBins = n / 2 + 1;
     const keel::f64 df = fsScalar / keel::as<keel::f64>(n);
@@ -626,19 +626,19 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
         F[k] = keel::as<keel::f64>(k) * df;
     }
 
-    auto getTone = [&](int idxTone, int &outLeft, int &outRight) -> keel::f64 {
-        int iL = idxTone - 1;
-        int iR = idxTone + 1;
+    auto getTone = [&](keel::i32 idxTone, keel::i32 &outLeft, keel::i32 &outRight) -> keel::f64 {
+        keel::i32 iL = idxTone - 1;
+        keel::i32 iR = idxTone + 1;
         while (iL >= 0 && Pxx[iL] <= Pxx[iL + 1]) --iL;
-        while (iR < keel::as<int>(nBins) && Pxx[iR - 1] >= Pxx[iR]) ++iR;
+        while (iR < keel::as<keel::i32>(nBins) && Pxx[iR - 1] >= Pxx[iR]) ++iR;
         ++iL;
         --iR;
         outLeft = iL;
         outRight = iR;
         keel::f64 power = 0.0;
         if (iL < iR) {
-            int len = iR - iL + 1;
-            for (int k = 0; k < len; ++k) {
+            keel::i32 len = iR - iL + 1;
+            for (keel::i32 k = 0; k < len; ++k) {
                 keel::f64 wBin = 0.0;
                 if (k == 0) wBin = F[iL + 1] - F[iL];
                 else if (k + 1 == len) wBin = F[iR] - F[iR - 1];
@@ -655,24 +655,24 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
 
     // Bump DC component by 3 dB and remove it
     Pxx[0] *= 2.0;
-    int dcL = 0, dcR = 0;
+    keel::i32 dcL = 0, dcR = 0;
     getTone(0, dcL, dcR);
-    for (int k = dcL; k <= dcR; ++k) Pxx[k] = 0.0;
+    for (keel::i32 k = dcL; k <= dcR; ++k) Pxx[k] = 0.0;
 
     // Fundamental peak
-    int iFund = keel::as<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
-    int fL = 0, fR = 0;
+    keel::i32 iFund = keel::as<keel::i32>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    keel::i32 fL = 0, fR = 0;
     keel::f64 Pfund = getTone(iFund, fL, fR);
-    for (int k = fL; k <= fR; ++k) Pxx[k] = 0.0;
+    for (keel::i32 k = fL; k <= fR; ++k) Pxx[k] = 0.0;
 
     // Max spur
-    int spurBin = keel::as<int>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
-    int iLeftBin = std::max(0, spurBin - 1);
-    int iRightBin = std::min(keel::as<int>(nBins) - 1, spurBin + 1);
-    int iSpur = iLeftBin;
-    for (int k = iLeftBin + 1; k <= iRightBin; ++k)
+    keel::i32 spurBin = keel::as<keel::i32>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    keel::i32 iLeftBin = std::max(0, spurBin - 1);
+    keel::i32 iRightBin = std::min(keel::as<keel::i32>(nBins) - 1, spurBin + 1);
+    keel::i32 iSpur = iLeftBin;
+    for (keel::i32 k = iLeftBin + 1; k <= iRightBin; ++k)
         if (Pxx[k] > Pxx[iSpur]) iSpur = k;
-    int sL = 0, sR = 0;
+    keel::i32 sL = 0, sR = 0;
     keel::f64 Pspur = getTone(iSpur, sL, sR);
 
     return Value::scalar(safeDb(Pfund, Pspur), mr);
@@ -823,7 +823,7 @@ void evalSegmentsCztPower(const Value &segMat, keel::usize len, keel::usize nSeg
         }
         return;
     }
-    Value X = czt(segMat, keel::as<int>(nF), W, A, mr);
+    Value X = czt(segMat, keel::as<keel::i32>(nF), W, A, mr);
     const keel::c64 *xd = X.complexData();
     for (keel::usize s = 0; s < nSegs; ++s) {
         for (keel::usize k = 0; k < nF; ++k) {
@@ -898,7 +898,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
         } else {
             keel::usize D = 2;
             if (N >= 64) {
-                const int exp2 = keel::as<int>(std::floor(std::log2(keel::as<keel::f64>(N)))) - 7;
+                const keel::i32 exp2 = keel::as<keel::i32>(std::floor(std::log2(keel::as<keel::f64>(N)))) - 7;
                 if (exp2 <= 3)      D = 8;
                 else if (exp2 >= 7) D = 128;
                 else                D = keel::usize(1) << exp2;

@@ -47,11 +47,11 @@ keel::Array<keel::f64> valueToDoubleRow(const Value &v, const keel::ArenaTemp &a
     return dst;
 }
 
-keel::Array<keel::c64> butterworthPoles(int N, keel::Allocator *mr)
+keel::Array<keel::c64> butterworthPoles(keel::i32 N, keel::Allocator *mr)
 {
     keel::Array<keel::c64> poles(mr);
     poles.reserve(N);
-    for (int k = 0; k < N; ++k) {
+    for (keel::i32 k = 0; k < N; ++k) {
         const keel::f64 theta = M_PI * (2.0 * k + N + 1) / (2.0 * N);
         poles.emplace_back(std::cos(theta), std::sin(theta));
     }
@@ -109,7 +109,7 @@ void normaliseAtRef(keel::Array<keel::f64> &b, const keel::Array<keel::f64> &a,
 } // anonymous namespace
 
 std::tuple<Value, Value>
-butter(int N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
+butter(keel::i32 N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
 {
     if (Wn <= 0.0 || Wn >= 1.0)
         throw Error("butter: Wn must be between 0 and 1",
@@ -131,10 +131,10 @@ butter(int N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
     keel::Array<keel::c64> sP(N, scratch.allocator());
     keel::Array<keel::c64> sZ(scratch.allocator());
     if (type == "low") {
-        for (int i = 0; i < N; ++i) sP[i] = sPoles[i] * Wa;
+        for (keel::i32 i = 0; i < N; ++i) sP[i] = sPoles[i] * Wa;
         // sZ stays empty — Butterworth LP has all zeros at infinity.
     } else {
-        for (int i = 0; i < N; ++i) sP[i] = Wa / sPoles[i];
+        for (keel::i32 i = 0; i < N; ++i) sP[i] = Wa / sPoles[i];
         sZ.assign(N, keel::c64(0.0, 0.0));
     }
 
@@ -244,7 +244,7 @@ bool solveSPD(const keel::f64 *A_in, keel::usize n, const keel::f64 *b_in, keel:
 // Antiderivative of cos(k·ω):
 //   k == 0: ω
 //   k != 0: sin(k·ω)/k
-[[maybe_unused]] inline keel::f64 Ic(int k, keel::f64 w)
+[[maybe_unused]] inline keel::f64 Ic(keel::i32 k, keel::f64 w)
 {
     return (k == 0) ? w : std::sin(k * w) / k;
 }
@@ -252,7 +252,7 @@ bool solveSPD(const keel::f64 *A_in, keel::usize n, const keel::f64 *b_in, keel:
 // Antiderivative of (ω - ω0)·cos(k·ω) (for the linear-amp segment):
 //   k == 0: (ω - ω0)²/2
 //   k != 0: (ω - ω0)·sin(k·ω)/k + cos(k·ω)/k²
-[[maybe_unused]] inline keel::f64 Iclin(int k, keel::f64 w, keel::f64 w0)
+[[maybe_unused]] inline keel::f64 Iclin(keel::i32 k, keel::f64 w, keel::f64 w0)
 {
     if (k == 0) {
         const keel::f64 d = w - w0;
@@ -291,7 +291,7 @@ inline keel::f64 IslinReal(keel::f64 alpha, keel::f64 w, keel::f64 w0)
 
 } // anonymous namespace
 
-Value firls(int N, const Value &Farg, const Value &Aarg,
+Value firls(keel::i32 N, const Value &Farg, const Value &Aarg,
             const Value &Warg, keel::StringRef ftype,
             keel::Allocator *mr)
 {
@@ -448,7 +448,7 @@ Value firls(int N, const Value &Farg, const Value &Aarg,
     return bv;
 }
 
-Value firls(int N, const Value &Farg, const Value &Aarg,
+Value firls(keel::i32 N, const Value &Farg, const Value &Aarg,
             keel::Allocator *mr)
 {
     return firls(N, Farg, Aarg, Value::Empty, "", mr);
@@ -461,7 +461,7 @@ namespace {
 // inside (0, 1), type one of the shipped forms. The bandpass/stop/
 // DC-0/DC-1/NOSCALE/SCALE vocabulary is an unported parity gap and is
 // rejected, not silently accepted.
-void fir1_argcheck(int N, keel::f64 Wn, keel::StringRef type)
+void fir1_argcheck(keel::i32 N, keel::f64 Wn, keel::StringRef type)
 {
     argcheck::expectedPositive(keel::as<keel::f64>(N), 1, "n", "fir1");
     argcheck::expectedPositive(Wn, 2, "Wn", "fir1");
@@ -477,7 +477,7 @@ void fir1_argcheck(int N, keel::f64 Wn, keel::StringRef type)
 
 } // namespace
 
-Value fir1(int N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
+Value fir1(keel::i32 N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
 {
     fir1_argcheck(N, Wn, type);
 
@@ -515,7 +515,7 @@ Value fir1(int N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
     return bv;
 }
 
-Value fir1(int N, const Value &Wn, keel::StringRef typeIn,
+Value fir1(keel::i32 N, const Value &Wn, keel::StringRef typeIn,
            const Value &window, bool scale, keel::Allocator *mr)
 {
     argcheck::expectedPositive(keel::as<keel::f64>(N), 1, "n", "fir1");
@@ -699,9 +699,9 @@ cell2sos(const Value &C, keel::Allocator *mr)
 namespace {
 
 // Smallest power of two >= v (for v >= 1).
-int nextPow2Int(int v)
+keel::i32 nextPow2Int(keel::i32 v)
 {
-    int p = 1;
+    keel::i32 p = 1;
     while (p < v)
         p <<= 1;
     return p;
@@ -718,7 +718,7 @@ void readVec(const Value &v, keel::Array<keel::f64> &out)
 
 } // anonymous namespace
 
-Value fir2(int n, const Value &f, const Value &m,
+Value fir2(keel::i32 n, const Value &f, const Value &m,
            const Fir2Options &opts, keel::Allocator *mr)
 {
     keel::ArenaTemp arena = keel::get_scratch(mr);
@@ -762,11 +762,11 @@ Value fir2(int n, const Value &f, const Value &m,
     if ((n % 2) == 1 && mv[nf - 1] != 0.0)
         n += 1;
 
-    const int nn = n + 1;  // final filter length
+    const keel::i32 nn = n + 1;  // final filter length
 
     // ── 4. Grid size npt (spec §2.2) ───────────────────────────────────
     const bool nptDefaulted = (opts.npt <= 0);
-    int npt = nptDefaulted ? 512 : opts.npt;
+    keel::i32 npt = nptDefaulted ? 512 : opts.npt;
 
     if (!nptDefaulted) {
         // A user-supplied npt must satisfy 2*npt >= nn.
@@ -784,18 +784,18 @@ Value fir2(int n, const Value &f, const Value &m,
     npt = nextPow2Int(npt);
 
     // ── 5. lap (spec §2.2 default) ─────────────────────────────────────
-    int lap = (opts.lap > 0) ? opts.lap : (npt / 25);
+    keel::i32 lap = (opts.lap > 0) ? opts.lap : (npt / 25);
 
     // ── 6. Build the half-band response H (spec §2.3) ──────────────────
     // H has npt+1 points covering DC..Nyquist; grid point j (1-based)
     // is normalised frequency (j-1)/npt.
-    const int npt1 = npt + 1;
+    const keel::i32 npt1 = npt + 1;
     keel::Array<keel::c64> H(npt1, arena.allocator());
-    for (int k = 0; k < npt1; ++k)
+    for (keel::i32 k = 0; k < npt1; ++k)
         H[k] = keel::c64(0.0, 0.0);
 
     // Helper: range-checked 1-based store into H.
-    auto putH = [&](int j1, keel::f64 val) {
+    auto putH = [&](keel::i32 j1, keel::f64 val) {
         if (j1 < 1 || j1 > npt1)
             throw numkit::Error("Internal grid index out of range.", 0, 0,
                                 "fir2", "", "numkit:fir2:SignalErr");
@@ -803,25 +803,25 @@ Value fir2(int n, const Value &f, const Value &m,
     };
 
     putH(1, mv[0]);
-    int nb = 1;  // 1-based start of the next segment
+    keel::i32 nb = 1;  // 1-based start of the next segment
 
     for (keel::usize i = 0; i + 1 < nf; ++i) {
         const keel::f64 df = fv[i + 1] - fv[i];
-        int ne;
+        keel::i32 ne;
         if (df == 0.0) {
             // Duplicated frequency — a response discontinuity. Back up
             // half the smoothing window, then ramp across `lap` points.
-            nb = keel::as<int>(std::ceil(nb - lap / 2.0));
+            nb = keel::as<keel::i32>(std::ceil(nb - lap / 2.0));
             ne = nb + lap;
         } else {
-            ne = keel::as<int>(std::floor(fv[i + 1] * npt1));
+            ne = keel::as<keel::i32>(std::floor(fv[i + 1] * npt1));
         }
 
         if (nb < 1 || ne > npt1)
             throw numkit::Error("Internal grid index out of range.", 0, 0,
                                 "fir2", "", "numkit:fir2:SignalErr");
 
-        for (int j = nb; j <= ne; ++j) {
+        for (keel::i32 j = nb; j <= ne; ++j) {
             keel::f64 inc;
             if (ne == nb)
                 inc = 0.0;
@@ -836,7 +836,7 @@ Value fir2(int n, const Value &f, const Value &m,
     // ── 7. Linear-phase delay (spec §2.4) ──────────────────────────────
     // Multiply by a pure delay of dt = (nn-1)/2 samples.
     const keel::f64 dt = (nn - 1) / 2.0;
-    for (int k = 0; k <= npt; ++k) {
+    for (keel::i32 k = 0; k <= npt; ++k) {
         const keel::f64 phase = -M_PI * dt * k / npt;
         H[k] *= keel::c64(std::cos(phase), std::sin(phase));
     }
@@ -844,13 +844,13 @@ Value fir2(int n, const Value &f, const Value &m,
     // ── 8. Mirror, inverse transform (spec §2.5) ───────────────────────
     // Full 2*npt spectrum by Hermitian mirroring (excl. DC and Nyquist):
     //   Hfull = [ H[0..npt], conj(H[npt-1]), ..., conj(H[1]) ]
-    const int nFull = 2 * npt;  // power of two
+    const keel::i32 nFull = 2 * npt;  // power of two
     Value spectrum =
         Value::matrix(keel::as<keel::usize>(nFull), 1, ValueType::COMPLEX, mr);
     keel::c64 *sp = spectrum.complexDataMut();
-    for (int k = 0; k <= npt; ++k)
+    for (keel::i32 k = 0; k <= npt; ++k)
         sp[k] = H[k];
-    for (int k = 1; k < npt; ++k)
+    for (keel::i32 k = 1; k < npt; ++k)
         sp[npt + k] = keel::conj(H[npt - k]);
 
     // Inverse DFT of length 2*npt (already normalised by the transform).
@@ -863,7 +863,7 @@ Value fir2(int n, const Value &f, const Value &m,
     // The window: user-supplied or a default Hamming of length nn.
     keel::Array<keel::f64> win(0, arena.allocator());
     if (!opts.window.isEmpty()) {
-        if (keel::as<int>(opts.window.numel()) != nn)
+        if (keel::as<keel::i32>(opts.window.numel()) != nn)
             throw numkit::Error("The window length must equal the filter "
                                 "length.",
                                 0, 0, "fir2", "", "numkit:fir2:BadWindow");
@@ -873,7 +873,7 @@ Value fir2(int n, const Value &f, const Value &m,
         if (nn == 1) {
             win[0] = 1.0;
         } else {
-            for (int k = 0; k < nn; ++k)
+            for (keel::i32 k = 0; k < nn; ++k)
                 win[k] = 0.54
                          - 0.46 * std::cos(2.0 * M_PI * k / (nn - 1));
         }
@@ -882,11 +882,11 @@ Value fir2(int n, const Value &f, const Value &m,
     // ifft may return DOUBLE (conjugate-symmetric input) or COMPLEX.
     if (timeDom.type() == ValueType::COMPLEX) {
         const keel::c64 *td = timeDom.complexData();
-        for (int k = 0; k < nn; ++k)
+        for (keel::i32 k = 0; k < nn; ++k)
             bd[k] = td[k].real() * win[k];
     } else {
         const keel::f64 *td = timeDom.doubleData();
-        for (int k = 0; k < nn; ++k)
+        for (keel::i32 k = 0; k < nn; ++k)
             bd[k] = td[k] * win[k];
     }
 
@@ -934,13 +934,13 @@ struct PMGridPoint {
     keel::f64 w;     // ω in [0, π]
     keel::f64 D;     // desired amplitude
     keel::f64 W;     // weight
-    int    band;  // index of source band
+    keel::i32    band;  // index of source band
 };
 
 } // anonymous namespace
 
 std::tuple<Value, keel::f64>
-firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
+firpm(keel::i32 N, const Value &Farg, const Value &Aarg, const Value &Warg,
       keel::StringRef ftype, keel::Allocator *mr)
 {
     if (N < 3)
@@ -1001,7 +1001,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         throw Error("firpm: ftype must be 'hilbert' or 'differentiator'",
                     0, 0, "firpm", "", "numkit:firpm:badFtype");
     enum { TYPE_I = 1, TYPE_II = 2, TYPE_III = 3, TYPE_IV = 4 } ;
-    int filterType;
+    keel::i32 filterType;
     if (!antiSym) filterType = (N % 2 == 0) ? TYPE_I  : TYPE_II;
     else          filterType = (N % 2 == 0) ? TYPE_III : TYPE_IV;
     keel::usize L = 0;
@@ -1013,7 +1013,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     }
     const keel::usize r     = L + 1;       // # cosine basis coefficients
     const keel::usize nExtr = r + 1;       // # extremal frequencies (= L+2)
-    constexpr int lgrid = 16;              // dense-grid density per extremal
+    constexpr keel::i32 lgrid = 16;              // dense-grid density per extremal
 
     // Total fractional width across all bands (proportional grid alloc).
     keel::f64 totalWidth = 0.0;
@@ -1099,7 +1099,7 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
                 p.D = D_raw;
                 p.W = W_eff;
             }
-            p.band = int(k);
+            p.band = keel::i32(k);
             grid.push_back(p);
         }
     }
@@ -1115,9 +1115,9 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
         // Locate band span in the grid.
         keel::Array<keel::usize> bandStart(numBands, arena.allocator());
         keel::Array<keel::usize> bandEnd  (numBands, arena.allocator());
-        int curBand = -1;
+        keel::i32 curBand = -1;
         for (keel::usize i = 0; i < grid.size(); ++i) {
-            const int b = grid[i].band;
+            const keel::i32 b = grid[i].band;
             if (b != curBand) {
                 bandStart[b] = i;
                 if (curBand >= 0) bandEnd[curBand] = i - 1;
@@ -1177,10 +1177,10 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
     newExtr.reserve(nExtr + 8);
 
     keel::f64 delta = 0.0;
-    constexpr int kMaxIter = 50;
+    constexpr keel::i32 kMaxIter = 50;
     constexpr keel::f64 kConvTol = 1e-9;
 
-    for (int iter = 0; iter < kMaxIter; ++iter) {
+    for (keel::i32 iter = 0; iter < kMaxIter; ++iter) {
         // (a) Lagrange weights γk on extremal x's.
         for (keel::usize k = 0; k < nExtr; ++k)
             xk[k] = std::cos(grid[extr[k]].w);
@@ -1221,9 +1221,9 @@ firpm(int N, const Value &Farg, const Value &Aarg, const Value &Warg,
 
         // (d) Error E(ω) on the full grid.
         for (keel::usize i = 0; i < grid.size(); ++i) {
-            int extrIdx = -1;
+            keel::i32 extrIdx = -1;
             for (keel::usize k = 0; k < nExtr; ++k)
-                if (extr[k] == i) { extrIdx = int(k); break; }
+                if (extr[k] == i) { extrIdx = keel::i32(k); break; }
             if (extrIdx >= 0) {
                 const keel::f64 sg = (extrIdx % 2 == 0) ? 1.0 : -1.0;
                 err_grid[i] = sg * delta;

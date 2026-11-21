@@ -89,12 +89,12 @@ zerocrossrate(const Value &x, keel::f64 level, keel::Allocator *mr)
         return {Value::scalar(N == 0 ? 0.0 : cnt / keel::as<keel::f64>(N), mr),
                 Value::scalar(cnt, mr)};
     }
-    long long crossings = 0;
+    keel::i64 crossings = 0;
     keel::f64 prev = x.elemAsDouble(0) - level;
-    int prev_sign = (prev > 0.0) ? 1 : (prev < 0.0 ? -1 : 0);
+    keel::i32 prev_sign = (prev > 0.0) ? 1 : (prev < 0.0 ? -1 : 0);
     for (keel::usize i = 1; i < N; ++i) {
         const keel::f64 v = x.elemAsDouble(i) - level;
-        const int s = (v > 0.0) ? 1 : (v < 0.0 ? -1 : 0);
+        const keel::i32 s = (v > 0.0) ? 1 : (v < 0.0 ? -1 : 0);
         // Count any flip including via zero (treat zero as continuation,
         // matching MATLAB ZeroPositive=false: zero stays at previous sign).
         if (s != 0 && prev_sign != 0 && s != prev_sign) ++crossings;
@@ -152,7 +152,7 @@ CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
     keel::f64 *us = R.uppersum.doubleDataMut();
     keel::f64 *ls = R.lowersum.doubleDataMut();
     keel::f64 up = 0.0, lo = 0.0;
-    long long iup_first = -1, ilo_first = -1;
+    keel::i64 iup_first = -1, ilo_first = -1;
     const keel::f64 half_shift = 0.5 * mshift;
     for (keel::usize i = 0; i < N; ++i) {
         const keel::f64 z = (x.elemAsDouble(i) - tmeanEff) / tdevEff;
@@ -160,8 +160,8 @@ CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
         lo = std::max(0.0, lo - z - half_shift);
         us[i] = up;
         ls[i] = lo;
-        if (iup_first < 0 && up > climit) iup_first = keel::as<long long>(i + 1);
-        if (ilo_first < 0 && lo > climit) ilo_first = keel::as<long long>(i + 1);
+        if (iup_first < 0 && up > climit) iup_first = keel::as<keel::i64>(i + 1);
+        if (ilo_first < 0 && lo > climit) ilo_first = keel::as<keel::i64>(i + 1);
     }
     if (iup_first > 0) R.iupper = Value::scalar(keel::as<keel::f64>(iup_first), mr);
     if (ilo_first > 0) R.ilower = Value::scalar(keel::as<keel::f64>(ilo_first), mr);

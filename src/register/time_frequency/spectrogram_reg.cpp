@@ -228,8 +228,8 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                     fTd[i] = 0.0;
                     fDd[i] = 0.0;
                 }
-                Value St = fft(frameT, keel::as<int>(nfftEff), 1, mr);
-                Value Sd = fft(frameD, keel::as<int>(nfftEff), 1, mr);
+                Value St = fft(frameT, keel::as<keel::i32>(nfftEff), 1, mr);
+                Value Sd = fft(frameD, keel::as<keel::i32>(nfftEff), 1, mr);
                 const keel::c64 *std_ptr = St.complexData();
                 const keel::c64 *sdd_ptr = Sd.complexData();
                 for (keel::usize k = 0; k < R; ++k) {
@@ -310,12 +310,12 @@ static void parseStftNVPairs(keel::ArrayRef<Value> args, keel::usize startIdx,
         if (eqIgnoreCase(key, "Window"))           window    = val;
         else if (eqIgnoreCase(key, "OverlapLength"))
             overlap = keel::as<keel::usize>(argcheck::expectedInteger(
-                argcheck::expectedReal(val, int(i) + 2, "OverlapLength", "stft"),
-                int(i) + 2, "OverlapLength", "stft"));
+                argcheck::expectedReal(val, keel::i32(i) + 2, "OverlapLength", "stft"),
+                keel::i32(i) + 2, "OverlapLength", "stft"));
         else if (eqIgnoreCase(key, "FFTLength"))
             fftLength = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
-                argcheck::expectedReal(val, int(i) + 2, "FFTLength", "stft"),
-                int(i) + 2, "FFTLength", "stft"));
+                argcheck::expectedReal(val, keel::i32(i) + 2, "FFTLength", "stft"),
+                keel::i32(i) + 2, "FFTLength", "stft"));
         else if (eqIgnoreCase(key, "FrequencyRange")) range  = val.toString();
         else
             throw Error(keel::format("stft: unknown name-value key '{}'", key),
@@ -360,9 +360,9 @@ static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
         keel::f64 *fd = f.doubleDataMut();
         // Even N: bins are [-N/2+1, ..., N/2] (Nyquist at end).
         // Odd  N: bins are [-(N-1)/2, ..., (N-1)/2].
-        const long long Nll = keel::as<long long>(NFFT);
-        const long long lo  = (Nll % 2 == 0) ? -(Nll / 2 - 1) : -((Nll - 1) / 2);
-        for (long long k = 0; k < Nll; ++k)
+        const keel::i64 Nll = keel::as<keel::i64>(NFFT);
+        const keel::i64 lo  = (Nll % 2 == 0) ? -(Nll / 2 - 1) : -((Nll - 1) / 2);
+        for (keel::i64 k = 0; k < Nll; ++k)
             fd[k] = keel::as<keel::f64>(lo + k) * df;
         return f;
     }

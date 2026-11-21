@@ -31,8 +31,8 @@ void sgolay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
 {
     argcheck::checkNargin(args.size(), 2, 3, "sgolay");
     auto *mr = ctx.engine->allocator();
-    const int order    = argcheck::expectedInteger(argcheck::expectedReal(args[0], 1, "order", "sgolay"), 1, "order", "sgolay");
-    const int framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "framelen", "sgolay"), 2, "framelen", "sgolay");
+    const keel::i32 order    = argcheck::expectedInteger(argcheck::expectedReal(args[0], 1, "order", "sgolay"), 1, "order", "sgolay");
+    const keel::i32 framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[1], 2, "framelen", "sgolay"), 2, "framelen", "sgolay");
     outs[0] = sgolay(order, framelen, mr);
     // [B,G] = sgolay(...): G is the framelen Ã— (order+1) differentiation-
     // filter matrix (MATLAB's second output).
@@ -44,11 +44,11 @@ void sgolayfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::M
 {
     argcheck::checkNargin(args.size(), 3, 5, "sgolayfilt");
     auto *res = ctx.engine->allocator();
-    const int order    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "order", "sgolayfilt"), 2, "order", "sgolayfilt");
-    const int framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "framelen", "sgolayfilt"), 3, "framelen", "sgolayfilt");
+    const keel::i32 order    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "order", "sgolayfilt"), 2, "order", "sgolayfilt");
+    const keel::i32 framelen = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "framelen", "sgolayfilt"), 3, "framelen", "sgolayfilt");
     // sgolayfilt(x, order, framelen, weights, dim): weights (4th) and dim
     // (5th) are optional; an empty [] in either slot selects the default.
-    const int dim = (args.size() >= 5 && !args[4].isEmpty())
+    const keel::i32 dim = (args.size() >= 5 && !args[4].isEmpty())
                         ? argcheck::dimArg(args[4], "sgolayfilt") : 0;
     const Value weights = (args.size() >= 4)
                               ? args[3]

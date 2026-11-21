@@ -27,7 +27,7 @@ namespace numkit::signal {
 ///
 /// @code  auto [b, a] = butter(4, 0.3);  // 4th-order lowpass  @endcode
 std::tuple<Value, Value>
-butter(int                          N,
+butter(keel::i32                          N,
        keel::f64                       Wn,
        keel::StringRef              type = "low",
        keel::Allocator *  mr   = nullptr);
@@ -39,12 +39,12 @@ butter(int                          N,
 /// @param Wn    Normalized cutoff frequency in (0, 1) — fraction of Nyquist.
 /// @param type  "low" (default) or "high".
 /// @param mr    Memory resource (nullptr → process default).
-Value fir1(int                          N,
+Value fir1(keel::i32                          N,
            keel::f64                       Wn,
            keel::StringRef              type = "low",
            keel::Allocator *  mr   = nullptr);
 
-Value fir1(int                          N,
+Value fir1(keel::i32                          N,
            const Value &                Wn,
            keel::StringRef              type,
            const Value &                window,
@@ -67,12 +67,12 @@ Value fir1(int                          N,
 /// @throws    Error if N is odd, or F/A invalid.
 ///
 /// @code  Value b = firls(40, {0, 0.4, 0.5, 1.0}, {1, 1, 0, 0});  @endcode
-Value firls(int                          N,
+Value firls(keel::i32                          N,
             const Value &                F,
             const Value &                A,
             keel::Allocator *  mr = nullptr);
 
-Value firls(int                          N,
+Value firls(keel::i32                          N,
             const Value &                F,
             const Value &                A,
             const Value &                W,
@@ -92,12 +92,12 @@ struct Fir2Options {
     /// Number of frequency-grid points (`npt`). `0` selects the
     /// default 512 (auto-grown for very long filters). A user value is
     /// rounded up to the next power of two.
-    int   npt = 0;
+    keel::i32   npt = 0;
 
     /// Width, in grid points, of the smoothing region applied at a
     /// duplicated break frequency (`lap`). `0` selects the
     /// default `floor(npt/25)`.
-    int   lap = 0;
+    keel::i32   lap = 0;
 
     /// Output window, a length-`(N+1)` vector. Empty selects the
     /// default Hamming window.
@@ -123,7 +123,7 @@ struct Fir2Options {
 /// @return      Filter coefficients as a row vector.
 ///
 /// @code  Value b = fir2(50, {0,0.3,0.5,0.7,1}, {1,1,0,0,0});  @endcode
-Value fir2(int                          n,
+Value fir2(keel::i32                          n,
            const Value &                f,
            const Value &                m,
            const Fir2Options &          opts = {},
@@ -160,7 +160,7 @@ Value fir2(int                          n,
 /// auto [h, err] = firpm(30, {0.05, 0.95}, {1, 1}, {}, "hilbert"); // Type III
 /// @endcode
 std::tuple<Value, keel::f64>
-firpm(int                          N,
+firpm(keel::i32                          N,
       const Value &                F,
       const Value &                A,
       const Value &                W      = Value::Empty,

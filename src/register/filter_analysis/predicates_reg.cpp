@@ -94,7 +94,7 @@ void isallpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mu
 void filtord_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 3, "filtord");
-    int n = (args.size() >= 2)
+    keel::i32 n = (args.size() >= 2)
         ? filtord(args[0], args[1])
         : filtord(args[0]);
     outs[0] = Value::scalar(keel::as<keel::f64>(n), ctx.engine->allocator());
@@ -118,25 +118,25 @@ void filternorm_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::M
 } // namespace detail
 
 // â”€â”€ filtord â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-int filtord(const Value &b)
+keel::i32 filtord(const Value &b)
 {
     auto bv = trimTrailingZeros(b);
     if (bv.empty()) return 0;
-    return keel::as<int>(bv.size()) - 1;
+    return keel::as<keel::i32>(bv.size()) - 1;
 }
 
-int filtord(const Value &b, const Value &a)
+keel::i32 filtord(const Value &b, const Value &a)
 {
     auto bv = trimTrailingZeros(b);
     auto av = trimTrailingZeros(a);
     const keel::usize lb = bv.empty() ? 0 : bv.size();
     const keel::usize la = av.empty() ? 0 : av.size();
     const keel::usize n  = std::max(lb, la);
-    return (n == 0) ? 0 : keel::as<int>(n) - 1;
+    return (n == 0) ? 0 : keel::as<keel::i32>(n) - 1;
 }
 
 // â”€â”€ firtype â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-int firtype(const Value &b)
+keel::i32 firtype(const Value &b)
 {
     auto v = trimTrailingZeros(b);
     if (v.size() < 2)
@@ -148,7 +148,7 @@ int firtype(const Value &b)
         throw Error("firtype: filter is not (anti)symmetric â€” not a "
                     "linear-phase FIR",
                      0, 0, "firtype", "", "numkit:firtype:notlinphase");
-    const int order = keel::as<int>(v.size()) - 1;  // L = order + 1
+    const keel::i32 order = keel::as<keel::i32>(v.size()) - 1;  // L = order + 1
     const bool order_even = (order % 2 == 0);
     if (sym)  return order_even ? 1 : 2;
     /* anti */ return order_even ? 3 : 4;

@@ -22,7 +22,7 @@ namespace numkit::signal {
 
 namespace detail {
 
-static int dimFromArg(keel::ArrayRef<Value> args, const char *fn)
+static keel::i32 dimFromArg(keel::ArrayRef<Value> args, const char *fn)
 {
     return (args.size() >= 2) ? argcheck::dimArg(args[1], fn) : 0;
 }

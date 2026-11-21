@@ -25,7 +25,7 @@ namespace detail {
 // Marshalling for the sigroi scalar lengths: scalarity/integrality here
 // (nk ids); range/content contracts (positive, nonnegative) live in the
 // compute argchecks.
-static keel::i64 sigroiLen(const Value &v, int argNum, const char *name,
+static keel::i64 sigroiLen(const Value &v, keel::i32 argNum, const char *name,
                          const char *fn)
 {
     return keel::as<keel::i64>(argcheck::expectedInteger(

@@ -68,7 +68,7 @@ void resample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         argcheck::expectedReal(args[1], 2, "p", "resample"), 2, "p", "resample"));
     const keel::usize q = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[2], 3, "q", "resample"), 3, "q", "resample"));
-    int n_order = 10;
+    keel::i32 n_order = 10;
     keel::f64 beta = 5.0;
     if (args.size() >= 4 && args[3].isNumeric() && args[3].numel() == 1)
         n_order = argcheck::expectedInteger(

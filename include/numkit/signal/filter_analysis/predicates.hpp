@@ -117,7 +117,7 @@ bool isallpass(const Value &b, const Value &a);
 ///
 /// @param b   Numerator polynomial.
 /// @return    Integer filter order.
-int filtord(const Value &b);
+keel::i32 filtord(const Value &b);
 
 /// @brief Filter order with explicit denominator (`n = filtord(b, a)`).
 ///
@@ -127,7 +127,7 @@ int filtord(const Value &b);
 /// @param b   Numerator polynomial.
 /// @param a   Denominator polynomial.
 /// @return    Integer filter order.
-int filtord(const Value &b, const Value &a);
+keel::i32 filtord(const Value &b, const Value &a);
 
 /// FIR filter type classification (1–4).
 ///
@@ -142,7 +142,7 @@ int filtord(const Value &b, const Value &a);
 ///                           within tolerance.
 ///
 /// @see islinphase
-int firtype(const Value &b);
+keel::i32 firtype(const Value &b);
 
 /// L_p norm of a digital filter's frequency response.
 ///

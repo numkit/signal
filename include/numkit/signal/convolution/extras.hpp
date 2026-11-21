@@ -91,9 +91,9 @@ Value xcorr2(const Value &                A,
 ///                  full range, `±max(nx, ny) - 1`.
 /// @param mr        Memory resource (nullptr → process default).
 /// @return          Integer lag in samples (signed).
-long finddelay(const Value &                x,
+keel::i64 finddelay(const Value &                x,
                const Value &                y,
-               long                         max_lag = 0,
+               keel::i64                         max_lag = 0,
                keel::Allocator *  mr      = nullptr);
 
 /// Align two signals by zero-padding the leading one.
@@ -110,7 +110,7 @@ long finddelay(const Value &                x,
 std::tuple<Value, Value>
 alignsignals(const Value &                x,
              const Value &                y,
-             long                         max_lag = 0,
+             keel::i64                         max_lag = 0,
              keel::Allocator *  mr      = nullptr);
 
 

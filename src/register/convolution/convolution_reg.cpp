@@ -72,7 +72,7 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     const Value &x = args[0];
     Value y = x;                 // default: autocorrelation
     bool haveY = false;
-    int maxlag = -1;             // -1 => full
+    keel::i32 maxlag = -1;             // -1 => full
     keel::String scaleopt = keel::String::from("none");
 
     // Disambiguate (MATLAB): a string is scaleopt; a scalar numeric in the
@@ -95,8 +95,8 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
             scaleopt = args[idx].toString();
         else
             maxlag = keel::abs(argcheck::expectedInteger(
-                argcheck::expectedReal(args[idx], int(idx) + 1, "maxlag", "xcorr"),
-                int(idx) + 1, "maxlag", "xcorr"));
+                argcheck::expectedReal(args[idx], keel::i32(idx) + 1, "maxlag", "xcorr"),
+                keel::i32(idx) + 1, "maxlag", "xcorr"));
     }
 
     auto [cfull, lagsfull] = haveY ? xcorr(x, y, mr) : xcorr(x, mr);
@@ -144,25 +144,25 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     }
 
     // maxlag crop (or zero-pad) about lag 0 at index fullMaxLag.
-    const int fullMaxLag = (N > 0) ? keel::as<int>(N) - 1 : 0;
+    const keel::i32 fullMaxLag = (N > 0) ? keel::as<keel::i32>(N) - 1 : 0;
     if (maxlag < 0) maxlag = fullMaxLag;
     if (maxlag != fullMaxLag) {
-        const int center0 = fullMaxLag;
-        const int outLen = 2 * maxlag + 1;
+        const keel::i32 center0 = fullMaxLag;
+        const keel::i32 outLen = 2 * maxlag + 1;
         const bool colOut = (x.dims().rows() > 1 && x.dims().cols() == 1);
         ValueType vt = isCplx ? ValueType::COMPLEX : ValueType::DOUBLE;
         Value cOut = colOut ? Value::matrix(outLen, 1, vt, mr)
                             : Value::matrix(1, outLen, vt, mr);
         Value lOut = Value::matrix(1, outLen, ValueType::DOUBLE, mr);
         keel::f64 *lo = lOut.doubleDataMut();
-        for (int m = -maxlag; m <= maxlag; ++m) {
-            const int src = center0 + m;
-            const int dst = m + maxlag;
+        for (keel::i32 m = -maxlag; m <= maxlag; ++m) {
+            const keel::i32 src = center0 + m;
+            const keel::i32 dst = m + maxlag;
             lo[dst] = keel::as<keel::f64>(m);
             if (isCplx) {
-                cOut.complexDataMut()[dst] = (src >= 0 && src < keel::as<int>(nc)) ? ccd[src] : keel::c64(0.0, 0.0);
+                cOut.complexDataMut()[dst] = (src >= 0 && src < keel::as<keel::i32>(nc)) ? ccd[src] : keel::c64(0.0, 0.0);
             } else {
-                cOut.doubleDataMut()[dst] = (src >= 0 && src < keel::as<int>(nc)) ? cd[src] : 0.0;
+                cOut.doubleDataMut()[dst] = (src >= 0 && src < keel::as<keel::i32>(nc)) ? cd[src] : 0.0;
             }
         }
         cfull = std::move(cOut);
@@ -180,7 +180,7 @@ void xcov_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     auto *mr = ctx.engine->allocator();
     const Value &x = args[0];
     Value y = x;                 // default: auto-covariance
-    int maxlag = -1;             // -1 => full
+    keel::i32 maxlag = -1;             // -1 => full
     keel::String scaleopt = keel::String::from("none");
 
     // MATLAB disambiguation: a string arg is scaleopt; a scalar numeric
@@ -205,8 +205,8 @@ void xcov_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
             scaleopt = args[idx].toString();
         else
             maxlag = keel::abs(argcheck::expectedInteger(
-                argcheck::expectedReal(args[idx], int(idx) + 1, "maxlag", "xcov"),
-                int(idx) + 1, "maxlag", "xcov"));
+                argcheck::expectedReal(args[idx], keel::i32(idx) + 1, "maxlag", "xcov"),
+                keel::i32(idx) + 1, "maxlag", "xcov"));
     }
 
     auto result = xcov(x, y, maxlag, scaleopt, mr);

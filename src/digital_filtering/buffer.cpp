@@ -38,7 +38,7 @@ namespace {
 // Detect orientation of x (1=row vector, 2=column vector). For matrix
 // inputs MATLAB buffer expects vectors, but we treat any 2D input by
 // flattening linearly.
-int rowOrCol(const Value &x)
+keel::i32 rowOrCol(const Value &x)
 {
     return (x.dims().rows() == 1 && x.dims().cols() > 1) ? 1 : 2;
 }
@@ -48,7 +48,7 @@ bool isStringLikeNoDelay(const Value &v)
     if (v.type() != ValueType::CHAR && v.type() != ValueType::STRING) return false;
     keel::String s = v.toString();
     std::transform(s.begin(), s.end(), s.begin(),
-                    [](unsigned char c) { return keel::to_ascii_lower(c); });
+                    [](keel::u8 c) { return keel::to_ascii_lower(c); });
     return s == "nodelay";
 }
 
@@ -60,7 +60,7 @@ struct BufferResult {
     keel::usize partialEnd;    // index into x where partial-frame Z ends (excl)
 };
 
-BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool forceCompleteOnly /* true if [Y, Z] form */, keel::Allocator *mr)
+BufferResult bufferCore(const Value &x, keel::i32 n, keel::i32 p, const Value &opt, bool forceCompleteOnly /* true if [Y, Z] form */, keel::Allocator *mr)
 {
     if (n <= 0) {
         BufferResult r;
@@ -71,7 +71,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     }
     const keel::usize N = x.numel();
     const keel::usize Nn = keel::as<keel::usize>(n);
-    const int hop = n - p;  // can be negative when p > n (invalid)
+    const keel::i32 hop = n - p;  // can be negative when p > n (invalid)
 
     // Underlap branch (p < 0): skip |p| samples per frame.
     if (p < 0) {
@@ -189,7 +189,7 @@ BufferResult bufferCore(const Value &x, int n, int p, const Value &opt, bool for
     return r;
 }
 
-Value makePartialZ(const Value &x, keel::usize startIdx, keel::usize endIdx, int xOrient, keel::Allocator *mr)
+Value makePartialZ(const Value &x, keel::usize startIdx, keel::usize endIdx, keel::i32 xOrient, keel::Allocator *mr)
 {
     const keel::usize len = (endIdx > startIdx) ? (endIdx - startIdx) : 0;
     const keel::usize rows = (xOrient == 1) ? 1 : len;
@@ -202,7 +202,7 @@ Value makePartialZ(const Value &x, keel::usize startIdx, keel::usize endIdx, int
     return z;
 }
 
-void buffer_argcheck(int n, int p, const Value &opt)
+void buffer_argcheck(keel::i32 n, keel::i32 p, const Value &opt)
 {
     if (n <= 0) return;
     if (p < 0) {
@@ -214,7 +214,7 @@ void buffer_argcheck(int n, int p, const Value &opt)
         }
         return;
     }
-    const int hop = n - p;
+    const keel::i32 hop = n - p;
     if (hop <= 0)
         throw Error("buffer: P must be < N (overlap < frame length)",
                     0, 0, "buffer", "", "numkit:buffer:BadOverlap");
@@ -227,7 +227,7 @@ void buffer_argcheck(int n, int p, const Value &opt)
 
 } // anon
 
-Value buffer(const Value &x, int n, int p, const Value &opt, keel::Allocator *mr)
+Value buffer(const Value &x, keel::i32 n, keel::i32 p, const Value &opt, keel::Allocator *mr)
 {
     buffer_argcheck(n, p, opt);
     BufferResult r = bufferCore(x, n, p, opt, /*forceCompleteOnly=*/false, mr);
@@ -235,7 +235,7 @@ Value buffer(const Value &x, int n, int p, const Value &opt, keel::Allocator *mr
 }
 
 std::tuple<Value, Value>
-buffer2(const Value &x, int n, int p, const Value &opt, keel::Allocator *mr)
+buffer2(const Value &x, keel::i32 n, keel::i32 p, const Value &opt, keel::Allocator *mr)
 {
     buffer_argcheck(n, p, opt);
     BufferResult r = bufferCore(x, n, p, opt, /*forceCompleteOnly=*/true, mr);

@@ -183,7 +183,7 @@ Value nuttallwin(keel::usize N, keel::Allocator *mr = nullptr);
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      N×1 DOUBLE column vector.
 /// @throws      numkit::Error if `sll ≥ 0` or `nbar < 2`.
-Value taylorwin(keel::usize N, int nbar = 4, keel::f64 sll = -30.0,
+Value taylorwin(keel::usize N, keel::i32 nbar = 4, keel::f64 sll = -30.0,
                 keel::Allocator *mr = nullptr);
 
 /// Blackman-Harris window of length N — 4-term, minimum-sidelobe.

@@ -35,7 +35,7 @@ namespace {
 // FIR-family order extraction â€” the Value-boundary half of the order
 // contract (a fractional order is only expressible as a Value; the
 // positive/domain half lives in each compute's fir1_argcheck).
-int firOrder(const Value &v, int argNum, const char *name, const char *fn)
+keel::i32 firOrder(const Value &v, keel::i32 argNum, const char *name, const char *fn)
 {
     const keel::f64 n = argcheck::expectedReal(v, argNum, name, fn);
     if (n != std::floor(n)) {
@@ -43,7 +43,7 @@ int firOrder(const Value &v, int argNum, const char *name, const char *fn)
         throw Error(keel::format("{}: filter order {} must be a positive integer (got {}).", fn, name, numStr),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));
     }
-    return keel::as<int>(n);
+    return keel::as<keel::i32>(n);
 }
 
 } // namespace
@@ -51,7 +51,7 @@ int firOrder(const Value &v, int argNum, const char *name, const char *fn)
 void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 6, "fir1");
-    const int N = firOrder(args[0], 1, "n", "fir1");
+    const keel::i32 N = firOrder(args[0], 1, "n", "fir1");
     if (args[1].isScalar() && args.size() <= 3 && (args.size() < 3 || args[2].isChar() || args[2].isString())) {
         const keel::f64 Wn = argcheck::expectedReal(args[1], 2, "Wn", "fir1");
         keel::String type = keel::String::from("low");
@@ -85,7 +85,7 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
 void firls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "firls");
-    const int N = firOrder(args[0], 1, "N", "firls");
+    const keel::i32 N = firOrder(args[0], 1, "N", "firls");
     Value W = Value::Empty;
     keel::String ftype;
     for (keel::usize i = 3; i < args.size(); ++i) {
@@ -100,13 +100,13 @@ void firls_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
 void fir2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "fir2");
-    const int N = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "fir2"), 1, "N", "fir2");
+    const keel::i32 N = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "fir2"), 1, "N", "fir2");
 
     // Optional trailing arguments fir2(N,F,A[,npt][,lap][,window]):
     // scalars are npt then lap (in order); a vector argument is the
     // output window.
     Fir2Options opts;
-    int scalarsSeen = 0;
+    keel::i32 scalarsSeen = 0;
     for (keel::usize i = 3; i < args.size(); ++i) {
         const Value &a = args[i];
         if (a.numel() == 1) {
@@ -148,7 +148,7 @@ void firpm_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
                CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 6, "firpm");
-    const int N = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "firpm"), 1, "N", "firpm");
+    const keel::i32 N = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[0], 1, "N", "firpm"), 1, "N", "firpm");
 
     // Trailing args: weights vector (numeric) or ftype string. MATLAB
     // accepts them in either order (W [, ftype] or ftype only).

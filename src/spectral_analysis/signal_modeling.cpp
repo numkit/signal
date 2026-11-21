@@ -55,11 +55,11 @@ Value colVec(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 
 // Biased autocorrelation r[k] = (1/N) * sum_{i=0..N-1-k} x[i] * x[i+k],
 // for k in 0..maxLag. Returns array of length maxLag+1.
-keel::Array<keel::f64> biasedAutocorr(keel::ArrayRef<keel::f64> x, int maxLag)
+keel::Array<keel::f64> biasedAutocorr(keel::ArrayRef<keel::f64> x, keel::i32 maxLag)
 {
     const keel::usize N = x.size();
     keel::Array<keel::f64> R(maxLag + 1, 0.0);
-    for (int k = 0; k <= maxLag; ++k) {
+    for (keel::i32 k = 0; k <= maxLag; ++k) {
         keel::f64 s = 0.0;
         for (keel::usize i = 0; i + k < N; ++i) s += x[i] * x[i + k];
         R[k] = s / keel::as<keel::f64>(N);
@@ -76,7 +76,7 @@ keel::Array<keel::f64> biasedAutocorr(keel::ArrayRef<keel::f64> x, int maxLag)
 // 1/A(z) models the input autocorrelation.
 struct LevinsonResult { keel::Array<keel::f64> a; keel::f64 e; keel::Array<keel::f64> k; };
 
-LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, int p)
+LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, keel::i32 p)
 {
     LevinsonResult res;
     res.a.assign(p + 1, 0.0);
@@ -87,10 +87,10 @@ LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, int p)
     if (e <= 0.0) { res.e = 0.0; return res; }
     keel::Array<keel::f64> a_prev(p + 1, 0.0); a_prev[0] = 1.0;
 
-    for (int i = 1; i <= p; ++i) {
+    for (keel::i32 i = 1; i <= p; ++i) {
         // Numerator of the i-th reflection coefficient.
         keel::f64 num = r[i];
-        for (int j = 1; j < i; ++j) num += a_prev[j] * r[i - j];
+        for (keel::i32 j = 1; j < i; ++j) num += a_prev[j] * r[i - j];
         // MATLAB's levinson runs the full recursion even when the
         // residual energy goes non-positive (a non-PSD autocorrelation,
         // i.e. an unstable model). It does NOT early-exit: e simply
@@ -103,7 +103,7 @@ LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, int p)
         // Update a using a_prev: a_new[j] = a_prev[j] + k * a_prev[i-j]
         keel::Array<keel::f64> a_new(p + 1, 0.0);
         a_new[0] = 1.0;
-        for (int j = 1; j < i; ++j)
+        for (keel::i32 j = 1; j < i; ++j)
             a_new[j] = a_prev[j] + k * a_prev[i - j];
         a_new[i] = k;
         a_prev = std::move(a_new);
@@ -119,12 +119,12 @@ LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, int p)
 // ── Levinson-Durbin ────────────────────────────────────────────────
 
 std::tuple<Value, Value, Value>
-levinson(const Value &r, int n, keel::Allocator *mr)
+levinson(const Value &r, keel::i32 n, keel::Allocator *mr)
 {
     auto rv = readVec(r);
-    if (n < 0) n = keel::as<int>(rv.size()) - 1;
+    if (n < 0) n = keel::as<keel::i32>(rv.size()) - 1;
     if (n < 0) n = 0;
-    if (n + 1 > keel::as<int>(rv.size())) rv.resize(n + 1, 0.0);
+    if (n + 1 > keel::as<keel::i32>(rv.size())) rv.resize(n + 1, 0.0);
     auto res = levinsonCore(rv, n);
     return std::make_tuple(rowVec(res.a, mr),
                            Value::scalar(res.e, mr),
@@ -138,21 +138,21 @@ std::tuple<Value, Value>
 rlevinson(const Value &a, keel::f64 efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
-    const int p = keel::as<int>(av.size()) - 1;
+    const keel::i32 p = keel::as<keel::i32>(av.size()) - 1;
     keel::Array<keel::f64> R(p + 1, 0.0, mr);
     keel::Array<keel::f64> k(p, 0.0, mr);
 
     // Step-down to recover reflection coefficients k[0..p-1].
     keel::Array<keel::f64> cur = av.clone();
     keel::f64 e = efinal;
-    for (int i = p; i >= 1; --i) {
+    for (keel::i32 i = p; i >= 1; --i) {
         const keel::f64 ki = cur[i];
         k[i - 1] = ki;
         if (keel::abs(1.0 - ki * ki) < 1e-300) break;
         keel::Array<keel::f64> prev(i + 1, 0.0, mr);  // a_{i-1}
         prev[0] = 1.0;
         const keel::f64 denom = 1.0 - ki * ki;
-        for (int j = 1; j < i; ++j)
+        for (keel::i32 j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
         cur = std::move(prev);
         e /= denom;  // step e back up
@@ -161,9 +161,9 @@ rlevinson(const Value &a, keel::f64 efinal, keel::Allocator *mr)
     // Forward Levinson on the reflection coeffs, recovering R via
     // r[i] = -(a[1]*r[i-1] + ... + a[i-1]*r[1] + a[i]*r[0]).
     R[0] = e;  // reconstruct r[0] from prediction error climb
-    for (int i = 1; i <= p; ++i) {
+    for (keel::i32 i = 1; i <= p; ++i) {
         keel::f64 s = 0.0;
-        for (int j = 1; j <= i - 1; ++j) s += av[j] * R[i - j];
+        for (keel::i32 j = 1; j <= i - 1; ++j) s += av[j] * R[i - j];
         R[i] = -av[i] * R[0] - s;
     }
     return std::make_tuple(rowVec(R, mr), colVec(k, mr));
@@ -172,7 +172,7 @@ rlevinson(const Value &a, keel::f64 efinal, keel::Allocator *mr)
 // ── AR estimation ─────────────────────────────────────────────────
 
 std::tuple<Value, Value, Value>
-aryule(const Value &x, int p, keel::Allocator *mr)
+aryule(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = biasedAutocorr(v, p);
@@ -183,7 +183,7 @@ aryule(const Value &x, int p, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value, Value>
-arburg(const Value &x, int p, keel::Allocator *mr)
+arburg(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     // Burg's algorithm. Maintains forward / backward prediction
     // errors and updates AR coefficients via reflection coefficients
@@ -199,7 +199,7 @@ arburg(const Value &x, int p, keel::Allocator *mr)
     for (keel::f64 y : v) E += y * y;
     E /= keel::as<keel::f64>(N);
 
-    for (int i = 0; i < p; ++i) {
+    for (keel::i32 i = 0; i < p; ++i) {
         // Reflection coefficient: maximise correlation of forward and
         // backward errors.
         keel::f64 num = 0.0, den = 0.0;
@@ -220,7 +220,7 @@ arburg(const Value &x, int p, keel::Allocator *mr)
 
         // Update AR coefficients via the Levinson update.
         keel::Array<keel::f64> a_new = a.clone();
-        for (int j = 1; j <= i; ++j)
+        for (keel::i32 j = 1; j <= i; ++j)
             a_new[j] = a[j] + ki * a[i + 1 - j];
         a_new[i + 1] = ki;
         a = std::move(a_new);
@@ -233,7 +233,7 @@ arburg(const Value &x, int p, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value>
-lpc(const Value &x, int p, keel::Allocator *mr)
+lpc(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     // MATLAB's lpc returns (a, g) where g is the prediction error
     // variance (NOT its sqrt — the docs are explicit). Same numbers
@@ -249,7 +249,7 @@ std::tuple<Value, Value>
 ac2poly(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
-    const int p = keel::as<int>(rv.size()) - 1;
+    const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
     auto res = levinsonCore(rv, std::max(p, 0));
     return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
@@ -265,7 +265,7 @@ std::tuple<Value, Value>
 ac2rc(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
-    const int p = keel::as<int>(rv.size()) - 1;
+    const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
     auto res = levinsonCore(rv, std::max(p, 0));
     return std::make_tuple(colVec(res.k, mr),
                            Value::scalar(rv.empty() ? 0.0 : rv[0], mr));
@@ -279,21 +279,21 @@ Value schurrc(const Value &R, keel::Allocator *mr)
     // unstable AR model). levinsonCore early-exits on e<=0 to keep the
     // fitted poly stable; schurrc doesn't want that.
     auto rv = readVec(R);
-    const int p = keel::as<int>(rv.size()) - 1;
+    const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
     if (p <= 0) return colVec(keel::ArrayRef<keel::f64>{}, mr);
 
     keel::Array<keel::f64> k(p, 0.0, mr);
     keel::Array<keel::f64> a_prev(p + 1, 0.0, mr); a_prev[0] = 1.0;
     keel::f64 e = rv[0];
 
-    for (int i = 1; i <= p; ++i) {
+    for (keel::i32 i = 1; i <= p; ++i) {
         keel::f64 num = rv[i];
-        for (int j = 1; j < i; ++j) num += a_prev[j] * rv[i - j];
+        for (keel::i32 j = 1; j < i; ++j) num += a_prev[j] * rv[i - j];
         const keel::f64 ki = (e != 0.0) ? -num / e : 0.0;
         k[i - 1] = ki;
 
         keel::Array<keel::f64> a_new(p + 1, 0.0, mr); a_new[0] = 1.0;
-        for (int j = 1; j < i; ++j)
+        for (keel::i32 j = 1; j < i; ++j)
             a_new[j] = a_prev[j] + ki * a_prev[i - j];
         a_new[i] = ki;
         a_prev = std::move(a_new);
@@ -305,22 +305,22 @@ Value schurrc(const Value &R, keel::Allocator *mr)
 Value rc2ac(const Value &k, keel::f64 r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
-    const int p = keel::as<int>(kv.size());
+    const keel::i32 p = keel::as<keel::i32>(kv.size());
     // Build R from k via the inverse Levinson: r0 known, then
     // r[i] = -(a_{i-1}[1]*r[i-1] + ... + a_{i-1}[i-1]*r[1]) - k[i-1]*e_{i-1}
     keel::Array<keel::f64> R(p + 1, 0.0, mr);
     R[0] = r0;
     keel::Array<keel::f64> a(p + 1, 0.0, mr); a[0] = 1.0;
     keel::f64 e = r0;
-    for (int i = 1; i <= p; ++i) {
+    for (keel::i32 i = 1; i <= p; ++i) {
         const keel::f64 ki = kv[i - 1];
         keel::f64 s = 0.0;
-        for (int j = 1; j < i; ++j) s += a[j] * R[i - j];
+        for (keel::i32 j = 1; j < i; ++j) s += a[j] * R[i - j];
         R[i] = -ki * e - s;
         // Update a by step-up.
         keel::Array<keel::f64> a_new(p + 1, 0.0, mr);
         a_new[0] = 1.0;
-        for (int j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
+        for (keel::i32 j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
         a_new[i] = ki;
         a = std::move(a_new);
         e *= (1.0 - ki * ki);
@@ -332,16 +332,16 @@ std::tuple<Value, Value>
 poly2rc(const Value &a, keel::f64 efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
-    const int p = keel::as<int>(av.size()) - 1;
+    const keel::i32 p = keel::as<keel::i32>(av.size()) - 1;
     keel::Array<keel::f64> k(p, 0.0, mr);
     keel::Array<keel::f64> cur = av.clone();
-    for (int i = p; i >= 1; --i) {
+    for (keel::i32 i = p; i >= 1; --i) {
         const keel::f64 ki = cur[i];
         k[i - 1] = ki;
         const keel::f64 denom = 1.0 - ki * ki;
         if (keel::abs(denom) < 1e-300) break;
         keel::Array<keel::f64> prev(i + 1, 0.0, mr); prev[0] = 1.0;
-        for (int j = 1; j < i; ++j)
+        for (keel::i32 j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
         cur = std::move(prev);
     }
@@ -358,13 +358,13 @@ std::tuple<Value, Value>
 rc2poly(const Value &k, keel::f64 r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
-    const int p = keel::as<int>(kv.size());
+    const keel::i32 p = keel::as<keel::i32>(kv.size());
     keel::Array<keel::f64> a(p + 1, 0.0, mr); a[0] = 1.0;
-    for (int i = 1; i <= p; ++i) {
+    for (keel::i32 i = 1; i <= p; ++i) {
         const keel::f64 ki = kv[i - 1];
         keel::Array<keel::f64> a_new(p + 1, 0.0, mr);
         a_new[0] = 1.0;
-        for (int j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
+        for (keel::i32 j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
         a_new[i] = ki;
         a = std::move(a_new);
     }
@@ -429,31 +429,31 @@ namespace {
 // p×p; returns x. For ill-conditioned inputs (singular matrix)
 // returns the partial result.
 keel::Array<keel::f64>
-solveSPD(keel::Array<keel::f64> &A, keel::Array<keel::f64> &b, int p)
+solveSPD(keel::Array<keel::f64> &A, keel::Array<keel::f64> &b, keel::i32 p)
 {
-    for (int k = 0; k < p; ++k) {
+    for (keel::i32 k = 0; k < p; ++k) {
         // Pivot.
-        int piv = k;
+        keel::i32 piv = k;
         keel::f64 pivVal = keel::abs(A[k * p + k]);
-        for (int i = k + 1; i < p; ++i)
+        for (keel::i32 i = k + 1; i < p; ++i)
             if (keel::abs(A[i * p + k]) > pivVal) { pivVal = keel::abs(A[i * p + k]); piv = i; }
         if (pivVal < 1e-300) continue;
         if (piv != k) {
-            for (int j = k; j < p; ++j)
+            for (keel::i32 j = k; j < p; ++j)
                 std::swap(A[k * p + j], A[piv * p + j]);
             std::swap(b[k], b[piv]);
         }
         const keel::f64 diag = A[k * p + k];
-        for (int i = k + 1; i < p; ++i) {
+        for (keel::i32 i = k + 1; i < p; ++i) {
             const keel::f64 f = A[i * p + k] / diag;
-            for (int j = k; j < p; ++j) A[i * p + j] -= f * A[k * p + j];
+            for (keel::i32 j = k; j < p; ++j) A[i * p + j] -= f * A[k * p + j];
             b[i] -= f * b[k];
         }
     }
     keel::Array<keel::f64> x(p, 0.0);
-    for (int i = p - 1; i >= 0; --i) {
+    for (keel::i32 i = p - 1; i >= 0; --i) {
         keel::f64 s = b[i];
-        for (int j = i + 1; j < p; ++j) s -= A[i * p + j] * x[j];
+        for (keel::i32 j = i + 1; j < p; ++j) s -= A[i * p + j] * x[j];
         const keel::f64 diag = A[i * p + i];
         x[i] = (keel::abs(diag) > 1e-300) ? s / diag : 0.0;
     }
@@ -463,27 +463,27 @@ solveSPD(keel::Array<keel::f64> &A, keel::Array<keel::f64> &b, int p)
 // Build the covariance correlation R_{ij} = sum_{n=p..N-1} x[n-i] * x[n-j]
 // for i, j in 0..p. Used by arcov / armcov.
 keel::Array<keel::f64>
-covMatrixForward(keel::ArrayRef<keel::f64> x, int p)
+covMatrixForward(keel::ArrayRef<keel::f64> x, keel::i32 p)
 {
-    const int N = keel::as<int>(x.size());
+    const keel::i32 N = keel::as<keel::i32>(x.size());
     keel::Array<keel::f64> R(keel::as<keel::usize>(p + 1) * keel::as<keel::usize>(p + 1), 0.0);
-    for (int n = p; n < N; ++n) {
-        for (int i = 0; i <= p; ++i)
-            for (int j = 0; j <= p; ++j)
+    for (keel::i32 n = p; n < N; ++n) {
+        for (keel::i32 i = 0; i <= p; ++i)
+            for (keel::i32 j = 0; j <= p; ++j)
                 R[i * (p + 1) + j] += x[n - i] * x[n - j];
     }
     return R;
 }
 
 keel::Array<keel::f64>
-covMatrixForwardBackward(keel::ArrayRef<keel::f64> x, int p)
+covMatrixForwardBackward(keel::ArrayRef<keel::f64> x, keel::i32 p)
 {
-    const int N = keel::as<int>(x.size());
+    const keel::i32 N = keel::as<keel::i32>(x.size());
     auto R = covMatrixForward(x, p);
     // Backward: R += sum_{n=0..N-1-p} x[n+i] x[n+j]
-    for (int n = 0; n + p < N; ++n) {
-        for (int i = 0; i <= p; ++i)
-            for (int j = 0; j <= p; ++j)
+    for (keel::i32 n = 0; n + p < N; ++n) {
+        for (keel::i32 i = 0; i <= p; ++i)
+            for (keel::i32 j = 0; j <= p; ++j)
                 R[i * (p + 1) + j] += x[n + i] * x[n + j];
     }
     return R;
@@ -494,33 +494,33 @@ covMatrixForwardBackward(keel::ArrayRef<keel::f64> x, int p)
 // -R[1..p, 0]. Returns full a vector with a[0] = 1 prepended, plus
 // the prediction error e = R[0,0] + sum_k a[k] * R[0,k].
 struct ArCovResult { keel::Array<keel::f64> a; keel::f64 e; };
-ArCovResult solveArCov(keel::ArrayRef<keel::f64> R, int p)
+ArCovResult solveArCov(keel::ArrayRef<keel::f64> R, keel::i32 p)
 {
     keel::Array<keel::f64> A(keel::as<keel::usize>(p) * keel::as<keel::usize>(p), 0.0);
     keel::Array<keel::f64> b(p, 0.0);
-    for (int i = 0; i < p; ++i) {
-        for (int j = 0; j < p; ++j) A[i * p + j] = R[(i + 1) * (p + 1) + (j + 1)];
+    for (keel::i32 i = 0; i < p; ++i) {
+        for (keel::i32 j = 0; j < p; ++j) A[i * p + j] = R[(i + 1) * (p + 1) + (j + 1)];
         b[i] = -R[(i + 1) * (p + 1) + 0];
     }
     auto a_tail = solveSPD(A, b, p);
     keel::Array<keel::f64> a(p + 1, 0.0);
     a[0] = 1.0;
-    for (int k = 0; k < p; ++k) a[k + 1] = a_tail[k];
+    for (keel::i32 k = 0; k < p; ++k) a[k + 1] = a_tail[k];
     keel::f64 e = R[0];
-    for (int k = 1; k <= p; ++k) e += a[k] * R[k];
+    for (keel::i32 k = 1; k <= p; ++k) e += a[k] * R[k];
     return {std::move(a), e};
 }
 
 } // anonymous
 
 std::tuple<Value, Value>
-arcov(const Value &x, int p, keel::Allocator *mr)
+arcov(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = covMatrixForward(v, p);
     // Normalise by the count of summed terms (N - p) so e has the
     // same units as the residual variance.
-    const int N = keel::as<int>(v.size());
+    const keel::i32 N = keel::as<keel::i32>(v.size());
     const keel::f64 norm = keel::as<keel::f64>(std::max(N - p, 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
@@ -528,11 +528,11 @@ arcov(const Value &x, int p, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value>
-armcov(const Value &x, int p, keel::Allocator *mr)
+armcov(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = covMatrixForwardBackward(v, p);
-    const int N = keel::as<int>(v.size());
+    const keel::i32 N = keel::as<keel::i32>(v.size());
     const keel::f64 norm = keel::as<keel::f64>(std::max(2 * (N - p), 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
@@ -548,48 +548,48 @@ armcov(const Value &x, int p, keel::Allocator *mr)
 //   2. Solve by least squares.
 //   3. b = (a convolved with h) truncated to nb+1 terms.
 std::tuple<Value, Value>
-prony(const Value &h, int nb, int na, keel::Allocator *mr)
+prony(const Value &h, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
 {
     auto hv = readVec(h);
-    const int N = keel::as<int>(hv.size());
+    const keel::i32 N = keel::as<keel::i32>(hv.size());
     if (na > 0) {
         // Build linear system M · a_tail = -rhs, where M is (N-1-nb) × na
         // and rhs is length (N-1-nb). M[i, j] = h[nb+1+i-1-j] (padded
         // with zeros on the left), rhs[i] = h[nb+1+i].
-        const int rows = std::max(N - 1 - nb, 1);
+        const keel::i32 rows = std::max(N - 1 - nb, 1);
         keel::Array<keel::f64> M(keel::as<keel::usize>(rows) * keel::as<keel::usize>(na), 0.0, mr);
         keel::Array<keel::f64> rhs(rows, 0.0, mr);
-        for (int i = 0; i < rows; ++i) {
-            for (int j = 0; j < na; ++j) {
-                const int idx = nb + i - j;  // h index = nb+1+i - (j+1) = nb+i-j
+        for (keel::i32 i = 0; i < rows; ++i) {
+            for (keel::i32 j = 0; j < na; ++j) {
+                const keel::i32 idx = nb + i - j;  // h index = nb+1+i - (j+1) = nb+i-j
                 M[i * na + j] = (idx >= 0 && idx < N) ? hv[idx] : 0.0;
             }
-            const int rhs_idx = nb + 1 + i;
+            const keel::i32 rhs_idx = nb + 1 + i;
             rhs[i] = (rhs_idx < N) ? -hv[rhs_idx] : 0.0;
         }
         // Normal equations: (M^T M) · a_tail = M^T rhs
         keel::Array<keel::f64> MtM(keel::as<keel::usize>(na) * keel::as<keel::usize>(na), 0.0, mr);
         keel::Array<keel::f64> Mtb(na, 0.0, mr);
-        for (int i = 0; i < na; ++i) {
-            for (int j = 0; j < na; ++j) {
+        for (keel::i32 i = 0; i < na; ++i) {
+            for (keel::i32 j = 0; j < na; ++j) {
                 keel::f64 s = 0.0;
-                for (int k = 0; k < rows; ++k) s += M[k * na + i] * M[k * na + j];
+                for (keel::i32 k = 0; k < rows; ++k) s += M[k * na + i] * M[k * na + j];
                 MtM[i * na + j] = s;
             }
             keel::f64 s = 0.0;
-            for (int k = 0; k < rows; ++k) s += M[k * na + i] * rhs[k];
+            for (keel::i32 k = 0; k < rows; ++k) s += M[k * na + i] * rhs[k];
             Mtb[i] = s;
         }
         auto a_tail = solveSPD(MtM, Mtb, na);
         keel::Array<keel::f64> a(na + 1, 0.0, mr);
         a[0] = 1.0;
-        for (int k = 0; k < na; ++k) a[k + 1] = a_tail[k];
+        for (keel::i32 k = 0; k < na; ++k) a[k + 1] = a_tail[k];
 
         // b = (a * h) truncated to nb+1 terms.
         keel::Array<keel::f64> b(nb + 1, 0.0, mr);
-        for (int i = 0; i <= nb; ++i) {
+        for (keel::i32 i = 0; i <= nb; ++i) {
             keel::f64 s = 0.0;
-            for (int k = 0; k <= std::min(i, na); ++k)
+            for (keel::i32 k = 0; k <= std::min(i, na); ++k)
                 if (i - k < N) s += a[k] * hv[i - k];
             b[i] = s;
         }
@@ -597,7 +597,7 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
     }
     // na == 0: pure FIR. b[i] = h[i] for i = 0..nb, a = [1].
     keel::Array<keel::f64> b(nb + 1, 0.0, mr);
-    for (int i = 0; i <= nb && i < N; ++i) b[i] = hv[i];
+    for (keel::i32 i = 0; i <= nb && i < N; ++i) b[i] = hv[i];
     const keel::f64 one = 1.0;
     return std::make_tuple(rowVec(b, mr), rowVec(keel::ArrayRef<keel::f64>(&one, 1), mr));
 }
@@ -609,7 +609,7 @@ prony(const Value &h, int nb, int na, keel::Allocator *mr)
 // linear least-squares [E | -G]·[b; a_tail] ≈ g for the new coefficients.
 namespace {
 
-void stmcb_argcheck(const Value &y, const Value &x, int nb, int na, const Value &ai)
+void stmcb_argcheck(const Value &y, const Value &x, keel::i32 nb, keel::i32 na, const Value &ai)
 {
     if (nb < 0)
         throw Error("stmcb: numerator order nb must be non-negative",
@@ -634,12 +634,12 @@ void stmcb_argcheck(const Value &y, const Value &x, int nb, int na, const Value 
 } // anonymous
 
 std::tuple<Value, Value>
-stmcb(const Value &y, const Value &x, int nb, int na, int niter,
+stmcb(const Value &y, const Value &x, keel::i32 nb, keel::i32 na, keel::i32 niter,
       const Value &ai, keel::Allocator *mr)
 {
     stmcb_argcheck(y, x, nb, na, ai);
     auto      yv = readVec(y);
-    const int N  = keel::as<int>(yv.size());
+    const keel::i32 N  = keel::as<keel::i32>(yv.size());
     if (niter < 1) niter = 5;
 
     keel::Array<keel::f64> xv(mr);
@@ -663,51 +663,51 @@ stmcb(const Value &y, const Value &x, int nb, int na, int niter,
         a[0] = 1.0;
     } else {
         auto aiv = readVec(ai);
-        if (keel::as<int>(aiv.size()) == na + 1) {
+        if (keel::as<keel::i32>(aiv.size()) == na + 1) {
             const keel::f64 a0_val = aiv[0];
-            for (int k = 0; k <= na; ++k) a[k] = aiv[k] / a0_val;
+            for (keel::i32 k = 0; k <= na; ++k) a[k] = aiv[k] / a0_val;
             a[0] = 1.0;
         } else {
             a[0] = 1.0;
-            for (int k = 0; k < na; ++k) a[k + 1] = aiv[k];
+            for (keel::i32 k = 0; k < na; ++k) a[k + 1] = aiv[k];
         }
     }
 
-    const int           P = nb + 1 + na;   // unknowns: b[0..nb] then a[1..na]
+    const keel::i32           P = nb + 1 + na;   // unknowns: b[0..nb] then a[1..na]
     keel::Array<keel::f64> e(N, 0.0, mr), g(keel::as<keel::usize>(N), 0.0, mr);
-    for (int it = 0; it < niter; ++it) {
+    for (keel::i32 it = 0; it < niter; ++it) {
         // Prefilter the input x and output y by 1/A.
-        for (int n = 0; n < N; ++n) {
+        for (keel::i32 n = 0; n < N; ++n) {
             keel::f64    se  = xv[n];
             keel::f64    sg  = yv[n];
-            const int lim = std::min(na, n);
-            for (int i = 1; i <= lim; ++i) { se -= a[i] * e[n - i]; sg -= a[i] * g[n - i]; }
+            const keel::i32 lim = std::min(na, n);
+            for (keel::i32 i = 1; i <= lim; ++i) { se -= a[i] * e[n - i]; sg -= a[i] * g[n - i]; }
             e[n] = se;
             g[n] = sg;
         }
         // [E | -G]·c ≈ g  (E: e shifted 0..nb, G: g shifted 1..na), normal eqs.
-        auto Mcol = [&](int n, int col) -> keel::f64 {
-            if (col <= nb) { const int s = col; return (n - s >= 0) ? e[n - s] : 0.0; }
-            const int s = col - nb;             // 1..na
+        auto Mcol = [&](keel::i32 n, keel::i32 col) -> keel::f64 {
+            if (col <= nb) { const keel::i32 s = col; return (n - s >= 0) ? e[n - s] : 0.0; }
+            const keel::i32 s = col - nb;             // 1..na
             return (n - s >= 0) ? -g[n - s] : 0.0;
         };
         keel::Array<keel::f64> MtM(keel::as<keel::usize>(P) * P, 0.0, mr), Mtg(keel::as<keel::usize>(P), 0.0, mr);
-        for (int n = 0; n < N; ++n)
-            for (int i = 0; i < P; ++i) {
+        for (keel::i32 n = 0; n < N; ++n)
+            for (keel::i32 i = 0; i < P; ++i) {
                 const keel::f64 mi = Mcol(n, i);
                 if (mi == 0.0) continue;
                 Mtg[i] += mi * g[n];
-                for (int j = 0; j < P; ++j) MtM[i * P + j] += mi * Mcol(n, j);
+                for (keel::i32 j = 0; j < P; ++j) MtM[i * P + j] += mi * Mcol(n, j);
             }
         auto c = solveSPD(MtM, Mtg, P);
-        for (int k = 0; k <= nb; ++k) b[k]     = c[k];
-        for (int k = 0; k < na;  ++k) a[k + 1] = c[nb + 1 + k];
+        for (keel::i32 k = 0; k <= nb; ++k) b[k]     = c[k];
+        for (keel::i32 k = 0; k < na;  ++k) a[k + 1] = c[nb + 1 + k];
     }
     return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
 }
 
 std::tuple<Value, Value>
-stmcb(const Value &h, int nb, int na, int niter, keel::Allocator *mr)
+stmcb(const Value &h, keel::i32 nb, keel::i32 na, keel::i32 niter, keel::Allocator *mr)
 {
     return stmcb(h, Value(), nb, na, niter, Value(), mr);
 }
@@ -717,18 +717,18 @@ stmcb(const Value &h, int nb, int na, int niter, keel::Allocator *mr)
 // data matrix X with X(i, j) = x(i-j+1), zero-padded outside the
 // input range, such that X' * X is the (m+1)×(m+1) autocorrelation
 // matrix.
-Value corrmtx(const Value &x, int m, keel::Allocator *mr)
+Value corrmtx(const Value &x, keel::i32 m, keel::Allocator *mr)
 {
     auto v = readVec(x);
-    const int N = keel::as<int>(v.size());
-    const int rows = N + m;
-    const int cols = m + 1;
+    const keel::i32 N = keel::as<keel::i32>(v.size());
+    const keel::i32 rows = N + m;
+    const keel::i32 cols = m + 1;
     auto X = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
     keel::f64 *d = X.doubleDataMut();
     std::fill(d, d + rows * cols, 0.0);
-    for (int j = 0; j < cols; ++j) {
-        for (int i = 0; i < rows; ++i) {
-            const int idx = i - j;     // x[i-j], zero outside [0, N)
+    for (keel::i32 j = 0; j < cols; ++j) {
+        for (keel::i32 i = 0; i < rows; ++i) {
+            const keel::i32 idx = i - j;     // x[i-j], zero outside [0, N)
             if (idx >= 0 && idx < N) d[i + j * rows] = v[idx];
         }
     }
@@ -751,10 +751,10 @@ keel::Array<keel::f64> reverseVec(keel::ArrayRef<keel::f64> v)
 }
 
 // Pad poly p (descending power) to total length n with leading zeros.
-[[maybe_unused]] keel::Array<keel::f64> padLeft(keel::ArrayRef<keel::f64> p, int n)
+[[maybe_unused]] keel::Array<keel::f64> padLeft(keel::ArrayRef<keel::f64> p, keel::i32 n)
 {
     keel::Array<keel::f64> r(n, 0.0);
-    const int off = n - keel::as<int>(p.size());
+    const keel::i32 off = n - keel::as<keel::i32>(p.size());
     for (keel::usize i = 0; i < p.size(); ++i) r[off + i] = p[i];
     return r;
 }
@@ -773,17 +773,17 @@ keel::Array<keel::f64> reverseVec(keel::ArrayRef<keel::f64> v)
 Value poly2lsf(const Value &a, keel::Allocator *mr)
 {
     auto av = readVec(a);
-    const int N = keel::as<int>(av.size()) - 1;
+    const keel::i32 N = keel::as<keel::i32>(av.size()) - 1;
     if (N <= 0) return colVec(keel::ArrayRef<keel::f64>{}, mr);
 
     // Build P = A + A_R_shifted, Q = A - A_R_shifted, both length N+2.
     auto ar = reverseVec(av);
     keel::Array<keel::f64> P(N + 2, 0.0, mr), Q(keel::as<keel::usize>(N + 2), 0.0, mr);
-    for (int i = 0; i <= N; ++i) {
+    for (keel::i32 i = 0; i <= N; ++i) {
         P[i] = av[i];
         Q[i] = av[i];
     }
-    for (int i = 1; i <= N + 1; ++i) {
+    for (keel::i32 i = 1; i <= N + 1; ++i) {
         P[i] += ar[i - 1];
         Q[i] -= ar[i - 1];
     }
@@ -802,14 +802,14 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
     }
     std::sort(angles.begin(), angles.end());
     // Should yield N angles.
-    if (keel::as<int>(angles.size()) > N) angles.resize(N);
+    if (keel::as<keel::i32>(angles.size()) > N) angles.resize(N);
     return colVec(angles, mr);
 }
 
 Value lsf2poly(const Value &lsf, keel::Allocator *mr)
 {
     auto lv = readVec(lsf);
-    const int m = keel::as<int>(lv.size());
+    const keel::i32 m = keel::as<keel::i32>(lv.size());
     if (m == 0) {
         const keel::f64 one = 1.0;
         return rowVec(keel::ArrayRef<keel::f64>(&one, 1), mr);
@@ -849,7 +849,7 @@ Value lsf2poly(const Value &lsf, keel::Allocator *mr)
         P = keel::Array<keel::f64>({1.0,  1.0}, mr);
         Q = keel::Array<keel::f64>({1.0, -1.0}, mr);
     }
-    for (int i = 0; i < m; ++i) {
+    for (keel::i32 i = 0; i < m; ++i) {
         const keel::f64 q[3] = {1.0, -2.0 * std::cos(lv[i]), 1.0};
         if (i % 2 == 0) P = convOne(P, keel::ArrayRef<keel::f64>(q, 3));
         else            Q = convOne(Q, keel::ArrayRef<keel::f64>(q, 3));
@@ -897,31 +897,31 @@ keel::Array<keel::c64> readComplexVecLocal(const Value &v) {
 std::tuple<keel::Array<keel::f64>, keel::Array<keel::f64>>
 invfreqLSQ(keel::ArrayRef<keel::c64> H,
            keel::ArrayRef<keel::c64> x,
-           int nb, int na)
+           keel::i32 nb, keel::i32 na)
 {
-    const int K  = keel::as<int>(H.size());
-    const int nv = nb + 1 + na;
+    const keel::i32 K  = keel::as<keel::i32>(H.size());
+    const keel::i32 nv = nb + 1 + na;
     if (K * 2 < nv)
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
 
     // Build A (2K × nv) row-major, plus rhs (length 2K).
     keel::Array<keel::f64> Ar(keel::as<keel::usize>(2 * K) * keel::as<keel::usize>(nv), 0.0);
     keel::Array<keel::f64> rhs(2 * K, 0.0);
-    for (int k = 0; k < K; ++k) {
+    for (keel::i32 k = 0; k < K; ++k) {
         // Build x^0..x^max(nb, na) once.
-        const int M = std::max(nb, na);
+        const keel::i32 M = std::max(nb, na);
         keel::Array<keel::c64> xpow(M + 1);
         xpow[0] = keel::c64(1.0, 0.0);
-        for (int i = 1; i <= M; ++i) xpow[i] = xpow[i - 1] * x[k];
+        for (keel::i32 i = 1; i <= M; ++i) xpow[i] = xpow[i - 1] * x[k];
 
         // Row k contains:
         //   -1, -x, -x², …, -x^nb, H·x, H·x², …, H·x^na
         keel::Array<keel::c64> row(nv);
-        for (int i = 0; i <= nb; ++i) row[i] = -xpow[i];
-        for (int j = 1; j <= na; ++j) row[nb + j] = H[k] * xpow[j];
+        for (keel::i32 i = 0; i <= nb; ++i) row[i] = -xpow[i];
+        for (keel::i32 j = 1; j <= na; ++j) row[nb + j] = H[k] * xpow[j];
 
         // Stack real / imag into Ar.
-        for (int c = 0; c < nv; ++c) {
+        for (keel::i32 c = 0; c < nv; ++c) {
             Ar[(2 * k    ) * nv + c] = row[c].real();
             Ar[(2 * k + 1) * nv + c] = row[c].imag();
         }
@@ -932,42 +932,42 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
     // Normal equations: (Aᵀ A) θ = Aᵀ rhs.
     keel::Array<keel::f64> AtA(keel::as<keel::usize>(nv) * keel::as<keel::usize>(nv), 0.0);
     keel::Array<keel::f64> Atb(nv, 0.0);
-    for (int i = 0; i < nv; ++i) {
-        for (int j = 0; j < nv; ++j) {
+    for (keel::i32 i = 0; i < nv; ++i) {
+        for (keel::i32 j = 0; j < nv; ++j) {
             keel::f64 s = 0.0;
-            for (int r = 0; r < 2 * K; ++r) s += Ar[r * nv + i] * Ar[r * nv + j];
+            for (keel::i32 r = 0; r < 2 * K; ++r) s += Ar[r * nv + i] * Ar[r * nv + j];
             AtA[i * nv + j] = s;
         }
         keel::f64 s = 0.0;
-        for (int r = 0; r < 2 * K; ++r) s += Ar[r * nv + i] * rhs[r];
+        for (keel::i32 r = 0; r < 2 * K; ++r) s += Ar[r * nv + i] * rhs[r];
         Atb[i] = s;
     }
     auto theta = solveSPD(AtA, Atb, nv);
 
     // theta = [b_0, ..., b_nb, a_1, ..., a_na]
     keel::Array<keel::f64> b(nb + 1), a(keel::as<keel::usize>(na + 1));
-    for (int i = 0; i <= nb; ++i) b[i] = theta[i];
+    for (keel::i32 i = 0; i <= nb; ++i) b[i] = theta[i];
     a[0] = 1.0;
-    for (int j = 1; j <= na; ++j) a[j] = theta[nb + j];
+    for (keel::i32 j = 1; j <= na; ++j) a[j] = theta[nb + j];
     return std::make_tuple(std::move(b), std::move(a));
 }
 
-void invfreqs_argcheck(const Value &H, const Value &w, int nb, int na)
+void invfreqs_argcheck(const Value &H, const Value &w, keel::i32 nb, keel::i32 na)
 {
     if (H.numel() != w.numel())
         throw std::runtime_error("invfreqs: H and w must be the same length");
-    const int K  = keel::as<int>(H.numel());
-    const int nv = nb + 1 + na;
+    const keel::i32 K  = keel::as<keel::i32>(H.numel());
+    const keel::i32 nv = nb + 1 + na;
     if (K * 2 < nv)
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
 }
 
-void invfreqz_argcheck(const Value &H, const Value &w, int nb, int na)
+void invfreqz_argcheck(const Value &H, const Value &w, keel::i32 nb, keel::i32 na)
 {
     if (H.numel() != w.numel())
         throw std::runtime_error("invfreqz: H and w must be the same length");
-    const int K  = keel::as<int>(H.numel());
-    const int nv = nb + 1 + na;
+    const keel::i32 K  = keel::as<keel::i32>(H.numel());
+    const keel::i32 nv = nb + 1 + na;
     if (K * 2 < nv)
         throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
 }
@@ -975,7 +975,7 @@ void invfreqz_argcheck(const Value &H, const Value &w, int nb, int na)
 } // anonymous
 
 std::tuple<Value, Value>
-invfreqs(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
+invfreqs(const Value &H, const Value &w, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
 {
     invfreqs_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);
@@ -987,7 +987,7 @@ invfreqs(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
 }
 
 std::tuple<Value, Value>
-invfreqz(const Value &H, const Value &w, int nb, int na, keel::Allocator *mr)
+invfreqz(const Value &H, const Value &w, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
 {
     invfreqz_argcheck(H, w, nb, na);
     auto Hv = readComplexVecLocal(H);

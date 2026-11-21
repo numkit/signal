@@ -41,8 +41,8 @@ void fft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArray
 {
     argcheck::checkNargin(args.size(), 1, 3, "fft");
 
-    int n = -1;
-    int dim = 0;   // 0 = auto (first non-singleton) â€” resolved in public fft()
+    keel::i32 n = -1;
+    keel::i32 dim = 0;   // 0 = auto (first non-singleton) â€” resolved in public fft()
     if (args.size() >= 2 && !args[1].isEmpty())
         n = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "n", "fft"), 2, "n", "fft");
@@ -75,8 +75,8 @@ void ifft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
         --nargs;   // consume the flag
     }
 
-    int n = -1;
-    int dim = 0;   // 0 = auto (first non-singleton) â€” resolved in public fft()
+    keel::i32 n = -1;
+    keel::i32 dim = 0;   // 0 = auto (first non-singleton) â€” resolved in public fft()
     if (nargs >= 2 && !args[1].isEmpty())
         n = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "n", "ifft"), 2, "n", "ifft");
@@ -95,7 +95,7 @@ void fft2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     if (args.size() == 2)
         throw Error("fft2: requires 1 or 3 arguments (got 2 — specify both m and n)",
                     0, 0, "fft2", "", "numkit:fft2:nargin");
-    int m = -1, n = -1;
+    keel::i32 m = -1, n = -1;
     if (args.size() >= 2 && !args[1].isEmpty())
         m = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "m", "fft2"), 2, "m", "fft2");
@@ -132,7 +132,7 @@ void ifft2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
         throw Error("ifft2: requires 1 or 3 numeric arguments (got 2 — specify both m and n)",
                     0, 0, "ifft2", "", "numkit:ifft2:nargin");
 
-    int m = -1, n = -1;
+    keel::i32 m = -1, n = -1;
     if (nargs >= 2 && !args[1].isEmpty())
         m = argcheck::expectedInteger(
             argcheck::expectedReal(args[1], 2, "m", "ifft2"), 2, "m", "ifft2");
@@ -156,9 +156,9 @@ void interpft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
                   CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 3, "interpft");
-    const int n = argcheck::expectedPositiveInteger(
+    const keel::i32 n = argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[1], 2, "n", "interpft"), 2, "n", "interpft");
-    int dim = 0;
+    keel::i32 dim = 0;
     if (args.size() >= 3) dim = argcheck::dimArg(args[2], "interpft");
     outs[0] = interpft(args[0], n, dim, ctx.engine->allocator());
 }
@@ -214,7 +214,7 @@ argcheck::checkNargin(args.size(), 1, 4, "czt");
     // Reference defaults: m = length(x) for vectors, size(x, 1) for matrices/N-D,
     // w = exp(-2*pi*j/m), a = 1.
     const bool isRowVec = (x.dims().ndim() == 2 && x.dims().rows() == 1 && x.dims().cols() > 1);
-    int m = keel::as<int>(isRowVec ? x.dims().cols() : x.dims().rows());
+    keel::i32 m = keel::as<keel::i32>(isRowVec ? x.dims().cols() : x.dims().rows());
     if (args.size() >= 2 && !args[1].isEmpty())
         m = argcheck::expectedPositiveInteger(
             argcheck::expectedReal(args[1], 2, "m", "czt"), 2, "m", "czt");

@@ -72,8 +72,8 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
         const keel::usize fftLen = [&]() {
             keel::usize r = 1; while (r < n) r <<= 1; return r;
         }();
-        Value X = fft(xp, keel::as<int>(fftLen), /*dim=*/0, mr);
-        Value Y = fft(yp, keel::as<int>(fftLen), /*dim=*/0, mr);
+        Value X = fft(xp, keel::as<keel::i32>(fftLen), /*dim=*/0, mr);
+        Value Y = fft(yp, keel::as<keel::i32>(fftLen), /*dim=*/0, mr);
         // Pointwise multiply.
         auto Z = Value::complexMatrix(fftLen, 1, mr);
         const keel::c64 *Xc = X.complexData();
@@ -232,11 +232,11 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
                 const keel::c64 a = getC(Av, i, j, rA);
                 if (a == keel::c64(0.0, 0.0)) continue;
                 for (keel::usize p = 0; p < rB; ++p) {
-                    const long kRow = keel::as<long>(i) - keel::as<long>(p) + keel::as<long>(rB) - 1;
-                    if (kRow < 0 || kRow >= keel::as<long>(rOut)) continue;
+                    const keel::i64 kRow = keel::as<keel::i64>(i) - keel::as<keel::i64>(p) + keel::as<keel::i64>(rB) - 1;
+                    if (kRow < 0 || kRow >= keel::as<keel::i64>(rOut)) continue;
                     for (keel::usize q = 0; q < cB; ++q) {
-                        const long kCol = keel::as<long>(j) - keel::as<long>(q) + keel::as<long>(cB) - 1;
-                        if (kCol < 0 || kCol >= keel::as<long>(cOut)) continue;
+                        const keel::i64 kCol = keel::as<keel::i64>(j) - keel::as<keel::i64>(q) + keel::as<keel::i64>(cB) - 1;
+                        if (kCol < 0 || kCol >= keel::as<keel::i64>(cOut)) continue;
                         dstC[kRow + kCol * rOut] += a * keel::conj(getC(Bv, p, q, rB));
                     }
                 }
@@ -295,11 +295,11 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
             const keel::f64 a = Av(i, j);
             if (a == 0.0) continue;
             for (keel::usize p = 0; p < rB; ++p) {
-                const long kRow = keel::as<long>(i) - keel::as<long>(p) + keel::as<long>(rB) - 1;
-                if (kRow < 0 || kRow >= keel::as<long>(rOut)) continue;
+                const keel::i64 kRow = keel::as<keel::i64>(i) - keel::as<keel::i64>(p) + keel::as<keel::i64>(rB) - 1;
+                if (kRow < 0 || kRow >= keel::as<keel::i64>(rOut)) continue;
                 for (keel::usize q = 0; q < cB; ++q) {
-                    const long kCol = keel::as<long>(j) - keel::as<long>(q) + keel::as<long>(cB) - 1;
-                    if (kCol < 0 || kCol >= keel::as<long>(cOut)) continue;
+                    const keel::i64 kCol = keel::as<keel::i64>(j) - keel::as<keel::i64>(q) + keel::as<keel::i64>(cB) - 1;
+                    if (kCol < 0 || kCol >= keel::as<keel::i64>(cOut)) continue;
                     dst[kRow + kCol * rOut] += a * Bv(p, q);
                 }
             }
@@ -309,16 +309,16 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
 }
 
 // ── finddelay ─────────────────────────────────────────────────────────
-long finddelay(const Value &x, const Value &y, long max_lag, keel::Allocator *mr)
+keel::i64 finddelay(const Value &x, const Value &y, keel::i64 max_lag, keel::Allocator *mr)
 {
     auto [c, lags] = xcorr(x, y, mr);
     const keel::usize n = c.numel();
     const keel::f64 *cp = c.doubleData();
     const keel::f64 *lp = lags.doubleData();
-    long best_lag = 0;
+    keel::i64 best_lag = 0;
     keel::f64 best_mag = -1.0;
     for (keel::usize i = 0; i < n; ++i) {
-        const long lag = keel::as<long>(lp[i]);
+        const keel::i64 lag = keel::as<keel::i64>(lp[i]);
         if (max_lag > 0 && keel::abs(lag) > max_lag) continue;
         const keel::f64 mag = keel::abs(cp[i]);
         if (mag > best_mag) {
@@ -333,9 +333,9 @@ long finddelay(const Value &x, const Value &y, long max_lag, keel::Allocator *mr
 
 // ── alignsignals ──────────────────────────────────────────────────────
 std::tuple<Value, Value>
-alignsignals(const Value &x, const Value &y, long max_lag, keel::Allocator *mr)
+alignsignals(const Value &x, const Value &y, keel::i64 max_lag, keel::Allocator *mr)
 {
-    const long d = finddelay(x, y, max_lag, mr);
+    const keel::i64 d = finddelay(x, y, max_lag, mr);
     const keel::usize nx = x.numel(), ny = y.numel();
 
     // Lead-pad whichever signal is "leading" so peaks line up:

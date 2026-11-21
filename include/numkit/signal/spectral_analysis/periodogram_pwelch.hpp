@@ -187,7 +187,7 @@ tfestimate(const Value &                x,
 /// @see pburg, aryule
 std::tuple<Value, Value>
 pyulear(const Value &                x,
-        int                          p,
+        keel::i32                          p,
         keel::usize                       nfft,
         keel::Allocator *  mr = nullptr);
 
@@ -205,7 +205,7 @@ pyulear(const Value &                x,
 /// @see pyulear, arburg
 std::tuple<Value, Value>
 pburg(const Value &                x,
-      int                          p,
+      keel::i32                          p,
       keel::usize                       nfft,
       keel::Allocator *  mr = nullptr);
 

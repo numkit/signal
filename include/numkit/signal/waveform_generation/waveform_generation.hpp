@@ -180,7 +180,7 @@ Value gmonopuls(const Value &                t,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Same-shape DOUBLE array.
 Value diric(const Value &                x,
-            int                          n,
+            keel::i32                          n,
             keel::Allocator *  mr = nullptr);
 
 /// Analog modulation: AM / FM / PM family.

@@ -109,7 +109,7 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
     // Decay to 5e-5 of initial amplitude.
     const keel::f64 decayThresh = 5e-5;
     const keel::f64 n = std::log(decayThresh) / std::log(rho);
-    long N = keel::as<long>(std::floor(n));
+    keel::i64 N = keel::as<keel::i64>(std::floor(n));
     if (N < 1) N = 1;
     if (N > 8192) N = 8192;
     return keel::as<keel::usize>(N);

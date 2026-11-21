@@ -27,7 +27,7 @@ namespace numkit::signal {
 ///
 /// @see rssq, peak2rms
 Value rms(const Value &                x,
-          int                          dim = 0,
+          keel::i32                          dim = 0,
           keel::Allocator *  mr  = nullptr);
 
 /// Root-sum-of-squares along a dimension.
@@ -41,7 +41,7 @@ Value rms(const Value &                x,
 ///
 /// @see rms
 Value rssq(const Value &                x,
-           int                          dim = 0,
+           keel::i32                          dim = 0,
            keel::Allocator *  mr  = nullptr);
 
 /// Peak-to-peak amplitude along a dimension.
@@ -54,7 +54,7 @@ Value rssq(const Value &                x,
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     Reduced array.
 Value peak2peak(const Value &                x,
-                int                          dim = 0,
+                keel::i32                          dim = 0,
                 keel::Allocator *  mr  = nullptr);
 
 /// Peak-to-RMS ratio along a dimension.
@@ -69,7 +69,7 @@ Value peak2peak(const Value &                x,
 ///
 /// @see rms, peak2peak
 Value peak2rms(const Value &                x,
-               int                          dim = 0,
+               keel::i32                          dim = 0,
                keel::Allocator *  mr  = nullptr);
 
 

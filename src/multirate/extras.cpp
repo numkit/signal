@@ -87,8 +87,8 @@ Value intfilt(keel::usize r, keel::usize n, keel::f64 alpha, keel::Allocator *mr
     // intfilt.m's bandlimited ('b') branch: passband amplitude R around
     // each image-free band, zero in the images, then h = firls(n-1, F*2, M).
     if (2 * n * r < 1) return Value::matrix(1, 1, ValueType::DOUBLE, mr);
-    const long Ntaps = keel::as<long>(2 * n * r) - 1;
-    const int  order = keel::as<int>(Ntaps - 1);   // even (2RL-2)
+    const keel::i64 Ntaps = keel::as<keel::i64>(2 * n * r) - 1;
+    const keel::i32  order = keel::as<keel::i32>(Ntaps - 1);   // even (2RL-2)
     const keel::f64 R   = keel::as<keel::f64>(r);
 
     keel::Array<keel::f64> F(mr), M(mr);

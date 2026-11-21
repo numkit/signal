@@ -279,7 +279,7 @@ Value gmonopuls(const Value &t, keel::f64 fc, keel::Allocator *mr)
     return out;
 }
 
-Value diric(const Value &x, int n, keel::Allocator *mr)
+Value diric(const Value &x, keel::i32 n, keel::Allocator *mr)
 {
     if (n < 1)
         throw Error("diric: n must be a positive integer",
@@ -293,9 +293,9 @@ Value diric(const Value &x, int n, keel::Allocator *mr)
         // Detect xv ≈ 2π·k by checking sin(x/2) ≈ 0.
         const keel::f64 s = std::sin(xv * 0.5);
         if (keel::abs(s) < 1e-12) {
-            const long k = std::lround(xv / kTwoPi);
+            const keel::i64 k = std::lround(xv / kTwoPi);
             // Sign: (-1)^(k·(n-1))
-            const long sign = ((k * (n - 1)) & 1) ? -1 : 1;
+            const keel::i64 sign = ((k * (n - 1)) & 1) ? -1 : 1;
             dst[i] = keel::as<keel::f64>(sign);
         } else {
             dst[i] = std::sin(n * xv * 0.5) / (n * s);
@@ -405,7 +405,7 @@ Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
 
     keel::String m = keel::String::from(method);
     std::transform(m.begin(), m.end(), m.begin(),
-                    [](unsigned char c) { return keel::to_ascii_lower(c); });
+                    [](keel::u8 c) { return keel::to_ascii_lower(c); });
 
     const bool isAmFamily = (m == "am" || m == "amdsb-sc" || m == "amdsb-tc");
     const bool isFmPm = (m == "fm" || m == "pm");
@@ -550,7 +550,7 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
 
     keel::String m = keel::String::from(method);
     std::transform(m.begin(), m.end(), m.begin(),
-                    [](unsigned char c) { return keel::to_ascii_lower(c); });
+                    [](keel::u8 c) { return keel::to_ascii_lower(c); });
 
     const bool isRowVec = (x.dims().rows() == 1 && x.dims().cols() > 1);
     const keel::usize len = isRowVec ? x.dims().cols() : x.dims().rows();

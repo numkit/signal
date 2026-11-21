@@ -84,12 +84,12 @@ Value allocMultirateOut(const Value &x, const GatherShape &gs, keel::usize outRo
     const ValueType t = x.type();
     if (gs.isRow)
         return Value::matrix(1, outRows * gs.cols, t, mr);
-    const int nd = x.dims().ndim();
+    const keel::i32 nd = x.dims().ndim();
     if (nd <= 2)
         return Value::matrix(outRows, gs.cols, t, mr);
     keel::Array<keel::usize> od(nd, mr);
     od[0] = outRows;
-    for (int d = 1; d < nd; ++d)
+    for (keel::i32 d = 1; d < nd; ++d)
         od[keel::as<keel::usize>(d)] = x.dims().dim(d);
     return Value::matrixND(od.data(), nd, t, mr);
 }
@@ -267,7 +267,7 @@ Value resample(const Value &x, keel::usize p, keel::usize q, keel::Allocator *mr
     return resample(x, p, q, 10, 5.0, mr);
 }
 
-Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, keel::f64 beta_in, keel::Allocator *mr)
+Value resample(const Value &x, keel::usize p, keel::usize q, keel::i32 n_order, keel::f64 beta_in, keel::Allocator *mr)
 {
     detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
@@ -309,11 +309,11 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, keel::
     // Anti-alias filter: fc = 1/(2·max(p,q)); L = 2·N·max(p,q)+1.
     //   h = p · firls(L-1,[0 2fc 2fc 1],[1 1 0 0]) · kaiser(L,beta) / sum(·)
     // (normalised so sum(h) = p — the interpolation gain).
-    const int    N    = (n_order > 0) ? n_order : 10;
+    const keel::i32    N    = (n_order > 0) ? n_order : 10;
     const keel::f64 beta = beta_in;
     const keel::usize pqmax = std::max(p, q);
     const keel::f64 fc = 1.0 / (2.0 * keel::as<keel::f64>(pqmax));
-    const int    L  = 2 * N * keel::as<int>(pqmax) + 1;
+    const keel::i32    L  = 2 * N * keel::as<keel::i32>(pqmax) + 1;
 
     Value F = Value::matrix(1, 4, ValueType::DOUBLE, mr);
     { keel::f64 *f = F.doubleDataMut(); f[0] = 0.0; f[1] = 2.0 * fc; f[2] = 2.0 * fc; f[3] = 1.0; }
@@ -328,35 +328,35 @@ Value resample(const Value &x, keel::usize p, keel::usize q, int n_order, keel::
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     auto fk = keel::Array<keel::f64>(L, scratch.allocator());
     keel::f64 sumfk = 0.0;
-    for (int i = 0; i < L; ++i) { fk[i] = fbd[i] * kwd[i]; sumfk += fk[i]; }
+    for (keel::i32 i = 0; i < L; ++i) { fk[i] = fbd[i] * kwd[i]; sumfk += fk[i]; }
 
     // Front-pad the filter so the group delay lands on an output sample.
-    const long long Lhalf  = (L - 1) / 2;
-    const long long nz     = keel::as<long long>(q) - (Lhalf % keel::as<long long>(q));
-    const long long Lhalf2 = Lhalf + nz;
+    const keel::i64 Lhalf  = (L - 1) / 2;
+    const keel::i64 nz     = keel::as<keel::i64>(q) - (Lhalf % keel::as<keel::i64>(q));
+    const keel::i64 Lhalf2 = Lhalf + nz;
 
     Value hh = Value::matrix(1, keel::as<keel::usize>(nz) + keel::as<keel::usize>(L),
                              ValueType::DOUBLE, mr);
     {
         keel::f64 *hd = hh.doubleDataMut();
-        for (long long i = 0; i < nz; ++i) hd[i] = 0.0;
+        for (keel::i64 i = 0; i < nz; ++i) hd[i] = 0.0;
         const keel::f64 scale = keel::as<keel::f64>(p) / sumfk;
-        for (int i = 0; i < L; ++i) hd[nz + i] = scale * fk[i];
+        for (keel::i32 i = 0; i < L; ++i) hd[nz + i] = scale * fk[i];
     }
 
     Value yfull = upfirdn(xD, hh, p, q, mr);
     const keel::usize  yfn = yfull.numel();
     const keel::f64 *yfd = yfull.doubleData();
 
-    const long long delay = Lhalf2 / keel::as<long long>(q);     // floor(ceil(Lhalf2)/q)
-    const long long Ly    = keel::as<long long>((nx * p + q - 1) / q); // ceil(Lx·p/q)
+    const keel::i64 delay = Lhalf2 / keel::as<keel::i64>(q);     // floor(ceil(Lhalf2)/q)
+    const keel::i64 Ly    = keel::as<keel::i64>((nx * p + q - 1) / q); // ceil(Lx·p/q)
     const keel::usize    outLen = (Ly > 0) ? keel::as<keel::usize>(Ly) : 0;
 
     Value r = isRow ? Value::matrix(1, outLen, ValueType::DOUBLE, mr)
                     : Value::matrix(outLen, 1, ValueType::DOUBLE, mr);
     keel::f64 *rd = r.doubleDataMut();
     for (keel::usize i = 0; i < outLen; ++i) {
-        const long long idx = delay + keel::as<long long>(i);
+        const keel::i64 idx = delay + keel::as<keel::i64>(i);
         rd[i] = (idx >= 0 && keel::as<keel::usize>(idx) < yfn) ? yfd[idx] : 0.0;
     }
     return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);

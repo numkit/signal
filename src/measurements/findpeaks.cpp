@@ -65,7 +65,7 @@ keel::f64 peakProminence(const keel::f64 *x, keel::usize n, keel::usize pi, keel
 //    no-crossing width (its pedestal width 6, not the naive span 8).
 keel::f64 peakWidth(const keel::f64 *x, keel::usize n, keel::usize pi, keel::f64 h,
                  keel::f64 prom, keel::usize lb, keel::usize rb,
-                 const keel::f64 *locArr, int widthRef)
+                 const keel::f64 *locArr, keel::i32 widthRef)
 {
     auto pos = [&](keel::usize i) {
         return locArr ? locArr[i] : keel::as<keel::f64>(i + 1);
@@ -198,7 +198,7 @@ findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
                            locArr, opt.widthRef);
     }
 
-    auto keep = keel::Array<unsigned char>(scratch.allocator());
+    auto keep = keel::Array<keel::u8>(scratch.allocator());
     keep.assign(m, 1u);
 
     // MinPeakProminence: drop peaks below the prominence threshold.

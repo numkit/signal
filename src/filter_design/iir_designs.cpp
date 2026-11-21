@@ -42,7 +42,7 @@ namespace {
 // IIR-family compute-side order contract, first line of every design.
 // The scalar/integer/complex halves are Value-boundary-only and live in
 // iirOrder in the reg layer.
-void iirOrder_argcheck(int N, const char *fn)
+void iirOrder_argcheck(keel::i32 N, const char *fn)
 {
     if (N <= 0)
         throw Error(keel::format("{}: filter order N must be a positive integer (got {}).", fn, N),
@@ -120,7 +120,7 @@ keel::Array<keel::f64> wnToAnalog(keel::ArrayRef<keel::f64> Wn, bool analog) {
 } // anonymous
 
 std::tuple<Value, Value>
-cheby1(int N, keel::f64 Rp, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
+cheby1(keel::i32 N, keel::f64 Rp, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "cheby1");
     auto wn = readWn(Wn);
@@ -132,7 +132,7 @@ cheby1(int N, keel::f64 Rp, const Value &Wn, FilterType ftype, bool analog, keel
 }
 
 std::tuple<Value, Value>
-cheby2(int N, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
+cheby2(keel::i32 N, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "cheby2");
     auto wn = readWn(Wn);
@@ -144,7 +144,7 @@ cheby2(int N, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel
 }
 
 std::tuple<Value, Value>
-besself(int N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
+besself(keel::i32 N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "besself");
     auto wn = readWn(Wn);
@@ -156,7 +156,7 @@ besself(int N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *
 }
 
 std::tuple<Value, Value>
-butter(int N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
+butter(keel::i32 N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "butter");
     // Same pipeline as cheby1/besself: Butterworth prototype, LP→X
@@ -172,7 +172,7 @@ butter(int N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *m
 }
 
 std::tuple<Value, Value>
-ellip(int N, keel::f64 Rp, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
+ellip(keel::i32 N, keel::f64 Rp, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "ellip");
     auto wn = readWn(Wn);
@@ -294,7 +294,7 @@ Value wnFromPrototype(const OrdNormalised &n, keel::f64 Wn_analog, bool analog, 
 
 } // anonymous
 
-std::tuple<int, Value>
+std::tuple<keel::i32, Value>
 buttord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     auto Wp = readWn(Wp_v);
@@ -304,7 +304,7 @@ buttord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool a
     const keel::f64 GpLin = std::pow(10.0, Rp / 10.0) - 1.0;
     if (GpLin <= 0.0 || GsLin <= 0.0)
         throw std::runtime_error("buttord: Rp, Rs must be positive");
-    const int N = keel::as<int>(std::ceil(
+    const keel::i32 N = keel::as<keel::i32>(std::ceil(
         0.5 * std::log10(GsLin / GpLin) / std::log10(n.ratio)));
     // MATLAB convention: Wn computed from STOPBAND spec, so the resulting
     // filter meets stopband attenuation exactly. For Butterworth:
@@ -322,7 +322,7 @@ buttord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool a
     return std::make_tuple(N, std::move(Wn));
 }
 
-std::tuple<int, Value>
+std::tuple<keel::i32, Value>
 cheb1ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     auto Wp = readWn(Wp_v);
@@ -332,7 +332,7 @@ cheb1ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     const keel::f64 GpLin = std::pow(10.0, Rp / 10.0) - 1.0;
     if (GpLin <= 0.0 || GsLin <= 0.0)
         throw std::runtime_error("cheb1ord: Rp, Rs must be positive");
-    const int N = keel::as<int>(std::ceil(
+    const keel::i32 N = keel::as<keel::i32>(std::ceil(
         std::acosh(std::sqrt(GsLin / GpLin)) / std::acosh(n.ratio)));
     // Natural cutoff for cheby1 = passband edge — return Wp directly.
     if (n.ftype == FilterType::Lowpass || n.ftype == FilterType::Highpass)
@@ -343,7 +343,7 @@ cheb1ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     return std::make_tuple(N, std::move(out));
 }
 
-std::tuple<int, Value>
+std::tuple<keel::i32, Value>
 cheb2ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     auto Wp = readWn(Wp_v);
@@ -353,7 +353,7 @@ cheb2ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     const keel::f64 GpLin = std::pow(10.0, Rp / 10.0) - 1.0;
     if (GpLin <= 0.0 || GsLin <= 0.0)
         throw std::runtime_error("cheb2ord: Rp, Rs must be positive");
-    const int N = keel::as<int>(std::ceil(
+    const keel::i32 N = keel::as<keel::i32>(std::ceil(
         std::acosh(std::sqrt(GsLin / GpLin)) / std::acosh(n.ratio)));
     // Natural cutoff for cheby2 = stopband edge — return Ws directly.
     if (n.ftype == FilterType::Lowpass || n.ftype == FilterType::Highpass)
@@ -422,7 +422,7 @@ keel::f64 findElliporderImpl(keel::ArrayRef<keel::f64> WA, keel::f64 Rp, keel::f
 
 } // anon
 
-std::tuple<int, Value>
+std::tuple<keel::i32, Value>
 ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     if (Rp <= 0.0 || Rs <= 0.0)
@@ -444,7 +444,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     }
 
     // ftype = 2*(numW-1) + (1 if wp[0] < ws[0] else 2)
-    int ftype = 2 * (keel::as<int>(numW) - 1);
+    keel::i32 ftype = 2 * (keel::as<keel::i32>(numW) - 1);
     ftype += (wp[0] < ws[0]) ? 1 : 2;
 
     // Prewarp digital → analog if needed.
@@ -459,16 +459,16 @@ ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     }
 
     keel::Array<keel::f64> WA(mr);
-    int N = 0;
+    keel::i32 N = 0;
     switch (ftype) {
         case 1: { // lowpass: WA = WS / WP
             WA.push_back(WS[0] / WP[0]);
-            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<keel::i32>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         case 2: { // highpass: WA = WP / WS
             WA.push_back(WP[0] / WS[0]);
-            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<keel::i32>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         case 3: { // bandstop: reciprocal of the bandpass→lowpass map.
@@ -480,7 +480,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
                 const keel::f64 w = WS[i];
                 WA.push_back((w * (WP[0] - WP[1])) / (w * w - WP[0] * WP[1]));
             }
-            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<keel::i32>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         case 4: { // bandpass: WA = (WS² - WP1·WP2) / (WS·(WP1-WP2))
@@ -488,7 +488,7 @@ ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
                 const keel::f64 w = WS[i];
                 WA.push_back((w * w - WP[0] * WP[1]) / (w * (WP[0] - WP[1])));
             }
-            N = keel::as<int>(findElliporderImpl(WA, Rp, Rs, mr));
+            N = keel::as<keel::i32>(findElliporderImpl(WA, Rp, Rs, mr));
             break;
         }
         default:
@@ -528,8 +528,8 @@ keel::f64 remlpord(keel::f64 f1, keel::f64 f2, keel::f64 d1, keel::f64 d2)
     const keel::f64 v[3] = {1.0, ld1, ld1 * ld1};
     const keel::f64 w[3] = {1.0, ld2, ld2 * ld2};
     keel::f64 D = 0.0;
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
+    for (keel::i32 i = 0; i < 3; ++i)
+        for (keel::i32 j = 0; j < 3; ++j)
             D += v[i] * AA[i][j] * w[j];
     const keel::f64 fK = 11.01217 + 0.51244 * (ld1 - ld2);
     const keel::f64 df = keel::abs(f2 - f1);
@@ -538,7 +538,7 @@ keel::f64 remlpord(keel::f64 f1, keel::f64 f2, keel::f64 d1, keel::f64 d2)
 
 } // anon
 
-std::tuple<int, Value, Value, Value>
+std::tuple<keel::i32, Value, Value, Value>
 firpmord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::Allocator *mr)
 {
     const keel::usize mf     = F.numel();
@@ -604,7 +604,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::A
         }
     }
 
-    int N = keel::as<int>(std::ceil(L)) - 1;
+    keel::i32 N = keel::as<keel::i32>(std::ceil(L)) - 1;
 
     // Build firpm-compatible spec vectors.
     // ff = [0; 2*fcuts; 1]  → length mf + 2
@@ -677,7 +677,7 @@ KaislpResult kaislpord(keel::f64 f1, keel::f64 f2, keel::f64 d1, keel::f64 d2)
 
 } // anon
 
-std::tuple<int, Value, keel::f64, keel::String>
+std::tuple<keel::i32, Value, keel::f64, keel::String>
 kaiserord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::Allocator *mr)
 {
     const keel::usize mf     = F.numel();
@@ -746,7 +746,7 @@ kaiserord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::
         }
     }
 
-    int N = keel::as<int>(std::ceil(L)) - 1;
+    keel::i32 N = keel::as<keel::i32>(std::ceil(L)) - 1;
 
     // Wn = (f1 + f2) per pair (already factor-of-2 normalized to Nyquist).
     Value Wn = Value::matrix(1, f1v.size(), ValueType::DOUBLE, mr);

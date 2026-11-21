@@ -32,7 +32,7 @@ void fftshift_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 {
     argcheck::checkNargin(args.size(), 1, 2, "fftshift");
     if (args.size() >= 2) {
-        const int dim = argcheck::dimArg(args[1], "fftshift");
+        const keel::i32 dim = argcheck::dimArg(args[1], "fftshift");
         if (dim < 1 || dim > 3)
             throw Error("fftshift: dim must be 1, 2, or 3",
                          0, 0, "fftshift", "", "numkit:fftshift:dim");
@@ -46,7 +46,7 @@ void ifftshift_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mu
 {
     argcheck::checkNargin(args.size(), 1, 2, "ifftshift");
     if (args.size() >= 2) {
-        const int dim = argcheck::dimArg(args[1], "ifftshift");
+        const keel::i32 dim = argcheck::dimArg(args[1], "ifftshift");
         if (dim < 1 || dim > 3)
             throw Error("ifftshift: dim must be 1, 2, or 3",
                          0, 0, "ifftshift", "", "numkit:ifftshift:dim");

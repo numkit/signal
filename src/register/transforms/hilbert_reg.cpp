@@ -36,7 +36,7 @@ void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
 {
     argcheck::checkNargin(args.size(), 1, 3, "envelope");
     auto *mr = ctx.engine->allocator();
-    int mode = 0;     // 0=default, 1=analytic, 2=rms, 3=peak
+    keel::i32 mode = 0;     // 0=default, 1=analytic, 2=rms, 3=peak
     keel::usize n = 0;
     if (args.size() >= 2 && !args[1].isEmpty())
         n = (keel::usize)args[1].toScalar();

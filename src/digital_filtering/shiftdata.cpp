@@ -38,7 +38,7 @@ keel::usize mtlNdims(const Value &x)
 } // anon
 
 std::tuple<Value, Value, Value>
-shiftdata(const Value &x, int dim, keel::Allocator *mr)
+shiftdata(const Value &x, keel::i32 dim, keel::Allocator *mr)
 {
     if (dim == 0) {
         // Auto path: shiftdim(x) drops leading singletons.
@@ -54,13 +54,13 @@ shiftdata(const Value &x, int dim, keel::Allocator *mr)
 
     // perm = [dim, 1..dim-1, dim+1..N]
     const keel::usize N = std::max<keel::usize>(keel::as<keel::usize>(dim), mtlNdims(x));
-    keel::Array<int> perm(N, mr);
+    keel::Array<keel::i32> perm(N, mr);
     perm[0] = dim;
     keel::usize k = 1;
-    for (int i = 1; i < dim; ++i) perm[k++] = i;
-    for (keel::usize i = dim + 1; i <= N; ++i) perm[k++] = keel::as<int>(i);
+    for (keel::i32 i = 1; i < dim; ++i) perm[k++] = i;
+    for (keel::usize i = dim + 1; i <= N; ++i) perm[k++] = keel::as<keel::i32>(i);
 
-    Value shifted = numkit::builtin::permute(x, keel::ArrayRef<int>(perm.data(), N), mr);
+    Value shifted = numkit::builtin::permute(x, keel::ArrayRef<keel::i32>(perm.data(), N), mr);
 
     // Build perm Value (1 × N row).
     Value permV = Value::matrix(1, N, ValueType::DOUBLE, mr);
@@ -107,14 +107,14 @@ Value unshiftdata(const Value &x, const Value &perm, const Value &nshifts, keel:
         const keel::f64 ns = nshifts.isEmpty() ? 0.0
             : (nshifts.isComplex() ? nshifts.complexData()[0].real()
                                    : nshifts.toScalar());
-        return numkit::builtin::shiftdim(x, -keel::as<int>(ns), mr);
+        return numkit::builtin::shiftdim(x, -keel::as<keel::i32>(ns), mr);
     }
     // ipermute(x, perm)
     const keel::usize N = perm.numel();
-    keel::Array<int> permVec(N, mr);
+    keel::Array<keel::i32> permVec(N, mr);
     for (keel::usize i = 0; i < N; ++i)
-        permVec[i] = keel::as<int>(perm.elemAsDouble(i));
-    return numkit::builtin::ipermute(x, keel::ArrayRef<int>(permVec.data(), N), mr);
+        permVec[i] = keel::as<keel::i32>(perm.elemAsDouble(i));
+    return numkit::builtin::ipermute(x, keel::ArrayRef<keel::i32>(permVec.data(), N), mr);
 }
 
 } // namespace numkit::signal

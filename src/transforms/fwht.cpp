@@ -51,18 +51,18 @@ inline keel::usize nextPow2(keel::usize n)
     return p;
 }
 
-inline int log2_size(keel::usize n)
+inline keel::i32 log2_size(keel::usize n)
 {
-    int k = 0;
+    keel::i32 k = 0;
     while ((keel::usize(1) << k) < n) ++k;
     return k;
 }
 
 // Reverse the low `bits` bits of `i`.
-inline keel::usize bitReverse(keel::usize i, int bits)
+inline keel::usize bitReverse(keel::usize i, keel::i32 bits)
 {
     keel::usize r = 0;
-    for (int b = 0; b < bits; ++b) {
+    for (keel::i32 b = 0; b < bits; ++b) {
         r = (r << 1) | (i & 1);
         i >>= 1;
     }
@@ -85,7 +85,7 @@ void hadamardButterfly(keel::f64 *col, keel::usize N)
 }
 
 // Permute from natural Hadamard order to dyadic (Paley): out[i] = in[bitrev(i)].
-void permuteToDyadic(const keel::f64 *in, keel::f64 *out, keel::usize N, int log2N)
+void permuteToDyadic(const keel::f64 *in, keel::f64 *out, keel::usize N, keel::i32 log2N)
 {
     for (keel::usize i = 0; i < N; ++i)
         out[i] = in[bitReverse(i, log2N)];
@@ -94,7 +94,7 @@ void permuteToDyadic(const keel::f64 *in, keel::f64 *out, keel::usize N, int log
 // Permute from natural Hadamard order to sequency (Walsh).
 // Probed against MATLAB: sequency[i] = dyadic[g(i)] where g(i) = i XOR (i>>1).
 // Combined transform from natural: sequency[i] = natural[bitrev(g(i))].
-void permuteToSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, int log2N)
+void permuteToSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, keel::i32 log2N)
 {
     for (keel::usize i = 0; i < N; ++i) {
         const keel::usize g = i ^ (i >> 1);
@@ -108,7 +108,7 @@ void permuteToSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, int l
 // (bitrev is its own inverse). For sequency the inverse is:
 //   natural[bitrev(g(i))] = sequency[i]  →  natural[k] = sequency[i]
 //   with k = bitrev(g(i)). The inverse mapping inverts both steps.
-void unpermuteFromSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, int log2N)
+void unpermuteFromSequency(const keel::f64 *in, keel::f64 *out, keel::usize N, keel::i32 log2N)
 {
     // Forward: out_seq[i] = in_nat[bitrev(g(i))].
     // Inverse: in_nat[k]  = out_seq[i] where bitrev(g(i)) = k.
@@ -135,7 +135,7 @@ keel::usize resolveLen(keel::usize L, keel::usize n)
 // to `dstCol` (length N where N = resolveLen(L, n)). `forward` toggles
 // the 1/N scaling.
 void transformOneColumn(const keel::f64 *srcCol, keel::usize L,
-                         keel::f64 *dstCol, keel::usize N, int log2N,
+                         keel::f64 *dstCol, keel::usize N, keel::i32 log2N,
                          keel::StringRef ordering, bool forward,
                          keel::Allocator *mr)
 {
@@ -214,7 +214,7 @@ Value runWalshHadamard(const Value &x, keel::usize n,
     const keel::usize L = isRowVec ? cols : rows;
     const keel::usize nCols = isRowVec ? 1u   : cols;
     const keel::usize N = resolveLen(L, n);
-    const int log2N = log2_size(N);
+    const keel::i32 log2N = log2_size(N);
 
     // Output orientation matches MATLAB: row vector in → row vector out
     // (1 × N), otherwise column-wise transform produces N × cols.

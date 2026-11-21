@@ -29,7 +29,7 @@ namespace numkit::signal {
 /// @param mr            Memory resource (nullptr → process default).
 /// @return              Integer-typed Value, same shape as `u`.
 /// @see udecode
-Value uencode(const Value &u, int N, keel::f64 V = 1.0,
+Value uencode(const Value &u, keel::i32 N, keel::f64 V = 1.0,
               bool signedOutput = false,
               keel::Allocator *mr = nullptr);
 
@@ -43,7 +43,7 @@ Value uencode(const Value &u, int N, keel::f64 V = 1.0,
 /// @param mr              Memory resource (nullptr → process default).
 /// @return                DOUBLE Value, same shape as `u`.
 /// @see uencode
-Value udecode(const Value &u, int N, keel::f64 V = 1.0,
+Value udecode(const Value &u, keel::i32 N, keel::f64 V = 1.0,
               bool wrapOnOverflow = false,
               keel::Allocator *mr = nullptr);
 
