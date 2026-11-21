@@ -1,218 +1,19 @@
 // toolboxes/signal/src/windows/windows.cpp
+//
+// Window generators & DPSS tapers, delegated to keel::signal.
 
 #include <keel/core.h>
 #include <keel/memory.h>
-#include <keel/arena.h>
-#include <keel/array.h>
-#include <keel/math.h>
+#include <keel/signal.h>
 #include <numkit/signal/windows/windows.hpp>
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include "dsp_helpers.hpp"  // fillFftTwiddles, fftRadix2, nextPow2
-
-#define _USE_MATH_DEFINES
-#include <algorithm>
-#include <cmath>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include <utility>
 
 namespace numkit::signal {
 
-namespace {
-
-// Modified Bessel function of the first kind, order 0, via series expansion.
-// Converges quickly for beta values typical of Kaiser window (0–20 range).
-double besseli0(double x)
-{
-    double sum = 1.0, term = 1.0;
-    for (int k = 1; k <= 100; ++k) {
-        term *= (x / (2.0 * k)) * (x / (2.0 * k));
-        sum += term;
-        if (term < 1e-16 * sum)
-            break;
-    }
-    return sum;
-}
-
-// Chebyshev polynomial T_n(x) — uses cos for |x|<=1, cosh for |x|>1.
-[[maybe_unused]] double chebyT(int n, double x)
-{
-    if (keel::abs(x) <= 1.0)
-        return std::cos(n * std::acos(x));
-    if (x > 1.0)
-        return std::cosh(n * std::acosh(x));
-    // x < -1: T_n(-x) = (-1)^n T_n(x)
-    const double v = std::cosh(n * std::acosh(-x));
-    return (n & 1) ? -v : v;
-}
-
-} // anonymous namespace
-
-// ── hamming ───────────────────────────────────────────────────────────
-Value hamming(keel::usize N, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        r.doubleDataMut()[0] = 1.0;
-        return r;
-    }
-    for (keel::usize i = 0; i < N; ++i)
-        r.doubleDataMut()[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (N - 1));
-    return r;
-}
-
-// ── hann ──────────────────────────────────────────────────────────────
-Value hann(keel::usize N, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        r.doubleDataMut()[0] = 1.0;
-        return r;
-    }
-    for (keel::usize i = 0; i < N; ++i)
-        r.doubleDataMut()[i] = 0.5 * (1.0 - std::cos(2.0 * M_PI * i / (N - 1)));
-    return r;
-}
-
-// ── blackman ──────────────────────────────────────────────────────────
-Value blackman(keel::usize N, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        r.doubleDataMut()[0] = 1.0;
-        return r;
-    }
-    for (keel::usize i = 0; i < N; ++i) {
-        const double x = 2.0 * M_PI * i / (N - 1);
-        r.doubleDataMut()[i] = 0.42 - 0.5 * std::cos(x) + 0.08 * std::cos(2.0 * x);
-    }
-    return r;
-}
-
-// ── kaiser ────────────────────────────────────────────────────────────
-Value kaiser(keel::usize N, double beta, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        r.doubleDataMut()[0] = 1.0;
-        return r;
-    }
-    const double denom = besseli0(beta);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double alpha = 2.0 * i / (N - 1) - 1.0;
-        r.doubleDataMut()[i] = besseli0(beta * std::sqrt(1.0 - alpha * alpha)) / denom;
-    }
-    return r;
-}
-
-// ── rectwin ───────────────────────────────────────────────────────────
-Value rectwin(keel::usize N, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    for (keel::usize i = 0; i < N; ++i)
-        r.doubleDataMut()[i] = 1.0;
-    return r;
-}
-
-// ── bartlett ──────────────────────────────────────────────────────────
-Value bartlett(keel::usize N, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        r.doubleDataMut()[0] = 1.0;
-        return r;
-    }
-    const double half = (N - 1) / 2.0;
-    for (keel::usize i = 0; i < N; ++i)
-        r.doubleDataMut()[i] = 1.0 - keel::abs((i - half) / half);
-    return r;
-}
-
-// ── triang ────────────────────────────────────────────────────────────
-// Differs from bartlett: endpoints are non-zero. Even-N formula uses
-// 1 - |2k - (N-1)| / N; odd-N uses 1 - |2k - (N-1)| / (N+1) (matches
-// MATLAB's `triang` reference output).
-Value triang(keel::usize N, keel::Allocator *mr)
-{
-    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        r.doubleDataMut()[0] = 1.0;
-        return r;
-    }
-    double *dst = r.doubleDataMut();
-    const double mid = (static_cast<double>(N) - 1.0) / 2.0;
-    if (N % 2 == 0) {
-        const double denom = static_cast<double>(N);
-        for (keel::usize i = 0; i < N; ++i)
-            dst[i] = 1.0 - keel::abs((2.0 * i - (N - 1)) / denom);
-    } else {
-        const double denom = static_cast<double>(N + 1);
-        for (keel::usize i = 0; i < N; ++i)
-            dst[i] = 1.0 - keel::abs(2.0 * (i - mid)) / denom;
-    }
-    return r;
-}
-
-// ── tukeywin ──────────────────────────────────────────────────────────
-Value tukeywin(keel::usize N, double r, keel::Allocator *mr)
-{
-    if (r < 0.0) r = 0.0;
-    if (r > 1.0) r = 1.0;
-    auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    double *dst = out.doubleDataMut();
-    if (r == 0.0) {
-        for (keel::usize i = 0; i < N; ++i)
-            dst[i] = 1.0;
-        return out;
-    }
-    const double Nm1 = static_cast<double>(N - 1);
-    const double tEdge = r * Nm1 * 0.5;       // taper region width on each side
-    for (keel::usize i = 0; i < N; ++i) {
-        const double x = static_cast<double>(i);
-        if (x < tEdge) {
-            dst[i] = 0.5 * (1.0 + std::cos(M_PI * (x / tEdge - 1.0)));
-        } else if (x > Nm1 - tEdge) {
-            dst[i] = 0.5 * (1.0 + std::cos(M_PI * ((x - Nm1) / tEdge + 1.0)));
-        } else {
-            dst[i] = 1.0;
-        }
-    }
-    return out;
-}
-
-// ── flattopwin ────────────────────────────────────────────────────────
-// Matlab "symmetric" 5-term coefficients (R2018b reference).
-Value flattopwin(keel::usize N, keel::Allocator *mr)
-{
-    auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    constexpr double a0 = 0.21557895;
-    constexpr double a1 = 0.41663158;
-    constexpr double a2 = 0.277263158;
-    constexpr double a3 = 0.083578947;
-    constexpr double a4 = 0.006947368;
-    double *dst = out.doubleDataMut();
-    const double Nm1 = static_cast<double>(N - 1);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double x = 2.0 * M_PI * i / Nm1;
-        dst[i] = a0 - a1 * std::cos(x) + a2 * std::cos(2.0 * x)
-                    - a3 * std::cos(3.0 * x) + a4 * std::cos(4.0 * x);
-    }
-    return out;
-}
-
-// ── gausswin ──────────────────────────────────────────────────────────
 namespace {
 
 void gausswin_argcheck(double alpha)
@@ -224,167 +25,101 @@ void gausswin_argcheck(double alpha)
 
 } // namespace
 
-Value gausswin(keel::usize N, double alpha, keel::Allocator *mr)
+Value hamming(keel::usize N, keel::Allocator *mr)
 {
-    gausswin_argcheck(alpha);
-    if (alpha <= 0)
-        throw Error("gausswin: alpha must be positive",
-                     0, 0, "gausswin", "", "numkit:gausswin:badAlpha");
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::hamming(N, r.doubleDataMut());
+    return r;
+}
+
+Value hann(keel::usize N, keel::Allocator *mr)
+{
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::hann(N, r.doubleDataMut());
+    return r;
+}
+
+Value blackman(keel::usize N, keel::Allocator *mr)
+{
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::blackman(N, r.doubleDataMut());
+    return r;
+}
+
+Value kaiser(keel::usize N, double beta, keel::Allocator *mr)
+{
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::kaiser(N, beta, r.doubleDataMut());
+    return r;
+}
+
+Value rectwin(keel::usize N, keel::Allocator *mr)
+{
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::rectwin(N, r.doubleDataMut());
+    return r;
+}
+
+Value bartlett(keel::usize N, keel::Allocator *mr)
+{
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::bartlett(N, r.doubleDataMut());
+    return r;
+}
+
+Value triang(keel::usize N, keel::Allocator *mr)
+{
+    auto r = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::triang(N, r.doubleDataMut());
+    return r;
+}
+
+Value tukeywin(keel::usize N, double r, keel::Allocator *mr)
+{
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    double *dst = out.doubleDataMut();
-    const double half = static_cast<double>(N - 1) / 2.0;
-    for (keel::usize i = 0; i < N; ++i) {
-        const double n = (static_cast<double>(i) - half) / half;
-        dst[i] = std::exp(-0.5 * (alpha * n) * (alpha * n));
-    }
+    keel::signal::tukeywin(N, r, out.doubleDataMut());
     return out;
 }
 
-// ── chebwin ───────────────────────────────────────────────────────────
-// Dolph-Chebyshev: equiripple sidelobes at `at` dB.
-//
-// Algorithm (matches MATLAB R2025b — direct cosine-IDFT form):
-//   1. r    = 10^(at/20)                — ripple ratio
-//   2. M    = N - 1                     — Chebyshev polynomial order
-//   3. β    = cosh(acosh(r) / M)
-//   4. Spectrum samples W(k) = T_M(β·cos(πk/N)) for k = 0..floor(N/2),
-//      where T_n is computed branch-wise:
-//        T_n(x) = cos (n·acos x)         for |x| ≤ 1
-//        T_n(x) = cosh(n·acosh|x|)·sign(x)^n  for |x| > 1
-//   5. Time-domain coefficients via the real cosine inverse:
-//        w(n) = (1/N) · [W(0) + 2 · Σ_{k=1}^{K} W(k) · cos(2π·k·(n-N₀)/N)]
-//      with K = floor((N-1)/2) and N₀ = (N-1)/2.
-//      For even N, the k = N/2 term has T_M(0) = 0 (M is odd) so it is
-//      naturally absent. The cosine basis with the (n-N₀) offset
-//      produces a window symmetric about index N₀ (peak in the middle).
-//   6. Normalise peak to 1.
-//
-// Direct O(N²) — windows are small (N ≤ ~few thousand). Replaces the
-// previous FFT-based path that was numerically fragile on even N
-// (degenerate all-ones output) due to a half-bin offset bug.
+Value flattopwin(keel::usize N, keel::Allocator *mr)
+{
+    auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    keel::signal::flattopwin(N, out.doubleDataMut());
+    return out;
+}
+
+Value gausswin(keel::usize N, double alpha, keel::Allocator *mr)
+{
+    gausswin_argcheck(alpha);
+    auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
+    (void)keel::signal::gausswin(N, alpha, out.doubleDataMut());
+    return out;
+}
+
 Value chebwin(keel::usize N, double at, keel::Allocator *mr)
 {
     if (at <= 0)
         throw Error("chebwin: at must be positive (sidelobe attenuation in dB)",
                      0, 0, "chebwin", "", "numkit:chebwin:badAt");
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-
-    keel::ArenaTemp scratch = keel::get_scratch(mr);
-    const int M = static_cast<int>(N) - 1;
-    const double r_lin = std::pow(10.0, at / 20.0);
-    const double beta  = std::cosh(std::acosh(r_lin) / static_cast<double>(M));
-
-    auto cheb_T_M = [M](double x) -> double {
-        if (keel::abs(x) <= 1.0)
-            return std::cos(static_cast<double>(M) * std::acos(x));
-        const double a = std::cosh(static_cast<double>(M) * std::acosh(keel::abs(x)));
-        return (x < 0 && (M & 1)) ? -a : a;
-    };
-
-    // Build positive-frequency spectrum W(k) for k = 0..K.
-    const keel::usize K = (N - 1) / 2;  // floor((N-1)/2)
-    auto Wp = keel::Array<double>(K + 1, scratch.allocator());
-    for (keel::usize k = 0; k <= K; ++k) {
-        const double ck = beta * std::cos(M_PI * static_cast<double>(k)
-                                          / static_cast<double>(N));
-        Wp[k] = cheb_T_M(ck);
-    }
-
-    // Real cosine-IDFT centered on N₀ = (N-1)/2.
-    double *dst = out.doubleDataMut();
-    const double N0 = 0.5 * static_cast<double>(N - 1);
-    const double two_pi_over_N = 2.0 * M_PI / static_cast<double>(N);
-    for (keel::usize n = 0; n < N; ++n) {
-        double s = Wp[0];
-        const double phase_n = (static_cast<double>(n) - N0);
-        for (keel::usize k = 1; k <= K; ++k) {
-            s += 2.0 * Wp[k] * std::cos(two_pi_over_N * static_cast<double>(k) * phase_n);
-        }
-        dst[n] = s / static_cast<double>(N);
-    }
-
-    // Normalise peak to 1.
-    double peak = 0.0;
-    for (keel::usize i = 0; i < N; ++i) peak = std::max(peak, keel::abs(dst[i]));
-    if (peak > 0.0) {
-        const double inv = 1.0 / peak;
-        for (keel::usize i = 0; i < N; ++i) dst[i] *= inv;
-    }
+    (void)keel::signal::chebwin(N, at, out.doubleDataMut(), mr);
     return out;
 }
 
-// ── parzenwin ─────────────────────────────────────────────────────────
-// Piecewise cubic, defined symmetrically around the centre.
 Value parzenwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    double *dst = out.doubleDataMut();
-    const double half = static_cast<double>(N) / 2.0;
-    const double mid = (static_cast<double>(N) - 1.0) / 2.0;
-    for (keel::usize i = 0; i < N; ++i) {
-        const double n = keel::abs(static_cast<double>(i) - mid);
-        const double r = n / half;
-        if (n <= half * 0.5) {
-            dst[i] = 1.0 - 6.0 * r * r + 6.0 * r * r * r;
-        } else {
-            const double t = 1.0 - r;
-            dst[i] = 2.0 * t * t * t;
-        }
-    }
+    keel::signal::parzenwin(N, out.doubleDataMut());
     return out;
 }
 
-// ── nuttallwin ────────────────────────────────────────────────────────
-// 4-term, "minimum 4-term" Nuttall coefficients (matches MATLAB default).
 Value nuttallwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    constexpr double a0 = 0.3635819;
-    constexpr double a1 = 0.4891775;
-    constexpr double a2 = 0.1365995;
-    constexpr double a3 = 0.0106411;
-    double *dst = out.doubleDataMut();
-    const double Nm1 = static_cast<double>(N - 1);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double x = 2.0 * M_PI * i / Nm1;
-        dst[i] = a0 - a1 * std::cos(x) + a2 * std::cos(2.0 * x)
-                    - a3 * std::cos(3.0 * x);
-    }
+    keel::signal::nuttallwin(N, out.doubleDataMut());
     return out;
 }
 
-// ── taylorwin ─────────────────────────────────────────────────────────
-//
-// Taylor window — tapered weighting used in radar pulse-compression.
-// Algorithm (matches MATLAB R2025b):
-//   R     = 10^(-sll/20)
-//   A     = (1/π) · acosh(R)
-//   σ²    = nbar² / (A² + (nbar - 0.5)²)
-//   F_m   = (-1)^(m+1) · prod_{n=1..nbar-1} (1 − m²/(σ²·(A² + (n-0.5)²)))
-//                       ───────────────────────────────────────────────────
-//                                    2 · prod_{n=1..nbar-1, n≠m} (1 − m²/n²)
-//   w(i)  = 1 + 2 · Σ_{m=1..nbar-1} F_m · cos(2π·m·(i - (N-1)/2)/N)
-// MATLAB does NOT normalise to peak=1 — peak depends on (nbar, sll).
-//
-// Bug fix 2026-05-08: previous impl used (-1)^m sign instead of
-// (-1)^(m+1), inverting the window (peak at edges, dip at centre);
-// also wrongly normalised peak to 1.
 Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
 {
     if (sll >= 0)
@@ -395,108 +130,31 @@ Value taylorwin(keel::usize N, int nbar, double sll, keel::Allocator *mr)
                      0, 0, "taylorwin", "", "numkit:taylorwin:badNbar");
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 0) return out;
-    // Note: N=1 takes the full formula path — MATLAB returns
-    // 1 + 2·Σ F_m for the single sample, NOT just 1.
-    const double R = std::pow(10.0, -sll / 20.0);
-    const double A = std::log(R + std::sqrt(R * R - 1.0)) / M_PI;
-    const double sigma2 = static_cast<double>(nbar) * nbar /
-                          (A * A + (nbar - 0.5) * (nbar - 0.5));
-
-    // Coefficients F_m, m = 1..nbar-1.
-    auto Fm = keel::Array<double>(nbar - 1, 0.0, mr);
-    for (int m = 1; m < nbar; ++m) {
-        double num = 1.0, den = 1.0;
-        for (int k = 1; k < nbar; ++k) {
-            const double p = sigma2 * (A * A + (k - 0.5) * (k - 0.5));
-            num *= 1.0 - static_cast<double>(m * m) / p;
-        }
-        for (int k = 1; k < nbar; ++k) {
-            if (k == m) continue;
-            den *= 1.0 - static_cast<double>(m * m) / static_cast<double>(k * k);
-        }
-        // (-1)^(m+1): m=1 -> +1, m=2 -> -1, m=3 -> +1, ...
-        const double sign = (m & 1) ? +1.0 : -1.0;
-        Fm[m - 1] = sign * 0.5 * num / den;
-    }
-
-    double *dst = out.doubleDataMut();
-    const double Nm1 = static_cast<double>(N - 1);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double xn = (static_cast<double>(i) - Nm1 * 0.5);
-        double w = 1.0;
-        for (int m = 1; m < nbar; ++m)
-            w += 2.0 * Fm[m - 1] * std::cos(2.0 * M_PI * m * xn / N);
-        dst[i] = w;
-    }
-
-    // (No peak normalisation — MATLAB taylorwin keeps the natural amplitude
-    // determined by (nbar, sll). Peak ≈ 1.52 for the default (4, -30).)
+    (void)keel::signal::taylorwin(N, static_cast<keel::i32>(nbar), sll, out.doubleDataMut(), mr);
     return out;
 }
 
-// ── blackmanharris ────────────────────────────────────────────────────
 Value blackmanharris(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    constexpr double a0 = 0.35875;
-    constexpr double a1 = 0.48829;
-    constexpr double a2 = 0.14128;
-    constexpr double a3 = 0.01168;
-    double *dst = out.doubleDataMut();
-    const double Nm1 = static_cast<double>(N - 1);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double x = 2.0 * M_PI * i / Nm1;
-        dst[i] = a0 - a1 * std::cos(x) + a2 * std::cos(2.0 * x)
-                    - a3 * std::cos(3.0 * x);
-    }
+    keel::signal::blackmanharris(N, out.doubleDataMut());
     return out;
 }
 
-// ── bohmanwin ─────────────────────────────────────────────────────────
 Value bohmanwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    double *dst = out.doubleDataMut();
-    const double half = (static_cast<double>(N) - 1.0) / 2.0;
-    for (keel::usize i = 0; i < N; ++i) {
-        const double x = keel::abs((static_cast<double>(i) - half) / half);
-        if (x >= 1.0) {
-            dst[i] = 0.0;
-        } else {
-            dst[i] = (1.0 - x) * std::cos(M_PI * x)
-                     + std::sin(M_PI * x) / M_PI;
-        }
-    }
+    keel::signal::bohmanwin(N, out.doubleDataMut());
     return out;
 }
 
-// ── barthannwin ───────────────────────────────────────────────────────
 Value barthannwin(keel::usize N, keel::Allocator *mr)
 {
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
-    if (N == 1) {
-        out.doubleDataMut()[0] = 1.0;
-        return out;
-    }
-    double *dst = out.doubleDataMut();
-    const double Nm1 = static_cast<double>(N - 1);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double t = static_cast<double>(i) / Nm1 - 0.5;
-        dst[i] = 0.62 - 0.48 * keel::abs(t)
-                 + 0.38 * std::cos(2.0 * M_PI * t);
-    }
+    keel::signal::barthannwin(N, out.doubleDataMut());
     return out;
 }
 
-// ── dpss ──────────────────────────────────────────────────────────────
 std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
                              keel::Allocator *mr)
 {
@@ -505,114 +163,9 @@ std::pair<Value, Value> dpss(keel::usize N, double nw, keel::usize k,
                 Value::matrix(k, 1, ValueType::DOUBLE, mr)};
     }
     if (k > N) k = N;
-    const double W = nw / static_cast<double>(N);
-    const double cos2piW = std::cos(2.0 * M_PI * W);
-
-    keel::Array<double> d(N, 0.0, mr);
-    keel::Array<double> e(N, 0.0, mr);
-    for (keel::usize i = 0; i < N; ++i) {
-        const double h = 0.5 * (static_cast<double>(N - 1) - 2.0 * static_cast<double>(i));
-        d[i] = h * h * cos2piW;
-        if (i + 1 < N) {
-            e[i] = 0.5 * static_cast<double>(i + 1) * static_cast<double>(N - 1 - i);
-        }
-    }
-
-    keel::Array<double> Z(N * N, 0.0, mr);
-    for (keel::usize i = 0; i < N; ++i) Z[i + i * N] = 1.0;
-
-    // Symmetric tridiagonal implicit QL with Wilkinson shift (tql2)
-    constexpr double eps = 2.2204460492503131e-16;
-    for (keel::usize l = 0; l < N; ++l) {
-        for (int iter = 0; iter < 100; ++iter) {
-            keel::usize m = l;
-            for (; m + 1 < N; ++m) {
-                const double dd = keel::abs(d[m]) + keel::abs(d[m + 1]);
-                if (keel::abs(e[m]) <= eps * dd) break;
-            }
-            if (m == l) break;
-            double g = (d[l + 1] - d[l]) / (2.0 * e[l]);
-            double r = std::hypot(g, 1.0);
-            g = d[m] - d[l] + e[l] / (g + (g >= 0.0 ? r : -r));
-            double s = 1.0, c = 1.0, p = 0.0;
-            bool underflow = false;
-            for (keel::usize ii = m; ii-- > l;) {
-                double f = s * e[ii];
-                double b = c * e[ii];
-                r = std::hypot(f, g);
-                e[ii + 1] = r;
-                if (r == 0.0) {
-                    d[ii + 1] -= p;
-                    e[m] = 0.0;
-                    underflow = true;
-                    break;
-                }
-                s = f / r;
-                c = g / r;
-                g = d[ii + 1] - p;
-                r = (d[ii] - g) * s + 2.0 * c * b;
-                p = s * r;
-                d[ii + 1] = g + p;
-                g = c * r - b;
-                double *z0 = Z.data() + ii * N;
-                double *z1 = Z.data() + (ii + 1) * N;
-                for (keel::usize row = 0; row < N; ++row) {
-                    const double v0 = z0[row];
-                    const double v1 = z1[row];
-                    z1[row] = s * v0 + c * v1;
-                    z0[row] = c * v0 - s * v1;
-                }
-            }
-            if (underflow) continue;
-            d[l] -= p;
-            e[l] = g;
-            e[m] = 0.0;
-        }
-    }
-
-    // Sort eigenvalues descending
-    keel::Array<keel::usize> order(N, mr);
-    for (keel::usize i = 0; i < N; ++i) order[i] = i;
-    std::sort(order.begin(), order.end(), [&](keel::usize a, keel::usize b) {
-        return d[a] > d[b];
-    });
-
     Value E = Value::matrix(N, k, ValueType::DOUBLE, mr);
     Value V = Value::matrix(k, 1, ValueType::DOUBLE, mr);
-    double *ed = E.doubleDataMut();
-    double *vd = V.doubleDataMut();
-
-    // Precompute sinc row for concentration ratio V
-    keel::Array<double> sincLag(N, mr);
-    sincLag[0] = 2.0 * W;
-    for (keel::usize lag = 1; lag < N; ++lag) {
-        sincLag[lag] = std::sin(2.0 * M_PI * W * static_cast<double>(lag))
-                       / (M_PI * static_cast<double>(lag));
-    }
-
-    for (keel::usize j = 0; j < k; ++j) {
-        const double *col = Z.data() + order[j] * N;
-        double pol = 0.0;
-        if ((j & 1) == 0) {
-            for (keel::usize n = 0; n < N; ++n) pol += col[n];
-        } else {
-            for (keel::usize n = 0; n < N; ++n)
-                pol += (static_cast<double>(N - 1) - 2.0 * static_cast<double>(n)) * col[n];
-        }
-        const double sign = (pol < 0.0) ? -1.0 : 1.0;
-        double *dstCol = ed + j * N;
-        for (keel::usize n = 0; n < N; ++n) dstCol[n] = sign * col[n];
-
-        double lam = 0.0;
-        for (keel::usize n = 0; n < N; ++n) {
-            lam += dstCol[n] * dstCol[n] * sincLag[0];
-            for (keel::usize m = n + 1; m < N; ++m) {
-                lam += 2.0 * dstCol[n] * dstCol[m] * sincLag[m - n];
-            }
-        }
-        vd[j] = std::clamp(lam, 0.0, 1.0);
-    }
-
+    (void)keel::signal::dpss(N, nw, k, E.doubleDataMut(), V.doubleDataMut(), mr);
     return {std::move(E), std::move(V)};
 }
 
