@@ -21,7 +21,7 @@
 #include <numkit/ops/iir_filter.hpp>
 
 #include <algorithm>
-#include <array>
+#include <keel/static_array.h>
 #include <cmath>
 #include <cstring>
 
@@ -77,7 +77,7 @@ void applyCascade(const Value &sos, const double *xs, double *out, keel::usize n
         if (a0 == 0.0)
             throw Error("sosfilt: section a0 is zero",
                          0, 0, "sosfilt", "", "numkit:sosfilt:zeroLead");
-        return std::array<double, 5>{
+        return keel::StaticArray<double, 5>{
             p[0 * L + r] / a0,  // b0
             p[1 * L + r] / a0,  // b1
             p[2 * L + r] / a0,  // b2
@@ -212,7 +212,7 @@ void applyCascadeWithZi(const Value &sos, const double *src, double *dst,
         if (a0 == 0.0)
             throw Error("sosfiltfilt: section a0 is zero",
                          0, 0, "sosfiltfilt", "", "numkit:sosfiltfilt:zeroLead");
-        return std::array<double, 5>{
+        return keel::StaticArray<double, 5>{
             p[0 * L + r] / a0, p[1 * L + r] / a0, p[2 * L + r] / a0,
             p[4 * L + r] / a0, p[5 * L + r] / a0,
         };
