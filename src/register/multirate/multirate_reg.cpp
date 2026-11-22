@@ -61,7 +61,7 @@ void decimate_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         ctx.engine->allocator());
 }
 
-void resample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
+void resample_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 3, 5, "resample");
     const keel::usize p = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
@@ -75,7 +75,14 @@ void resample_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
             argcheck::expectedReal(args[3], 4, "n", "resample"), 4, "n", "resample");
     if (args.size() >= 5 && args[4].isNumeric() && args[4].numel() == 1)
         beta = argcheck::expectedReal(args[4], 5, "beta", "resample");
-    outs[0] = resample(args[0], p, q, n_order, beta, ctx.engine->allocator());
+    auto *mr = ctx.engine->allocator();
+    if (nargout >= 2 && outs.size() >= 2) {
+        auto [y, b] = resampleWithFilter(args[0], p, q, n_order, beta, mr);
+        outs[0] = std::move(y);
+        outs[1] = std::move(b);
+    } else {
+        outs[0] = resample(args[0], p, q, n_order, beta, mr);
+    }
 }
 
 } // namespace detail

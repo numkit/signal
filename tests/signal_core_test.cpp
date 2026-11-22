@@ -510,3 +510,21 @@ TEST_F(SignalCoreTest, PulstranNonHandleStringThrows)
 {
     EXPECT_THROW(eval("y = pulstran([0 1 2], [0 1], 42);"), std::exception);
 }
+
+TEST_F(SignalCoreTest, ResampleTwoOutputsAndPolyphaseUpfirdn)
+{
+    eval("x = (1:40).'; [y, b] = resample(x, 1, 2, 10);");
+    EXPECT_DOUBLE_EQ(evalScalar("size(b, 1)"), 1.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(b, 2)"), 41.0);
+    EXPECT_NEAR(evalScalar("sum(b)"), 1.0, 1e-12);
+    EXPECT_NEAR(evalScalar("b(21)"), 0.500258735298, 1e-9);
+    EXPECT_DOUBLE_EQ(evalScalar("numel(y)"), 20.0);
+
+    // Polyphase upfirdn matches direct upsample-conv-downsample for general (p, q).
+    eval("x2 = [1 -2 3 4 -1 2 5]; h = [0.2 0.5 -0.1 0.3 0.4]; "
+         "y_pf = upfirdn(x2, h, 3, 2); "
+         "xu = zeros(1, (numel(x2) - 1) * 3 + 1); xu(1:3:end) = x2; "
+         "c = conv(xu, h); y_ref = c(1:2:end);");
+    EXPECT_DOUBLE_EQ(evalScalar("numel(y_pf)"), evalScalar("numel(y_ref)"));
+    EXPECT_NEAR(evalScalar("max(abs(y_pf - y_ref))"), 0.0, 1e-12);
+}

@@ -6,6 +6,7 @@
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
+#include <utility>
 
 namespace numkit::signal {
 
@@ -98,6 +99,15 @@ Value resample(const Value &                x,
                keel::i32                          n,
                keel::f64                       beta = 5.0,
                keel::Allocator *  mr = nullptr);
+
+/// Two-output `resample`: returns `{y, b}` where `b` is the Kaiser-windowed
+/// anti-aliasing FIR filter applied during rate conversion.
+std::pair<Value, Value> resampleWithFilter(const Value &     x,
+                                           keel::usize       p,
+                                           keel::usize       q,
+                                           keel::i32         n_order = 10,
+                                           keel::f64         beta = 5.0,
+                                           keel::Allocator * mr = nullptr);
 
 
 /// @}

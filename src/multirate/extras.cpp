@@ -114,9 +114,61 @@ Value upfirdn(const Value &x, const Value &h, keel::usize p, keel::usize q, keel
     for (keel::usize i = 0; i < Lh; ++i) hv[i] = readReal(h, i);
 
     auto out = sameOrientReal(x, outLen, mr);
-    (void)keel::signal::upfirdn(xv.as_ref(), hv.as_ref(), p, q,
-                                keel::MutArrayRef<keel::f64>(out.doubleDataMut(), outLen),
-                                scratch.allocator());
+    keel::f64 *dst = out.doubleDataMut();
+
+    // Polyphase reversed-subfilter decomposition: turns every output sample into
+    // a single unit-stride contiguous dot product with zero inner modulo/div.
+    keel::Array<keel::usize> subOff(p, scratch.allocator());
+    keel::Array<keel::usize> subLen(p, scratch.allocator());
+    keel::usize totalPacked = 0;
+    for (keel::usize ph = 0; ph < p; ++ph) {
+        subOff[ph] = totalPacked;
+        const keel::usize len = (ph < Lh) ? ((Lh - 1 - ph) / p + 1) : 0;
+        subLen[ph] = len;
+        totalPacked += len;
+    }
+    keel::Array<keel::f64> hPoly(totalPacked, scratch.allocator());
+    for (keel::usize ph = 0; ph < p; ++ph) {
+        const keel::usize len = subLen[ph];
+        keel::f64 *hp = hPoly.data() + subOff[ph];
+        for (keel::usize u = 0; u < len; ++u)
+            hp[u] = hv[ph + (len - 1 - u) * p];
+    }
+
+    const keel::f64 *xBase = xv.data();
+    const keel::i64 iLx = keel::as<keel::i64>(Lx);
+    for (keel::usize m = 0; m < outLen; ++m) {
+        const keel::usize n = m * q;
+        const keel::usize ph = n % p;
+        const keel::usize len = subLen[ph];
+        if (len == 0) {
+            dst[m] = 0.0;
+            continue;
+        }
+        const keel::i64 kHi = keel::as<keel::i64>(n / p);
+        const keel::i64 kStart = kHi - keel::as<keel::i64>(len - 1);
+        const keel::i64 uLo = (kStart < 0) ? -kStart : 0;
+        const keel::i64 uHi = std::min(keel::as<keel::i64>(len), iLx - kStart);
+        if (uLo >= uHi) {
+            dst[m] = 0.0;
+            continue;
+        }
+        const keel::f64 *xp = xBase + (kStart + uLo);
+        const keel::f64 *hp = hPoly.data() + subOff[ph] + uLo;
+        const keel::usize cnt = keel::as<keel::usize>(uHi - uLo);
+        keel::f64 a0 = 0.0, a1 = 0.0, a2 = 0.0, a3 = 0.0;
+        keel::usize u = 0;
+        for (; u + 4 <= cnt; u += 4) {
+            a0 += xp[u]     * hp[u];
+            a1 += xp[u + 1] * hp[u + 1];
+            a2 += xp[u + 2] * hp[u + 2];
+            a3 += xp[u + 3] * hp[u + 3];
+        }
+        keel::f64 acc = (a0 + a1) + (a2 + a3);
+        for (; u < cnt; ++u)
+            acc += xp[u] * hp[u];
+        dst[m] = acc;
+    }
     return out;
 }
 
