@@ -39,7 +39,7 @@ static DctArgs parseDctArgs(keel::ArrayRef<Value> args, const char *fn)
                 throw Error(keel::format("{}: missing value after name", fn),
                              0, 0, fn, "", "numkit:dct:nv");
             const auto key = args[pos].toString();
-            if (key == "Type" || key == "type") {
+            if (key.equals_ignore_ascii_case("type")) {
                 a.hasType = true;
                 a.typeVal = args[pos + 1].toScalar();
             }

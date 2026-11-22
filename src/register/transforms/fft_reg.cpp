@@ -4,11 +4,6 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 
-// czt_reg below references M_PI â€” define it before any <cmath> include (MSVC
-// does not expose M_PI without _USE_MATH_DEFINES).
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
 #include <keel/array.h>
 #include <keel/core.h>
 #include <keel/format.h>
@@ -16,10 +11,8 @@
 #include <keel/complex.h>
 #include <keel/string.h>
 #include <keel/utf8.h>
+#include <keel/math.h>
 #include <cmath>
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -64,7 +57,7 @@ void ifft_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
         keel::String rawFlag = args[nargs - 1].toString();
         keel::String flag = rawFlag.clone();
-        for (char &c : flag) c = keel::to_ascii_lower(c);
+        flag.to_ascii_lower_in_place();
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
@@ -117,7 +110,7 @@ void ifft2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     if (nargs >= 2 && (args[nargs - 1].isChar() || args[nargs - 1].isString())) {
         keel::String rawFlag = args[nargs - 1].toString();
         keel::String flag = rawFlag.clone();
-        for (char &c : flag) c = keel::to_ascii_lower(c);
+        flag.to_ascii_lower_in_place();
         if (flag == "symmetric")
             symmetric = true;
         else if (flag == "nonsymmetric")
@@ -222,7 +215,7 @@ argcheck::checkNargin(args.size(), 1, 4, "czt");
         throw Error("czt: m must be a positive integer",
                      0, 0, "czt", "", "numkit:czt:badM");
 
-    keel::c64 w(std::cos(-2.0 * M_PI / m), std::sin(-2.0 * M_PI / m));
+    keel::c64 w(std::cos(-2.0 * keel::kPi / m), std::sin(-2.0 * keel::kPi / m));
     if (args.size() >= 3 && !args[2].isEmpty()) {
         const Value &wv = args[2];
         if (wv.numel() != 1)

@@ -13,6 +13,7 @@
 #include <keel/complex.h>
 #include <keel/string.h>
 #include <keel/utf8.h>
+#include <keel/math.h>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 
 #include <numkit/sys/plugin.hpp>   // CallContext, Span, ctx.engine->resource()
@@ -48,7 +49,7 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     for (keel::usize i = 2; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
             keel::String s = args[i].toString();
-            for (char &c : s) c = keel::to_ascii_lower(c);
+            s.to_ascii_lower_in_place();
             if (s == "whole") whole = true;
         } else if (!args[i].isEmpty()) {
             if (numericSeen == 0 && args[i].numel() > 1)
@@ -133,7 +134,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
                     c[i + j] += args[0].elemAsDouble(i) * a.elemAsDouble(na - 1 - j);
             keel::f64 *g = gd.doubleDataMut();
             const keel::f64 offset = keel::as<keel::f64>(na) - 1.0;
-            constexpr keel::f64 kPi = 3.14159265358979323846;
+            constexpr keel::f64 kPi = keel::kPi;
             for (keel::usize k = 0; k < nf; ++k) {
                 const keel::f64 fk = fvec->elemAsDouble(k);
                 const keel::f64 w = (fs > 0.0) ? (2.0 * kPi * fk / fs) : fk;

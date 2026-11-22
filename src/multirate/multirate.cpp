@@ -22,14 +22,10 @@
 #include "../signal_detail.hpp"     // shared argcheck cores
 #include "../dsp_helpers.hpp"       // Complex typedef
 
-#define _USE_MATH_DEFINES
 #include <algorithm>
 #include <cmath>
 #include <numeric>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace numkit::signal {
 
@@ -110,9 +106,9 @@ namespace {
     for (keel::usize i = 0; i < filtLen; ++i) {
         const keel::f64 n = i - half;
         const keel::f64 sinc = (keel::abs(n) < 1e-12)
-                                ? wc / M_PI
-                                : std::sin(wc * n) / (M_PI * n);
-        const keel::f64 win = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / filtOrder);
+                                ? wc / keel::kPi
+                                : std::sin(wc * n) / (keel::kPi * n);
+        const keel::f64 win = 0.54 - 0.46 * std::cos(2.0 * keel::kPi * i / filtOrder);
         h[i] = sinc * win;
         hSum += h[i];
     }
@@ -332,7 +328,7 @@ std::pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel::
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     auto fk = keel::Array<keel::f64>(L, scratch.allocator());
     keel::f64 sumfk = 0.0;
-    constexpr keel::f64 kPi = 3.14159265358979323846;
+    constexpr keel::f64 kPi = keel::kPi;
     for (keel::i32 i = 0; i < L; ++i) {
         const keel::i32 k = i - M;
         const keel::f64 fbv = (k == 0)

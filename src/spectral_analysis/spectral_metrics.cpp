@@ -14,6 +14,7 @@
 #include <keel/memory.h>
 #include <keel/ref.h>
 #include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/spectral_analysis/spectral_metrics.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -26,15 +27,11 @@
 #include "../signal_detail.hpp"     // shared argcheck cores
 
 #include <algorithm>
-#define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstring>
 #include <limits>
 #include <numeric>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace numkit::signal {
 
@@ -59,7 +56,7 @@ PsdPair computePsd(const Value &x, keel::f64 fs, keel::Allocator *mr)
     // sum(Pxx) * df = mean(x^2) (Parseval). Use nfft = x.numel() (matching
     // MATLAB's bandpower/obw rectangular-window periodogram at length N).
     Value win;  // empty → rectangular
-    const keel::f64 effFs = (fs > 0.0) ? fs : (2.0 * M_PI);
+    const keel::f64 effFs = (fs > 0.0) ? fs : (2.0 * keel::kPi);
     Value xD = detail::widenSingleToDouble(x, mr);
     auto [Pxx, F] = periodogram(xD, win, xD.numel(), effFs, mr);
     const keel::usize n = Pxx.numel();
@@ -275,7 +272,7 @@ obw(const Value &x, const Value &fs, keel::f64 p, keel::Allocator *mr)
     Value          Xv = fft(x, keel::as<keel::i32>(N), /*dim=*/0, mr);
     const keel::c64 *X  = Xv.complexData();
     const keel::usize   nOut = N / 2 + 1;
-    const keel::f64   fsHz = (fsv > 0.0) ? fsv : (2.0 * M_PI);  // rad/s when fs omitted
+    const keel::f64   fsHz = (fsv > 0.0) ? fsv : (2.0 * keel::kPi);  // rad/s when fs omitted
     const keel::f64   df   = fsHz / keel::as<keel::f64>(N);
 
     keel::Array<keel::f64> P(nOut, mr), F(nOut, mr);
@@ -461,21 +458,21 @@ PsdPair computePsdKaiser(const Value &x, keel::f64 fs, keel::Allocator *mr)
 {
     // Build Kaiser(beta=38) window of length numel(x).
     Value win = kaiser(x.numel(), 38.0, mr);
-    auto [Pxx, F] = periodogram(x, win, /*nfft=*/0, /*fs=*/2.0*3.14159265358979323846, mr);
+    auto [Pxx, F] = periodogram(x, win, /*nfft=*/0, /*fs=*/keel::kTau, mr);
     const keel::usize n = Pxx.numel();
     PsdPair p;
     p.Pxx.resize(n);
     p.F.resize(n);
     const keel::usize nfft = (n > 1) ? 2 * (n - 1) : 1;
     if (fs > 0.0) {
-        const keel::f64 fScale = fs / (2.0 * M_PI);
+        const keel::f64 fScale = fs / (2.0 * keel::kPi);
         const keel::f64 pScale = keel::as<keel::f64>(nfft) / fs;
         for (keel::usize i = 0; i < n; ++i) {
             p.F[i]   = F.doubleData()[i] * fScale;
             p.Pxx[i] = Pxx.doubleData()[i] * pScale;
         }
     } else {
-        const keel::f64 pScale = keel::as<keel::f64>(nfft) / (2.0 * M_PI);
+        const keel::f64 pScale = keel::as<keel::f64>(nfft) / (2.0 * keel::kPi);
         for (keel::usize i = 0; i < n; ++i) {
             p.F[i]   = F.doubleData()[i];
             p.Pxx[i] = Pxx.doubleData()[i] * pScale;
@@ -842,7 +839,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     const keel::usize nCh = isVec ? 1 : x.dims().cols();
     const bool isComplex = x.isComplex();
 
-    keel::f64 fs = 2.0 * M_PI;
+    keel::f64 fs = 2.0 * keel::kPi;
     keel::f64 t0 = 0.0;
     const bool isNormFreq = fsOrT.isEmpty();
     if (!isNormFreq) {
@@ -885,8 +882,8 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
         fd[k] = fmin + (fmax - fmin) * keel::as<keel::f64>(k) / keel::as<keel::f64>(nF - 1);
     }
 
-    const keel::c64 A = keel::polar(1.0, 2.0 * M_PI * fmin / fs);
-    const keel::c64 W = keel::polar(1.0, -2.0 * M_PI * (fmax - fmin) / (keel::as<keel::f64>(nF - 1) * fs));
+    const keel::c64 A = keel::polar(1.0, 2.0 * keel::kPi * fmin / fs);
+    const keel::c64 W = keel::polar(1.0, -2.0 * keel::kPi * (fmax - fmin) / (keel::as<keel::f64>(nF - 1) * fs));
 
     if (isSpectrogram) {
         if (nCh > 1)
@@ -1105,7 +1102,7 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
     auto tOut = Value::matrix(n - 1, 1, ValueType::DOUBLE, mr);
     keel::f64 *d = out.doubleDataMut();
     keel::f64 *td = tOut.doubleDataMut();
-    constexpr keel::f64 kPi = 3.14159265358979323846;
+    constexpr keel::f64 kPi = keel::kPi;
     for (keel::usize i = 0; i + 1 < n; ++i) {
         const keel::f64 p1 = std::atan2(im[i + 1], re[i + 1]);
         const keel::f64 p0 = std::atan2(im[i], re[i]);
@@ -1194,7 +1191,7 @@ instbwWithTime(const Value &x, const Value &fs,
 
     const bool isVec = x.dims().isVector();
     const keel::usize nCh = isVec ? 1 : x.dims().cols();
-    const keel::f64 scale = 2.0 * std::sqrt(M_PI);
+    const keel::f64 scale = 2.0 * std::sqrt(keel::kPi);
 
     if (nCh == 1) {
         auto spec = pspectrumImpl(x, effFs, opts, "instbw", mr);

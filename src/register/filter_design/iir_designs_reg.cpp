@@ -219,7 +219,7 @@ void ellipord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     bool analog = false;
     if (args.size() >= 5) {
         const auto s = args[4].toString();
-        analog = (s == "s" || s == "S");
+        analog = (s.equals_ignore_ascii_case("s"));
     }
     auto [N, Wn] = ellipord(args[0], args[1], args[2].toScalar(), args[3].toScalar(), analog, ctx.engine->allocator());
     outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator());

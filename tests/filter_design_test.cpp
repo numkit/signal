@@ -6,9 +6,6 @@
 #include <cmath>
 #include <gtest/gtest.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 using namespace numkit;
 
@@ -134,7 +131,7 @@ TEST_F(FilterDesignTest, FreqzFrequencyRange)
     //   W(n)   = (n-1) * π / n        (NOT π)
     eval("[H, W] = freqz([1], [1], 256);");
     EXPECT_NEAR(evalScalar("W(1)"),   0.0,                       1e-10);
-    EXPECT_NEAR(evalScalar("W(256)"), 255.0 * M_PI / 256.0,      1e-10);
+    EXPECT_NEAR(evalScalar("W(256)"), 255.0 * keel::kPi / 256.0,      1e-10);
 }
 
 TEST_F(FilterDesignTest, FreqzUnitGainForPassthrough)
@@ -183,7 +180,7 @@ TEST_F(FilterDesignTest, PhasezReturnsCorrectShape)
     EXPECT_DOUBLE_EQ(evalScalar("numel(phi)"), 128.0);
     EXPECT_DOUBLE_EQ(evalScalar("numel(W)"), 128.0);
     EXPECT_NEAR(evalScalar("W(1)"),   0.0,                  1e-10);
-    EXPECT_NEAR(evalScalar("W(128)"), 127.0 * M_PI / 128.0, 1e-10);
+    EXPECT_NEAR(evalScalar("W(128)"), 127.0 * keel::kPi / 128.0, 1e-10);
 }
 
 TEST_F(FilterDesignTest, PhasezPureDelayFilterIsLinear)
@@ -201,7 +198,7 @@ TEST_F(FilterDesignTest, PhasezUnwrappedIsContinuous)
     for (int i = 2; i <= 128; ++i) {
         double d = evalScalar("phi(" + std::to_string(i) + ") - phi("
                               + std::to_string(i - 1) + ");");
-        EXPECT_LT(keel::abs(d), M_PI);
+        EXPECT_LT(keel::abs(d), keel::kPi);
     }
 }
 

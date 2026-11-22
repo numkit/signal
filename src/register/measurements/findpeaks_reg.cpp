@@ -75,8 +75,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
         keel::String rawName = args[argi].toString();
         keel::String name = rawName.clone();
-        for (char &c : name)
-            c = keel::to_ascii_lower(c);
+        name.to_ascii_lower_in_place();
         if (argi + 1 >= args.size())
             throw Error(keel::format("findpeaks: option '{}' needs a value", rawName),
                          0, 0, "findpeaks", "", "numkit:findpeaks:badOpt");
@@ -99,8 +98,7 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
                 argi ? keel::as<keel::i32>(argi) + 2 : 2, "NPeaks", "findpeaks"));
         } else if (name == "sortstr") {
             keel::String s = v.toString();
-            for (char &c : s)
-                c = keel::to_ascii_lower(c);
+            s.to_ascii_lower_in_place();
             if      (s == "none")    opt.sortMode = 0;
             else if (s == "ascend")  opt.sortMode = 1;
             else if (s == "descend") opt.sortMode = 2;

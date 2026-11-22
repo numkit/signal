@@ -10,6 +10,7 @@
 // closed forms (LAR = log((1+k)/(1-k)); inverse sine isin = (2/pi)*asin(k);
 // prony of 0.5^n -> pole at 0.5).
 
+#include <keel/math.h>
 #include "dual_engine_fixture.hpp"
 
 using namespace m_test;
@@ -136,7 +137,7 @@ TEST_P(LpcParametricTest, PmusicPeig)
     eval("nn = 0:63; xt = cos(2*pi*0.1*nn) + cos(2*pi*0.25*nn);");
     eval("[P, f] = pmusic(xt, 4);");
     EXPECT_EQ(eval("P").numel(), 129u);            // nfft 256 -> 129 one-sided bins
-    EXPECT_NEAR(evalScalar("f(end)"), M_PI, 1e-9);
+    EXPECT_NEAR(evalScalar("f(end)"), keel::kPi, 1e-9);
     eval("fa = f(find(P == max(P(f < 1)), 1));");   // low-band peak (0.1 tone)
     eval("fb = f(find(P == max(P(f > 1 & f < 2)), 1));");  // 0.25 tone
     EXPECT_NEAR(evalScalar("fa"), 0.6381, 0.03);    // within one bin of the tone

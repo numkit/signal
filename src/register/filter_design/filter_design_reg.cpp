@@ -67,8 +67,7 @@ void fir1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArra
         if (args[i].isChar() || args[i].isString()) {
             keel::String s = args[i].toString();
             keel::String sl = s.clone();
-            for (char &ch : sl)
-                ch = keel::to_ascii_lower(ch);
+            sl.to_ascii_lower_in_place();
             if (sl == "noscale")
                 scale = false;
             else if (sl == "scale")

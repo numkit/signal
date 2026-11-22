@@ -19,9 +19,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #include <algorithm>
 #include <cmath>
@@ -380,7 +377,7 @@ rc2poly(const Value &k, keel::f64 r0, keel::Allocator *mr)
 // sine into [-1, 1]: isin = (2/pi)*asin(k), so k = sin((pi/2)*isin).
 Value is2rc(const Value &is, keel::Allocator *mr)
 {
-    constexpr keel::f64 kHalfPi = 1.5707963267948966;  // pi/2
+    constexpr keel::f64 kHalfPi = keel::kHalfPi;  // pi/2
     auto v = readVec(is);
     for (auto &y : v) y = std::sin(kHalfPi * y);
     return colVec(v, mr);
@@ -797,7 +794,7 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
         for (keel::usize i = 0; i < n; ++i) {
             const keel::c64 c = rts.complexData()[i];
             const keel::f64 a_ang = std::atan2(c.imag(), c.real());
-            if (a_ang > 1e-9 && a_ang < M_PI - 1e-9) angles.push_back(a_ang);
+            if (a_ang > 1e-9 && a_ang < keel::kPi - 1e-9) angles.push_back(a_ang);
         }
     }
     std::sort(angles.begin(), angles.end());

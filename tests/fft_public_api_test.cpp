@@ -28,9 +28,6 @@
 #include <cmath>
 #include <vector>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 using numkit::ValueType;
 using numkit::Value;
@@ -247,7 +244,7 @@ TEST(DspFftPublicApi, IfftPhaseRampLocatesImpulse)
     auto H = Value::complexMatrix(N, 1, mr);
     keel::c64 *Hd = H.complexDataMut();
     for (keel::usize k = 0; k < N; ++k) {
-        const double phase = -2.0 * M_PI * static_cast<double>(k)
+        const double phase = -2.0 * keel::kPi * static_cast<double>(k)
                                   * static_cast<double>(d) / static_cast<double>(N);
         Hd[k] = keel::c64(std::cos(phase), std::sin(phase));
     }
@@ -275,7 +272,7 @@ TEST(DspFftPublicApi, CosinePeakBin)
     auto x = Value::matrix(1, N, ValueType::DOUBLE, mr);
     double *xd = x.doubleDataMut();
     for (keel::usize i = 0; i < N; ++i)
-        xd[i] = std::cos(2.0 * M_PI * k * i / static_cast<double>(N));
+        xd[i] = std::cos(2.0 * keel::kPi * k * i / static_cast<double>(N));
 
     Value X = numkit::signal::fft(x, -1, 0, mr);
     const keel::c64 *Xd = X.complexData();
@@ -463,8 +460,8 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
         auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         double *xd = x.doubleDataMut();
         for (keel::usize n = 0; n < N; ++n)
-            xd[n] = std::sin(2.0 * M_PI * 0.07 * n)
-                  + 0.5 * std::cos(2.0 * M_PI * 0.13 * n);
+            xd[n] = std::sin(2.0 * keel::kPi * 0.07 * n)
+                  + 0.5 * std::cos(2.0 * keel::kPi * 0.13 * n);
 
         Value X = numkit::signal::fft(x, -1, 0, mr);
         ASSERT_TRUE(X.isComplex()) << "N=" << N;
@@ -482,7 +479,7 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
         // Reference: naive O(NÃ‚Â²) DFT, value-for-value.
         for (keel::usize k : {keel::usize{0}, keel::usize{1}, keel::usize{2}, N - 1, N / 3}) {
             double re = 0.0, im = 0.0;
-            const double w = -2.0 * M_PI * static_cast<double>(k)
+            const double w = -2.0 * keel::kPi * static_cast<double>(k)
                                  / static_cast<double>(N);
             for (keel::usize n = 0; n < N; ++n) {
                 const double a = w * static_cast<double>(n);
@@ -595,9 +592,9 @@ static void fillTestSignal(keel::c64 *out, keel::usize N)
 {
     for (keel::usize i = 0; i < N; ++i) {
         const double t = double(i) / double(N);
-        out[i] = keel::c64(std::sin(2.0 * M_PI * 3.0 * t)
-                       + 0.4 * std::cos(2.0 * M_PI * 7.0 * t),
-                         0.5 * std::cos(2.0 * M_PI * 5.0 * t));
+        out[i] = keel::c64(std::sin(2.0 * keel::kPi * 3.0 * t)
+                       + 0.4 * std::cos(2.0 * keel::kPi * 7.0 * t),
+                         0.5 * std::cos(2.0 * keel::kPi * 5.0 * t));
     }
 }
 
@@ -796,7 +793,7 @@ TEST(SignalFftPublicApi, InterpftLengthMatches)
     auto *mr = keel::default_allocator();
     auto x = numkit::Value::matrix(1, 8, numkit::ValueType::DOUBLE, mr);
     for (int i = 0; i < 8; ++i)
-        x.doubleDataMut()[i] = std::sin(2.0 * M_PI * i / 8.0);
+        x.doubleDataMut()[i] = std::sin(2.0 * keel::kPi * i / 8.0);
     numkit::Value y = numkit::signal::interpft(x, 32, 0, mr);
     EXPECT_EQ(y.numel(), 32u);
     // Identity case: n == length(x).
@@ -812,12 +809,12 @@ TEST(SignalFftPublicApi, InterpftPureSinusoidExact)
     const keel::usize M = 16, N = 64;
     auto x = numkit::Value::matrix(1, M, numkit::ValueType::DOUBLE, mr);
     for (keel::usize i = 0; i < M; ++i)
-        x.doubleDataMut()[i] = std::cos(2.0 * M_PI * 2.0 * i / M);  // freq=2
+        x.doubleDataMut()[i] = std::cos(2.0 * keel::kPi * 2.0 * i / M);  // freq=2
 
     numkit::Value y = numkit::signal::interpft(x, N, 0, mr);
     ASSERT_EQ(y.numel(), N);
     for (keel::usize i = 0; i < N; ++i) {
-        const double ref = std::cos(2.0 * M_PI * 2.0 * i / N);
+        const double ref = std::cos(2.0 * keel::kPi * 2.0 * i / N);
         const double got = y.isComplex() ? y.complexData()[i].real()
                                          : y.doubleData()[i];
         EXPECT_NEAR(got, ref, 1e-10) << "i=" << i;

@@ -43,8 +43,7 @@ void uencode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     bool signedOut = false;
     if (args.size() >= 4 && !args[3].isEmpty()) {
         keel::String s = args[3].toString();
-        std::transform(s.begin(), s.end(), s.begin(),
-                        [](keel::u8 c) { return keel::to_ascii_lower(c); });
+        s.to_ascii_lower_in_place();
         if (s == "signed")        signedOut = true;
         else if (s == "unsigned") signedOut = false;
         else throw Error("uencode: 4th arg must be 'signed' or 'unsigned'",
@@ -67,8 +66,7 @@ void udecode_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     bool wrap = false;
     if (args.size() >= 4 && !args[3].isEmpty()) {
         keel::String s = args[3].toString();
-        std::transform(s.begin(), s.end(), s.begin(),
-                        [](keel::u8 c) { return keel::to_ascii_lower(c); });
+        s.to_ascii_lower_in_place();
         if (s == "wrap")          wrap = true;
         else if (s == "saturate") wrap = false;
         else throw Error("udecode: 4th arg must be 'saturate' or 'wrap'",

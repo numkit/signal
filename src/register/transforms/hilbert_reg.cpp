@@ -42,7 +42,7 @@ void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         n = (keel::usize)args[1].toScalar();
     if (args.size() >= 3 && (args[2].isChar() || args[2].isString())) {
         keel::String m = args[2].toString();
-        for (auto &c : m) c = keel::to_ascii_lower(c);
+        m.to_ascii_lower_in_place();
         if      (m == "analytic")           mode = 1;
         else if (m == "rms")                mode = 2;
         else if (m == "peak" || m == "peaks") mode = 3;

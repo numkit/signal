@@ -24,9 +24,6 @@
 #include <cmath>
 #include <cstring>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace numkit::signal {
 
@@ -61,7 +58,7 @@ void dftExact(keel::c64 *buf, keel::usize n, keel::i32 dir, keel::Allocator *mr)
     if (isPow2(n)) { fftRadix2(mr, buf, n, dir); return; }
     keel::ArenaTemp arena = keel::get_scratch(mr);
     auto out = keel::Array<keel::c64>(n, arena.allocator());
-    const keel::f64 base = keel::as<keel::f64>(dir) * 2.0 * M_PI / keel::as<keel::f64>(n);
+    const keel::f64 base = keel::as<keel::f64>(dir) * 2.0 * keel::kPi / keel::as<keel::f64>(n);
     for (keel::usize k = 0; k < n; ++k) {
         keel::c64 s(0.0, 0.0);
         for (keel::usize m = 0; m < n; ++m) {
@@ -91,7 +88,7 @@ Value dftmtx(keel::usize N, keel::Allocator *mr)
                      0, 0, "dftmtx", "", "numkit:dftmtx:badN");
     auto out = Value::complexMatrix(N, N, mr);
     keel::c64 *dst = out.complexDataMut();
-    const keel::f64 base = -2.0 * M_PI / keel::as<keel::f64>(N);
+    const keel::f64 base = -2.0 * keel::kPi / keel::as<keel::f64>(N);
     for (keel::usize k = 0; k < N; ++k)
         for (keel::usize n = 0; n < N; ++n) {
             const keel::f64 a = base * keel::as<keel::f64>(k) * keel::as<keel::f64>(n);
@@ -146,7 +143,7 @@ Value dst(const Value &x, keel::Allocator *mr)
     auto out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N == 0) return out;
     keel::f64 *dst = out.doubleDataMut();
-    const keel::f64 scale = M_PI / keel::as<keel::f64>(N + 1);
+    const keel::f64 scale = keel::kPi / keel::as<keel::f64>(N + 1);
     for (keel::usize k = 0; k < N; ++k) {
         keel::f64 s = 0.0;
         for (keel::usize n = 0; n < N; ++n)
@@ -256,17 +253,17 @@ Value cceps(const Value &x, keel::f64 *ndOut, keel::Allocator *mr)
     for (keel::usize i = 0; i < n; ++i) {
         const keel::f64 mag = keel::abs(X[i]);
         keel::f64 phase = keel::arg(X[i]);
-        while (phase - prevPhase > M_PI)  phase -= 2.0 * M_PI;
-        while (phase - prevPhase < -M_PI) phase += 2.0 * M_PI;
+        while (phase - prevPhase > keel::kPi)  phase -= 2.0 * keel::kPi;
+        while (phase - prevPhase < -keel::kPi) phase += 2.0 * keel::kPi;
         prevPhase = phase;
         ph[i]   = phase;
         lmag[i] = std::log(std::max(mag, 1e-300));
     }
     const keel::usize nh  = (n + 1) / 2;                 // fix((n+1)/2)
     const keel::usize idx = (n == 1) ? 0 : nh;           // MATLAB's 1-based nh+1
-    const keel::f64 nd  = std::round(ph[idx] / M_PI);
+    const keel::f64 nd  = std::round(ph[idx] / keel::kPi);
     for (keel::usize i = 0; i < n; ++i)
-        ph[i] -= M_PI * nd * keel::as<keel::f64>(i) / keel::as<keel::f64>(nh);
+        ph[i] -= keel::kPi * nd * keel::as<keel::f64>(i) / keel::as<keel::f64>(nh);
     if (ndOut) *ndOut = nd;
     for (keel::usize i = 0; i < n; ++i) X[i] = keel::c64(lmag[i], ph[i]);
     dftExact(X.data(), n, +1, mr);

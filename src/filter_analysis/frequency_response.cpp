@@ -9,6 +9,7 @@
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <keel/complex.h>
+#include <keel/math.h>
 #include <numkit/signal/filter_analysis/frequency_response.hpp>
 
 #include <numkit/value/value.hpp>
@@ -16,14 +17,10 @@
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 
-#define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
 #include <tuple>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace numkit::signal {
 
@@ -59,7 +56,7 @@ freqz(const Value &b, const Value &a, keel::usize npts, bool whole, keel::f64 fs
     // normalised radian frequencies; when fs > 0 (the freqz(b,a,n,fs)
     // form) the RETURNED frequency vector is rescaled to Hz over [0, fs/2)
     // (or [0, fs) with 'whole') — i.e. f = w * fs / (2π).
-    const keel::f64 span   = whole ? (2.0 * M_PI) : M_PI;
+    const keel::f64 span   = whole ? (2.0 * keel::kPi) : keel::kPi;
     const keel::f64 hzSpan = whole ? fs : (0.5 * fs);
     for (keel::usize k = 0; k < npts; ++k) {
         const keel::f64 w = span * k / npts;
@@ -130,8 +127,8 @@ namespace {
 void unwrapInPlace(keel::f64 *p, keel::usize n)
 {
     if (n < 2) return;
-    constexpr keel::f64 kPi  = M_PI;
-    constexpr keel::f64 k2Pi = 2.0 * M_PI;
+    constexpr keel::f64 kPi  = keel::kPi;
+    constexpr keel::f64 k2Pi = 2.0 * keel::kPi;
     keel::f64 offset = 0.0;
     for (keel::usize i = 1; i < n; ++i) {
         const keel::f64 diff = p[i] + offset - p[i - 1];
@@ -201,7 +198,7 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::A
     // normalised w and is unchanged.
     const keel::f64 hzSpan = 0.5 * fs;
     for (keel::usize k = 0; k < npts; ++k) {
-        const keel::f64 w = M_PI * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts);
+        const keel::f64 w = keel::kPi * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts);
         wp[k] = (fs > 0.0) ? (hzSpan * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts)) : w;
         const keel::c64 ejw(std::cos(w), -std::sin(w));
         keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);

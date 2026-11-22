@@ -55,7 +55,7 @@ void medfilt1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     for (keel::usize a = args.size(); a-- > 1;) {
         if (args[a].isChar() || args[a].isString()) {
             keel::String s = args[a].toString();
-            for (char &c : s) c = keel::to_ascii_lower(c);
+            s.to_ascii_lower_in_place();
             if (s == "truncate") zeropad = false;
             else if (s == "zeropad") zeropad = true;
             break;
@@ -84,7 +84,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         if (args[2].isChar() || args[2].isString()) {
             keel::String raw = args[2].toString();
             keel::String s = raw.clone();
-            for (char &c : s) c = keel::to_ascii_lower(c);
+            s.to_ascii_lower_in_place();
             if (s != "aic")
                 throw Error(keel::format("fillgaps: ORDER string must be 'aic' (got '{}')", raw),
                             0, 0, "fillgaps", "", "numkit:fillgaps:invalidOrder");

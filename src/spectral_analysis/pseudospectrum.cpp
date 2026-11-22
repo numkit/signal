@@ -15,6 +15,7 @@
 #include <keel/array.h>
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/math.h>
 #include <numkit/signal/spectral_analysis/signal_modeling.hpp>   // corrmtx, pmusic, peig
 
 #include <numkit/value/value.hpp>
@@ -26,9 +27,6 @@
 #include <numeric>
 #include <tuple>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace numkit::signal {
 
@@ -123,7 +121,7 @@ pseudospectrum(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, bool e
     keel::f64 *  Pd = P.doubleDataMut();
     keel::f64 *  Fd = F.doubleDataMut();
     for (keel::i32 k = 0; k < nf; ++k) {
-        const keel::f64 w   = M_PI * k / (nf - 1);   // normalized angular freq [0, π]
+        const keel::f64 w   = keel::kPi * k / (nf - 1);   // normalized angular freq [0, π]
         keel::f64       sum = 0.0;
         for (keel::i32 t = 0; t < nNoise; ++t) {
             const keel::i32 col = ord[t];

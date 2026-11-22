@@ -42,7 +42,7 @@ void forEachAsMag(const Value &x, keel::f64 *dst, F &&f)
 keel::String toLower(keel::StringRef s)
 {
     keel::String r = keel::String::from(s);
-    for (auto &c : r) c = keel::to_ascii_lower(c);
+    r.to_ascii_lower_in_place();
     return r;
 }
 

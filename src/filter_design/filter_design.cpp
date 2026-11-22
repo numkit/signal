@@ -172,7 +172,7 @@ Value fir1(keel::i32 N, const Value &Wn, keel::StringRef typeIn,
 
     const keel::usize nw = Wn.numel();
     keel::String type = keel::String::from(typeIn);
-    for (char &ch : type) ch = keel::to_ascii_lower(ch);
+    type.to_ascii_lower_in_place();
     if (type.empty())
         type.assign((nw == 1) ? "low" : (nw == 2 ? "bandpass" : "dc-0"));
 

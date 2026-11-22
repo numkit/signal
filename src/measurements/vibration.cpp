@@ -22,9 +22,6 @@
 #include <cmath>
 #include <cstring>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace numkit::signal {
 
@@ -86,7 +83,7 @@ envspectrum(const Value &x, keel::f64 fs, keel::Allocator *mr)
     keel::f64 *fd  = F.doubleDataMut();
     const keel::c64 *zd = Z.complexData();
 
-    const keel::f64 fNyq = (fs > 0.0) ? fs * 0.5 : M_PI;
+    const keel::f64 fNyq = (fs > 0.0) ? fs * 0.5 : keel::kPi;
     const keel::f64 scale = 2.0 / keel::as<keel::f64>(N);  // single-sided amp.
     for (keel::usize i = 0; i < nOne; ++i) {
         const keel::f64 a = keel::abs(zd[i]) * scale;
@@ -254,7 +251,7 @@ tsa(const Value &x, keel::f64 fs,
                 (i0 < rpm_v.size())
                 ? rpm_v[i0] + frac * (rpm_v[i1] - rpm_v[i0])
                 : rpm_v.back();
-            const keel::f64 omega = 2.0 * M_PI * rpmI / 60.0;
+            const keel::f64 omega = 2.0 * keel::kPi * rpmI / 60.0;
             theta[i] = acc;
             acc += omega / fs;
         }
@@ -262,7 +259,7 @@ tsa(const Value &x, keel::f64 fs,
 
     // 2. Re-sample onto a uniform angle grid by accumulating into
     //    n_per_rev bins per revolution.
-    const keel::f64 twoPi = 2.0 * M_PI;
+    const keel::f64 twoPi = 2.0 * keel::kPi;
     keel::Array<keel::f64> sumBin(n_per_rev, 0.0, mr);
     keel::Array<keel::i32> cntBin(n_per_rev, 0, mr);
     for (keel::usize i = 0; i < N; ++i) {

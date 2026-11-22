@@ -7,6 +7,7 @@
 #include <keel/ref.h>
 #include <keel/string.h>
 #include <keel/utf8.h>
+#include <keel/math.h>
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/spectral_analysis/periodogram_pwelch.hpp>
 #include <numkit/value/argcheck.hpp>
@@ -26,7 +27,7 @@ namespace detail {
 // MATLAB DSP-spectrum default fs = 2*pi (treats input as normalised
 // radian frequency). Explicit fs as the last positional argument
 // overrides this.
-constexpr keel::f64 kDefaultFs = 2.0 * 3.14159265358979323846;
+constexpr keel::f64 kDefaultFs = keel::kTau;
 
 void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
@@ -50,8 +51,7 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     for (keel::usize i = firstStr; i + 1 < args.size(); ++i) {
         if (!args[i].isChar()) continue;
         keel::String opt = args[i].toString();
-        std::transform(opt.begin(), opt.end(), opt.begin(),
-                       [](keel::u8 c) { return keel::to_ascii_lower(c); });
+        opt.to_ascii_lower_in_place();
         if (opt == "confidencelevel")
             conf = args[i + 1].toScalar();
     }
@@ -91,7 +91,7 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     for (keel::usize i = 1; i < args.size(); ++i) {
         if (args[i].isChar() || args[i].isString()) {
             keel::String s = args[i].toString();
-            for (char &c : s) c = keel::to_ascii_lower(c);
+            s.to_ascii_lower_in_place();
             if (s == "twosided" || s == "centered") twoSided = true;
         }
     }

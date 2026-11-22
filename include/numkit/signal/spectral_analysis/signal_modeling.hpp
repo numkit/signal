@@ -11,6 +11,7 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/math.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -348,7 +349,7 @@ std::tuple<Value, Value>
 pmusic(const Value &                x,
        keel::i32                          p,
        keel::i32                          nfft = 256,
-       keel::f64                       fs   = 2.0 * 3.14159265358979323846,
+       keel::f64                       fs   = keel::kTau,
        keel::Allocator *  mr   = nullptr);
 
 /// Eigenvector pseudospectrum (`[P, F] = peig(x, p, nfft, fs)`).
@@ -367,7 +368,7 @@ std::tuple<Value, Value>
 peig(const Value &                x,
      keel::i32                          p,
      keel::i32                          nfft = 256,
-     keel::f64                       fs   = 2.0 * 3.14159265358979323846,
+     keel::f64                       fs   = keel::kTau,
      keel::Allocator *  mr   = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────

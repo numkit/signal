@@ -43,8 +43,7 @@ keel::usize parseSflag(keel::ArrayRef<Value> args, bool &periodic)
     const Value &last = args[args.size() - 1];
     if (!last.isChar() && !last.isString()) return args.size();
     keel::String s = last.toString();
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](keel::u8 c) { return keel::to_ascii_lower(c); });
+    s.to_ascii_lower_in_place();
     if (s == "symmetric") return args.size() - 1;
     if (s == "periodic") { periodic = true; return args.size() - 1; }
     return args.size();   // not an sflag â€” leave for caller
@@ -75,8 +74,7 @@ void parseTypeNameOnly(keel::ArrayRef<Value> args, const char *fn)
     const Value &last = args[args.size() - 1];
     if (!last.isChar() && !last.isString()) return;
     keel::String s = last.toString();
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](keel::u8 c) { return keel::to_ascii_lower(c); });
+    s.to_ascii_lower_in_place();
     if (s != "double" && s != "single")
         throw Error(keel::format("{}: Expected TYPENAME to match one of these values: 'double', 'single' (got '{}')", fn, s),
                     0, 0, fn, "", keel::format("numkit:{}:typeName", fn));

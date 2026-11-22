@@ -47,8 +47,7 @@ bool isStringLikeNoDelay(const Value &v)
 {
     if (v.type() != ValueType::CHAR && v.type() != ValueType::STRING) return false;
     keel::String s = v.toString();
-    std::transform(s.begin(), s.end(), s.begin(),
-                    [](keel::u8 c) { return keel::to_ascii_lower(c); });
+    s.to_ascii_lower_in_place();
     return s == "nodelay";
 }
 

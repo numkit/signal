@@ -10,6 +10,7 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
+#include <keel/math.h>
 #include <numkit/value/value.hpp>
 
 #include <tuple>
@@ -42,7 +43,7 @@ std::tuple<Value, Value>
 periodogram(const Value &                x,
             const Value &                window,
             keel::usize                       nfft,
-            keel::f64                       fs = 2.0 * 3.14159265358979323846,
+            keel::f64                       fs = keel::kTau,
             keel::Allocator *  mr = nullptr);
 
 /// Chi-square confidence interval for a periodogram PSD estimate.
@@ -94,7 +95,7 @@ pwelch(const Value &                x,
        const Value &                window,
        keel::usize                       noverlap,
        keel::usize                       nfft,
-       keel::f64                       fs = 2.0 * 3.14159265358979323846,
+       keel::f64                       fs = keel::kTau,
        keel::Allocator *  mr = nullptr);
 
 /// Cross-PSD via Welch's method.
@@ -119,7 +120,7 @@ cpsd(const Value &                x,
      const Value &                window,
      keel::usize                       noverlap,
      keel::usize                       nfft,
-     keel::f64                       fs = 2.0 * 3.14159265358979323846,
+     keel::f64                       fs = keel::kTau,
      keel::Allocator *  mr = nullptr);
 
 /// Magnitude-squared coherence via Welch's method.
@@ -144,7 +145,7 @@ mscohere(const Value &                x,
          const Value &                window,
          keel::usize                       noverlap,
          keel::usize                       nfft,
-         keel::f64                       fs = 2.0 * 3.14159265358979323846,
+         keel::f64                       fs = keel::kTau,
          keel::Allocator *  mr = nullptr);
 
 /// Transfer-function estimate via Welch's method.
@@ -168,7 +169,7 @@ tfestimate(const Value &                x,
            const Value &                window,
            keel::usize                       noverlap,
            keel::usize                       nfft,
-           keel::f64                       fs = 2.0 * 3.14159265358979323846,
+           keel::f64                       fs = keel::kTau,
            keel::Allocator *  mr = nullptr);
 
 /// Yule-Walker autoregressive PSD estimate.

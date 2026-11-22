@@ -4,11 +4,6 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 
-// The reg wrappers build Hamming/Hann windows + the radian frequency axis with
-// M_PI â€” define it before any <cmath> include (MSVC needs _USE_MATH_DEFINES).
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
 #include <keel/core.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -17,10 +12,8 @@
 #include <keel/complex.h>
 #include <keel/string.h>
 #include <keel/utf8.h>
+#include <keel/math.h>
 #include <cmath>
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/time_frequency/spectrogram.hpp>
@@ -86,7 +79,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                 w.doubleDataMut()[0] = 1.0;
             } else {
                 for (keel::usize i = 0; i < winLen; ++i)
-                    w.doubleDataMut()[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (winLen - 1));
+                    w.doubleDataMut()[i] = 0.54 - 0.46 * std::cos(2.0 * keel::kPi * i / (winLen - 1));
             }
             window = std::move(w);
         } else {
@@ -106,7 +99,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
     // convention uses fs = 2*pi, so f spans [0, pi] and t = centre/(2*pi).
     // The core builds the normalized axes (f = k*2*pi/nfft, t = centre in
     // samples); rescale both here so f and t honour fs.
-    keel::f64 fs = 2.0 * M_PI;
+    keel::f64 fs = 2.0 * keel::kPi;
     if (args.size() >= 5 && !args[4].isEmpty())
         fs = args[4].toScalar();
     {
@@ -147,7 +140,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
             win.resize(L);
             if (L == 1) win[0] = 1.0;
             else for (keel::usize i = 0; i < L; ++i)
-                win[i] = 0.54 - 0.46 * std::cos(2.0 * M_PI * i / (L - 1));
+                win[i] = 0.54 - 0.46 * std::cos(2.0 * keel::kPi * i / (L - 1));
         }
         keel::f64 U = 0.0;
         for (keel::f64 w : win) U += w * w;
@@ -239,7 +232,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                         const keel::c64 st_cs = std_ptr[k] * keel::conj(s_val);
                         const keel::c64 sd_cs = sdd_ptr[k] * keel::conj(s_val);
                         tcd[m * R + k] = td[m] + st_cs.real() / (mag2 * fs);
-                        const keel::f64 f_raw = fd[k] - (sd_cs.imag() / (2.0 * M_PI * mag2)) * fs;
+                        const keel::f64 f_raw = fd[k] - (sd_cs.imag() / (2.0 * keel::kPi * mag2)) * fs;
                         fcd[m * R + k] = std::fmod(std::fmod(f_raw, fs) + fs, fs);
                     } else {
                         tcd[m * R + k] = td[m];
@@ -345,7 +338,7 @@ static Value buildFreqAxis(keel::usize NFFT, keel::StringRef range,
                            bool fsGiven, keel::f64 fs,
                            keel::Allocator *mr)
 {
-    const keel::f64 f_scale = fsGiven ? fs : (2.0 * M_PI);
+    const keel::f64 f_scale = fsGiven ? fs : (2.0 * keel::kPi);
     const keel::f64 df      = f_scale / keel::as<keel::f64>(NFFT);
     if (range == "onesided") {
         const keel::usize nF = NFFT / 2 + 1;

@@ -1,14 +1,12 @@
 // tests/spectral_test.cpp
 
 #include <keel/core.h>
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
 #include <gtest/gtest.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 using namespace numkit;
 
@@ -44,7 +42,7 @@ TEST_F(SpectralTest, PeriodogramFrequencyRange)
 {
     eval("[Pxx, F] = periodogram(randn(1, 64));");
     EXPECT_NEAR(evalScalar("F(1)"), 0.0, 1e-10);
-    EXPECT_NEAR(evalScalar("F(129)"), M_PI, 1e-10); // Nyquist (nfft 256 -> 129 bins)
+    EXPECT_NEAR(evalScalar("F(129)"), keel::kPi, 1e-10); // Nyquist (nfft 256 -> 129 bins)
 }
 
 TEST_F(SpectralTest, PeriodogramPeakAtDc)
