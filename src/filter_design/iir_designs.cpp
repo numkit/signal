@@ -18,7 +18,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <stdexcept>
 
 namespace numkit::signal {
 
@@ -44,9 +43,9 @@ void validateWn(FilterType ftype, keel::ArrayRef<keel::f64> Wn)
 {
     const bool isBand = (ftype == FilterType::Bandpass || ftype == FilterType::Bandstop);
     if (isBand && Wn.size() != 2)
-        throw std::runtime_error("bandpass/bandstop requires 2-element Wn");
+        throw numkit::Error("bandpass/bandstop requires 2-element Wn");
     if (!isBand && Wn.size() != 1)
-        throw std::runtime_error("lowpass/highpass requires scalar Wn");
+        throw numkit::Error("lowpass/highpass requires scalar Wn");
 }
 
 keel::signal::FilterType toKeelFilterType(FilterType ftype)
@@ -57,7 +56,7 @@ keel::signal::FilterType toKeelFilterType(FilterType ftype)
         case FilterType::Bandpass: return keel::signal::FilterType::kBandpass;
         case FilterType::Bandstop: return keel::signal::FilterType::kBandstop;
     }
-    throw std::runtime_error("iir_designs: bad ftype");
+    throw numkit::Error("iir_designs: bad ftype");
 }
 
 Value packDoubleRow(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
@@ -86,11 +85,11 @@ void validateOrdSpecs(keel::ArrayRef<keel::f64> Wp, keel::ArrayRef<keel::f64> Ws
                       keel::f64 Rp, keel::f64 Rs, const char *fn)
 {
     if (!((Wp.size() == 1 && Ws.size() == 1) || (Wp.size() == 2 && Ws.size() == 2)))
-        throw std::runtime_error("ord: Wp and Ws must both be scalar or both 2-vectors");
+        throw numkit::Error("ord: Wp and Ws must both be scalar or both 2-vectors");
     if (Wp.size() == 1 && Wp[0] == Ws[0])
-        throw std::runtime_error("ord: Wp and Ws must differ");
+        throw numkit::Error("ord: Wp and Ws must differ");
     if (Rp <= 0.0 || Rs <= 0.0)
-        throw std::runtime_error(keel::format("{}: Rp, Rs must be positive", fn).c_str());
+        throw numkit::Error(keel::format("{}: Rp, Rs must be positive", fn).c_str());
 }
 
 } // anonymous
@@ -165,7 +164,7 @@ buttord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool a
     keel::signal::OrderResult ord;
     const auto st = keel::signal::buttord(Wp.as_ref(), Ws.as_ref(), Rp, Rs, analog, ord);
     if (st != keel::signal::SignalStatus::kOk)
-        throw std::runtime_error("buttord: invalid filter specification");
+        throw numkit::Error("buttord: invalid filter specification");
     return std::make_tuple(ord.order, packOrderWn(ord, mr));
 }
 
@@ -179,7 +178,7 @@ cheb1ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     keel::signal::OrderResult ord;
     const auto st = keel::signal::cheb1ord(Wp.as_ref(), Ws.as_ref(), Rp, Rs, analog, ord);
     if (st != keel::signal::SignalStatus::kOk)
-        throw std::runtime_error("cheb1ord: invalid filter specification");
+        throw numkit::Error("cheb1ord: invalid filter specification");
     return std::make_tuple(ord.order, packOrderWn(ord, mr));
 }
 
@@ -193,7 +192,7 @@ cheb2ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     keel::signal::OrderResult ord;
     const auto st = keel::signal::cheb2ord(Wp.as_ref(), Ws.as_ref(), Rp, Rs, analog, ord);
     if (st != keel::signal::SignalStatus::kOk)
-        throw std::runtime_error("cheb2ord: invalid filter specification");
+        throw numkit::Error("cheb2ord: invalid filter specification");
     return std::make_tuple(ord.order, packOrderWn(ord, mr));
 }
 

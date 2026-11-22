@@ -12,10 +12,10 @@
 #include <keel/ref.h>
 #include <keel/signal.h>
 #include <numkit/signal/filter_design/analog_filters.hpp>
+#include <numkit/value/error.hpp>
 
 #include <numkit/value/value.hpp>
 
-#include <stdexcept>
 
 namespace numkit::signal {
 
@@ -68,9 +68,9 @@ std::tuple<Value, Value, Value> packZpk(const keel::signal::ZpkResult &res, keel
 void impinvar_argcheck(const Value &b, const Value &a)
 {
     if (a.numel() < 2)
-        throw std::runtime_error("impinvar: a must have degree >= 1");
+        throw numkit::Error("impinvar: a must have degree >= 1");
     if (b.numel() >= a.numel())
-        throw std::runtime_error("impinvar: numerator degree must be less than denominator");
+        throw numkit::Error("impinvar: numerator degree must be less than denominator");
 }
 
 } // anonymous
@@ -185,7 +185,7 @@ impinvar(const Value &b, const Value &a, keel::f64 fs, keel::f64 /*tol*/, keel::
     keel::signal::TfResult res;
     const auto st = keel::signal::impinvar(bv.as_ref(), av.as_ref(), fs, res, scratch.allocator());
     if (st != keel::signal::SignalStatus::kOk)
-        throw std::runtime_error("impinvar: roots() returned unexpected count");
+        throw numkit::Error("impinvar: roots() returned unexpected count");
     return std::make_tuple(packDoubleRow(res.b.as_ref(), mr), packDoubleRow(res.a.as_ref(), mr));
 }
 

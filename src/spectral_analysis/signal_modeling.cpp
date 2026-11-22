@@ -898,7 +898,7 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
     const keel::i32 K  = keel::as<keel::i32>(H.size());
     const keel::i32 nv = nb + 1 + na;
     if (K * 2 < nv)
-        throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
+        throw numkit::Error("invfreq: not enough frequency points to fit (nb, na)");
 
     // Build A (2K × nv) row-major, plus rhs (length 2K).
     keel::Array<keel::f64> Ar(keel::as<keel::usize>(2 * K) * keel::as<keel::usize>(nv), 0.0);
@@ -951,21 +951,21 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
 void invfreqs_argcheck(const Value &H, const Value &w, keel::i32 nb, keel::i32 na)
 {
     if (H.numel() != w.numel())
-        throw std::runtime_error("invfreqs: H and w must be the same length");
+        throw numkit::Error("invfreqs: H and w must be the same length");
     const keel::i32 K  = keel::as<keel::i32>(H.numel());
     const keel::i32 nv = nb + 1 + na;
     if (K * 2 < nv)
-        throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
+        throw numkit::Error("invfreq: not enough frequency points to fit (nb, na)");
 }
 
 void invfreqz_argcheck(const Value &H, const Value &w, keel::i32 nb, keel::i32 na)
 {
     if (H.numel() != w.numel())
-        throw std::runtime_error("invfreqz: H and w must be the same length");
+        throw numkit::Error("invfreqz: H and w must be the same length");
     const keel::i32 K  = keel::as<keel::i32>(H.numel());
     const keel::i32 nv = nb + 1 + na;
     if (K * 2 < nv)
-        throw std::runtime_error("invfreq: not enough frequency points to fit (nb, na)");
+        throw numkit::Error("invfreq: not enough frequency points to fit (nb, na)");
 }
 
 } // anonymous

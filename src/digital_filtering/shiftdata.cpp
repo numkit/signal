@@ -53,7 +53,7 @@ shiftdata(const Value &x, keel::i32 dim, keel::Allocator *mr)
                     0, 0, "shiftdata", "", "numkit:shiftdata:BadDim");
 
     // perm = [dim, 1..dim-1, dim+1..N]
-    const keel::usize N = std::max<keel::usize>(keel::as<keel::usize>(dim), mtlNdims(x));
+    const keel::usize N = keel::max<keel::usize>(keel::as<keel::usize>(dim), mtlNdims(x));
     keel::Array<keel::i32> perm(N, mr);
     perm[0] = dim;
     keel::usize k = 1;
