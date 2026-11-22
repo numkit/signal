@@ -22,10 +22,8 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <tuple>
 #include <utility>
 
@@ -138,7 +136,7 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
             for (keel::usize k = 0; k < nf; ++k) {
                 const keel::f64 fk = fvec->elemAsDouble(k);
                 const keel::f64 w = (fs > 0.0) ? (2.0 * kPi * fk / fs) : fk;
-                const keel::c64 ejw(std::cos(w), -std::sin(w));
+                const keel::c64 ejw(keel::cos(w), -keel::sin(w));
                 keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
                 for (keel::usize n = 0; n < nc; ++n) {
                     C  += c[n] * ejwk;

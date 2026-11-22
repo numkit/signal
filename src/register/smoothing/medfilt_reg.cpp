@@ -7,6 +7,7 @@
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <keel/core.h>
+#include <keel/math.h>
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
@@ -19,10 +20,8 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <tuple>
 #include <utility>
 
@@ -71,7 +70,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
     keel::usize maxlen = 0;
     if (args.size() >= 2 && !args[1].isEmpty()) {
         const keel::f64 ml = argcheck::expectedReal(args[1], 2, "MAXLEN", "fillgaps");
-        if (std::isinf(ml) && ml > 0.0) {
+        if (keel::is_inf(ml) && ml > 0.0) {
             maxlen = 0;
         } else {
             maxlen = keel::as<keel::usize>(
@@ -91,7 +90,7 @@ void fillgaps_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
             order = 0;
         } else {
             const keel::f64 ord = argcheck::expectedReal(args[2], 3, "ORDER", "fillgaps");
-            if (std::isinf(ord) && ord > 0.0) {
+            if (keel::is_inf(ord) && ord > 0.0) {
                 order = 0;
             } else {
                 order = keel::as<keel::usize>(

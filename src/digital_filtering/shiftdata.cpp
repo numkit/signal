@@ -10,6 +10,7 @@
 // unshiftdata(x, perm, nshifts=[]):    y = ipermute(x, perm)
 
 #include <keel/array.h>
+#include <keel/math.h>
 #include <keel/core.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -22,7 +23,6 @@
 #include <numkit/value/error.hpp>
 #include <tuple>
 
-#include <cmath>
 
 namespace numkit::signal {
 
@@ -90,7 +90,7 @@ static void unshiftdata_argcheck(const Value &perm, const Value &nshifts)
     keel::Array<char> seen(n + 1, 0);
     for (keel::usize i = 0; i < n; ++i) {
         const keel::f64 v = perm.elemAsDouble(i);
-        const keel::f64 vi = std::floor(v);
+        const keel::f64 vi = keel::floor(v);
         if (v != vi || vi < 1.0 || vi > keel::as<keel::f64>(n)
             || seen[keel::as<keel::usize>(vi)])
             throw Error(keel::format("unshiftdata: perm must be a permutation of 1..{}", n),

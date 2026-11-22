@@ -5,6 +5,7 @@
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/math.h>
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
@@ -20,9 +21,7 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
-#include <cstring>
 #include <tuple>
 #include <utility>
 
@@ -38,7 +37,7 @@ namespace {
 keel::i32 firOrder(const Value &v, keel::i32 argNum, const char *name, const char *fn)
 {
     const keel::f64 n = argcheck::expectedReal(v, argNum, name, fn);
-    if (n != std::floor(n)) {
+    if (n != keel::floor(n)) {
         const auto numStr = argcheck::detail::num(n);
         throw Error(keel::format("{}: filter order {} must be a positive integer (got {}).", fn, name, numStr),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));

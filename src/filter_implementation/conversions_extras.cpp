@@ -17,7 +17,6 @@
 #include <numkit/signal/filter_implementation/conversions.hpp>  // tf2sos
 
 #include <algorithm>
-#include <cmath>
 
 namespace numkit::signal {
 
@@ -548,7 +547,7 @@ Value scaleFilterSections(const Value &CTFNum, const Value &SV,
     // K-th root of the overall gain magnitude.
     const keel::f64 root = (K == 0)
         ? 0.0
-        : std::pow(keel::abs(overall), 1.0 / keel::as<keel::f64>(K));
+        : keel::pow(keel::abs(overall), 1.0 / keel::as<keel::f64>(K));
 
     // Sign of the overall gain — concentrated on the last section.
     const keel::c64 sgn = sfs_sign(overall);

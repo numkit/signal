@@ -4,6 +4,7 @@
 // upfirdn and fftfilt delegate pure numerical kernels to keel::signal.
 
 #include <keel/arena.h>
+#include <keel/algo.h>
 #include <keel/array.h>
 #include <keel/complex.h>
 #include <keel/core.h>
@@ -17,7 +18,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <cstring>
 
 namespace numkit::signal {
 
@@ -126,7 +126,7 @@ Value interp(const Value &x, keel::usize r, keel::usize n, keel::f64 alpha, keel
     interp_argcheck(x, n);
     if (r == 1) {
         auto out = sameOrientReal(x, x.numel(), mr);
-        std::memcpy(out.doubleDataMut(), x.doubleData(), x.numel() * sizeof(keel::f64));
+        keel::copy_n(out.doubleDataMut(), x.doubleData(), x.numel());
         return out;
     }
     auto h = intfilt(r, n, alpha, mr);

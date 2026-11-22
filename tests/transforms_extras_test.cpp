@@ -3,6 +3,7 @@
 // Tests for E2: dftmtx / bitrevorder / dst / idst / rceps / cceps / icceps.
 
 #include <numkit/core/standard_engine.hpp>
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
 #include <gtest/gtest.h>
@@ -40,8 +41,8 @@ TEST_F(TransformsExtrasTest, DftmtxKnownEntry)
 {
     // F[1,1] = exp(-2πi/8) = exp(-πi/4) = (√2/2)(1 - i).
     eval("F = dftmtx(8);");
-    EXPECT_NEAR(evalScalar("real(F(2,2))"),  std::sqrt(2.0) / 2.0, 1e-12);
-    EXPECT_NEAR(evalScalar("imag(F(2,2))"), -std::sqrt(2.0) / 2.0, 1e-12);
+    EXPECT_NEAR(evalScalar("real(F(2,2))"),  keel::sqrt(2.0) / 2.0, 1e-12);
+    EXPECT_NEAR(evalScalar("imag(F(2,2))"), -keel::sqrt(2.0) / 2.0, 1e-12);
 }
 
 TEST_F(TransformsExtrasTest, DftmtxN1)
@@ -164,5 +165,5 @@ TEST_F(TransformsExtrasTest, IccepsLengthMatches)
     eval("c = cceps(x); xr = icceps(c);");
     EXPECT_EQ(eval("xr").numel(), 8u);
     for (int i = 1; i <= 8; ++i)
-        EXPECT_FALSE(std::isnan(evalScalar("xr(" + std::to_string(i) + ")")));
+        EXPECT_FALSE(keel::is_nan(evalScalar("xr(" + std::to_string(i) + ")")));
 }

@@ -20,10 +20,8 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <tuple>
 #include <utility>
 #include <numkit/value/argcheck.hpp>
@@ -161,7 +159,7 @@ keel::f64 filternorm(const Value &b, const Value &a, keel::f64 pnorm, keel::Allo
     auto [H, W] = freqz(b, a, kNpts, /*whole=*/false, /*fs=*/0.0, mr);
     const keel::c64 *hd = H.complexData();
 
-    if (std::isinf(pnorm)) {
+    if (keel::is_inf(pnorm)) {
         // Lâˆž: max |H(e^{jw})| over the freqz grid.
         keel::f64 mx = 0.0;
         for (keel::usize k = 0; k < kNpts; ++k) {
@@ -181,7 +179,7 @@ keel::f64 filternorm(const Value &b, const Value &a, keel::f64 pnorm, keel::Allo
         const keel::f64 w = (k == 0 || k == kNpts - 1) ? 0.5 : 1.0;
         sum += w * mag2;
     }
-    return std::sqrt(sum / keel::as<keel::f64>(kNpts - 1));
+    return keel::sqrt(sum / keel::as<keel::f64>(kNpts - 1));
 }
 
 } // namespace numkit::signal

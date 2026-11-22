@@ -23,7 +23,6 @@
 #include "../dsp_helpers.hpp"       // Complex typedef
 
 #include <algorithm>
-#include <cmath>
 #include <numeric>
 
 
@@ -107,8 +106,8 @@ namespace {
         const keel::f64 n = i - half;
         const keel::f64 sinc = (keel::abs(n) < 1e-12)
                                 ? wc / keel::kPi
-                                : std::sin(wc * n) / (keel::kPi * n);
-        const keel::f64 win = 0.54 - 0.46 * std::cos(2.0 * keel::kPi * i / filtOrder);
+                                : keel::sin(wc * n) / (keel::kPi * n);
+        const keel::f64 win = 0.54 - 0.46 * keel::cos(2.0 * keel::kPi * i / filtOrder);
         h[i] = sinc * win;
         hSum += h[i];
     }
@@ -333,7 +332,7 @@ std::pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel::
         const keel::i32 k = i - M;
         const keel::f64 fbv = (k == 0)
             ? W
-            : std::sin(kPi * W * keel::as<keel::f64>(k)) / (kPi * keel::as<keel::f64>(k));
+            : keel::sin(kPi * W * keel::as<keel::f64>(k)) / (kPi * keel::as<keel::f64>(k));
         fk[i] = fbv * kwd[i];
         sumfk += fk[i];
     }

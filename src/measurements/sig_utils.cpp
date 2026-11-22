@@ -37,7 +37,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
 #include <utility>
 
@@ -145,7 +144,7 @@ CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
         const keel::f64 m = sum / keel::as<keel::f64>(baseN);
         const keel::f64 var = (sumsq - keel::as<keel::f64>(baseN) * m * m)
                           / keel::as<keel::f64>(baseN > 1 ? baseN - 1 : 1);
-        tdevEff = std::sqrt(std::max(0.0, var));
+        tdevEff = keel::sqrt(std::max(0.0, var));
     }
     if (tdevEff <= 0.0) tdevEff = 1.0;  // guard
 

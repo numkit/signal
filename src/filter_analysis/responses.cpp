@@ -16,8 +16,6 @@
 #include <numkit/signal/filter_analysis/frequency_response.hpp>  // freqz, phasez
 
 #include <algorithm>
-#include <cmath>
-#include <limits>
 
 
 namespace numkit::signal {
@@ -105,8 +103,8 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
     }
     // Decay to 5e-5 of initial amplitude.
     const keel::f64 decayThresh = 5e-5;
-    const keel::f64 n = std::log(decayThresh) / std::log(rho);
-    keel::i64 N = keel::as<keel::i64>(std::floor(n));
+    const keel::f64 n = keel::log(decayThresh) / keel::log(rho);
+    keel::i64 N = keel::as<keel::i64>(keel::floor(n));
     if (N < 1) N = 1;
     if (N > 8192) N = 8192;
     return keel::as<keel::usize>(N);
@@ -146,7 +144,7 @@ phasedelay(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
     // when the filter has a zero at DC) — both degenerate to NaN. Do
     // not extrapolate; let std::nan propagate so the caller sees the
     // documented MATLAB behaviour.
-    constexpr keel::f64 kNaN = std::numeric_limits<keel::f64>::quiet_NaN();
+    constexpr keel::f64 kNaN = keel::Limits<keel::f64>::quiet_nan();
     for (keel::usize i = 0; i < n; ++i) {
         if (wP[i] == 0.0) {
             dst[i] = kNaN;

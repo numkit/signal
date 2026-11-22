@@ -12,7 +12,6 @@
 #include <keel/string.h>
 #include <keel/utf8.h>
 #include <keel/math.h>
-#include <cmath>
 
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/transforms/fft.hpp>
@@ -21,7 +20,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <tuple>
 #include <utility>
@@ -165,7 +163,7 @@ static void extractSizeArg(const Value &v, keel::Array<keel::usize> &dst)
     dst.resize(n);
     for (keel::usize i = 0; i < n; ++i) {
         const keel::f64 d = v.elemAsDouble(i);
-        if (d <= 0 || d != std::floor(d))
+        if (d <= 0 || d != keel::floor(d))
             throw Error("fftn: size entries must be positive integers",
                          0, 0, "fftn", "", "numkit:fftn:badSize");
         dst[i] = keel::as<keel::usize>(d);
@@ -215,7 +213,7 @@ argcheck::checkNargin(args.size(), 1, 4, "czt");
         throw Error("czt: m must be a positive integer",
                      0, 0, "czt", "", "numkit:czt:badM");
 
-    keel::c64 w(std::cos(-2.0 * keel::kPi / m), std::sin(-2.0 * keel::kPi / m));
+    keel::c64 w(keel::cos(-2.0 * keel::kPi / m), keel::sin(-2.0 * keel::kPi / m));
     if (args.size() >= 3 && !args[2].isEmpty()) {
         const Value &wv = args[2];
         if (wv.numel() != 1)

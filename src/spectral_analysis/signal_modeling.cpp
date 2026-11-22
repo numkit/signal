@@ -7,6 +7,7 @@
 // data formulations; complex AR isn't covered here.
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
@@ -21,8 +22,6 @@
 
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 namespace numkit::signal {
 
@@ -39,14 +38,14 @@ keel::Array<keel::f64> readVec(const Value &x)
 Value rowVec(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
-    if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
+    if (!v.empty()) keel::copy_n(out.doubleDataMut(), v.data(), v.size());
     return out;
 }
 
 Value colVec(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
-    if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
+    if (!v.empty()) keel::copy_n(out.doubleDataMut(), v.data(), v.size());
     return out;
 }
 
@@ -379,7 +378,7 @@ Value is2rc(const Value &is, keel::Allocator *mr)
 {
     constexpr keel::f64 kHalfPi = keel::kHalfPi;  // pi/2
     auto v = readVec(is);
-    for (auto &y : v) y = std::sin(kHalfPi * y);
+    for (auto &y : v) y = keel::sin(kHalfPi * y);
     return colVec(v, mr);
 }
 Value rc2is(const Value &k, keel::Allocator *mr)
@@ -390,7 +389,7 @@ Value rc2is(const Value &k, keel::Allocator *mr)
         // Clamp into [-1, 1] to avoid asin domain errors on numerical
         // overshoots.
         const keel::f64 c = std::max(-1.0, std::min(1.0, y));
-        y = kTwoOverPi * std::asin(c);
+        y = kTwoOverPi * keel::asin(c);
     }
     return colVec(v, mr);
 }
@@ -400,7 +399,7 @@ Value lar2rc(const Value &g, keel::Allocator *mr)
 {
     auto v = readVec(g);
     for (auto &y : v) {
-        const keel::f64 e = std::exp(y);
+        const keel::f64 e = keel::exp(y);
         y = (e - 1.0) / (e + 1.0);
     }
     return colVec(v, mr);
@@ -410,7 +409,7 @@ Value rc2lar(const Value &k, keel::Allocator *mr)
     auto v = readVec(k);
     for (auto &y : v) {
         const keel::f64 c = std::max(-0.99999999, std::min(0.99999999, y));
-        y = std::log((1.0 + c) / (1.0 - c));
+        y = keel::log((1.0 + c) / (1.0 - c));
     }
     return colVec(v, mr);
 }
@@ -793,7 +792,7 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
         const keel::usize n = rts.numel();
         for (keel::usize i = 0; i < n; ++i) {
             const keel::c64 c = rts.complexData()[i];
-            const keel::f64 a_ang = std::atan2(c.imag(), c.real());
+            const keel::f64 a_ang = keel::atan2(c.imag(), c.real());
             if (a_ang > 1e-9 && a_ang < keel::kPi - 1e-9) angles.push_back(a_ang);
         }
     }
@@ -847,7 +846,7 @@ Value lsf2poly(const Value &lsf, keel::Allocator *mr)
         Q = keel::Array<keel::f64>({1.0, -1.0}, mr);
     }
     for (keel::i32 i = 0; i < m; ++i) {
-        const keel::f64 q[3] = {1.0, -2.0 * std::cos(lv[i]), 1.0};
+        const keel::f64 q[3] = {1.0, -2.0 * keel::cos(lv[i]), 1.0};
         if (i % 2 == 0) P = convOne(P, keel::ArrayRef<keel::f64>(q, 3));
         else            Q = convOne(Q, keel::ArrayRef<keel::f64>(q, 3));
     }

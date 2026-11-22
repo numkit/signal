@@ -22,8 +22,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
-#include <limits>
 #include <numeric>
 #include <tuple>
 
@@ -54,13 +52,13 @@ void jacobiEig(keel::Array<keel::f64> &A, keel::Array<keel::f64> &V, keel::usize
         for (keel::usize p = 0; p + 1 < D; ++p)
             for (keel::usize q = p + 1; q < D; ++q) {
                 const keel::f64 apq = A[p * D + q];
-                if (std::fabs(apq) < 1e-300) continue;
+                if (keel::abs(apq) < 1e-300) continue;
                 const keel::f64 app = A[p * D + p], aqq = A[q * D + q];
                 const keel::f64 theta = (aqq - app) / (2.0 * apq);
                 const keel::f64 sgn   = (theta >= 0) ? 1.0 : -1.0;
                 const keel::f64 t     = (theta == 0.0) ? 1.0
-                                      : sgn / (std::fabs(theta) + std::sqrt(theta * theta + 1.0));
-                const keel::f64 c = 1.0 / std::sqrt(t * t + 1.0);
+                                      : sgn / (keel::abs(theta) + keel::sqrt(theta * theta + 1.0));
+                const keel::f64 c = 1.0 / keel::sqrt(t * t + 1.0);
                 const keel::f64 s = t * c;
                 A[p * D + p] = app - t * apq;
                 A[q * D + q] = aqq + t * apq;
@@ -128,14 +126,14 @@ pseudospectrum(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, bool e
             keel::f64    re = 0.0, im = 0.0;
             for (keel::i32 m = 0; m < M; ++m) {
                 const keel::f64 v = V[keel::as<keel::usize>(m) * M + col];
-                re += v * std::cos(w * m);
-                im += v * std::sin(w * m);
+                re += v * keel::cos(w * m);
+                im += v * keel::sin(w * m);
             }
             keel::f64 proj = re * re + im * im;
             if (eigWeight) proj /= (lam[col] > 1e-300 ? lam[col] : 1e-300);
             sum += proj;
         }
-        Pd[k] = (sum > 0.0) ? 1.0 / sum : std::numeric_limits<keel::f64>::infinity();
+        Pd[k] = (sum > 0.0) ? 1.0 / sum : keel::Limits<keel::f64>::infinity();
         Fd[k] = (fs / 2.0) * k / (nf - 1);
     }
     return std::make_tuple(std::move(P), std::move(F));

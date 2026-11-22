@@ -5,6 +5,7 @@
 // state boundaries (10% / 90% by default).
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -17,9 +18,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <limits>
 
 namespace numkit::signal {
 
@@ -43,7 +41,7 @@ keel::Array<keel::f64> readVec(const Value &x)
     keel::Array<keel::f64> v(n);
     if (n == 0) return v;
     if (x.type() == ValueType::DOUBLE) {
-        std::memcpy(v.data(), x.doubleData(), n * sizeof(keel::f64));
+        keel::copy_n(v.data(), x.doubleData(), n);
     } else {
         for (keel::usize i = 0; i < n; ++i) v[i] = x.elemAsDouble(i);
     }
@@ -54,7 +52,7 @@ Value colVec(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     if (v.empty()) return Value::matrix(0, 1, ValueType::DOUBLE, mr);
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
-    std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
+    keel::copy_n(out.doubleDataMut(), v.data(), v.size());
     return out;
 }
 
@@ -298,10 +296,10 @@ Value overshoot(const Value &x, const Value &fs, keel::Allocator *mr)
         const auto &t = trs[k];
         if (t.sign <= 0) continue;
         // Window: from end of rise to next transition (or end of signal).
-        const keel::usize wbeg = keel::as<keel::usize>(std::ceil(t.endIdx));
+        const keel::usize wbeg = keel::as<keel::usize>(keel::ceil(t.endIdx));
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
-            wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
+            wend = keel::as<keel::usize>(keel::floor(trs[j].startIdx));
             break;
         }
         if (wbeg >= wend) continue;
@@ -325,10 +323,10 @@ Value undershoot(const Value &x, const Value &fs, keel::Allocator *mr)
     for (keel::usize k = 0; k < trs.size(); ++k) {
         const auto &t = trs[k];
         if (t.sign >= 0) continue;
-        const keel::usize wbeg = keel::as<keel::usize>(std::ceil(t.endIdx));
+        const keel::usize wbeg = keel::as<keel::usize>(keel::ceil(t.endIdx));
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
-            wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
+            wend = keel::as<keel::usize>(keel::floor(trs[j].startIdx));
             break;
         }
         if (wbeg >= wend) continue;
@@ -359,12 +357,12 @@ Value settlingtime(const Value &x, const Value &fs, keel::f64 tol, keel::Allocat
         const keel::f64 band = tol * range;
         keel::usize wend = v.size();
         for (keel::usize j = k + 1; j < trs.size(); ++j) {
-            wend = keel::as<keel::usize>(std::floor(trs[j].startIdx));
+            wend = keel::as<keel::usize>(keel::floor(trs[j].startIdx));
             break;
         }
         // Walk backwards from wend-1 to find the LAST sample outside band.
-        keel::usize lastOut = keel::as<keel::usize>(std::floor(t.startIdx));
-        for (keel::usize i = keel::as<keel::usize>(std::floor(t.startIdx));
+        keel::usize lastOut = keel::as<keel::usize>(keel::floor(t.startIdx));
+        for (keel::usize i = keel::as<keel::usize>(keel::floor(t.startIdx));
              i + 1 < wend && i < v.size(); ++i) {
             if (keel::abs(v[i] - dest) > band) lastOut = i;
         }

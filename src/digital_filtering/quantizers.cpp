@@ -22,6 +22,7 @@
 // PMR HARD RULE.
 
 #include <keel/core.h>
+#include <keel/math.h>
 #include <keel/memory.h>
 #include <numkit/signal/digital_filtering/quantizers.hpp>
 
@@ -29,7 +30,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
 
 namespace numkit::signal {
@@ -64,7 +64,7 @@ inline keel::f64 floorClip(keel::f64 x, keel::f64 lo, keel::f64 hi)
 {
     if (x < lo) return lo;
     if (x > hi) return hi;
-    return std::floor(x);
+    return keel::floor(x);
 }
 
 } // anon
@@ -78,9 +78,9 @@ Value uencode(const Value &u, keel::i32 N, keel::f64 V, bool signedOutput, keel:
         throw Error("uencode: V must be positive",
                     0, 0, "uencode", "", "numkit:uencode:NeedPosRealScalar");
 
-    const keel::f64 Q = std::pow(2.0, N) - 1.0;
+    const keel::f64 Q = keel::pow(2.0, N) - 1.0;
     const keel::f64 T = (Q + 1.0) / (2.0 * V);
-    const keel::f64 signMax = std::pow(2.0, N - 1) - 1.0;
+    const keel::f64 signMax = keel::pow(2.0, N - 1) - 1.0;
     const keel::f64 signMin = -(1.0 + signMax);
 
     const ValueType vt = signedOutput ? pickSignedType(N) : pickUnsignedType(N);
@@ -145,12 +145,12 @@ Value udecode(const Value &u, keel::i32 N, keel::f64 V, bool wrapOnOverflow, kee
     const bool isSigned = (u.type() == ValueType::INT8 || u.type() == ValueType::INT16
                            || u.type() == ValueType::INT32);
 
-    const keel::f64 W = isSigned ? std::pow(2.0, N - 1) : 0.0;
-    const keel::f64 T = V * std::pow(2.0, 1.0 - N);
-    const keel::f64 upper = isSigned ? (std::pow(2.0, N - 1) - 1.0)
-                                    : (std::pow(2.0, N) - 1.0);
-    const keel::f64 lower = isSigned ? -std::pow(2.0, N - 1) : 0.0;
-    const keel::f64 mod2N = std::pow(2.0, N);
+    const keel::f64 W = isSigned ? keel::pow(2.0, N - 1) : 0.0;
+    const keel::f64 T = V * keel::pow(2.0, 1.0 - N);
+    const keel::f64 upper = isSigned ? (keel::pow(2.0, N - 1) - 1.0)
+                                    : (keel::pow(2.0, N) - 1.0);
+    const keel::f64 lower = isSigned ? -keel::pow(2.0, N - 1) : 0.0;
+    const keel::f64 mod2N = keel::pow(2.0, N);
 
     Value out = (u.dims().is3D())
                 ? Value::matrix3d(u.dims().rows(), u.dims().cols(),
@@ -164,7 +164,7 @@ Value udecode(const Value &u, keel::i32 N, keel::f64 V, bool wrapOnOverflow, kee
         if (wrapOnOverflow) {
             // mod((v - lower), 2^N) + lower (matches MATLAB sign convention)
             const keel::f64 shifted = v - lower;
-            keel::f64 m = std::fmod(shifted, mod2N);
+            keel::f64 m = keel::fmod(shifted, mod2N);
             if (m < 0.0) m += mod2N;
             v = m + lower;
         } else {

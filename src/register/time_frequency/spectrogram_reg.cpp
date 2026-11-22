@@ -13,7 +13,6 @@
 #include <keel/string.h>
 #include <keel/utf8.h>
 #include <keel/math.h>
-#include <cmath>
 
 #include <numkit/sys/plugin.hpp>
 #include <numkit/signal/time_frequency/spectrogram.hpp>
@@ -23,7 +22,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <tuple>
 #include <utility>
@@ -79,7 +77,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                 w.doubleDataMut()[0] = 1.0;
             } else {
                 for (keel::usize i = 0; i < winLen; ++i)
-                    w.doubleDataMut()[i] = 0.54 - 0.46 * std::cos(2.0 * keel::kPi * i / (winLen - 1));
+                    w.doubleDataMut()[i] = 0.54 - 0.46 * keel::cos(2.0 * keel::kPi * i / (winLen - 1));
             }
             window = std::move(w);
         } else {
@@ -135,12 +133,12 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
             for (keel::usize i = 0; i < L; ++i) win[i] = window.elemAsDouble(i);
         } else {
             keel::usize L = std::max<keel::usize>(
-                1, keel::as<keel::usize>(std::floor(keel::as<keel::f64>(nx) / 4.5)));
+                1, keel::as<keel::usize>(keel::floor(keel::as<keel::f64>(nx) / 4.5)));
             if (L > nx && nx > 0) L = nx;
             win.resize(L);
             if (L == 1) win[0] = 1.0;
             else for (keel::usize i = 0; i < L; ++i)
-                win[i] = 0.54 - 0.46 * std::cos(2.0 * keel::kPi * i / (L - 1));
+                win[i] = 0.54 - 0.46 * keel::cos(2.0 * keel::kPi * i / (L - 1));
         }
         keel::f64 U = 0.0;
         for (keel::f64 w : win) U += w * w;
@@ -233,7 +231,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                         const keel::c64 sd_cs = sdd_ptr[k] * keel::conj(s_val);
                         tcd[m * R + k] = td[m] + st_cs.real() / (mag2 * fs);
                         const keel::f64 f_raw = fd[k] - (sd_cs.imag() / (2.0 * keel::kPi * mag2)) * fs;
-                        fcd[m * R + k] = std::fmod(std::fmod(f_raw, fs) + fs, fs);
+                        fcd[m * R + k] = keel::fmod(keel::fmod(f_raw, fs) + fs, fs);
                     } else {
                         tcd[m * R + k] = td[m];
                         fcd[m * R + k] = fd[k];
@@ -253,7 +251,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         for (keel::usize i = 0; i < R * C; ++i) {
             keel::f64 v = pd[i];
             if (v < 1e-15) v = 1e-15;
-            pdb_data[i] = 10.0 * std::log10(v);
+            pdb_data[i] = 10.0 * keel::log10(v);
         }
         Value imagescFn = Value::funcHandle("imagesc", ctx.engine->allocator());
         Value imgArgs[3] = { T, F, pdb };

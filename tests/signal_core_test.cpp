@@ -1,6 +1,7 @@
 // tests/signal_core_test.cpp
 
 #include <keel/core.h>
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -72,10 +73,10 @@ TEST_F(SignalCoreTest, Nextpow2Complex)
 
 TEST_F(SignalCoreTest, Nextpow2NaNAndInf)
 {
-    EXPECT_TRUE(std::isnan(evalScalar("nextpow2(NaN)")));
-    EXPECT_TRUE(std::isinf(evalScalar("nextpow2(Inf)")));
+    EXPECT_TRUE(keel::is_nan(evalScalar("nextpow2(NaN)")));
+    EXPECT_TRUE(keel::is_inf(evalScalar("nextpow2(Inf)")));
     EXPECT_GT(evalScalar("nextpow2(Inf)"), 0.0);
-    EXPECT_TRUE(std::isinf(evalScalar("nextpow2(-Inf)")));
+    EXPECT_TRUE(keel::is_inf(evalScalar("nextpow2(-Inf)")));
     EXPECT_GT(evalScalar("nextpow2(-Inf)"), 0.0);  // matches MATLAB: -Inf -> +Inf
 }
 

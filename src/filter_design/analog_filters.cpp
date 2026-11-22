@@ -4,6 +4,7 @@
 // Thin Value wrappers delegating numerical kernels to keel::signal.
 
 #include <keel/arena.h>
+#include <keel/algo.h>
 #include <keel/array.h>
 #include <keel/complex.h>
 #include <keel/core.h>
@@ -14,7 +15,6 @@
 
 #include <numkit/value/value.hpp>
 
-#include <cstring>
 #include <stdexcept>
 
 namespace numkit::signal {
@@ -47,14 +47,14 @@ Value packComplexCol(keel::ArrayRef<keel::c64> v, keel::Allocator *mr)
     if (v.empty())
         return Value::matrix(0, 0, ValueType::DOUBLE, mr);
     auto out = Value::complexMatrix(v.size(), 1, mr);
-    std::memcpy(out.complexDataMut(), v.data(), v.size() * sizeof(keel::c64));
+    keel::copy_n(out.complexDataMut(), v.data(), v.size());
     return out;
 }
 
 Value packDoubleRow(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
-    if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
+    if (!v.empty()) keel::copy_n(out.doubleDataMut(), v.data(), v.size());
     return out;
 }
 

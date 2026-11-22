@@ -5,6 +5,7 @@
 // edge handling).
 
 #include <numkit/core/standard_engine.hpp>
+#include <keel/math.h>
 #include <gtest/gtest.h>
 
 using namespace numkit;
@@ -43,7 +44,7 @@ TEST_F(DemodTest, AmdsbTcSubtractsOffset)
          "xd = demod(y, 25, fs, 'amdsb-tc', 0.5);");
     // After offset subtraction; just sanity-check shape and finite values.
     EXPECT_EQ(static_cast<int>(evalScalar("numel(xd)")), 21);
-    EXPECT_TRUE(std::isfinite(evalScalar("xd(5)")));
+    EXPECT_TRUE(keel::is_finite(evalScalar("xd(5)")));
 }
 
 TEST_F(DemodTest, FmRoundtripApproximatesInput)
@@ -61,7 +62,7 @@ TEST_F(DemodTest, PmRoundtripFiniteOutput)
     eval("y = modulate(x, 25, fs, 'pm');"
          "xd = demod(y, 25, fs, 'pm');");
     EXPECT_EQ(static_cast<int>(evalScalar("numel(xd)")), 21);
-    EXPECT_TRUE(std::isfinite(evalScalar("xd(10)")));
+    EXPECT_TRUE(keel::is_finite(evalScalar("xd(10)")));
 }
 
 TEST_F(DemodTest, RejectsUnsupportedMethod)

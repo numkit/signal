@@ -4,6 +4,7 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/array.h>
+#include <keel/math.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
@@ -16,7 +17,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <tuple>
 #include <utility>
@@ -88,7 +88,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, keel::f64 fs,
     const keel::f64 T_total = tv[np - 1] - tv[0];
     const keel::usize nRev = np - 1;
     const keel::f64 T_avg = T_total / keel::as<keel::f64>(nRev);
-    keel::usize L = keel::as<keel::usize>(std::floor(T_avg * fs));
+    keel::usize L = keel::as<keel::usize>(keel::floor(T_avg * fs));
     if (L < 1) L = 1;
 
     // For each revolution, linear-interpolate x onto an L-point grid
@@ -106,7 +106,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, keel::f64 fs,
             const keel::f64 tk = t0 + dur * keel::as<keel::f64>(k)
                                     / keel::as<keel::f64>(L);
             const keel::f64 idxF = tk * fs;
-            const keel::i64  i0   = keel::as<keel::i64>(std::floor(idxF));
+            const keel::i64  i0   = keel::as<keel::i64>(keel::floor(idxF));
             const keel::f64 frac = idxF - keel::as<keel::f64>(i0);
             if (i0 < 0 || keel::as<keel::usize>(i0 + 1) >= nx) { revOK = false; break; }
             sample[k] = (1.0 - frac) * xd[i0] + frac * xd[i0 + 1];

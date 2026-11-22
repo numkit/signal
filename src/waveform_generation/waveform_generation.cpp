@@ -24,8 +24,6 @@
 #include <numkit/ops/helpers.hpp>  // createLike
 
 #include "../signal_detail.hpp"     // shared argcheck cores
-#include <cmath>
-#include <cstring>
 
 namespace numkit::signal {
 
@@ -38,7 +36,7 @@ keel::f64 gauspulsAlpha(keel::f64 fc, keel::f64 bw)
     // hard-coded, α = -(π·bw·fc)² / (4·log(0.5)).
     constexpr keel::f64 kPi = keel::kPi;
     const keel::f64 pifb = kPi * fc * bw;
-    return -(pifb * pifb) / (4.0 * std::log(0.5));
+    return -(pifb * pifb) / (4.0 * keel::log(0.5));
 }
 
 keel::f64 rectpulsScalar(keel::f64 tv, keel::f64 w)
@@ -60,7 +58,7 @@ keel::f64 tripulsScalar(keel::f64 tv, keel::f64 w)
 keel::f64 gauspulsScalar(keel::f64 tv, keel::f64 fc, keel::f64 alpha)
 {
     constexpr keel::f64 kTwoPi = keel::kTau;
-    return std::exp(-alpha * tv * tv) * std::cos(kTwoPi * fc * tv);
+    return keel::exp(-alpha * tv * tv) * keel::cos(kTwoPi * fc * tv);
 }
 
 void rectpuls_argcheck(keel::f64 w)
@@ -128,7 +126,7 @@ Value pulstranHandle(keel::ArrayRef<keel::f64> t, keel::ArrayRef<keel::f64> d,
 
     Value out = Value::matrix(n, 1, ValueType::DOUBLE, mr);
     keel::f64 *dst = out.doubleDataMut();
-    if (n) std::memset(dst, 0, n * sizeof(keel::f64));
+    if (n) keel::mem_zero(dst, n * sizeof(keel::f64));
 
     // Per-iteration shifted-`t` buffer (row vector, matching MATLAB
     // convention for the callback input).
@@ -158,7 +156,7 @@ Value pulstran(const Value &t, const Value &d, keel::StringRef fnName,
 {
     auto out = createLike(t, ValueType::DOUBLE, mr);
     const keel::usize n = t.numel();
-    std::memset(out.doubleDataMut(), 0, n * sizeof(keel::f64));
+    keel::mem_zero(out.doubleDataMut(), n * sizeof(keel::f64));
     keel::f64 *dst = out.doubleDataMut();
 
     keel::String lower;
@@ -207,7 +205,7 @@ Value square(const Value &t, keel::f64 duty, keel::Allocator *mr)
         const keel::f64 tv = t.elemAsDouble(i);
         // Wrap to [0, 1) within one period.
         keel::f64 frac = tv / kTwoPi;
-        frac -= std::floor(frac);
+        frac -= keel::floor(frac);
         dst[i] = (frac < threshold) ? 1.0 : -1.0;
     }
     return out;
@@ -224,7 +222,7 @@ Value sawtooth(const Value &t, keel::f64 width, keel::Allocator *mr)
     const keel::usize n = t.numel();
     for (keel::usize i = 0; i < n; ++i) {
         keel::f64 frac = t.elemAsDouble(i) / kTwoPi;
-        frac -= std::floor(frac);   // [0, 1)
+        frac -= keel::floor(frac);   // [0, 1)
         // Rising portion: [0, width) → linear from -1 to +1.
         // Falling portion: [width, 1) → linear from +1 down to -1.
         if (width == 0.0) {
@@ -252,7 +250,7 @@ Value sinc(const Value &t, keel::Allocator *mr)
             dst[i] = 1.0;
         } else {
             const keel::f64 pt = kPi * tv;
-            dst[i] = std::sin(pt) / pt;
+            dst[i] = keel::sin(pt) / pt;
         }
     }
     return out;
@@ -266,7 +264,7 @@ Value gmonopuls(const Value &t, keel::f64 fc, keel::Allocator *mr)
     // Standard normalised gmonopuls: y(t) = 2·√e·π·fc·t · exp(-2·(π·fc·t)²)
     // peaks at +1 when t = 1/(2π·fc).
     constexpr keel::f64 kPi = keel::kPi;
-    const keel::f64 sqrtE = std::sqrt(std::exp(1.0));
+    const keel::f64 sqrtE = keel::sqrt(keel::exp(1.0));
     const keel::f64 k = 2.0 * sqrtE * kPi * fc;
     auto out = createLike(t, ValueType::DOUBLE, mr);
     keel::f64 *dst = out.doubleDataMut();
@@ -274,7 +272,7 @@ Value gmonopuls(const Value &t, keel::f64 fc, keel::Allocator *mr)
     for (keel::usize i = 0; i < n; ++i) {
         const keel::f64 tv = t.elemAsDouble(i);
         const keel::f64 pft = kPi * fc * tv;
-        dst[i] = k * tv * std::exp(-2.0 * pft * pft);
+        dst[i] = k * tv * keel::exp(-2.0 * pft * pft);
     }
     return out;
 }
@@ -291,14 +289,14 @@ Value diric(const Value &x, keel::i32 n, keel::Allocator *mr)
     for (keel::usize i = 0; i < N; ++i) {
         const keel::f64 xv = x.elemAsDouble(i);
         // Detect xv ≈ 2π·k by checking sin(x/2) ≈ 0.
-        const keel::f64 s = std::sin(xv * 0.5);
+        const keel::f64 s = keel::sin(xv * 0.5);
         if (keel::abs(s) < 1e-12) {
-            const keel::i64 k = std::lround(xv / kTwoPi);
+            const keel::i64 k = keel::round_i64(xv / kTwoPi);
             // Sign: (-1)^(k·(n-1))
             const keel::i64 sign = ((k * (n - 1)) & 1) ? -1 : 1;
             dst[i] = keel::as<keel::f64>(sign);
         } else {
-            dst[i] = std::sin(n * xv * 0.5) / (n * s);
+            dst[i] = keel::sin(n * xv * 0.5) / (n * s);
         }
     }
     return out;
@@ -348,7 +346,7 @@ Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
         for (keel::usize i = 0; i < N; ++i) {
             const keel::f64 tv = readT(i);
             const keel::f64 phase = kTwoPi * (f0 * tv + 0.5 * k * tv * tv) + phiRad;
-            dst[i] = std::cos(phase);
+            dst[i] = keel::cos(phase);
         }
         break;
     }
@@ -368,24 +366,24 @@ Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
                 const keel::f64 tFlip = readT(N - 1 - i);
                 const keel::f64 phase =
                     kTwoPi * (f1 * (tEnd - tFlip) + (k / 3.0) * tFlip * tFlip * tFlip) + phiRad;
-                dst[i] = std::cos(phase);
+                dst[i] = keel::cos(phase);
             }
         } else {
             for (keel::usize i = 0; i < N; ++i) {
                 const keel::f64 tv = readT(i);
                 const keel::f64 phase = kTwoPi * (f0 * tv + (k / 3.0) * tv * tv * tv) + phiRad;
-                dst[i] = std::cos(phase);
+                dst[i] = keel::cos(phase);
             }
         }
         break;
     }
     case Mode::Logarithmic: {
-        const keel::f64 beta = std::pow(f1 / f0, 1.0 / t1);
-        const keel::f64 logBeta = std::log(beta);
+        const keel::f64 beta = keel::pow(f1 / f0, 1.0 / t1);
+        const keel::f64 logBeta = keel::log(beta);
         for (keel::usize i = 0; i < N; ++i) {
             const keel::f64 tv = readT(i);
-            const keel::f64 phase = kTwoPi * f0 * (std::pow(beta, tv) - 1.0) / logBeta + phiRad;
-            dst[i] = std::cos(phase);
+            const keel::f64 phase = kTwoPi * f0 * (keel::pow(beta, tv) - 1.0) / logBeta + phiRad;
+            dst[i] = keel::cos(phase);
         }
         break;
     }
@@ -509,7 +507,7 @@ Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
             const keel::f64 t = keel::as<keel::f64>(r) / Fs;
             const keel::f64 yi = isRowVec ? y.elemAsDouble(r)
                                         : y.elemAsDouble(r + c * len);
-            md[r + c * len] = yi * std::cos(2.0 * kPi * Fc * t);
+            md[r + c * len] = yi * keel::cos(2.0 * kPi * Fc * t);
         }
     }
 
@@ -585,7 +583,7 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
                 const keel::f64 t = keel::as<keel::f64>(r) / Fs;
-                od[r + c * len] = getX(r, c) * std::cos(2.0 * kPi * Fc * t);
+                od[r + c * len] = getX(r, c) * keel::cos(2.0 * kPi * Fc * t);
             }
         }
     } else if (m == "amssb") {
@@ -601,8 +599,8 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
                 const keel::f64 t = keel::as<keel::f64>(r) / Fs;
-                const keel::f64 cosT = std::cos(2.0 * kPi * Fc * t);
-                const keel::f64 sinT = std::sin(2.0 * kPi * Fc * t);
+                const keel::f64 cosT = keel::cos(2.0 * kPi * Fc * t);
+                const keel::f64 sinT = keel::sin(2.0 * kPi * Fc * t);
                 const keel::f64 xv = xd[r + c * len];
                 const keel::f64 imagH = hd[r + c * len].imag();
                 od[r + c * len] = xv * cosT + imagH * sinT;
@@ -622,7 +620,7 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
                 const keel::f64 t = keel::as<keel::f64>(r) / Fs;
-                od[r + c * len] = (getX(r, c) - offset) * std::cos(2.0 * kPi * Fc * t);
+                od[r + c * len] = (getX(r, c) - offset) * keel::cos(2.0 * kPi * Fc * t);
             }
         }
     } else if (m == "fm") {
@@ -642,7 +640,7 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
             for (keel::usize r = 0; r < len; ++r) {
                 cum += getX(r, c);
                 const keel::f64 t = keel::as<keel::f64>(r) / Fs;
-                od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kf * cum);
+                od[r + c * len] = keel::cos(2.0 * kPi * Fc * t + kf * cum);
             }
         }
     } else if (m == "pm") {
@@ -660,7 +658,7 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
         for (keel::usize c = 0; c < cols; ++c) {
             for (keel::usize r = 0; r < len; ++r) {
                 const keel::f64 t = keel::as<keel::f64>(r) / Fs;
-                od[r + c * len] = std::cos(2.0 * kPi * Fc * t + kp * getX(r, c));
+                od[r + c * len] = keel::cos(2.0 * kPi * Fc * t + kp * getX(r, c));
             }
         }
     } else {
@@ -734,7 +732,7 @@ Value vcoImpl(const Value &x, keel::f64 Fc, keel::f64 range1, keel::f64 fs,
             const keel::usize srcIdx = rowVec ? n : (n + c * R);
             cum += x.elemAsDouble(srcIdx);
             const keel::f64 t = keel::as<keel::f64>(n) / fs;
-            od[srcIdx] = std::cos(2.0 * kPi * Fc * t + range1 * cum);
+            od[srcIdx] = keel::cos(2.0 * kPi * Fc * t + range1 * cum);
         }
     }
     return out;

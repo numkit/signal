@@ -20,7 +20,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -249,15 +248,15 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
         if (keel::abs(keel::c64(r.re, r.im)) < 1e5 && r.im >= 0.0)
             ez.push_back(r);
 
-    auto log10v = [](keel::f64 x) { return std::log10(x); };
+    auto log10v = [](keel::f64 x) { return keel::log10(x); };
     keel::f64 loNum = 1e300, hiNum = 0.0;
     for (auto &r : ez) {
         const bool integ = keel::abs(keel::c64(r.re, r.im)) < 1e-10;
         loNum = std::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
         hiNum = std::max(hiNum, 3.0 * keel::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
     }
-    const keel::i32 low = keel::as<keel::i32>(std::round(log10v(0.1 * loNum) - 0.5));
-    const keel::i32 high = keel::as<keel::i32>(std::round(log10v(hiNum) + 0.5));
+    const keel::i32 low = keel::as<keel::i32>(keel::round(log10v(0.1 * loNum) - 0.5));
+    const keel::i32 high = keel::as<keel::i32>(keel::round(log10v(hiNum) + 0.5));
 
     const keel::i32 diffzp = keel::as<keel::i32>(ep.size()) - keel::as<keel::i32>(tz.size());
     bool anyRealDomZero = false;
@@ -270,8 +269,8 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
         keel::Array<keel::f64> v(n);
         const keel::f64 d = (u - l) / (n - 1);
         for (keel::i32 i = 0; i < n; ++i)
-            v[i] = std::pow(10.0, l + i * d);
-        v[n - 1] = std::pow(10.0, u); // linspace forces the last point exactly
+            v[i] = keel::pow(10.0, l + i * d);
+        v[n - 1] = keel::pow(10.0, u); // linspace forces the last point exactly
         return v;
     };
     keel::Array<keel::f64> w = logspace(low, high, nLong); // the base LONG grid
@@ -283,13 +282,13 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
             osc.push_back(keel::as<keel::i32>(k));
     std::stable_sort(osc.begin(), osc.end(),
                      [&](keel::i32 x, keel::i32 y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
-    const keel::f64 npts2 = 2.0 + 8.0 / std::ceil(keel::abs((diffzp + kEps) / 10.0));
+    const keel::f64 npts2 = 2.0 + 8.0 / keel::ceil(keel::abs((diffzp + kEps) / 10.0));
 
     keel::Array<keel::f64> f = w.clone();
     keel::Array<keel::f64> z;
     for (keel::i32 k : osc) {
         const keel::f64 r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
-                                   std::pow(10.0, keel::as<keel::f64>(low)));
+                                   keel::pow(10.0, keel::as<keel::f64>(low)));
         const keel::f64 r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
         auto outside = [&](keel::f64 x) { return x > r2 || x < r1; };
         z.resize(std::remove_if(z.begin(), z.end(), [&](keel::f64 x) { return !outside(x); }) - z.begin());
@@ -298,7 +297,7 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
         for (keel::f64 x : w)
             if (x >= r1 && x <= r2)
                 ++cnt;
-        auto seg = logspace(std::log10(r1), std::log10(r2), keel::as<keel::i32>(cnt + npts2));
+        auto seg = logspace(keel::log10(r1), keel::log10(r2), keel::as<keel::i32>(cnt + npts2));
         z.append(seg.as_ref());
     }
     f.append(z.as_ref());
@@ -308,7 +307,7 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
     // linear in log10 (the caller-side interp1 of the classic code).
     keel::Array<keel::f64> lw(f.size());
     for (keel::usize i = 0; i < f.size(); ++i)
-        lw[i] = std::log10(f[i]);
+        lw[i] = keel::log10(f[i]);
     const keel::f64 dxi = keel::as<keel::f64>(f.size() - 1) / (npts - 1);
     keel::Array<keel::f64> out(npts);
     for (keel::i32 i = 0; i < npts; ++i) {
@@ -325,7 +324,7 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
         // Debug iterator assert (bugs/closed/signal/freqs-autogrid-debug-oob).
         const keel::usize j2 = std::min(j + 1, lw.size() - 1);
         const keel::f64 lv = lw[j] + t * (lw[j2] - lw[j]);
-        out[i] = std::pow(10.0, lv);
+        out[i] = keel::pow(10.0, lv);
     }
     return out;
 }

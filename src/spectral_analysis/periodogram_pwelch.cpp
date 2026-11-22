@@ -17,7 +17,6 @@
 #include "../dsp_helpers.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <tuple>
 #include <utility>
 
@@ -35,7 +34,7 @@ keel::Array<keel::f64> resolveWelchWindow(const Value &window, keel::usize nx,
         return win;
     }
     keel::usize winLen = std::max<keel::usize>(
-        1, keel::as<keel::usize>(std::floor(keel::as<keel::f64>(nx) / 4.5)));
+        1, keel::as<keel::usize>(keel::floor(keel::as<keel::f64>(nx) / 4.5)));
     if (winLen > nx) winLen = nx;
     keel::Array<keel::f64> win(winLen, 0.0, alloc);
     keel::signal::hamming(win.as_mut_ref());
@@ -88,8 +87,8 @@ periodogramConf(const Value &Pxx, keel::f64 confidenceLevel, bool realInput, boo
     const keel::f64 qLo   = 1.0 - alpha / 2.0;
     const keel::f64 qHi   = alpha / 2.0;
 
-    const keel::f64 c2Lo = -2.0 * std::log(1.0 - qLo);
-    const keel::f64 c2Hi = -2.0 * std::log(1.0 - qHi);
+    const keel::f64 c2Lo = -2.0 * keel::log(1.0 - qLo);
+    const keel::f64 c2Hi = -2.0 * keel::log(1.0 - qHi);
     const keel::f64 eLo  = numkit::builtin::erfinv(Value::scalar(qLo, mr)).toScalar();
     const keel::f64 eHi  = numkit::builtin::erfinv(Value::scalar(qHi, mr)).toScalar();
     const keel::f64 c1Lo = 2.0 * eLo * eLo;

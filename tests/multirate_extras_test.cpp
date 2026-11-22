@@ -3,6 +3,7 @@
 // Tests for F1: upfirdn / interp / intfilt / fftfilt.
 
 #include <keel/core.h>
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
@@ -95,7 +96,7 @@ TEST_F(MultirateExtrasTest, InterpPreservesLowFrequency)
     eval("y = interp(x, 2, 8);");
     // Centre block of y should still be a sine wave with rms ≈ 1/sqrt(2).
     eval("yc = y(50:200);");
-    EXPECT_NEAR(evalScalar("rms(yc)"), 1.0 / std::sqrt(2.0), 0.05);
+    EXPECT_NEAR(evalScalar("rms(yc)"), 1.0 / keel::sqrt(2.0), 0.05);
 }
 
 // ── fftfilt ───────────────────────────────────────────────────────────

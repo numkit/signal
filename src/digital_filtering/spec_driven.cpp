@@ -23,7 +23,6 @@
 #include <numkit/signal/filter_design/iir_designs.hpp>
 #include <numkit/signal/filter_implementation/conversions.hpp>
 
-#include <cmath>
 
 namespace numkit::signal {
 

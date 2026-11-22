@@ -21,8 +21,6 @@
 #include <numkit/value/value_type.hpp>   // mtypeName / isIntegerType
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 
 namespace numkit::signal {
@@ -63,7 +61,7 @@ void dftExact(keel::c64 *buf, keel::usize n, keel::i32 dir, keel::Allocator *mr)
         keel::c64 s(0.0, 0.0);
         for (keel::usize m = 0; m < n; ++m) {
             const keel::f64 a = base * keel::as<keel::f64>(k) * keel::as<keel::f64>(m);
-            s += buf[m] * keel::c64(std::cos(a), std::sin(a));
+            s += buf[m] * keel::c64(keel::cos(a), keel::sin(a));
         }
         out[k] = s;
     }
@@ -92,7 +90,7 @@ Value dftmtx(keel::usize N, keel::Allocator *mr)
     for (keel::usize k = 0; k < N; ++k)
         for (keel::usize n = 0; n < N; ++n) {
             const keel::f64 a = base * keel::as<keel::f64>(k) * keel::as<keel::f64>(n);
-            dst[n * N + k] = keel::c64(std::cos(a), std::sin(a));   // column-major
+            dst[n * N + k] = keel::c64(keel::cos(a), keel::sin(a));   // column-major
         }
     return out;
 }
@@ -130,7 +128,7 @@ Value bitrevorder(const Value &x, keel::Allocator *mr)
     const char *src = static_cast<const char *>(x.rawData());
     char *dst = static_cast<char *>(out.rawDataMut());
     for (keel::usize i = 0; i < n; ++i)
-        std::memcpy(dst + bitReverse(i, bits) * es, src + i * es, es);
+        keel::mem_copy(dst + bitReverse(i, bits) * es, src + i * es, es);
     return out;
 }
 
@@ -147,7 +145,7 @@ Value dst(const Value &x, keel::Allocator *mr)
     for (keel::usize k = 0; k < N; ++k) {
         keel::f64 s = 0.0;
         for (keel::usize n = 0; n < N; ++n)
-            s += x.elemAsDouble(n) * std::sin(scale * (n + 1) * (k + 1));
+            s += x.elemAsDouble(n) * keel::sin(scale * (n + 1) * (k + 1));
         dst[k] = s;
     }
     return out;
@@ -178,7 +176,7 @@ Value rceps(const Value &x, keel::Allocator *mr)
     dftExact(X.data(), n, +1, mr);
     for (keel::usize i = 0; i < n; ++i) {
         const keel::f64 mag = keel::abs(X[i]);
-        X[i] = keel::c64(std::log(std::max(mag, 1e-300)), 0.0);
+        X[i] = keel::c64(keel::log(std::max(mag, 1e-300)), 0.0);
     }
     dftExact(X.data(), n, -1, mr);
     const keel::f64 invN = 1.0 / keel::as<keel::f64>(n);
@@ -257,11 +255,11 @@ Value cceps(const Value &x, keel::f64 *ndOut, keel::Allocator *mr)
         while (phase - prevPhase < -keel::kPi) phase += 2.0 * keel::kPi;
         prevPhase = phase;
         ph[i]   = phase;
-        lmag[i] = std::log(std::max(mag, 1e-300));
+        lmag[i] = keel::log(std::max(mag, 1e-300));
     }
     const keel::usize nh  = (n + 1) / 2;                 // fix((n+1)/2)
     const keel::usize idx = (n == 1) ? 0 : nh;           // MATLAB's 1-based nh+1
-    const keel::f64 nd  = std::round(ph[idx] / keel::kPi);
+    const keel::f64 nd  = keel::round(ph[idx] / keel::kPi);
     for (keel::usize i = 0; i < n; ++i)
         ph[i] -= keel::kPi * nd * keel::as<keel::f64>(i) / keel::as<keel::f64>(nh);
     if (ndOut) *ndOut = nd;

@@ -59,7 +59,7 @@ TEST_F(ModulateTest, AmssbApproxMatchesMatlab)
     eval("y = modulate(x, 20, fs, 'amssb');"
          "y1 = y(5); y2 = y(8);");
     // Just sanity-check finite output and approximate magnitude bound.
-    EXPECT_TRUE(std::isfinite(evalScalar("y1")));
+    EXPECT_TRUE(keel::is_finite(evalScalar("y1")));
     EXPECT_LT(keel::abs(evalScalar("y1")), 2.0);  // amssb amplitudes ~|x| + |hilbert(x)|
 }
 

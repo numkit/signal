@@ -17,8 +17,6 @@
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 
-#include <cmath>
-#include <limits>
 #include <tuple>
 
 
@@ -62,7 +60,7 @@ freqz(const Value &b, const Value &a, keel::usize npts, bool whole, keel::f64 fs
         const keel::f64 w = span * k / npts;
         W.doubleDataMut()[k] = (fs > 0.0) ? (hzSpan * k / npts) : w;
 
-        const keel::c64 ejw(std::cos(w), -std::sin(w));
+        const keel::c64 ejw(keel::cos(w), -keel::sin(w));
         keel::c64 num(0, 0), den(0, 0);
         keel::c64 ejwk(1, 0);
         for (keel::usize i = 0; i < nb; ++i) {
@@ -103,7 +101,7 @@ freqz(const Value &b, const Value &a, const Value &wvec, keel::Allocator *mr)
     for (keel::usize k = 0; k < n; ++k) {
         const keel::f64 w = wd[k];
         W.doubleDataMut()[k] = w;
-        const keel::c64 ejw(std::cos(w), -std::sin(w));
+        const keel::c64 ejw(keel::cos(w), -keel::sin(w));
         keel::c64 num(0, 0), den(0, 0);
         keel::c64 ejwk(1, 0);
         for (keel::usize i = 0; i < nb; ++i) {
@@ -155,9 +153,9 @@ phasez(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::All
         const keel::f64 mag2 = hd[k].real() * hd[k].real()
                           + hd[k].imag() * hd[k].imag();
         if (mag2 < kZeroEps)
-            pd[k] = std::numeric_limits<keel::f64>::quiet_NaN();
+            pd[k] = keel::Limits<keel::f64>::quiet_nan();
         else
-            pd[k] = std::atan2(hd[k].imag(), hd[k].real());
+            pd[k] = keel::atan2(hd[k].imag(), hd[k].real());
     }
     unwrapInPlace(pd, npts);
     return std::make_tuple(std::move(phi), std::move(W));
@@ -200,7 +198,7 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::A
     for (keel::usize k = 0; k < npts; ++k) {
         const keel::f64 w = keel::kPi * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts);
         wp[k] = (fs > 0.0) ? (hzSpan * keel::as<keel::f64>(k) / keel::as<keel::f64>(npts)) : w;
-        const keel::c64 ejw(std::cos(w), -std::sin(w));
+        const keel::c64 ejw(keel::cos(w), -keel::sin(w));
         keel::c64 C(0, 0), CR(0, 0), ejwk(1, 0);
         for (keel::usize n = 0; n < nc; ++n) {
             C  += c[n] * ejwk;

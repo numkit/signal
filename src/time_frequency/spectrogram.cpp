@@ -18,7 +18,6 @@
 #include "../signal_detail.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <tuple>
 #include <utility>
 
@@ -70,7 +69,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
         for (keel::usize i = 0; i < winLen; ++i) win[i] = window.elemAsDouble(i);
     } else {
         winLen = std::max<keel::usize>(
-            1, keel::as<keel::usize>(std::floor(keel::as<keel::f64>(nx) / 4.5)));
+            1, keel::as<keel::usize>(keel::floor(keel::as<keel::f64>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         keel::signal::hamming(win.as_mut_ref());

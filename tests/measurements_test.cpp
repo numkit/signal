@@ -5,6 +5,7 @@
 //   rms / rssq / peak2peak / peak2rms
 
 #include <numkit/core/standard_engine.hpp>
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
 #include <gtest/gtest.h>
@@ -68,7 +69,7 @@ TEST_F(MeasurementsTest, DbPowerMode)
 
 TEST_F(MeasurementsTest, DbOnComplexUsesMagnitude)
 {
-    EXPECT_NEAR(evalScalar("db(complex(3,4))"), 20.0 * std::log10(5.0), 1e-12);
+    EXPECT_NEAR(evalScalar("db(complex(3,4))"), 20.0 * keel::log10(5.0), 1e-12);
 }
 
 // ───────────────────────────── Signal stats ────────────────────────────
@@ -82,7 +83,7 @@ TEST_F(MeasurementsTest, RmsConstantVector)
 TEST_F(MeasurementsTest, RmsSineWaveApproxOneOverSqrt2)
 {
     eval("t = (0:1023)/1024; x = sin(2*pi*5*t);");
-    EXPECT_NEAR(evalScalar("rms(x)"), 1.0 / std::sqrt(2.0), 1e-3);
+    EXPECT_NEAR(evalScalar("rms(x)"), 1.0 / keel::sqrt(2.0), 1e-3);
 }
 
 TEST_F(MeasurementsTest, RssqMatchesSqrtSumSquares)
@@ -99,7 +100,7 @@ TEST_F(MeasurementsTest, Peak2PeakBasic)
 
 TEST_F(MeasurementsTest, Peak2PeakNanPropagates)
 {
-    EXPECT_TRUE(std::isnan(evalScalar("peak2peak([1 NaN 2])")));
+    EXPECT_TRUE(keel::is_nan(evalScalar("peak2peak([1 NaN 2])")));
 }
 
 TEST_F(MeasurementsTest, Peak2RmsConstant)
@@ -111,7 +112,7 @@ TEST_F(MeasurementsTest, Peak2RmsConstant)
 TEST_F(MeasurementsTest, Peak2RmsSineApproxSqrt2)
 {
     eval("t = (0:1023)/1024; x = sin(2*pi*5*t);");
-    EXPECT_NEAR(evalScalar("peak2rms(x)"), std::sqrt(2.0), 1e-2);
+    EXPECT_NEAR(evalScalar("peak2rms(x)"), keel::sqrt(2.0), 1e-2);
 }
 
 // ── dim argument (matrix → reduce along chosen axis) ────────────────────
@@ -130,6 +131,6 @@ TEST_F(MeasurementsTest, RmsAlongCols)
 {
     eval("M = [3 4; 0 0];");
     eval("r = rms(M, 2);");                  // result 2×1
-    EXPECT_NEAR(evalScalar("r(1)"), std::sqrt((9.0 + 16.0) / 2.0), 1e-12);
+    EXPECT_NEAR(evalScalar("r(1)"), keel::sqrt((9.0 + 16.0) / 2.0), 1e-12);
     EXPECT_NEAR(evalScalar("r(2)"), 0.0, 1e-12);
 }

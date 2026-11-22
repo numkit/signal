@@ -12,6 +12,7 @@
 // nk-voiced with the received value/shape (user rule 2026-09-17).
 
 #include <keel/memory.h>
+#include <keel/math.h>
 #include <gtest/gtest.h>
 #include <numkit/core/standard_engine.hpp>
 #include <numkit/signal/digital_filtering/filter.hpp>
@@ -460,7 +461,7 @@ TEST_F(ArgcheckSignalTest, Medfilt1Contract)
     eval("ym = medfilt1(single(1:8), 3);");
     EXPECT_EQ(evalScalar("strcmp(class(ym), 'single')"), 1.0);
     eval("y = medfilt1(1:8, 0);");
-    EXPECT_TRUE(std::isnan(evalScalar("y(4)")));
+    EXPECT_TRUE(keel::is_nan(evalScalar("y(4)")));
 }
 
 // bandpower: fs requires freqrange (reference FreqRangeMissing class);

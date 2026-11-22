@@ -5,6 +5,7 @@
 // firpmord / kaiserord), delegating pure kernels to keel::signal.
 
 #include <keel/arena.h>
+#include <keel/algo.h>
 #include <keel/array.h>
 #include <keel/core.h>
 #include <keel/format.h>
@@ -17,7 +18,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <cstring>
 #include <stdexcept>
 
 namespace numkit::signal {
@@ -63,7 +63,7 @@ keel::signal::FilterType toKeelFilterType(FilterType ftype)
 Value packDoubleRow(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
 {
     auto out = Value::matrix(1, v.size(), ValueType::DOUBLE, mr);
-    if (!v.empty()) std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
+    if (!v.empty()) keel::copy_n(out.doubleDataMut(), v.data(), v.size());
     return out;
 }
 

@@ -28,8 +28,6 @@
 #include <numkit/value/error.hpp>
 #include <tuple>
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 namespace numkit::signal {
 

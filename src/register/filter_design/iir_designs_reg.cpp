@@ -5,6 +5,7 @@
 // TU; collected here verbatim (reg-side arg parsers nested in their anon
 // namespaces ride along). See project_layering_refactor.
 #include <keel/core.h>
+#include <keel/math.h>
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <keel/string.h>
@@ -20,7 +21,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <tuple>
@@ -97,7 +97,7 @@ keel::i32 iirOrder(const Value &v, const char *fn)
         throw Error(keel::format("{}: filter order N must be real (argument is complex).", fn),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotReal", fn));
     const keel::f64 n = v.toScalar();
-    if (n != std::floor(n)) {
+    if (n != keel::floor(n)) {
         const auto numStr = argcheck::detail::num(n);
         throw Error(keel::format("{}: filter order N must be a positive integer (got {}).", fn, numStr),
                     0, 0, fn, "", keel::format("numkit:{}:orderNotInteger", fn));

@@ -3,6 +3,7 @@
 // cconv / convmtx / xcorr2 / finddelay / alignsignals.
 
 #include <keel/core.h>
+#include <keel/algo.h>
 #include <keel/memory.h>
 #include <keel/complex.h>
 #include <keel/math.h>
@@ -15,8 +16,6 @@
 #include <numkit/signal/transforms/fft.hpp>              // fft / ifft
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 #include "signal_detail.hpp"     // shared argcheck cores
 
@@ -173,11 +172,11 @@ Value convmtx(const Value &h, keel::usize n, keel::Allocator *mr)
     if (hIsColumn) {
         for (keel::usize col = 0; col < n; ++col)
             for (keel::usize i = 0; i < nh; ++i)
-                std::memcpy(dst + ((col + i) + col * outRows) * es, src + i * es, es);
+                keel::mem_copy(dst + ((col + i) + col * outRows) * es, src + i * es, es);
     } else {
         for (keel::usize row = 0; row < n; ++row)
             for (keel::usize i = 0; i < nh; ++i)
-                std::memcpy(dst + (row + (row + i) * outRows) * es, src + i * es, es);
+                keel::mem_copy(dst + (row + (row + i) * outRows) * es, src + i * es, es);
     }
     return out;
 }
@@ -284,7 +283,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
             const keel::c64 *zr = z.complexData();
             for (keel::usize k = 0; k < cellsOut; ++k) dst[k] = zr[k].real();
         } else {
-            std::memcpy(dst, z.doubleData(), cellsOut * sizeof(keel::f64));
+            keel::copy_n(dst, z.doubleData(), cellsOut);
         }
         return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
     }

@@ -7,7 +7,6 @@
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/string.h>
-#include <limits>
 #include <tuple>
 #include <numkit/value/value.hpp>
 
@@ -239,8 +238,8 @@ struct PspectrumOptions {
     keel::f64 leakage = 0.5;         // in [0, 1]
     keel::f64 overlapPercent = -1.0; // -1 = automatic from leakage; else in [0, 100)
     keel::f64 timeResolution = -1.0; // -1 = automatic; else > 0 in seconds
-    keel::f64 fmin = std::numeric_limits<keel::f64>::quiet_NaN();
-    keel::f64 fmax = std::numeric_limits<keel::f64>::quiet_NaN();
+    keel::f64 fmin = keel::Limits<keel::f64>::quiet_nan();
+    keel::f64 fmax = keel::Limits<keel::f64>::quiet_nan();
     bool twoSided = false;
     bool hasTwoSided = false;
 };

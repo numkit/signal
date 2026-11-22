@@ -20,10 +20,8 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <tuple>
 #include <utility>
 
@@ -135,7 +133,7 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
             if (y.isComplex()) c0y += keel::norm(y.complexData()[i]);
             else { keel::f64 v = y.elemAsDouble(i); c0y += v * v; }
         }
-        const keel::f64 denom = std::sqrt(c0x * c0y);
+        const keel::f64 denom = keel::sqrt(c0x * c0y);
         if (denom > 0.0)
             for (keel::usize i = 0; i < nc; ++i) scaleElem(i, 1.0 / denom);
     } else if (!(opt.empty() || opt == "none")) {

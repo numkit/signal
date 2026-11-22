@@ -246,7 +246,7 @@ TEST(DspFftPublicApi, IfftPhaseRampLocatesImpulse)
     for (keel::usize k = 0; k < N; ++k) {
         const double phase = -2.0 * keel::kPi * static_cast<double>(k)
                                   * static_cast<double>(d) / static_cast<double>(N);
-        Hd[k] = keel::c64(std::cos(phase), std::sin(phase));
+        Hd[k] = keel::c64(keel::cos(phase), keel::sin(phase));
     }
     Value h = numkit::signal::ifft(H, -1, 0, mr);
     // h is conjugate-symmetric so ifft auto-downgrades to real.
@@ -272,7 +272,7 @@ TEST(DspFftPublicApi, CosinePeakBin)
     auto x = Value::matrix(1, N, ValueType::DOUBLE, mr);
     double *xd = x.doubleDataMut();
     for (keel::usize i = 0; i < N; ++i)
-        xd[i] = std::cos(2.0 * keel::kPi * k * i / static_cast<double>(N));
+        xd[i] = keel::cos(2.0 * keel::kPi * k * i / static_cast<double>(N));
 
     Value X = numkit::signal::fft(x, -1, 0, mr);
     const keel::c64 *Xd = X.complexData();
@@ -460,8 +460,8 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
         auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         double *xd = x.doubleDataMut();
         for (keel::usize n = 0; n < N; ++n)
-            xd[n] = std::sin(2.0 * keel::kPi * 0.07 * n)
-                  + 0.5 * std::cos(2.0 * keel::kPi * 0.13 * n);
+            xd[n] = keel::sin(2.0 * keel::kPi * 0.07 * n)
+                  + 0.5 * keel::cos(2.0 * keel::kPi * 0.13 * n);
 
         Value X = numkit::signal::fft(x, -1, 0, mr);
         ASSERT_TRUE(X.isComplex()) << "N=" << N;
@@ -483,8 +483,8 @@ TEST(DspFftPublicApi, NonPow2RealInputMatchesNaiveDFT)
                                  / static_cast<double>(N);
             for (keel::usize n = 0; n < N; ++n) {
                 const double a = w * static_cast<double>(n);
-                re += xd[n] * std::cos(a);
-                im += xd[n] * std::sin(a);
+                re += xd[n] * keel::cos(a);
+                im += xd[n] * keel::sin(a);
             }
             EXPECT_NEAR(Xd[k].real(), re, 1e-9)
                 << "N=" << N << " k=" << k;
@@ -501,8 +501,8 @@ TEST(DspFftPublicApi, NonPow2RoundTrip)
     for (keel::usize N : {keel::usize{15}, keel::usize{97}, keel::usize{480}, keel::usize{1323}}) {
         auto x = Value::matrix(N, 1, ValueType::DOUBLE, mr);
         for (keel::usize n = 0; n < N; ++n)
-            x.doubleDataMut()[n] = std::sin(0.13 * double(n))
-                                 + 0.4 * std::cos(0.21 * double(n));
+            x.doubleDataMut()[n] = keel::sin(0.13 * double(n))
+                                 + 0.4 * keel::cos(0.21 * double(n));
 
         Value X = numkit::signal::fft(x, -1, 0, mr);
         Value y = numkit::signal::ifft(X, -1, 0, mr);
@@ -534,7 +534,7 @@ TEST(DspFftPublicApi, Radix4PathPowerOfFourSize)
     double *xd = x.doubleDataMut();
     double sumX = 0.0, sumX2 = 0.0;
     for (keel::usize i = 0; i < N; ++i) {
-        xd[i] = std::sin(0.0123 * double(i)) + 0.5 * std::cos(0.07 * double(i));
+        xd[i] = keel::sin(0.0123 * double(i)) + 0.5 * keel::cos(0.07 * double(i));
         sumX  += xd[i];
         sumX2 += xd[i] * xd[i];
     }
@@ -592,9 +592,9 @@ static void fillTestSignal(keel::c64 *out, keel::usize N)
 {
     for (keel::usize i = 0; i < N; ++i) {
         const double t = double(i) / double(N);
-        out[i] = keel::c64(std::sin(2.0 * keel::kPi * 3.0 * t)
-                       + 0.4 * std::cos(2.0 * keel::kPi * 7.0 * t),
-                         0.5 * std::cos(2.0 * keel::kPi * 5.0 * t));
+        out[i] = keel::c64(keel::sin(2.0 * keel::kPi * 3.0 * t)
+                       + 0.4 * keel::cos(2.0 * keel::kPi * 7.0 * t),
+                         0.5 * keel::cos(2.0 * keel::kPi * 5.0 * t));
     }
 }
 
@@ -740,7 +740,7 @@ TEST(DspFftPublicApi, RoundTrip3DOnEachDim)
     constexpr keel::usize R = 4, C = 2, P = 8;
     Value x = Value::matrix3d(R, C, P, ValueType::DOUBLE, mr);
     for (keel::usize i = 0; i < R * C * P; ++i)
-        x.doubleDataMut()[i] = std::sin(0.37 * double(i));
+        x.doubleDataMut()[i] = keel::sin(0.37 * double(i));
 
     for (int dim = 1; dim <= 3; ++dim) {
         Value X = numkit::signal::fft(x, /*n=*/-1, dim, mr);
@@ -793,7 +793,7 @@ TEST(SignalFftPublicApi, InterpftLengthMatches)
     auto *mr = keel::default_allocator();
     auto x = numkit::Value::matrix(1, 8, numkit::ValueType::DOUBLE, mr);
     for (int i = 0; i < 8; ++i)
-        x.doubleDataMut()[i] = std::sin(2.0 * keel::kPi * i / 8.0);
+        x.doubleDataMut()[i] = keel::sin(2.0 * keel::kPi * i / 8.0);
     numkit::Value y = numkit::signal::interpft(x, 32, 0, mr);
     EXPECT_EQ(y.numel(), 32u);
     // Identity case: n == length(x).
@@ -809,12 +809,12 @@ TEST(SignalFftPublicApi, InterpftPureSinusoidExact)
     const keel::usize M = 16, N = 64;
     auto x = numkit::Value::matrix(1, M, numkit::ValueType::DOUBLE, mr);
     for (keel::usize i = 0; i < M; ++i)
-        x.doubleDataMut()[i] = std::cos(2.0 * keel::kPi * 2.0 * i / M);  // freq=2
+        x.doubleDataMut()[i] = keel::cos(2.0 * keel::kPi * 2.0 * i / M);  // freq=2
 
     numkit::Value y = numkit::signal::interpft(x, N, 0, mr);
     ASSERT_EQ(y.numel(), N);
     for (keel::usize i = 0; i < N; ++i) {
-        const double ref = std::cos(2.0 * keel::kPi * 2.0 * i / N);
+        const double ref = keel::cos(2.0 * keel::kPi * 2.0 * i / N);
         const double got = y.isComplex() ? y.complexData()[i].real()
                                          : y.doubleData()[i];
         EXPECT_NEAR(got, ref, 1e-10) << "i=" << i;

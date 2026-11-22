@@ -10,17 +10,17 @@
 #pragma once
 
 #include <keel/memory.h>
+#include <keel/core.h>
 #include <numkit/value/value.hpp>
 
 #include <cstddef>
-#include <limits>
 #include <tuple>
 
 namespace numkit::signal {
 
 // Parsed findpeaks options (filled by findpeaks_reg from Name-Value pairs).
 struct PeakOpts {
-    keel::f64 minHeight  = -std::numeric_limits<keel::f64>::infinity(); // keep if v > minHeight
+    keel::f64 minHeight  = -keel::Limits<keel::f64>::infinity(); // keep if v > minHeight
     keel::f64 threshold  = 0.0;     // keep if min(v-left, v-right) >= threshold
     keel::f64 minDist    = 0.0;     // in location units; <=0 => disabled
     bool   useMinDist = false;
@@ -30,7 +30,7 @@ struct PeakOpts {
     keel::i32    sortMode   = 0;       // 0 none(location), 1 ascend(height), 2 descend(height)
     keel::i32    widthRef   = 0;       // WidthReference: 0 'halfprom' (default), 1 'halfheight'
     keel::f64 minWidth   = 0.0;     // MinPeakWidth: keep if width >= minWidth
-    keel::f64 maxWidth   = std::numeric_limits<keel::f64>::infinity(); // MaxPeakWidth: keep if width <= maxWidth
+    keel::f64 maxWidth   = keel::Limits<keel::f64>::infinity(); // MaxPeakWidth: keep if width <= maxWidth
     bool   useWidthFilter = false;
 };
 

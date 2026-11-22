@@ -155,7 +155,7 @@ TEST_F(FilterDesignTest, FreqzButterAtCutoff)
     eval("target = 0.5 * pi;");
     eval("[~, idx] = min(abs(W - target));");
     double gainAtCutoff = evalScalar("Hmag(idx)");
-    EXPECT_NEAR(gainAtCutoff, 1.0 / std::sqrt(2.0), 0.05);
+    EXPECT_NEAR(gainAtCutoff, 1.0 / keel::sqrt(2.0), 0.05);
 }
 
 // ============================================================

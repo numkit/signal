@@ -5,6 +5,7 @@
 // here — they need a full state-space / RPM-resampling stack.
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
@@ -19,8 +20,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 
 namespace numkit::signal {
@@ -39,7 +38,7 @@ Value vecCol(keel::Allocator *mr, keel::ArrayRef<keel::f64> v)
 {
     auto out = Value::matrix(v.size(), 1, ValueType::DOUBLE, mr);
     if (!v.empty())
-        std::memcpy(out.doubleDataMut(), v.data(), v.size() * sizeof(keel::f64));
+        keel::copy_n(out.doubleDataMut(), v.data(), v.size());
     return out;
 }
 
@@ -244,7 +243,7 @@ tsa(const Value &x, keel::f64 fs,
             const keel::f64 t = keel::as<keel::f64>(i) / fs;
             // Linear-interpolate rpm at time t.
             const keel::f64 idxR = t * fs_rpm;
-            const keel::usize i0 = keel::as<keel::usize>(std::floor(idxR));
+            const keel::usize i0 = keel::as<keel::usize>(keel::floor(idxR));
             const keel::usize i1 = std::min(i0 + 1, rpm_v.size() - 1);
             const keel::f64 frac = std::min(std::max(idxR - i0, 0.0), 1.0);
             const keel::f64 rpmI =
@@ -263,7 +262,7 @@ tsa(const Value &x, keel::f64 fs,
     keel::Array<keel::f64> sumBin(n_per_rev, 0.0, mr);
     keel::Array<keel::i32> cntBin(n_per_rev, 0, mr);
     for (keel::usize i = 0; i < N; ++i) {
-        keel::f64 ang = std::fmod(theta[i], twoPi);
+        keel::f64 ang = keel::fmod(theta[i], twoPi);
         if (ang < 0) ang += twoPi;
         keel::i32 b = keel::as<keel::i32>(ang / twoPi * n_per_rev);
         if (b >= n_per_rev) b = n_per_rev - 1;

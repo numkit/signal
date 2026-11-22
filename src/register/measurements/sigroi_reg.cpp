@@ -12,7 +12,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <tuple>
 #include <utility>

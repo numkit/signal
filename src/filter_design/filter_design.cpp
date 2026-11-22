@@ -4,6 +4,8 @@
 // delegating numerical kernels to keel::signal, plus cell2sos marshaling.
 
 #include <keel/arena.h>
+#include <keel/algo.h>
+#include <keel/math.h>
 #include <keel/array.h>
 #include <keel/core.h>
 #include <keel/format.h>
@@ -19,8 +21,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 namespace numkit::signal {
 
@@ -73,8 +73,8 @@ butter(keel::i32 N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
 
     Value bv = Value::matrix(1, tf.b.size(), ValueType::DOUBLE, mr);
     Value av = Value::matrix(1, tf.a.size(), ValueType::DOUBLE, mr);
-    std::memcpy(bv.doubleDataMut(), tf.b.data(), tf.b.size() * sizeof(keel::f64));
-    std::memcpy(av.doubleDataMut(), tf.a.data(), tf.a.size() * sizeof(keel::f64));
+    keel::copy_n(bv.doubleDataMut(), tf.b.data(), tf.b.size());
+    keel::copy_n(av.doubleDataMut(), tf.a.data(), tf.a.size());
     return std::make_tuple(std::move(bv), std::move(av));
 }
 
@@ -128,7 +128,7 @@ Value firls(keel::i32 N, const Value &Farg, const Value &Aarg,
         Wv.resize(numBands);
         for (keel::usize k = 0; k < numBands; ++k) {
             const keel::f64 wk = Warg.elemAsDouble(k);
-            if (!(wk > 0.0) || !std::isfinite(wk))
+            if (!(wk > 0.0) || !keel::is_finite(wk))
                 throw Error("firls: weights W must be positive and finite",
                             0, 0, "firls", "", "numkit:firls:badW");
             Wv[k] = wk;
@@ -217,7 +217,7 @@ Value fir1(keel::i32 N, const Value &Wn, keel::StringRef typeIn,
     (void)keel::signal::fir1_multiband(N, w.as_ref(), firstBandPass, winVec.as_ref(), scale, h,
                                        scratch.allocator());
     Value bv = Value::matrix(1, h.size(), ValueType::DOUBLE, mr);
-    std::memcpy(bv.doubleDataMut(), h.data(), h.size() * sizeof(keel::f64));
+    keel::copy_n(bv.doubleDataMut(), h.data(), h.size());
     return bv;
 }
 
@@ -325,7 +325,7 @@ Value fir2(keel::i32 n, const Value &f, const Value &m,
                             "fir2", "", "numkit:fir2:SignalErr");
 
     Value b = Value::matrix(1, h.size(), ValueType::DOUBLE, mr);
-    std::memcpy(b.doubleDataMut(), h.data(), h.size() * sizeof(keel::f64));
+    keel::copy_n(b.doubleDataMut(), h.data(), h.size());
     return b;
 }
 

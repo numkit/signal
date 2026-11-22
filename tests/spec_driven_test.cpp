@@ -3,6 +3,7 @@
 // Tests for D2 — spec-driven filters: lowpass / highpass / bandpass / bandstop.
 
 #include <numkit/core/standard_engine.hpp>
+#include <keel/math.h>
 #include <numkit/core/standard_engine.hpp>
 #include <cmath>
 #include <gtest/gtest.h>
@@ -32,7 +33,7 @@ TEST_F(SpecDrivenTest, LowpassRetainsLowTone)
 {
     eval("y = lowpass(x, 200, fs);");
     // Low-tone amplitude (RMS) should be close to 1/sqrt(2) ≈ 0.707.
-    EXPECT_NEAR(evalScalar("rms(y)"), 1.0 / std::sqrt(2.0), 0.05);
+    EXPECT_NEAR(evalScalar("rms(y)"), 1.0 / keel::sqrt(2.0), 0.05);
     // High-tone power should drop dramatically vs original RMS (~1.0).
     EXPECT_LT(evalScalar("rms(y)"), 0.85);
 }
@@ -49,7 +50,7 @@ TEST_F(SpecDrivenTest, HighpassRetainsHighTone)
 {
     eval("xHi = sin(2*pi*800*t);");
     eval("y = highpass(xHi, 400, fs);");
-    EXPECT_NEAR(evalScalar("rms(y)"), 1.0 / std::sqrt(2.0), 0.05);
+    EXPECT_NEAR(evalScalar("rms(y)"), 1.0 / keel::sqrt(2.0), 0.05);
 }
 
 TEST_F(SpecDrivenTest, HighpassRejectsLowTone)
@@ -63,7 +64,7 @@ TEST_F(SpecDrivenTest, BandpassMidband)
 {
     eval("xMid = sin(2*pi*300*t);");
     eval("y = bandpass(xMid, [200 600], fs);");
-    EXPECT_NEAR(evalScalar("rms(y)"), 1.0 / std::sqrt(2.0), 0.1);
+    EXPECT_NEAR(evalScalar("rms(y)"), 1.0 / keel::sqrt(2.0), 0.1);
 }
 
 TEST_F(SpecDrivenTest, BandpassRejectsOutOfBand)

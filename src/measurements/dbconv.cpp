@@ -17,7 +17,6 @@
 #include <numkit/ops/helpers.hpp>  // createLike (toolboxes/builtin/src/)
 
 #include <algorithm>
-#include <cmath>
 
 namespace numkit::signal {
 
@@ -65,7 +64,7 @@ Value db(const Value &x, keel::StringRef signalType, keel::Allocator *mr)
     const keel::f64 scale = db_argcheck(signalType);
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
-                 [scale](keel::f64 v) { return scale * std::log10(v); });
+                 [scale](keel::f64 v) { return scale * keel::log10(v); });
     return out;
 }
 
@@ -74,7 +73,7 @@ Value db2mag(const Value &d, keel::Allocator *mr)
 {
     auto out = createLike(d, ValueType::DOUBLE, mr);
     forEachAsMag(d, out.doubleDataMut(),
-                 [](keel::f64 v) { return std::pow(10.0, v / 20.0); });
+                 [](keel::f64 v) { return keel::pow(10.0, v / 20.0); });
     return out;
 }
 
@@ -83,7 +82,7 @@ Value mag2db(const Value &x, keel::Allocator *mr)
 {
     auto out = createLike(x, ValueType::DOUBLE, mr);
     forEachAsMag(x, out.doubleDataMut(),
-                 [](keel::f64 v) { return 20.0 * std::log10(v); });
+                 [](keel::f64 v) { return 20.0 * keel::log10(v); });
     return out;
 }
 
@@ -92,7 +91,7 @@ Value db2pow(const Value &d, keel::Allocator *mr)
 {
     auto out = createLike(d, ValueType::DOUBLE, mr);
     forEachAsMag(d, out.doubleDataMut(),
-                 [](keel::f64 v) { return std::pow(10.0, v / 10.0); });
+                 [](keel::f64 v) { return keel::pow(10.0, v / 10.0); });
     return out;
 }
 
@@ -101,7 +100,7 @@ Value pow2db(const Value &p, keel::Allocator *mr)
 {
     auto out = createLike(p, ValueType::DOUBLE, mr);
     forEachAsMag(p, out.doubleDataMut(),
-                 [](keel::f64 v) { return 10.0 * std::log10(v); });
+                 [](keel::f64 v) { return 10.0 * keel::log10(v); });
     return out;
 }
 

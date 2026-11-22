@@ -9,6 +9,7 @@
 // [0, fs/2] and integrations yield Hz.
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -27,9 +28,6 @@
 #include "../signal_detail.hpp"     // shared argcheck cores
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <limits>
 #include <numeric>
 
 
@@ -399,10 +397,10 @@ Value spectralflatness(const Value &x, const Value &fs, keel::Allocator *mr)
     keel::usize valid = 0;
     for (keel::f64 v : p.Pxx) {
         sm += v;
-        if (v > 0) { logSum += std::log(v); ++valid; }
+        if (v > 0) { logSum += keel::log(v); ++valid; }
     }
     if (valid == 0 || sm <= 0.0) return Value::scalar(0.0, mr);
-    const keel::f64 geom = std::exp(logSum / valid);
+    const keel::f64 geom = keel::exp(logSum / valid);
     const keel::f64 arith = sm / p.Pxx.size();
     return Value::scalar(geom / arith, mr);
 }
@@ -418,10 +416,10 @@ Value spectralentropy(const Value &x, const Value &fs, keel::Allocator *mr)
     keel::f64 H = 0.0;
     for (keel::f64 v : p.Pxx) {
         const keel::f64 q = v / sm;
-        if (q > 0) H -= q * std::log(q);
+        if (q > 0) H -= q * keel::log(q);
     }
     // Normalise by log(N) so the result lies in [0, 1].
-    return Value::scalar(H / std::log(keel::as<keel::f64>(p.Pxx.size())), mr);
+    return Value::scalar(H / keel::log(keel::as<keel::f64>(p.Pxx.size())), mr);
 }
 
 Value spectralkurtosis(const Value &x, const Value &fs, keel::Allocator *mr)
@@ -439,7 +437,7 @@ Value spectralskewness(const Value &x, const Value &fs, keel::Allocator *mr)
     auto p = computePsd(x, fsv, mr);
     auto m = computePsdMoments(p.Pxx, p.F);
     if (m.var <= 0.0) return Value::scalar(0.0, mr);
-    return Value::scalar(m.m3 / std::pow(m.var, 1.5), mr);
+    return Value::scalar(m.m3 / keel::pow(m.var, 1.5), mr);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -562,8 +560,8 @@ HarmonicAnalysis analyseHarmonics(keel::ArrayRef<keel::f64> P)
 keel::f64 safeDb(keel::f64 num, keel::f64 den)
 {
     if (num <= 0.0 || den <= 0.0)
-        return std::numeric_limits<keel::f64>::quiet_NaN();
-    return 10.0 * std::log10(num / den);
+        return keel::Limits<keel::f64>::quiet_nan();
+    return 10.0 * keel::log10(num / den);
 }
 
 } // anonymous
@@ -596,7 +594,7 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     const keel::usize n = x.numel();
     if (n < 2)
-        return Value::scalar(std::numeric_limits<keel::f64>::quiet_NaN(), mr);
+        return Value::scalar(keel::Limits<keel::f64>::quiet_nan(), mr);
     const keel::f64 fsScalar = (!fs.isEmpty()) ? fs.toScalar() : 1.0;
     Value w = kaiser(n, 38.0, mr);
     const keel::f64 *wd = w.doubleData();
@@ -710,7 +708,7 @@ void pspectrum_argcheck(const Value &x, const Value &fsOrT,
     if (opts.type != "power" && opts.type != "spectrogram")
         throw Error(keel::format("{}: spectrum type must be 'power' or 'spectrogram'", caller),
                     0, 0, caller, "", keel::format("numkit:{}:invalidType", caller));
-    if (!std::isfinite(opts.leakage) || opts.leakage < 0.0 || opts.leakage > 1.0)
+    if (!keel::is_finite(opts.leakage) || opts.leakage < 0.0 || opts.leakage > 1.0)
         throw Error(keel::format("{}: 'Leakage' must be in [0, 1]", caller),
                     0, 0, caller, "", keel::format("numkit:{}:invalidLeakage", caller));
     if (opts.overlapPercent >= 100.0 || (opts.overlapPercent < 0.0 && opts.overlapPercent != -1.0))
@@ -723,7 +721,7 @@ void pspectrum_argcheck(const Value &x, const Value &fsOrT,
         detail::requireRealFloatInput(fsOrT, caller);
         if (fsOrT.numel() == 1) {
             const keel::f64 fsv = fsOrT.toScalar();
-            if (!std::isfinite(fsv) || fsv <= 0.0)
+            if (!keel::is_finite(fsv) || fsv <= 0.0)
                 throw Error(keel::format("{}: sample rate Fs must be finite and positive", caller),
                             0, 0, caller, "", keel::format("numkit:{}:invalidFs", caller));
         } else {
@@ -733,7 +731,7 @@ void pspectrum_argcheck(const Value &x, const Value &fsOrT,
                             0, 0, caller, "", keel::format("numkit:{}:invalidTimeVector", caller));
             for (keel::usize i = 0; i < N; ++i) {
                 const keel::f64 ti = fsOrT.elemAsDouble(i);
-                if (!std::isfinite(ti) || (i > 0 && ti <= fsOrT.elemAsDouble(i - 1)))
+                if (!keel::is_finite(ti) || (i > 0 && ti <= fsOrT.elemAsDouble(i - 1)))
                     throw Error(keel::format("{}: time vector T must be finite and strictly increasing", caller),
                                 0, 0, caller, "", keel::format("numkit:{}:invalidTimeVector", caller));
             }
@@ -766,7 +764,7 @@ keel::f64 leakageToOverlapRatio(keel::f64 leakage)
     };
     const keel::f64 clamped = std::max(0.0, std::min(1.0, leakage));
     const keel::f64 pos = clamped * 20.0;
-    const keel::usize idx = std::min<keel::usize>(19, keel::as<keel::usize>( std::floor(pos) ));
+    const keel::usize idx = std::min<keel::usize>(19, keel::as<keel::usize>( keel::floor(pos) ));
     const keel::f64 frac = pos - keel::as<keel::f64>(idx);
     return kTable[idx] * (1.0 - frac) + kTable[idx + 1] * frac;
 }
@@ -863,7 +861,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     bool twoSided = opts.hasTwoSided ? opts.twoSided : isComplex;
     keel::f64 fmin = twoSided ? (-0.5 * fs) : 0.0;
     keel::f64 fmax = 0.5 * fs;
-    if (!std::isnan(opts.fmin) && !std::isnan(opts.fmax)) {
+    if (!keel::is_nan(opts.fmin) && !keel::is_nan(opts.fmax)) {
         if (opts.fmin >= opts.fmax || opts.fmin < -0.5 * fs - 1e-12 || opts.fmax > 0.5 * fs + 1e-12)
             throw Error(keel::format("{}: 'FrequencyLimits' must satisfy [fmin, fmax] within Nyquist interval", caller),
                         0, 0, caller, "", keel::format("numkit:{}:invalidFrequencyLimits", caller));
@@ -891,11 +889,11 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
                         0, 0, caller, "", keel::format("numkit:{}:expectedVector", caller));
         keel::usize wlen = 0;
         if (opts.timeResolution > 0.0) {
-            wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
+            wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, keel::round(opts.timeResolution * fs))));
         } else {
             keel::usize D = 2;
             if (N >= 64) {
-                const keel::i32 exp2 = keel::as<keel::i32>(std::floor(std::log2(keel::as<keel::f64>(N)))) - 7;
+                const keel::i32 exp2 = keel::as<keel::i32>(keel::floor(keel::log2(keel::as<keel::f64>(N)))) - 7;
                 if (exp2 <= 3)      D = 8;
                 else if (exp2 >= 7) D = 128;
                 else                D = keel::usize(1) << exp2;
@@ -903,7 +901,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
             wlen = (N + D - 1) / D;
         }
         wlen = std::max<keel::usize>(1, std::min(N, wlen));
-        keel::usize nov = keel::as<keel::usize>(std::floor(r * keel::as<keel::f64>(wlen)));
+        keel::usize nov = keel::as<keel::usize>(keel::floor(r * keel::as<keel::f64>(wlen)));
         if (nov >= wlen) nov = wlen - 1;
         const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
         const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
@@ -974,13 +972,13 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     // 'power' mode
     keel::usize wlen = 0;
     if (opts.timeResolution > 0.0) {
-        wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, std::round(opts.timeResolution * fs))));
+        wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, keel::round(opts.timeResolution * fs))));
     } else {
-        const keel::usize target = keel::as<keel::usize>(std::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
+        const keel::usize target = keel::as<keel::usize>(keel::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
         wlen = std::min(N, std::max<keel::usize>(2, target));
     }
     wlen = std::max<keel::usize>(1, std::min(N, wlen));
-    keel::usize nov = keel::as<keel::usize>(std::floor(r * keel::as<keel::f64>(wlen)));
+    keel::usize nov = keel::as<keel::usize>(keel::floor(r * keel::as<keel::f64>(wlen)));
     if (nov >= wlen) nov = wlen - 1;
     const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
     const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
@@ -989,7 +987,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     keel::Array<keel::usize> starts(nT, 0, mr);
     if (nT > 1) {
         for (keel::usize m = 0; m < nT; ++m) {
-            starts[m] = keel::as<keel::usize>(std::llround(
+            starts[m] = keel::as<keel::usize>(keel::round_i64(
                 keel::as<keel::f64>(m) * keel::as<keel::f64>(N - wlen) / keel::as<keel::f64>(nT - 1)));
         }
     }
@@ -1045,12 +1043,12 @@ Value extractColumnValue(const Value &mat, keel::usize colIdx, keel::Allocator *
     const keel::usize R = mat.dims().rows();
     if (mat.isComplex()) {
         Value out = Value::complexMatrix(R, 1, mr);
-        std::memcpy(out.complexDataMut(), mat.complexData() + colIdx * R, R * sizeof(keel::c64));
+        keel::copy_n(out.complexDataMut(), mat.complexData() + colIdx * R, R);
         return out;
     }
     Value xD = detail::widenSingleToDouble(mat, mr);
     Value out = Value::matrix(R, 1, ValueType::DOUBLE, mr);
-    std::memcpy(out.doubleDataMut(), xD.doubleData() + colIdx * R, R * sizeof(keel::f64));
+    keel::copy_n(out.doubleDataMut(), xD.doubleData() + colIdx * R, R);
     return out;
 }
 
@@ -1073,7 +1071,7 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
         detail::requireRealFloatInput(fs, "instfreq");
         if (fs.numel() == 1) {
             fsv = fs.toScalar();
-            if (!std::isfinite(fsv) || fsv <= 0.0)
+            if (!keel::is_finite(fsv) || fsv <= 0.0)
                 throw Error("instfreq: sample rate Fs must be finite and positive",
                             0, 0, "instfreq", "", "numkit:instfreq:invalidFs");
         } else {
@@ -1104,8 +1102,8 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
     keel::f64 *td = tOut.doubleDataMut();
     constexpr keel::f64 kPi = keel::kPi;
     for (keel::usize i = 0; i + 1 < n; ++i) {
-        const keel::f64 p1 = std::atan2(im[i + 1], re[i + 1]);
-        const keel::f64 p0 = std::atan2(im[i], re[i]);
+        const keel::f64 p1 = keel::atan2(im[i + 1], re[i + 1]);
+        const keel::f64 p0 = keel::atan2(im[i], re[i]);
         keel::f64 dp = p1 - p0;
         while (dp >  kPi) dp -= 2.0 * kPi;
         while (dp <= -kPi) dp += 2.0 * kPi;
@@ -1191,7 +1189,7 @@ instbwWithTime(const Value &x, const Value &fs,
 
     const bool isVec = x.dims().isVector();
     const keel::usize nCh = isVec ? 1 : x.dims().cols();
-    const keel::f64 scale = 2.0 * std::sqrt(keel::kPi);
+    const keel::f64 scale = 2.0 * keel::sqrt(keel::kPi);
 
     if (nCh == 1) {
         auto spec = pspectrumImpl(x, effFs, opts, "instbw", mr);
@@ -1219,7 +1217,7 @@ instbwWithTime(const Value &x, const Value &fs,
                 const keel::f64 df = fd[k] - mu;
                 varNum += col[k] * df * df;
             }
-            ibd[m] = scale * std::sqrt(std::max(0.0, varNum / den));
+            ibd[m] = scale * keel::sqrt(std::max(0.0, varNum / den));
         }
         return {std::move(ibw), std::move(spec.t)};
     }
@@ -1255,7 +1253,7 @@ instbwWithTime(const Value &x, const Value &fs,
                 const keel::f64 df = fd[k] - mu;
                 varNum += col[k] * df * df;
             }
-            ibd[m] = scale * std::sqrt(std::max(0.0, varNum / den));
+            ibd[m] = scale * keel::sqrt(std::max(0.0, varNum / den));
         }
     }
     return {std::move(ibwMat), std::move(tVec)};

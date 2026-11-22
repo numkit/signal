@@ -21,10 +21,8 @@
 #include <numkit/ops/poly_helpers.hpp>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <utility>
 
 namespace numkit::signal {
@@ -60,7 +58,7 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
     const keel::c64 pick = pool[pickIdx];
     if (isReal(pick)) {
         keel::usize mateIdx = pool.size();
-        keel::f64 bestDist = std::numeric_limits<keel::f64>::infinity();
+        keel::f64 bestDist = keel::Limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < pool.size(); ++i) {
             if (i == pickIdx) continue;
             if (!isReal(pool[i])) continue;
@@ -80,7 +78,7 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
     } else {
         const keel::c64 conjP = keel::conj(pick);
         keel::usize mateIdx = pool.size();
-        keel::f64 bestDist = std::numeric_limits<keel::f64>::infinity();
+        keel::f64 bestDist = keel::Limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < pool.size(); ++i) {
             if (i == pickIdx) continue;
             const keel::f64 d = keel::abs(pool[i] - conjP);
@@ -132,7 +130,7 @@ bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
     const keel::c64 pick = zeros[pickIdx];
     if (isReal(pick)) {
         keel::usize mateIdx = zeros.size();
-        keel::f64 bestMate = std::numeric_limits<keel::f64>::infinity();
+        keel::f64 bestMate = keel::Limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < zeros.size(); ++i) {
             if (i == pickIdx) continue;
             if (!isReal(zeros[i])) continue;
@@ -153,7 +151,7 @@ bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
     } else {
         const keel::c64 conjP = keel::conj(pick);
         keel::usize mateIdx = zeros.size();
-        keel::f64 bestDist2 = std::numeric_limits<keel::f64>::infinity();
+        keel::f64 bestDist2 = keel::Limits<keel::f64>::infinity();
         for (keel::usize i = 0; i < zeros.size(); ++i) {
             if (i == pickIdx) continue;
             const keel::f64 d = keel::abs(zeros[i] - conjP);
