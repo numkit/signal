@@ -200,13 +200,23 @@ void chirp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     const keel::f64 t1 = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
     const keel::f64 f1 = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 100.0;
     keel::String method = keel::String::from("linear");
-    if (args.size() >= 5) {
+    if (args.size() >= 5 && !args[4].isEmpty()) {
         if (!args[4].isChar() && !args[4].isString())
             throw Error("chirp: method must be a string",
                          0, 0, "chirp", "", "numkit:chirp:badMethodType");
         method = args[4].toString();
     }
-    outs[0] = chirp(args[0], f0, t1, f1, method, ctx.engine->allocator());
+    keel::f64 phi = 0.0;
+    if (args.size() >= 6 && !args[5].isEmpty())
+        phi = args[5].toScalar();
+    keel::String shape;
+    if (args.size() >= 7 && !args[6].isEmpty()) {
+        if (!args[6].isChar() && !args[6].isString())
+            throw Error("chirp: shape must be a string",
+                        0, 0, "chirp", "", "numkit:chirp:badShapeType");
+        shape = args[6].toString();
+    }
+    outs[0] = chirp(args[0], f0, t1, f1, method, ctx.engine->allocator(), phi, shape);
 }
 
 } // namespace detail

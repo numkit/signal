@@ -347,6 +347,23 @@ TEST_F(SignalCoreTest, ChirpQuadratic)
     EXPECT_NEAR(evalScalar("y"), 1.0, 1e-12);
 }
 
+TEST_F(SignalCoreTest, ChirpQuadraticConvexConcaveAndPhi)
+{
+    eval("t = [0 0.2 0.5 0.8 1.0];");
+    eval("yc = chirp(t, 10, 1, 50, 'q', [], 'convex');");
+    EXPECT_NEAR(evalScalar("yc(1)"), -0.5, 1e-11);
+    EXPECT_NEAR(evalScalar("yc(2)"), 0.46329603512, 1e-10);
+    EXPECT_NEAR(evalScalar("yc(3)"), -0.5, 1e-11);
+    EXPECT_NEAR(evalScalar("yc(4)"), 0.783693457326, 1e-10);
+    EXPECT_NEAR(evalScalar("yc(5)"), 1.0, 1e-11);
+
+    eval("yp = chirp([0 0.3 0.7 1.0], 3, 1.5, 11, 'q', 30, 'convex');");
+    EXPECT_NEAR(evalScalar("yp(1)"), -0.116092914125, 1e-10);
+    EXPECT_NEAR(evalScalar("yp(2)"), 0.247788181408, 1e-10);
+    EXPECT_NEAR(evalScalar("yp(3)"), 0.39906915898, 1e-10);
+    EXPECT_NEAR(evalScalar("yp(4)"), 0.866025403784, 1e-10);
+}
+
 TEST_F(SignalCoreTest, ChirpLogarithmic)
 {
     // Logarithmic: phase(t) = 2π·f0·((β^t - 1)/log(β)), β=(f1/f0)^(1/t1).

@@ -119,7 +119,9 @@ Value chirp(const Value &                t,
             keel::f64                       t1,
             keel::f64                       f1,
             keel::StringRef              method = "linear",
-            keel::Allocator *  mr     = nullptr);
+            keel::Allocator *  mr     = nullptr,
+            keel::f64                       phi_deg = 0.0,
+            keel::StringRef              quad_shape = "");
 
 /// Square wave with period 2π.
 ///

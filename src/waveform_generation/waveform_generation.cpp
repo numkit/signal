@@ -305,7 +305,8 @@ Value diric(const Value &x, keel::i32 n, keel::Allocator *mr)
 }
 
 Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
-            keel::StringRef method, keel::Allocator *mr)
+            keel::StringRef method, keel::Allocator *mr,
+            keel::f64 phi_deg, keel::StringRef quad_shape)
 {
     if (t1 <= 0)
         throw Error("chirp: t1 must be positive",
@@ -337,6 +338,8 @@ Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
     const keel::usize N = t.numel();
 
     constexpr keel::f64 kTwoPi = 6.28318530717958647692;
+    constexpr keel::f64 kDeg2Rad = 3.14159265358979323846 / 180.0;
+    const keel::f64 phiRad = phi_deg * kDeg2Rad;
 
     auto readT = [&](keel::usize i) -> keel::f64 { return t.elemAsDouble(i); };
 
@@ -345,17 +348,35 @@ Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
         const keel::f64 k = (f1 - f0) / t1;
         for (keel::usize i = 0; i < N; ++i) {
             const keel::f64 tv = readT(i);
-            const keel::f64 phase = kTwoPi * (f0 * tv + 0.5 * k * tv * tv);
+            const keel::f64 phase = kTwoPi * (f0 * tv + 0.5 * k * tv * tv) + phiRad;
             dst[i] = std::cos(phase);
         }
         break;
     }
     case Mode::Quadratic: {
+        keel::String sh = keel::String::from(quad_shape);
+        for (auto &c : sh) c = keel::to_ascii_lower(c);
+        const bool wantConvex  = (!sh.empty() && keel::StringRef("convex").starts_with(sh));
+        const bool wantConcave = (!sh.empty() && keel::StringRef("concave").starts_with(sh));
+        if (!sh.empty() && !wantConvex && !wantConcave)
+            throw Error("chirp: shape must be 'convex' or 'concave'",
+                        0, 0, "chirp", "", "numkit:chirp:badShape");
+        const bool reverseVertex = (f1 > f0 && wantConvex) || (f1 < f0 && wantConcave);
         const keel::f64 k = (f1 - f0) / (t1 * t1);
-        for (keel::usize i = 0; i < N; ++i) {
-            const keel::f64 tv = readT(i);
-            const keel::f64 phase = kTwoPi * (f0 * tv + (k / 3.0) * tv * tv * tv);
-            dst[i] = std::cos(phase);
+        if (reverseVertex && N > 0) {
+            const keel::f64 tEnd = readT(N - 1);
+            for (keel::usize i = 0; i < N; ++i) {
+                const keel::f64 tFlip = readT(N - 1 - i);
+                const keel::f64 phase =
+                    kTwoPi * (f1 * (tEnd - tFlip) + (k / 3.0) * tFlip * tFlip * tFlip) + phiRad;
+                dst[i] = std::cos(phase);
+            }
+        } else {
+            for (keel::usize i = 0; i < N; ++i) {
+                const keel::f64 tv = readT(i);
+                const keel::f64 phase = kTwoPi * (f0 * tv + (k / 3.0) * tv * tv * tv) + phiRad;
+                dst[i] = std::cos(phase);
+            }
         }
         break;
     }
@@ -364,7 +385,7 @@ Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
         const keel::f64 logBeta = std::log(beta);
         for (keel::usize i = 0; i < N; ++i) {
             const keel::f64 tv = readT(i);
-            const keel::f64 phase = kTwoPi * f0 * (std::pow(beta, tv) - 1.0) / logBeta;
+            const keel::f64 phase = kTwoPi * f0 * (std::pow(beta, tv) - 1.0) / logBeta + phiRad;
             dst[i] = std::cos(phase);
         }
         break;
