@@ -195,7 +195,9 @@ Value freqs(const Value &b, const Value &a, const Value &w, keel::Allocator *mr)
     const auto bv = readVec(b, scratch.allocator());
     const auto av = readVec(a, scratch.allocator());
     const auto wv = readVec(w, scratch.allocator());
-    auto out = Value::complexMatrix(1, wv.size(), mr);
+    const keel::usize outRows = (w.dims().rows() == 1 && w.dims().cols() == wv.size()) ? 1 : wv.size();
+    const keel::usize outCols = (outRows == 1) ? wv.size() : 1;
+    auto out = Value::complexMatrix(outRows, outCols, mr);
     (void)keel::signal::freqs(bv.as_ref(), av.as_ref(), wv.as_ref(),
                               keel::MutArrayRef<keel::c64>(out.complexDataMut(), wv.size()));
     return out;

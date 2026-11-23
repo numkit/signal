@@ -333,7 +333,7 @@ Value freqsAutoGrid(const Value &b, const Value &a, keel::Allocator *mr,
                     keel::i32 npts = 200)
 {
     auto v = freqsAutoGridVec(b, a, npts);
-    Value w = Value::matrix(1, npts, ValueType::DOUBLE, mr);
+    Value w = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     keel::f64 *wd = w.doubleDataMut();
     for (keel::i32 i = 0; i < npts; ++i)
         wd[i] = v[i];

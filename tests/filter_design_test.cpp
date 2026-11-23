@@ -338,6 +338,21 @@ TEST_F(FilterDesignTest, FreqsTwoArgAutoW)
     eval("h = freqs([1], [1 sqrt(2) 1]);");
     EXPECT_NEAR(evalScalar("abs(h(1))"), 0.9999500037496877, 1e-12);
     EXPECT_LT(evalScalar("abs(h(end))"), evalScalar("abs(h(100))"));
+    // Shape contract: 2-arg and scalar-N forms return column vectors (N x 1);
+    // explicit vector w preserves row/column orientation.
+    EXPECT_DOUBLE_EQ(evalScalar("size(h, 1)"), 200.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(h, 2)"), 1.0);
+    eval("[h50, w50] = freqs([1], [1 sqrt(2) 1], 50);");
+    EXPECT_DOUBLE_EQ(evalScalar("size(h50, 1)"), 50.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(h50, 2)"), 1.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(w50, 1)"), 50.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(w50, 2)"), 1.0);
+    eval("[hr, wr] = freqs([1], [1 sqrt(2) 1], [1 2 3]);");
+    EXPECT_DOUBLE_EQ(evalScalar("size(hr, 1)"), 1.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(hr, 2)"), 3.0);
+    eval("[hc, wc] = freqs([1], [1 sqrt(2) 1], [1; 2; 3]);");
+    EXPECT_DOUBLE_EQ(evalScalar("size(hc, 1)"), 3.0);
+    EXPECT_DOUBLE_EQ(evalScalar("size(hc, 2)"), 1.0);
 }
 
 // --- freqz(b, a, w) vector form (fieldtest portion 10, pr7_2) ---
