@@ -17,8 +17,7 @@
 #include "../dsp_helpers.hpp"
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -43,7 +42,7 @@ keel::Array<keel::f64> resolveWelchWindow(const Value &window, keel::usize nx,
 
 } // anonymous namespace
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 periodogram(const Value &x, const Value &window, keel::usize nfft, keel::f64 fs,
             keel::Allocator *mr) {
     const keel::usize N = x.numel();
@@ -63,7 +62,7 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, keel::f64 fs,
             keel::MutArrayRef<keel::f64>(Pxx.doubleDataMut(), nfft),
             keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nfft),
             scratch.allocator());
-        return std::make_tuple(std::move(Pxx), std::move(F));
+        return keel::make_tuple(keel::move(Pxx), keel::move(F));
     }
 
     const keel::usize nOut = nfft / 2 + 1;
@@ -74,7 +73,7 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, keel::f64 fs,
         keel::MutArrayRef<keel::f64>(Pxx.doubleDataMut(), nOut),
         keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
         scratch.allocator());
-    return std::make_tuple(std::move(Pxx), std::move(F));
+    return keel::make_tuple(keel::move(Pxx), keel::move(F));
 }
 
 Value
@@ -107,7 +106,7 @@ periodogramConf(const Value &Pxx, keel::f64 confidenceLevel, bool realInput, boo
     return out;
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nfft, keel::f64 fs,
        keel::Allocator *mr) {
     const keel::usize nx = x.numel();
@@ -127,7 +126,7 @@ pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nf
             keel::MutArrayRef<keel::f64>(Pxx.doubleDataMut(), nfft),
             keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nfft),
             scratch.allocator());
-        return std::make_tuple(std::move(Pxx), std::move(F));
+        return keel::make_tuple(keel::move(Pxx), keel::move(F));
     }
 
     const keel::usize nOut = nfft / 2 + 1;
@@ -138,10 +137,10 @@ pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nf
         keel::MutArrayRef<keel::f64>(Pxx.doubleDataMut(), nOut),
         keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
         scratch.allocator());
-    return std::make_tuple(std::move(Pxx), std::move(F));
+    return keel::make_tuple(keel::move(Pxx), keel::move(F));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cpsd(const Value &x, const Value &y, const Value &window, keel::usize noverlap, keel::usize nfft,
      keel::f64 fs, keel::Allocator *mr) {
     if (x.numel() != y.numel())
@@ -163,10 +162,10 @@ cpsd(const Value &x, const Value &y, const Value &window, keel::usize noverlap, 
         keel::MutArrayRef<keel::c64>(Pxy.complexDataMut(), nOut),
         keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
         scratch.allocator());
-    return std::make_tuple(std::move(Pxy), std::move(F));
+    return keel::make_tuple(keel::move(Pxy), keel::move(F));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 mscohere(const Value &x, const Value &y, const Value &window, keel::usize noverlap,
          keel::usize nfft, keel::f64 fs, keel::Allocator *mr) {
     if (x.numel() != y.numel())
@@ -188,10 +187,10 @@ mscohere(const Value &x, const Value &y, const Value &window, keel::usize noverl
         keel::MutArrayRef<keel::f64>(Cxy.doubleDataMut(), nOut),
         keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
         scratch.allocator());
-    return std::make_tuple(std::move(Cxy), std::move(F));
+    return keel::make_tuple(keel::move(Cxy), keel::move(F));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tfestimate(const Value &x, const Value &y, const Value &window, keel::usize noverlap,
            keel::usize nfft, keel::f64 fs, keel::Allocator *mr) {
     if (x.numel() != y.numel())
@@ -213,7 +212,7 @@ tfestimate(const Value &x, const Value &y, const Value &window, keel::usize nove
         keel::MutArrayRef<keel::c64>(Txy.complexDataMut(), nOut),
         keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
         scratch.allocator());
-    return std::make_tuple(std::move(Txy), std::move(F));
+    return keel::make_tuple(keel::move(Txy), keel::move(F));
 }
 
 } // namespace numkit::signal

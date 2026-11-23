@@ -13,7 +13,7 @@
 #include <keel/math.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -39,7 +39,7 @@ namespace numkit::signal {
 ///                  * `F`   — `nfft/2+1 × 1` frequency vector on `[0, fs/2]`.
 ///
 /// @see pwelch, spectrogram
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 periodogram(const Value &                x,
             const Value &                window,
             keel::usize                       nfft,
@@ -90,7 +90,7 @@ periodogramConf(const Value &                Pxx,
 /// @return           Tuple `(Pxx, F)` (see `periodogram`).
 ///
 /// @see periodogram, cpsd, mscohere
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pwelch(const Value &                x,
        const Value &                window,
        keel::usize                       noverlap,
@@ -114,7 +114,7 @@ pwelch(const Value &                x,
 /// @return           Tuple `(Pxy, F)` — Pxy is COMPLEX.
 ///
 /// @see pwelch, mscohere, tfestimate
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cpsd(const Value &                x,
      const Value &                y,
      const Value &                window,
@@ -139,7 +139,7 @@ cpsd(const Value &                x,
 /// @return           Tuple `(Cxy, F)` — Cxy is REAL in `[0, 1]`.
 ///
 /// @see cpsd, tfestimate
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 mscohere(const Value &                x,
          const Value &                y,
          const Value &                window,
@@ -163,7 +163,7 @@ mscohere(const Value &                x,
 /// @return           Tuple `(Txy, F)` — Txy is COMPLEX.
 ///
 /// @see cpsd, mscohere, freqz
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tfestimate(const Value &                x,
            const Value &                y,
            const Value &                window,
@@ -186,7 +186,7 @@ tfestimate(const Value &                x,
 /// @return      Tuple `(Pxx, F)`.
 ///
 /// @see pburg, aryule
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pyulear(const Value &                x,
         keel::i32                          p,
         keel::usize                       nfft,
@@ -204,7 +204,7 @@ pyulear(const Value &                x,
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      Tuple `(Pxx, F)`.
 /// @see pyulear, arburg
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pburg(const Value &                x,
       keel::i32                          p,
       keel::usize                       nfft,

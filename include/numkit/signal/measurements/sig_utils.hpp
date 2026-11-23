@@ -7,7 +7,6 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <utility>
 
 namespace numkit::signal {
 
@@ -30,7 +29,7 @@ namespace numkit::signal {
 ///
 /// @note Vector input only in v1. The matrix (column-wise) form
 ///       is deferred.
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 seqperiod(const Value &                x,
           keel::f64                       tol = 0.0,
           keel::Allocator *  mr  = nullptr);
@@ -48,7 +47,7 @@ seqperiod(const Value &                x,
 ///
 /// @note Name=Value args (`'Threshold'`, `'TransitionEdge'`,
 ///       `'WindowLength'`) and matrix input deferred.
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 zerocrossrate(const Value &                x,
               keel::f64                       level = 0.0,
               keel::Allocator *  mr    = nullptr);

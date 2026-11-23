@@ -37,7 +37,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -53,7 +52,7 @@ void cusum_argcheck(const Value &x, keel::f64 climit, keel::f64 mshift)
 } // namespace
 
 // ── seqperiod ─────────────────────────────────────────────────────────
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 seqperiod(const Value &x, keel::f64 tol, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
@@ -77,7 +76,7 @@ seqperiod(const Value &x, keel::f64 tol, keel::Allocator *mr)
 // ── zerocrossrate ─────────────────────────────────────────────────────
 // Count sign changes relative to `level` (default 0); add 0.5 boundary
 // half-credit (matches MATLAB R2025b default ZeroPositive=false).
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 zerocrossrate(const Value &x, keel::f64 level, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();

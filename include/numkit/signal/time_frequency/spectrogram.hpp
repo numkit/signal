@@ -12,7 +12,7 @@
 #include <keel/ref.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -42,7 +42,7 @@ namespace numkit::signal {
 ///                            `numFrames × 1` column vector.
 ///
 /// @see stft, istft, periodogram
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 spectrogram(const Value &                x,
             const Value &                window,
             keel::usize                       noverlap,
@@ -120,7 +120,7 @@ Value istft(const Value &                S,
 ///                  `m` is the median of the stable-region sum,
 ///                  `maxDev` is the maximum absolute deviation from `m`.
 /// @see stft, istft
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 iscola(const Value &                window,
        keel::usize                  noverlap,
        keel::StringRef              method,

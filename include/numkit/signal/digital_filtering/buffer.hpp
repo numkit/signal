@@ -9,7 +9,7 @@
 
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -51,7 +51,7 @@ Value buffer(const Value &x, keel::i32 n, keel::i32 p = 0,
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     Tuple `(Y, Z)`.
 /// @see buffer
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 buffer2(const Value &x, keel::i32 n, keel::i32 p = 0,
         const Value &opt = Value::Empty,
         keel::Allocator *mr = nullptr);

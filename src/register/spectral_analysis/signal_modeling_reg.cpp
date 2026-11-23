@@ -14,8 +14,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -29,9 +27,9 @@ void levinson_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     if (args.size() >= 2 && !args[1].isEmpty())
         n = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "n", "levinson"), 2, "n", "levinson");
     auto [a, e, k] = levinson(args[0], n, ctx.engine->allocator());
-    outs[0] = std::move(a);
-    if (nargout > 1) outs[1] = std::move(e);
-    if (nargout > 2) outs[2] = std::move(k);
+    outs[0] = keel::move(a);
+    if (nargout > 1) outs[1] = keel::move(e);
+    if (nargout > 2) outs[2] = keel::move(k);
 }
 
 void rlevinson_reg(keel::ArrayRef<Value> args, keel::usize nargout,
@@ -39,8 +37,8 @@ void rlevinson_reg(keel::ArrayRef<Value> args, keel::usize nargout,
 {
     argcheck::checkNargin(args.size(), 2, 2, "rlevinson");
     auto [R, k] = rlevinson(args[0], args[1].toScalar(), ctx.engine->allocator());
-    outs[0] = std::move(R);
-    if (nargout > 1) outs[1] = std::move(k);
+    outs[0] = keel::move(R);
+    if (nargout > 1) outs[1] = keel::move(k);
 }
 
 #define NUMKIT_AR_REG(name, fn)                                                     \
@@ -51,9 +49,9 @@ void rlevinson_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         const keel::i32 p = argcheck::expectedInteger(                                  \
         argcheck::expectedReal(args[1], 2, "p", #name), 2, "p", #name);      \
         auto [a, e, k] = fn(args[0], p, ctx.engine->allocator());                \
-        outs[0] = std::move(a);                                                  \
-        if (nargout > 1) outs[1] = std::move(e);                                 \
-        if (nargout > 2) outs[2] = std::move(k);                                 \
+        outs[0] = keel::move(a);                                                  \
+        if (nargout > 1) outs[1] = keel::move(e);                                 \
+        if (nargout > 2) outs[2] = keel::move(k);                                 \
     }
 
 NUMKIT_AR_REG(aryule, aryule)
@@ -69,16 +67,16 @@ void lpc_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         ? keel::as<keel::i32>(argcheck::roundLength(args[1], 2, "p", "lpc"))
         : keel::as<keel::i32>(args[0].numel() > 0 ? args[0].numel() - 1 : 0);
     auto [a, g] = lpc(args[0], p, ctx.engine->allocator());
-    outs[0] = std::move(a);
-    if (nargout > 1) outs[1] = std::move(g);
+    outs[0] = keel::move(a);
+    if (nargout > 1) outs[1] = keel::move(g);
 }
 
 void ac2poly_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 1, "ac2poly");
     auto [a, e] = ac2poly(args[0], ctx.engine->allocator());
-    outs[0] = std::move(a);
-    if (nargout > 1) outs[1] = std::move(e);
+    outs[0] = keel::move(a);
+    if (nargout > 1) outs[1] = keel::move(e);
 }
 
 void poly2ac_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -92,8 +90,8 @@ void ac2rc_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 {
     argcheck::checkNargin(args.size(), 1, 1, "ac2rc");
     auto [k, r0] = ac2rc(args[0], ctx.engine->allocator());
-    outs[0] = std::move(k);
-    if (nargout > 1) outs[1] = std::move(r0);
+    outs[0] = keel::move(k);
+    if (nargout > 1) outs[1] = keel::move(r0);
 }
 
 void schurrc_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -117,8 +115,8 @@ void poly2rc_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArray
     const keel::f64 efinal = (args.size() >= 2 && !args[1].isEmpty())
                               ? args[1].toScalar() : 0.0;
     auto [k, r0] = poly2rc(args[0], efinal, ctx.engine->allocator());
-    outs[0] = std::move(k);
-    if (nargout > 1) outs[1] = std::move(r0);
+    outs[0] = keel::move(k);
+    if (nargout > 1) outs[1] = keel::move(r0);
 }
 
 void rc2poly_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -129,8 +127,8 @@ void rc2poly_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArray
     const keel::f64 r0 = (args.size() >= 2 && !args[1].isEmpty())
                           ? args[1].toScalar() : 1.0;
     auto [a, efinal] = rc2poly(args[0], r0, ctx.engine->allocator());
-    outs[0] = std::move(a);
-    if (nargout > 1) outs[1] = std::move(efinal);
+    outs[0] = keel::move(a);
+    if (nargout > 1) outs[1] = keel::move(efinal);
 }
 
 #define NUMKIT_UNARY_CONV_REG(name)                                                 \
@@ -158,8 +156,8 @@ NUMKIT_UNARY_CONV_REG(lsf2poly)
         const keel::i32 p = argcheck::expectedInteger(                                  \
         argcheck::expectedReal(args[1], 2, "p", #name), 2, "p", #name);      \
         auto [a, e] = fn(args[0], p, ctx.engine->allocator());                   \
-        outs[0] = std::move(a);                                                  \
-        if (nargout > 1) outs[1] = std::move(e);                                 \
+        outs[0] = keel::move(a);                                                  \
+        if (nargout > 1) outs[1] = keel::move(e);                                 \
     }
 
 NUMKIT_AR2_REG(arcov,  arcov)
@@ -176,8 +174,8 @@ void prony_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         ? argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "na", "prony"), 3, "na", "prony")
         : nb;
     auto [b, a] = prony(args[0], nb, na, ctx.engine->allocator());
-    outs[0] = std::move(b);
-    if (nargout > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (nargout > 1) outs[1] = keel::move(a);
 }
 
 void stmcb_reg(keel::ArrayRef<Value> args, keel::usize nargout,
@@ -192,8 +190,8 @@ void stmcb_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                               ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[4], 5, "niter", "stmcb"), 5, "niter", "stmcb") : 5;
         const Value ai  = (args.size() >= 6) ? args[5] : Value();
         auto [b, a] = stmcb(args[0], args[1], nb, na, niter, ai, ctx.engine->allocator());
-        outs[0] = std::move(b);
-        if (nargout > 1) outs[1] = std::move(a);
+        outs[0] = keel::move(b);
+        if (nargout > 1) outs[1] = keel::move(a);
         return;
     }
     const keel::i32 nb    = argcheck::expectedInteger(argcheck::expectedReal(args[1], 2, "nb", "stmcb"), 2, "nb", "stmcb");
@@ -202,8 +200,8 @@ void stmcb_reg(keel::ArrayRef<Value> args, keel::usize nargout,
                           ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "niter", "stmcb"), 4, "niter", "stmcb") : 5;
     const Value ai  = (args.size() >= 5) ? args[4] : Value();
     auto [b, a] = stmcb(args[0], Value(), nb, na, niter, ai, ctx.engine->allocator());
-    outs[0] = std::move(b);
-    if (nargout > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (nargout > 1) outs[1] = keel::move(a);
 }
 
 void corrmtx_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
@@ -221,8 +219,8 @@ void invfreqs_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     const keel::i32 nb = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "invfreqs"), 3, "nb", "invfreqs");
     const keel::i32 na = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "invfreqs"), 4, "na", "invfreqs");
     auto [b, a] = invfreqs(args[0], args[1], nb, na, ctx.engine->allocator());
-    outs[0] = std::move(b);
-    if (nargout > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (nargout > 1) outs[1] = keel::move(a);
 }
 
 void invfreqz_reg(keel::ArrayRef<Value> args, keel::usize nargout,
@@ -232,8 +230,8 @@ void invfreqz_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     const keel::i32 nb = argcheck::expectedInteger(argcheck::expectedReal(args[2], 3, "nb", "invfreqz"), 3, "nb", "invfreqz");
     const keel::i32 na = argcheck::expectedInteger(argcheck::expectedReal(args[3], 4, "na", "invfreqz"), 4, "na", "invfreqz");
     auto [b, a] = invfreqz(args[0], args[1], nb, na, ctx.engine->allocator());
-    outs[0] = std::move(b);
-    if (nargout > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (nargout > 1) outs[1] = keel::move(a);
 }
 
 } // namespace detail

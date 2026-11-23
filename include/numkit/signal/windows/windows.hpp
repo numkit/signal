@@ -6,7 +6,6 @@
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -215,7 +214,7 @@ Value bohmanwin(keel::usize N, keel::Allocator *mr = nullptr);
 /// @return    N×1 DOUBLE column vector.
 Value barthannwin(keel::usize N, keel::Allocator *mr = nullptr);
 
-std::pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
+keel::Pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
                              keel::Allocator *mr = nullptr);
 
 /// @}

@@ -41,9 +41,9 @@ void filter_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     // DF2T state and return the final state (one column per signal).
     const Value zi = hasZi ? args[3] : Value();
     FilterState st = filter(args[0], args[1], args[2], zi, mr);
-    outs[0] = std::move(st.y);
+    outs[0] = keel::move(st.y);
     if (nargout > 1)
-        outs[1] = std::move(st.zf);
+        outs[1] = keel::move(st.zf);
 }
 
 void filtfilt_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)

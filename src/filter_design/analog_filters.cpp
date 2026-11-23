@@ -4,6 +4,7 @@
 // Thin Value wrappers delegating numerical kernels to keel::signal.
 
 #include <keel/arena.h>
+#include <keel/tuple.h>
 #include <keel/algo.h>
 #include <keel/array.h>
 #include <keel/complex.h>
@@ -58,9 +59,9 @@ Value packDoubleRow(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
     return out;
 }
 
-std::tuple<Value, Value, Value> packZpk(const keel::signal::ZpkResult &res, keel::Allocator *mr)
+keel::Tuple<Value, Value, Value> packZpk(const keel::signal::ZpkResult &res, keel::Allocator *mr)
 {
-    return std::make_tuple(packComplexCol(res.z.as_ref(), mr),
+    return keel::make_tuple(packComplexCol(res.z.as_ref(), mr),
                            packComplexCol(res.p.as_ref(), mr),
                            Value::scalar(res.k, mr));
 }
@@ -75,7 +76,7 @@ void impinvar_argcheck(const Value &b, const Value &a)
 
 } // anonymous
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 buttap(keel::i32 N, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -84,7 +85,7 @@ buttap(keel::i32 N, keel::Allocator *mr)
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 cheb1ap(keel::i32 N, keel::f64 Rp, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -93,7 +94,7 @@ cheb1ap(keel::i32 N, keel::f64 Rp, keel::Allocator *mr)
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 cheb2ap(keel::i32 N, keel::f64 Rs, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -102,7 +103,7 @@ cheb2ap(keel::i32 N, keel::f64 Rs, keel::Allocator *mr)
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 besselap(keel::i32 N, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -111,7 +112,7 @@ besselap(keel::i32 N, keel::Allocator *mr)
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 ellipap(keel::i32 N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -120,7 +121,7 @@ ellipap(keel::i32 N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr)
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2lp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -131,7 +132,7 @@ lp2lp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::Allocator
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2hp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -142,7 +143,7 @@ lp2hp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::Allocator
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2bp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::f64 Bw, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -153,7 +154,7 @@ lp2bp(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::f64 Bw, k
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2bs(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::f64 Bw, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -164,7 +165,7 @@ lp2bs(const Value &z, const Value &p, keel::f64 k, keel::f64 Wo, keel::f64 Bw, k
     return packZpk(res, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 bilinear(const Value &b, const Value &a, keel::f64 fs, keel::f64 fp, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -172,10 +173,10 @@ bilinear(const Value &b, const Value &a, keel::f64 fs, keel::f64 fp, keel::Alloc
     const auto av = readVec(a, scratch.allocator());
     keel::signal::TfResult res;
     (void)keel::signal::bilinear(bv.as_ref(), av.as_ref(), fs, fp, res, scratch.allocator());
-    return std::make_tuple(packDoubleRow(res.b.as_ref(), mr), packDoubleRow(res.a.as_ref(), mr));
+    return keel::make_tuple(packDoubleRow(res.b.as_ref(), mr), packDoubleRow(res.a.as_ref(), mr));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 impinvar(const Value &b, const Value &a, keel::f64 fs, keel::f64 /*tol*/, keel::Allocator *mr)
 {
     impinvar_argcheck(b, a);
@@ -186,7 +187,7 @@ impinvar(const Value &b, const Value &a, keel::f64 fs, keel::f64 /*tol*/, keel::
     const auto st = keel::signal::impinvar(bv.as_ref(), av.as_ref(), fs, res, scratch.allocator());
     if (st != keel::signal::SignalStatus::kOk)
         throw numkit::Error("impinvar: roots() returned unexpected count");
-    return std::make_tuple(packDoubleRow(res.b.as_ref(), mr), packDoubleRow(res.a.as_ref(), mr));
+    return keel::make_tuple(packDoubleRow(res.b.as_ref(), mr), packDoubleRow(res.a.as_ref(), mr));
 }
 
 Value freqs(const Value &b, const Value &a, const Value &w, keel::Allocator *mr)

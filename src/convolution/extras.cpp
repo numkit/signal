@@ -11,7 +11,7 @@
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 #include <numkit/signal/convolution/convolution.hpp>     // xcorr
 #include <numkit/signal/transforms/fft.hpp>              // fft / ifft
 
@@ -285,7 +285,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
         } else {
             keel::copy_n(dst, z.doubleData(), cellsOut);
         }
-        return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), anySingle, mr);
     }
 
     // Direct path for small inputs.
@@ -304,7 +304,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
             }
         }
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), anySingle, mr);
 }
 
 // ── finddelay ─────────────────────────────────────────────────────────
@@ -331,7 +331,7 @@ keel::i64 finddelay(const Value &x, const Value &y, keel::i64 max_lag, keel::All
 }
 
 // ── alignsignals ──────────────────────────────────────────────────────
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 alignsignals(const Value &x, const Value &y, keel::i64 max_lag, keel::Allocator *mr)
 {
     const keel::i64 d = finddelay(x, y, max_lag, mr);
@@ -357,7 +357,7 @@ alignsignals(const Value &x, const Value &y, keel::i64 max_lag, keel::Allocator 
             dst[lead_pad + i] = src.elemAsDouble(i);
         return out;
     };
-    return std::make_tuple(orient(x, pad_x), orient(y, pad_y));
+    return keel::make_tuple(orient(x, pad_x), orient(y, pad_y));
 }
 
 } // namespace numkit::signal

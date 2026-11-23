@@ -5,7 +5,6 @@
 
 #include <keel/core.h>
 #include <keel/memory.h>
-#include <utility>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -57,7 +56,7 @@ Value envelope(const Value &                x,
 /// @param x   Real input signal.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    `(yupper, ylower)` — bind with `auto [up, lo] = envelope_pair(x);`.
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 envelope_pair(const Value &                x,
               keel::Allocator *  mr = nullptr);
 
@@ -76,7 +75,7 @@ envelope_pair(const Value &                x,
 /// @return      `(yupper, ylower)`. For modes 0–2 the envelopes are
 ///              symmetric around the signal mean; mode 3 is
 ///              spline-interpolated and generally asymmetric.
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 envelope_full(const Value &                x,
               keel::i32                          mode,
               keel::usize                  n,

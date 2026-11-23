@@ -7,7 +7,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -47,7 +47,7 @@ namespace numkit::signal {
 /// frequency vector is then in Hz over `[0, fs/2)` (or `[0, fs)` with
 /// `whole`). The response `H` is unchanged — only the frequency axis is
 /// rescaled by `fs/(2π)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 freqz(const Value &                b,
       const Value &                a,
       keel::usize                       npts = 512,
@@ -57,7 +57,7 @@ freqz(const Value &                b,
 
 /// freqz(b, a, w): response at the GIVEN normalised radian frequencies
 /// (the vector-w form).
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 freqz(const Value &                b,
       const Value &                a,
       const Value &                wvec,
@@ -78,7 +78,7 @@ freqz(const Value &                b,
 /// `fs` > 0 (the `phasez(b,a,n,fs)` form) returns the frequency vector in
 /// Hz over `[0, fs/2)` instead of rad/sample; the phase values are
 /// unchanged.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 phasez(const Value &                b,
        const Value &                a,
        keel::usize                       npts = 512,
@@ -104,7 +104,7 @@ phasez(const Value &                b,
 /// `fs` > 0 (the `grpdelay(b,a,n,fs)` form) returns the frequency vector in
 /// Hz over `[0, fs/2)` instead of rad/sample; the group delay (in samples)
 /// is unchanged.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 grpdelay(const Value &                b,
          const Value &                a,
          keel::usize                       npts = 512,

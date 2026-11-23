@@ -21,8 +21,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -133,8 +131,8 @@ void cell2sos_reg(keel::ArrayRef<Value> args, keel::usize nargout,
 {
     argcheck::checkNargin(args.size(), 1, 1, "cell2sos");
     auto [S, g] = cell2sos(args[0], ctx.engine->allocator());
-    outs[0] = std::move(S);
-    if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(g);
+    outs[0] = keel::move(S);
+    if (nargout >= 2 && outs.size() >= 2) outs[1] = keel::move(g);
 }
 
 } // namespace detail
@@ -163,7 +161,7 @@ void firpm_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 
     auto [b, err] = firpm(N, args[1], args[2], W, ftype,
                           ctx.engine->allocator());
-    outs[0] = std::move(b);
+    outs[0] = keel::move(b);
     if (nargout >= 2 && outs.size() >= 2)
         outs[1] = Value::scalar(err, ctx.engine->allocator());
 }

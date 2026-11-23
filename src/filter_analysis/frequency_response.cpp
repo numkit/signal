@@ -17,7 +17,7 @@
 
 #include "../dsp_helpers.hpp"   // Complex typedef
 
-#include <tuple>
+#include <keel/tuple.h>
 
 
 namespace numkit::signal {
@@ -32,7 +32,7 @@ void freqz_argcheck(const Value &b, const Value &a)
 
 } // namespace
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 freqz(const Value &b, const Value &a, keel::usize npts, bool whole, keel::f64 fs, keel::Allocator *mr)
 {
     freqz_argcheck(b, a);
@@ -75,10 +75,10 @@ freqz(const Value &b, const Value &a, keel::usize npts, bool whole, keel::f64 fs
         H.complexDataMut()[k] = num / den;
     }
 
-    return std::make_tuple(std::move(H), std::move(W));
+    return keel::make_tuple(keel::move(H), keel::move(W));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 freqz(const Value &b, const Value &a, const Value &wvec, keel::Allocator *mr)
 {
     // freqz(b, a, w): response at the GIVEN normalised radian frequencies
@@ -115,7 +115,7 @@ freqz(const Value &b, const Value &a, const Value &wvec, keel::Allocator *mr)
         }
         H.complexDataMut()[k] = num / den;
     }
-    return std::make_tuple(std::move(H), std::move(W));
+    return keel::make_tuple(keel::move(H), keel::move(W));
 }
 
 namespace {
@@ -138,7 +138,7 @@ void unwrapInPlace(keel::f64 *p, keel::usize n)
 
 } // namespace
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 phasez(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::Allocator *mr)
 {
     auto [H, W] = freqz(b, a, npts, /*whole=*/false, fs, mr);
@@ -158,10 +158,10 @@ phasez(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::All
             pd[k] = keel::atan2(hd[k].imag(), hd[k].real());
     }
     unwrapInPlace(pd, npts);
-    return std::make_tuple(std::move(phi), std::move(W));
+    return keel::make_tuple(keel::move(phi), keel::move(W));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 grpdelay(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::Allocator *mr)
 {
     // EXACT group delay (MATLAB's method), NOT a finite-difference of the
@@ -178,7 +178,7 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::A
     auto W  = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     auto gd = Value::matrix(npts, 1, ValueType::DOUBLE, mr);
     if (npts == 0 || nb == 0 || na == 0)
-        return std::make_tuple(std::move(gd), std::move(W));
+        return keel::make_tuple(keel::move(gd), keel::move(W));
 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     const keel::usize nc = nb + na - 1;
@@ -208,7 +208,7 @@ grpdelay(const Value &b, const Value &a, keel::usize npts, keel::f64 fs, keel::A
         const keel::f64 cmag2 = C.real() * C.real() + C.imag() * C.imag();
         g[k] = (cmag2 < 1e-300) ? 0.0 : ((CR / C).real() - offset);
     }
-    return std::make_tuple(std::move(gd), std::move(W));
+    return keel::make_tuple(keel::move(gd), keel::move(W));
 }
 
 } // namespace numkit::signal

@@ -494,9 +494,9 @@ Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
         if (isRowVec && cols == 1) {
             Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
             std::copy(od, od + len, rowOut.doubleDataMut());
-            return detail::narrowDoubleToSingleIf(std::move(rowOut), ySingle, mr);
+            return detail::narrowDoubleToSingleIf(keel::move(rowOut), ySingle, mr);
         }
-        return detail::narrowDoubleToSingleIf(std::move(out), ySingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), ySingle, mr);
     }
 
     // Step 1: x = y .* cos(2π Fc t)
@@ -537,9 +537,9 @@ Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
     if (isRowVec && cols == 1) {
         Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
         std::copy(out.doubleData(), out.doubleData() + len, rowOut.doubleDataMut());
-        return detail::narrowDoubleToSingleIf(std::move(rowOut), ySingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(rowOut), ySingle, mr);
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), ySingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), ySingle, mr);
 }
 
 // ── modulate (Phase 4.12) ───────────────────────────────────────────
@@ -669,9 +669,9 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
     if (isRowVec && len > 0) {
         Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
         std::copy(od, od + len, rowOut.doubleDataMut());
-        return detail::narrowDoubleToSingleIf(std::move(rowOut), xSingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(rowOut), xSingle, mr);
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), xSingle, mr);
 }
 
 // ── vco (Phase 4.8) ─────────────────────────────────────────────────

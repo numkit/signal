@@ -7,7 +7,7 @@
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/string.h>
-#include <tuple>
+#include <keel/tuple.h>
 #include <numkit/value/value.hpp>
 
 namespace numkit::signal {
@@ -103,7 +103,7 @@ Value enbw(const Value &window, const Value &fs = Value::Empty,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(bw, flo, fhi, power)`: bandwidth, lower/upper band
 ///            edges, and the in-band power (`p · total`).
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 obw(const Value &x, const Value &fs = Value::Empty,
     keel::f64 p = 0.99,
     keel::Allocator *mr = nullptr);
@@ -262,14 +262,14 @@ Value instfreq(const Value &x, const Value &fs = Value::Empty,
                keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous frequency and time vector (`[ifreq, t] = instfreq(...)`).
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 instfreqWithTime(const Value &x, const Value &fs = Value::Empty,
                  const PspectrumOptions &opts = {},
                  keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous frequency via Hilbert analytic-signal phase derivative
 /// (`instfreq(..., 'Method', 'hilbert')`).
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 instfreqHilbert(const Value &x, const Value &fs = Value::Empty,
                 keel::Allocator *mr = nullptr);
 
@@ -279,7 +279,7 @@ Value instbw(const Value &x, const Value &fs = Value::Empty,
              keel::Allocator *mr = nullptr);
 
 /// @brief Instantaneous bandwidth and time vector (`[ibw, t] = instbw(...)`).
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 instbwWithTime(const Value &x, const Value &fs = Value::Empty,
                const PspectrumOptions &opts = {},
                keel::Allocator *mr = nullptr);

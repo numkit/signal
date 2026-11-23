@@ -190,12 +190,12 @@ Value rceps(const Value &x, keel::Allocator *mr)
 // Also returns the minimum-phase reconstruction
 //   ym = real(ifft(exp(fft(w .* xhat))))
 // where w is the cepstral folding window [1, 2,…,2, (1 if n even), 0,…,0].
-std::pair<Value, Value> rcepsMinPhase(const Value &x, keel::Allocator *mr)
+keel::Pair<Value, Value> rcepsMinPhase(const Value &x, keel::Allocator *mr)
 {
     Value y = rceps(x, mr);
     const keel::usize n = x.numel();
     Value ym = realLike(x, n, mr);
-    if (n == 0) return {std::move(y), std::move(ym)};
+    if (n == 0) return {keel::move(y), keel::move(ym)};
     const keel::f64 *yd = y.doubleData();
     keel::ArenaTemp arena = keel::get_scratch(mr);
     auto W = keel::Array<keel::c64>(n, arena.allocator());
@@ -214,7 +214,7 @@ std::pair<Value, Value> rcepsMinPhase(const Value &x, keel::Allocator *mr)
     const keel::f64 invN = 1.0 / keel::as<keel::f64>(n);
     keel::f64 *md = ym.doubleDataMut();
     for (keel::usize i = 0; i < n; ++i) md[i] = W[i].real() * invN;
-    return {std::move(y), std::move(ym)};
+    return {keel::move(y), keel::move(ym)};
 }
 
 // ── cceps ─────────────────────────────────────────────────────────────

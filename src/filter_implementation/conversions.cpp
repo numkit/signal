@@ -14,14 +14,13 @@
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 
 #include "../dsp_helpers.hpp"
 #include "../signal_detail.hpp"
 #include <numkit/ops/poly_helpers.hpp>
 
 #include <algorithm>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -48,7 +47,7 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
     // opposite order (bugs/closed/signal/zp2sos-section-order).
     keel::usize pickIdx = 0;
     auto key = [&](keel::usize i) {
-        return std::make_pair(keel::abs(pool[i]), keel::abs(pool[i].real()));
+        return keel::make_pair(keel::abs(pool[i]), keel::abs(pool[i].real()));
     };
     for (keel::usize i = 1; i < pool.size(); ++i) {
         if (key(i) < key(pickIdx)) pickIdx = i;
@@ -247,7 +246,7 @@ void zp2sos_argcheck(const Value &zerosV, const Value &polesV)
 
 } // namespace
 
-std::tuple<Value, keel::f64>
+keel::Tuple<Value, keel::f64>
 zp2sosWithGain(const Value &zerosV, const Value &polesV, keel::f64 gain, bool surplusAtOrigin, keel::Allocator *mr)
 {
     zp2sos_argcheck(zerosV, polesV);
@@ -291,7 +290,7 @@ zp2sosWithGain(const Value &zerosV, const Value &polesV, keel::f64 gain, bool su
                      0, 0, "zp2sos", "", "numkit:zp2sos:moreZeros");
 
     Value sos = buildSosMatrix(b1s.data(), b2s.data(), a1s.data(), a2s.data(), noZeros.data(), surplusAtOrigin, L, /*leadingGain=*/1.0, mr);
-    return std::make_tuple(detail::narrowDoubleToSingleIf(std::move(sos), anySingle, mr),
+    return keel::make_tuple(detail::narrowDoubleToSingleIf(keel::move(sos), anySingle, mr),
                            gain);
 }
 
@@ -314,7 +313,7 @@ Value zp2sos(const Value &zerosV, const Value &polesV, keel::f64 gain, keel::All
     return sos;
 }
 
-std::tuple<Value, keel::f64>
+keel::Tuple<Value, keel::f64>
 tf2sosWithGain(const Value &b, const Value &a, keel::Allocator *mr)
 {
     const bool anySingle = (b.type() == ValueType::SINGLE) || (a.type() == ValueType::SINGLE);
@@ -343,7 +342,7 @@ tf2sosWithGain(const Value &b, const Value &a, keel::Allocator *mr)
     // tf2sos must reproduce the ORIGINAL b polynomial: surplus zeros stay
     // left-aligned at infinity ([g 0 0]), not pushed to the origin.
     auto [sos, g] = zp2sosWithGain(toCplxVec(zeros), toCplxVec(poles), gain, /*surplusAtOrigin=*/false, mr);
-    return std::make_tuple(detail::narrowDoubleToSingleIf(std::move(sos), anySingle, mr), g);
+    return keel::make_tuple(detail::narrowDoubleToSingleIf(keel::move(sos), anySingle, mr), g);
 }
 
 Value tf2sos(const Value &b, const Value &a, keel::Allocator *mr)

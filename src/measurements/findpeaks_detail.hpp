@@ -13,7 +13,7 @@
 #include <keel/core.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -36,7 +36,7 @@ struct PeakOpts {
 // Core detection + filtering. locArr == nullptr => locations are 1-based
 // sample indices; otherwise locArr[i] is the location of sample i.
 // Returns (heights, locations, widths, prominences).
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
               keel::Allocator *mr);
 

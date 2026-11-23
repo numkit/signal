@@ -22,8 +22,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -37,9 +35,9 @@ namespace detail {
         const keel::i32 N = argcheck::expectedPositiveInteger(                     \
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
         auto [z, p, k] = name(N, ctx.engine->allocator());                       \
-        outs[0] = std::move(z);                                                  \
-        if (nargout > 1) outs[1] = std::move(p);                                 \
-        if (nargout > 2) outs[2] = std::move(k);                                 \
+        outs[0] = keel::move(z);                                                  \
+        if (nargout > 1) outs[1] = keel::move(p);                                 \
+        if (nargout > 2) outs[2] = keel::move(k);                                 \
     }
 
 #define NUMKIT_PROTO1_REG(name)                                                     \
@@ -51,9 +49,9 @@ namespace detail {
         argcheck::expectedReal(args[0], 1, "N", #name), 1, "N", #name);        \
         const keel::f64 r = args[1].toScalar();                                    \
         auto [z, p, k] = name(N, r, ctx.engine->allocator());                    \
-        outs[0] = std::move(z);                                                  \
-        if (nargout > 1) outs[1] = std::move(p);                                 \
-        if (nargout > 2) outs[2] = std::move(k);                                 \
+        outs[0] = keel::move(z);                                                  \
+        if (nargout > 1) outs[1] = keel::move(p);                                 \
+        if (nargout > 2) outs[2] = keel::move(k);                                 \
     }
 
 NUMKIT_PROTO0_REG(buttap)
@@ -70,9 +68,9 @@ void ellipap_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     const keel::f64 Rp = args[1].toScalar();
     const keel::f64 Rs = args[2].toScalar();
     auto [z, p, k] = ellipap(N, Rp, Rs, ctx.engine->allocator());
-    outs[0] = std::move(z);
-    if (nargout > 1) outs[1] = std::move(p);
-    if (nargout > 2) outs[2] = std::move(k);
+    outs[0] = keel::move(z);
+    if (nargout > 1) outs[1] = keel::move(p);
+    if (nargout > 2) outs[2] = keel::move(k);
 }
 
 #undef NUMKIT_PROTO0_REG
@@ -114,15 +112,15 @@ static Value lp2StripLeadingZeros(const Value &b, keel::Allocator *mr)
             auto [zt, pt, kt] = fn(z0, p0, k0, Wo, mr);                          \
             auto [bt, at] = numkit::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
             bt = lp2StripLeadingZeros(bt, mr);                                   \
-            outs[0] = std::move(bt);                                             \
-            if (nargout > 1) outs[1] = std::move(at);                            \
+            outs[0] = keel::move(bt);                                             \
+            if (nargout > 1) outs[1] = keel::move(at);                            \
             return;                                                              \
         }                                                                        \
         const keel::f64 Wo = args[3].toScalar();                                   \
         auto [z, p, k] = fn(args[0], args[1], args[2].toScalar(), Wo, mr);      \
-        outs[0] = std::move(z);                                                  \
-        if (nargout > 1) outs[1] = std::move(p);                                 \
-        if (nargout > 2) outs[2] = std::move(k);                                 \
+        outs[0] = keel::move(z);                                                  \
+        if (nargout > 1) outs[1] = keel::move(p);                                 \
+        if (nargout > 2) outs[2] = keel::move(k);                                 \
     }
 
 NUMKIT_LP2X1_REG(lp2lp, lp2lp)
@@ -147,8 +145,8 @@ NUMKIT_LP2X1_REG(lp2hp, lp2hp)
             auto [zt, pt, kt] = fn(z0, p0, k0, Wo, Bw, mr);                      \
             auto [bt, at] = numkit::builtin::zp2tf(zt, pt, kt.toScalar(), mr);           \
             bt = lp2StripLeadingZeros(bt, mr);                                   \
-            outs[0] = std::move(bt);                                             \
-            if (nargout > 1) outs[1] = std::move(at);                            \
+            outs[0] = keel::move(bt);                                             \
+            if (nargout > 1) outs[1] = keel::move(at);                            \
             return;                                                              \
         }                                                                        \
         if (args.size() < 5)                                                     \
@@ -157,9 +155,9 @@ NUMKIT_LP2X1_REG(lp2hp, lp2hp)
         const keel::f64 Wo = args[3].toScalar();                                   \
         const keel::f64 Bw = args[4].toScalar();                                   \
         auto [z, p, k] = fn(args[0], args[1], args[2].toScalar(), Wo, Bw, mr);  \
-        outs[0] = std::move(z);                                                  \
-        if (nargout > 1) outs[1] = std::move(p);                                 \
-        if (nargout > 2) outs[2] = std::move(k);                                 \
+        outs[0] = keel::move(z);                                                  \
+        if (nargout > 1) outs[1] = keel::move(p);                                 \
+        if (nargout > 2) outs[2] = keel::move(k);                                 \
     }
 
 NUMKIT_LP2X2_REG(lp2bp, lp2bp)
@@ -173,8 +171,8 @@ void bilinear_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     const keel::f64 fs = args[2].toScalar();
     const keel::f64 fp = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 0.0;
     auto [bd, ad] = bilinear(args[0], args[1], fs, fp, ctx.engine->allocator());
-    outs[0] = std::move(bd);
-    if (nargout > 1) outs[1] = std::move(ad);
+    outs[0] = keel::move(bd);
+    if (nargout > 1) outs[1] = keel::move(ad);
 }
 
 void impinvar_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -183,8 +181,8 @@ void impinvar_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     const keel::f64 fs  = (args.size() >= 3 && !args[2].isEmpty()) ? args[2].toScalar() : 1.0;
     const keel::f64 tol = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 1e-3;
     auto [bd, ad] = impinvar(args[0], args[1], fs, tol, ctx.engine->allocator());
-    outs[0] = std::move(bd);
-    if (nargout > 1) outs[1] = std::move(ad);
+    outs[0] = keel::move(bd);
+    if (nargout > 1) outs[1] = keel::move(ad);
 }
 
 namespace {
@@ -349,7 +347,7 @@ void freqs_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
         auto w = freqsAutoGrid(args[0], args[1], ctx.engine->allocator());
         outs[0] = freqs(args[0], args[1], w, ctx.engine->allocator());
         if (nargout > 1)
-            outs[1] = std::move(w);
+            outs[1] = keel::move(w);
         return;
     }
     argcheck::checkNargin(args.size(), 3, 3, "freqs");
@@ -362,7 +360,7 @@ void freqs_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
         auto w = freqsAutoGrid(args[0], args[1], ctx.engine->allocator(), npts);
         outs[0] = freqs(args[0], args[1], w, ctx.engine->allocator());
         if (nargout > 1)
-            outs[1] = std::move(w);
+            outs[1] = keel::move(w);
         return;
     }
     outs[0] = freqs(args[0], args[1], args[2], ctx.engine->allocator());

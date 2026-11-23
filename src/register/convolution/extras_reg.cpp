@@ -16,8 +16,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -68,8 +66,8 @@ void alignsignals_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::Mut
               argcheck::expectedReal(args[2], 3, "maxlag", "alignsignals"), 3, "maxlag", "alignsignals")
         : 0;
     auto [xa, ya] = alignsignals(args[0], args[1], max_lag, ctx.engine->allocator());
-    outs[0] = std::move(xa);
-    if (nargout > 1) outs[1] = std::move(ya);
+    outs[0] = keel::move(xa);
+    if (nargout > 1) outs[1] = keel::move(ya);
 }
 
 } // namespace detail

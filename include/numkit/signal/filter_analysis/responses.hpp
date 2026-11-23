@@ -12,7 +12,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -39,7 +39,7 @@ namespace numkit::signal {
 /// @endcode
 ///
 /// @see impzlength, stepz
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 impz(const Value &                b,
      const Value &                a,
      keel::usize                       n  = 0,
@@ -73,7 +73,7 @@ keel::usize impzlength(const Value &                b,
 /// @return    Tuple `(s, t)` — step response and sample indices.
 ///
 /// @see impz
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 stepz(const Value &                b,
       const Value &                a,
       keel::usize                       n  = 0,
@@ -92,7 +92,7 @@ stepz(const Value &                b,
 /// @return    Tuple `(pd, w)` — phase delay (samples) and frequency grid.
 ///
 /// @see grpdelay, phasez
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 phasedelay(const Value &                b,
            const Value &                a,
            keel::usize                       n  = 512,
@@ -113,7 +113,7 @@ phasedelay(const Value &                b,
 ///            linear-phase FIR) and frequency grid in [0, π].
 ///
 /// @see freqz, phasez
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 zerophase(const Value &                b,
           const Value &                a,
           keel::usize                       n  = 512,

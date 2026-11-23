@@ -177,7 +177,7 @@ Value polyscale(const Value &p, const Value &scale,
             }
         }
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), pSingle && !wantComplex, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), pSingle && !wantComplex, mr);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
             out.complexDataMut()[0] = elemAsComplex(a, 0);
         else
             out.doubleDataMut()[0] = a.elemAsDouble(0);
-        return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 4 (gain): first non-zero coefficient of a ───────────────
@@ -251,7 +251,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
             for (keel::usize k = 0; k < n; ++k)
                 dst[k] = a.elemAsDouble(k);
         }
-        return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 1: roots of a ───────────────────────────────────────────
@@ -271,7 +271,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
             out.complexDataMut()[0] = gain;
         else
             out.doubleDataMut()[0] = gain.real();
-        return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
     }
 
     // ── Step 2: reflect roots with |r| > 1 to 1/conj(r) ──────────────
@@ -329,7 +329,7 @@ Value polystab(const Value &a, keel::Allocator *mr)
         for (keel::usize k = 0; k < mlen; ++k)
             dst[k] = elemAsComplex(monic, k).real() * g;
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), aSingle && !aComplex, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
 }
 
 } // namespace numkit::signal

@@ -21,8 +21,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -230,8 +228,8 @@ void dpss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
         k = std::min(N, keel::as<keel::usize>(std::max(1.0, keel::round(args[2].elemAsDouble(args[2].numel() - 1)))));
     }
     auto [E, V] = dpss(N, nw, k, ctx.engine->allocator());
-    outs[0] = std::move(E);
-    if (nargout >= 2) outs[1] = std::move(V);
+    outs[0] = keel::move(E);
+    if (nargout >= 2) outs[1] = keel::move(V);
 }
 
 } // namespace detail

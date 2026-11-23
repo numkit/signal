@@ -11,7 +11,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -33,7 +33,7 @@ namespace numkit::signal {
 ///            both single-sided column vectors of length `floor(N/2)+1`.
 ///
 /// @see hilbert
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 envspectrum(const Value &                x,
             keel::f64                       fs = 0.0,
             keel::Allocator *  mr = nullptr);
@@ -53,7 +53,7 @@ envspectrum(const Value &                x,
 ///                   timestamps in seconds.
 ///
 /// @see tsa
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tachorpm(const Value &                x,
          keel::f64                       fs,
          const Value &                threshold = Value::Empty,
@@ -91,7 +91,7 @@ Value rainflow(const Value &                x,
 ///                    `[0, 2π · (n_per_rev − 1) / n_per_rev]`.
 ///
 /// @see tachorpm, envspectrum
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tsa(const Value &                x,
     keel::f64                       fs,
     const Value &                rpm,

@@ -18,7 +18,6 @@
 
 #include <numkit/ops/helpers.hpp>
 
-#include <utility>
 
 #include "../signal_detail.hpp"
 
@@ -110,7 +109,7 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
         checkZeroLead(keel::signal::sosfilt_col_major(sosRef, L, {xD.doubleData(), n},
                                                       {out.doubleDataMut(), n}, {}, mr),
                       "sosfilt");
-        return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), anySingle, mr);
     }
     const keel::usize rows = xD.dims().rows();
     const keel::usize cols = xD.dims().cols();
@@ -121,7 +120,7 @@ Value sosfilt(const Value &sos, const Value &x, keel::Allocator *mr)
                                                       {dst + c * rows, rows}, {}, mr),
                       "sosfilt");
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), anySingle, mr);
 }
 
 Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
@@ -141,7 +140,7 @@ Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
         checkZeroLead(keel::signal::sosfiltfilt_col_major(sosRef, L, {xD.doubleData(), n},
                                                           {out.doubleDataMut(), n}, mr),
                       "sosfiltfilt");
-        return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), anySingle, mr);
     }
     const keel::usize rows = xD.dims().rows();
     const keel::usize cols = xD.dims().cols();
@@ -152,7 +151,7 @@ Value sosfiltfilt(const Value &sos, const Value &x, keel::Allocator *mr)
                                                           {dst + c * rows, rows}, mr),
                       "sosfiltfilt");
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), anySingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), anySingle, mr);
 }
 
 } // namespace numkit::signal

@@ -11,7 +11,7 @@
 #include <numkit/signal/internal/shims/polyfun.hpp>     // roots()
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 #include <numkit/signal/digital_filtering/filter.hpp>   // filter()
 #include <numkit/signal/filter_analysis/frequency_response.hpp>  // freqz, phasez
 
@@ -111,27 +111,27 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
 }
 
 // ── impz ──────────────────────────────────────────────────────────────
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 impz(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 {
     if (n == 0) n = impzlength(b, a, mr);
     auto x = makeColVector(n, [](keel::usize i) { return i == 0 ? 1.0 : 0.0; }, mr);
     auto h = filter(b, a, x, mr);
-    return std::make_tuple(std::move(h), sampleIndex(n, mr));
+    return keel::make_tuple(keel::move(h), sampleIndex(n, mr));
 }
 
 // ── stepz ─────────────────────────────────────────────────────────────
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 stepz(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 {
     if (n == 0) n = impzlength(b, a, mr);
     auto x = makeColVector(n, [](keel::usize) { return 1.0; }, mr);
     auto s = filter(b, a, x, mr);
-    return std::make_tuple(std::move(s), sampleIndex(n, mr));
+    return keel::make_tuple(keel::move(s), sampleIndex(n, mr));
 }
 
 // ── phasedelay ────────────────────────────────────────────────────────
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 phasedelay(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 {
     auto [phi, w] = phasez(b, a, n, /*fs=*/0.0, mr);
@@ -152,7 +152,7 @@ phasedelay(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
             dst[i] = -phiP[i] / wP[i];
         }
     }
-    return std::make_tuple(std::move(pd), std::move(w));
+    return keel::make_tuple(keel::move(pd), keel::move(w));
 }
 
 // ── zerophase ─────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ phasedelay(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 // FIR filters this is real-valued (possibly negative). General formula:
 //   Hr(w) = H(e^{jw}) * exp(j * w * (N-1)/2)         (FIR symmetric)
 // We just multiply freqz by exp(j*w*tau) where tau is half the order.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 zerophase(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
 {
     auto [H, w] = freqz(b, a, n, /*whole=*/false, /*fs=*/0.0, mr);
@@ -178,7 +178,7 @@ zerophase(const Value &b, const Value &a, keel::usize n, keel::Allocator *mr)
         const keel::c64 r = hi * twist;
         dst[i] = r.real();   // imag part is ~0 for true linear-phase filters
     }
-    return std::make_tuple(std::move(Hr), std::move(w));
+    return keel::make_tuple(keel::move(Hr), keel::move(w));
 }
 
 } // namespace numkit::signal

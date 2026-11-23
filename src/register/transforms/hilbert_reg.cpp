@@ -16,8 +16,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {
@@ -55,8 +53,8 @@ void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
                     "'analytic'/'rms'/'peak' modes",
                     0, 0, "envelope", "", "numkit:envelope:badn");
     auto [up, lo] = envelope_full(args[0], mode, n, mr);
-    outs[0] = std::move(up);
-    if (nargout > 1) outs[1] = std::move(lo);
+    outs[0] = keel::move(up);
+    if (nargout > 1) outs[1] = keel::move(lo);
 }
 
 } // namespace detail

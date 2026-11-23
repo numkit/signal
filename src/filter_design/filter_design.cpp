@@ -4,6 +4,7 @@
 // delegating numerical kernels to keel::signal, plus cell2sos marshaling.
 
 #include <keel/arena.h>
+#include <keel/tuple.h>
 #include <keel/algo.h>
 #include <keel/math.h>
 #include <keel/array.h>
@@ -50,7 +51,7 @@ void fir1_argcheck(keel::i32 N, keel::f64 Wn, keel::StringRef type)
 
 } // anonymous namespace
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 butter(keel::i32 N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
 {
     if (Wn <= 0.0 || Wn >= 1.0)
@@ -75,7 +76,7 @@ butter(keel::i32 N, keel::f64 Wn, keel::StringRef type, keel::Allocator *mr)
     Value av = Value::matrix(1, tf.a.size(), ValueType::DOUBLE, mr);
     keel::copy_n(bv.doubleDataMut(), tf.b.data(), tf.b.size());
     keel::copy_n(av.doubleDataMut(), tf.a.data(), tf.a.size());
-    return std::make_tuple(std::move(bv), std::move(av));
+    return keel::make_tuple(keel::move(bv), keel::move(av));
 }
 
 Value firls(keel::i32 N, const Value &Farg, const Value &Aarg,
@@ -221,7 +222,7 @@ Value fir1(keel::i32 N, const Value &Wn, keel::StringRef typeIn,
     return bv;
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cell2sos(const Value &C, keel::Allocator *mr)
 {
     if (!C.isCell())
@@ -329,7 +330,7 @@ Value fir2(keel::i32 n, const Value &f, const Value &m,
     return b;
 }
 
-std::tuple<Value, keel::f64>
+keel::Tuple<Value, keel::f64>
 firpm(keel::i32 N, const Value &Farg, const Value &Aarg, const Value &Warg,
       keel::StringRef ftype, keel::Allocator *mr)
 {
@@ -391,7 +392,7 @@ firpm(keel::i32 N, const Value &Farg, const Value &Aarg, const Value &Warg,
     if (st != keel::signal::SignalStatus::kOk)
         throw Error("firpm: dense grid too small for filter order",
                     0, 0, "firpm", "", "numkit:firpm:internal");
-    return std::make_tuple(std::move(bOut), delta);
+    return keel::make_tuple(keel::move(bOut), delta);
 }
 
 } // namespace numkit::signal

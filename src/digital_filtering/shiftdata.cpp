@@ -21,7 +21,7 @@
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 
 
 namespace numkit::signal {
@@ -37,7 +37,7 @@ keel::usize mtlNdims(const Value &x)
 
 } // anon
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 shiftdata(const Value &x, keel::i32 dim, keel::Allocator *mr)
 {
     if (dim == 0) {
@@ -46,7 +46,7 @@ shiftdata(const Value &x, keel::i32 dim, keel::Allocator *mr)
         // perm = []  (return as 1×0 double matrix)
         Value emptyPerm = Value::matrix(0, 0, ValueType::DOUBLE, mr);
         Value nsh = Value::scalar(keel::as<keel::f64>(res.dropped), mr);
-        return {std::move(res.v), emptyPerm, nsh};
+        return {keel::move(res.v), emptyPerm, nsh};
     }
     if (dim < 1)
         throw Error("shiftdata: DIM must be >= 1",
@@ -69,7 +69,7 @@ shiftdata(const Value &x, keel::i32 dim, keel::Allocator *mr)
         for (keel::usize i = 0; i < N; ++i) pd[i] = keel::as<keel::f64>(perm[i]);
     }
     Value emptyNsh = Value::matrix(0, 0, ValueType::DOUBLE, mr);
-    return {std::move(shifted), std::move(permV), std::move(emptyNsh)};
+    return {keel::move(shifted), keel::move(permV), keel::move(emptyNsh)};
 }
 
 // unshiftdata domain checks: perm must be a true permutation vector

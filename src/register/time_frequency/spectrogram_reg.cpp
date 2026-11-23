@@ -22,8 +22,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 #include "../../signal_detail.hpp"
 
@@ -54,9 +52,9 @@ void iscola_reg(keel::ArrayRef<Value> args, keel::usize nargout,
 
     auto [tf, m, dev] = iscola(args[0], noverlap, method,
                                 ctx.engine->allocator());
-    outs[0] = std::move(tf);
-    if (nargout > 1) outs[1] = std::move(m);
-    if (nargout > 2) outs[2] = std::move(dev);
+    outs[0] = keel::move(tf);
+    if (nargout > 1) outs[1] = keel::move(m);
+    if (nargout > 2) outs[2] = keel::move(dev);
 }
 
 void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -78,7 +76,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
                 for (keel::usize i = 0; i < winLen; ++i)
                     w.doubleDataMut()[i] = 0.54 - 0.46 * keel::cos(2.0 * keel::kPi * i / (winLen - 1));
             }
-            window = std::move(w);
+            window = keel::move(w);
         } else {
             window = args[1];
         }
@@ -264,17 +262,17 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         return;
     }
 
-    outs[0] = std::move(S);
+    outs[0] = keel::move(S);
     if (nargout > 1)
-        outs[1] = std::move(F);
+        outs[1] = keel::move(F);
     if (nargout > 2)
-        outs[2] = std::move(T);
+        outs[2] = keel::move(T);
     if (nargout > 3)
-        outs[3] = std::move(PS);
+        outs[3] = keel::move(PS);
     if (nargout > 4)
-        outs[4] = std::move(FC);
+        outs[4] = keel::move(FC);
     if (nargout > 5)
-        outs[5] = std::move(TC);
+        outs[5] = keel::move(TC);
 }
 
 // Parse MATLAB-style trailing name-value pairs into the stft/istft
@@ -445,7 +443,7 @@ void istft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
         keel::f64 *td = t.doubleDataMut();
         for (keel::usize i = 0; i < Nout; ++i)
             td[i] = keel::as<keel::f64>(i) / tscale;
-        outs[1] = std::move(t);
+        outs[1] = keel::move(t);
     }
 }
 

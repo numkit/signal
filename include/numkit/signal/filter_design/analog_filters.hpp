@@ -13,7 +13,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -39,7 +39,7 @@ namespace numkit::signal {
 /// @return    Tuple `(z, p, k)` — empty zeros, N poles, scalar gain.
 ///
 /// @see cheb1ap, cheb2ap, besselap, ellipap
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 buttap(keel::i32 N, keel::Allocator *mr = nullptr);
 
 /// Chebyshev type-I analog lowpass prototype.
@@ -50,7 +50,7 @@ buttap(keel::i32 N, keel::Allocator *mr = nullptr);
 /// @param Rp  Passband ripple in dB, > 0.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 cheb1ap(keel::i32 N, keel::f64 Rp, keel::Allocator *mr = nullptr);
 
 /// Chebyshev type-II analog lowpass prototype.
@@ -62,7 +62,7 @@ cheb1ap(keel::i32 N, keel::f64 Rp, keel::Allocator *mr = nullptr);
 /// @param Rs  Stopband attenuation in dB, > 0.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 cheb2ap(keel::i32 N, keel::f64 Rs, keel::Allocator *mr = nullptr);
 
 /// Bessel-Thompson analog lowpass prototype.
@@ -75,7 +75,7 @@ cheb2ap(keel::i32 N, keel::f64 Rs, keel::Allocator *mr = nullptr);
 /// @param N   Filter order, ≥ 1.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)` — empty zeros, N poles, scalar gain.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 besselap(keel::i32 N, keel::Allocator *mr = nullptr);
 
 /// Elliptic (Cauer) analog lowpass prototype.
@@ -90,7 +90,7 @@ besselap(keel::i32 N, keel::Allocator *mr = nullptr);
 /// @param Rs  Stopband attenuation in dB, > Rp.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)`.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 ellipap(keel::i32 N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr = nullptr);
 
 // ─────────────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ ellipap(keel::i32 N, keel::f64 Rp, keel::f64 Rs, keel::Allocator *mr = nullptr);
 /// @param Wo  Target cutoff frequency in rad/s.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z', p', k')` of the transformed filter.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2lp(const Value &                z,
       const Value &                p,
       keel::f64                       k,
@@ -126,7 +126,7 @@ lp2lp(const Value &                z,
 /// @param Wo  Target cutoff frequency in rad/s.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z', p', k')`.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2hp(const Value &                z,
       const Value &                p,
       keel::f64                       k,
@@ -144,7 +144,7 @@ lp2hp(const Value &                z,
 /// @param Bw  Bandwidth in rad/s (Wo_high − Wo_low).
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z', p', k')`.
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2bp(const Value &                z,
       const Value &                p,
       keel::f64                       k,
@@ -165,7 +165,7 @@ lp2bp(const Value &                z,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z', p', k')` of the bandstop filter.
 /// @see lp2bp
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 lp2bs(const Value &z, const Value &p, keel::f64 k,
       keel::f64 Wo, keel::f64 Bw,
       keel::Allocator *mr = nullptr);
@@ -188,7 +188,7 @@ lp2bs(const Value &z, const Value &p, keel::f64 k,
 /// @return    Tuple `(bd, ad)` — digital numerator / denominator.
 ///
 /// @see impinvar
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 bilinear(const Value &                b,
          const Value &                a,
          keel::f64                       fs,
@@ -210,7 +210,7 @@ bilinear(const Value &                b,
 /// @return     Tuple `(bd, ad)` — digital coefficients.
 ///
 /// @see bilinear
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 impinvar(const Value &                b,
          const Value &                a,
          keel::f64                       fs,

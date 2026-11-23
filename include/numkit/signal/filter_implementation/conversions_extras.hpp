@@ -18,7 +18,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -37,7 +37,7 @@ namespace numkit::signal {
 /// @return     Tuple `(b, a)` — global numerator and denominator.
 ///
 /// @see zp2sos, tf2sos
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 sos2tf(const Value &                sos,
        keel::f64                       g  = 1.0,
        keel::Allocator *  mr = nullptr);
@@ -53,7 +53,7 @@ sos2tf(const Value &                sos,
 /// @return     Tuple `(zeros, poles, gain)`.
 ///
 /// @see sos2tf, zp2sos
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 sos2zp(const Value &                sos,
        keel::f64                       g  = 1.0,
        keel::Allocator *  mr = nullptr);
@@ -67,7 +67,7 @@ sos2zp(const Value &                sos,
 /// @param a   Denominator polynomial.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(zeros, poles, gain)`.
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 tf2zpk(const Value &                b,
        const Value &                a,
        keel::Allocator *  mr = nullptr);
@@ -85,7 +85,7 @@ tf2zpk(const Value &                b,
 /// @return      Tuple `(Z, P, K_gain)`.
 ///
 /// @see scaleFilterSections
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 ctf2zp(const Value &                NUM,
        const Value &                DEN,
        const Value &                SV = Value::Empty,
@@ -117,7 +117,7 @@ Value scaleFilterSections(const Value &                CTFNum,
 /// @return    Tuple `(A, B, C, D)`.
 ///
 /// @see ss2tf, tf2zpk
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 tf2ss(const Value &                b,
       const Value &                a,
       keel::Allocator *  mr = nullptr);
@@ -131,7 +131,7 @@ tf2ss(const Value &                b,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(b, a)`.
 /// @see tf2ss
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ss2tf(const Value &                A,
       const Value &                B,
       const Value &                C,
@@ -150,7 +150,7 @@ ss2tf(const Value &                A,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(z, p, k)` — zeros, poles, gain.
 /// @see ss2tf, zp2ss
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 ss2zp(const Value &A, const Value &B, const Value &C, keel::f64 D = 0.0,
       keel::Allocator *mr = nullptr);
 
@@ -161,7 +161,7 @@ ss2zp(const Value &A, const Value &B, const Value &C, keel::f64 D = 0.0,
 /// @param k   Scalar gain.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(A, B, C, D)`.
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 zp2ss(const Value &                z,
       const Value &                p,
       keel::f64                       k,
@@ -173,7 +173,7 @@ zp2ss(const Value &                z,
 /// @param g    Optional global gain. Default 1.
 /// @param mr   Memory resource (nullptr → process default).
 /// @return     Tuple `(A, B, C, D)`.
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 sos2ss(const Value &                sos,
        keel::f64                       g  = 1.0,
        keel::Allocator *  mr = nullptr);

@@ -13,8 +13,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -28,8 +26,8 @@ void pyulear_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     const keel::usize nf = (args.size() >= 3 && !args[2].isEmpty())
                       ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pyulear"), 3, "nfft", "pyulear")) : 0;
     auto [Pxx, F] = pyulear(args[0], p, nf, ctx.engine->allocator());
-    outs[0] = std::move(Pxx);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(Pxx);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 void pburg_reg(keel::ArrayRef<Value> args, keel::usize nargout,
@@ -40,8 +38,8 @@ void pburg_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     const keel::usize nf = (args.size() >= 3 && !args[2].isEmpty())
                       ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pburg"), 3, "nfft", "pburg")) : 0;
     auto [Pxx, F] = pburg(args[0], p, nf, ctx.engine->allocator());
-    outs[0] = std::move(Pxx);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(Pxx);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 // aryule_reg / lpc_reg live in signal_modeling.cpp.

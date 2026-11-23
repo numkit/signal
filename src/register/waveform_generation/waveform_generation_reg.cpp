@@ -20,8 +20,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -119,7 +117,7 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
                                    keel::Allocator * /*mr*/) {
             auto r = ctx.engine->callFunctionHandleMulti(handle, ar, ou.size());
             for (keel::usize i = 0; i < ou.size() && i < r.size(); ++i)
-                ou[i] = std::move(r[i]);
+                ou[i] = keel::move(r[i]);
         };
         // Extract t and d into double buffers; library takes Span.
         const Value &tv = args[0];
@@ -143,9 +141,9 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
             Value row = Value::matrix(1, nt, ValueType::DOUBLE, mr);
             for (keel::usize i = 0; i < nt; ++i)
                 row.doubleDataMut()[i] = r.doubleData()[i];
-            r = std::move(row);
+            r = keel::move(row);
         }
-        outs[0] = std::move(r);
+        outs[0] = keel::move(r);
         return;
     }
     if (!args[2].isChar() && !args[2].isString())

@@ -23,7 +23,7 @@
 
 #include <algorithm>
 #include <numeric>
-#include <tuple>
+#include <keel/tuple.h>
 
 
 namespace numkit::signal {
@@ -81,7 +81,7 @@ void jacobiEig(keel::Array<keel::f64> &A, keel::Array<keel::f64> &V, keel::usize
     }
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pseudospectrum(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, bool eigWeight,
                keel::Allocator *mr)
 {
@@ -136,18 +136,18 @@ pseudospectrum(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, bool e
         Pd[k] = (sum > 0.0) ? 1.0 / sum : keel::Limits<keel::f64>::infinity();
         Fd[k] = (fs / 2.0) * k / (nf - 1);
     }
-    return std::make_tuple(std::move(P), std::move(F));
+    return keel::make_tuple(keel::move(P), keel::move(F));
 }
 
 } // namespace
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pmusic(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, keel::Allocator *mr)
 {
     return pseudospectrum(x, p, nfft, fs, /*eigWeight=*/false, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 peig(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, keel::Allocator *mr)
 {
     return pseudospectrum(x, p, nfft, fs, /*eigWeight=*/true, mr);

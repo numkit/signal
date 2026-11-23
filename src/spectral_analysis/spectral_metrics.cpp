@@ -9,6 +9,7 @@
 // [0, fs/2] and integrations yield Hz.
 
 #include <keel/array.h>
+#include <keel/tuple.h>
 #include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/format.h>
@@ -76,7 +77,7 @@ keel::f64 integrate(keel::ArrayRef<keel::f64> P, keel::ArrayRef<keel::f64> F,
 {
     const keel::usize n = P.size();
     if (n < 2) return 0.0;
-    if (fLo > fHi) std::swap(fLo, fHi);
+    if (fLo > fHi) keel::swap(fLo, fHi);
     keel::f64 s = 0.0;
     for (keel::usize i = 0; i + 1 < n; ++i) {
         keel::f64 a = F[i], b = F[i + 1];
@@ -251,14 +252,14 @@ Value enbw(const Value &window, const Value &fs, keel::Allocator *mr)
 
 // ── obw ───────────────────────────────────────────────────────────
 
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 obw(const Value &x, const Value &fs, keel::f64 p, keel::Allocator *mr)
 {
     const keel::f64 fsv = scalarOr(fs, 0.0);
     const keel::usize N = x.numel();
     auto zeros = [&]() {
         Value z = Value::scalar(0.0, mr);
-        return std::make_tuple(z, z, z, z);
+        return keel::make_tuple(z, z, z, z);
     };
     if (N < 2) return zeros();
 
@@ -305,7 +306,7 @@ obw(const Value &x, const Value &fs, keel::f64 p, keel::Allocator *mr)
     };
     const keel::f64 flo = findF(pLow);
     const keel::f64 fhi = findF(pHigh);
-    return std::make_tuple(Value::scalar(fhi - flo, mr),
+    return keel::make_tuple(Value::scalar(fhi - flo, mr),
                            Value::scalar(flo, mr),
                            Value::scalar(fhi, mr),
                            Value::scalar(p * total, mr));
@@ -966,7 +967,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
             }
         }
 
-        return {std::move(P), std::move(F), std::move(T)};
+        return {keel::move(P), keel::move(F), keel::move(T)};
     }
 
     // 'power' mode
@@ -1035,7 +1036,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
         }
     }
 
-    return {std::move(P), std::move(F), Value::Empty};
+    return {keel::move(P), keel::move(F), Value::Empty};
 }
 
 Value extractColumnValue(const Value &mat, keel::usize colIdx, keel::Allocator *mr)
@@ -1061,7 +1062,7 @@ PspectrumResult pspectrum(const Value &x, const Value &fsOrT,
     return pspectrumImpl(x, fsOrT, opts, "pspectrum", mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
 {
     detail::requireFloatInput(x, "instfreq");
@@ -1110,10 +1111,10 @@ instfreqHilbert(const Value &x, const Value &fs, keel::Allocator *mr)
         d[i] = dp * fsv / (2.0 * kPi);
         td[i] = t0 + (keel::as<keel::f64>(i) + 0.5) / fsv;
     }
-    return {std::move(out), std::move(tOut)};
+    return {keel::move(out), keel::move(tOut)};
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 instfreqWithTime(const Value &x, const Value &fs,
                  const PspectrumOptions &inOpts,
                  keel::Allocator *mr)
@@ -1142,7 +1143,7 @@ instfreqWithTime(const Value &x, const Value &fs,
             }
             ifd[m] = (den > 0.0) ? (num / den) : 0.0;
         }
-        return {std::move(ifr), std::move(spec.t)};
+        return {keel::move(ifr), keel::move(spec.t)};
     }
 
     Value ifrMat;
@@ -1154,7 +1155,7 @@ instfreqWithTime(const Value &x, const Value &fs,
         const keel::usize nT = spec.p.dims().cols();
         if (ch == 0) {
             ifrMat = Value::matrix(nT, nCh, ValueType::DOUBLE, mr);
-            tVec = std::move(spec.t);
+            tVec = keel::move(spec.t);
         }
         const keel::f64 *pd = spec.p.doubleData();
         const keel::f64 *fd = spec.f.doubleData();
@@ -1169,7 +1170,7 @@ instfreqWithTime(const Value &x, const Value &fs,
             ifd[m] = (den > 0.0) ? (num / den) : 0.0;
         }
     }
-    return {std::move(ifrMat), std::move(tVec)};
+    return {keel::move(ifrMat), keel::move(tVec)};
 }
 
 Value instfreq(const Value &x, const Value &fs, keel::Allocator *mr)
@@ -1179,7 +1180,7 @@ Value instfreq(const Value &x, const Value &fs, keel::Allocator *mr)
     return ifr;
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 instbwWithTime(const Value &x, const Value &fs,
                const PspectrumOptions &inOpts,
                keel::Allocator *mr)
@@ -1219,7 +1220,7 @@ instbwWithTime(const Value &x, const Value &fs,
             }
             ibd[m] = scale * keel::sqrt(std::max(0.0, varNum / den));
         }
-        return {std::move(ibw), std::move(spec.t)};
+        return {keel::move(ibw), keel::move(spec.t)};
     }
 
     Value ibwMat;
@@ -1231,7 +1232,7 @@ instbwWithTime(const Value &x, const Value &fs,
         const keel::usize nT = spec.p.dims().cols();
         if (ch == 0) {
             ibwMat = Value::matrix(nT, nCh, ValueType::DOUBLE, mr);
-            tVec = std::move(spec.t);
+            tVec = keel::move(spec.t);
         }
         const keel::f64 *pd = spec.p.doubleData();
         const keel::f64 *fd = spec.f.doubleData();
@@ -1256,7 +1257,7 @@ instbwWithTime(const Value &x, const Value &fs,
             ibd[m] = scale * keel::sqrt(std::max(0.0, varNum / den));
         }
     }
-    return {std::move(ibwMat), std::move(tVec)};
+    return {keel::move(ibwMat), keel::move(tVec)};
 }
 
 Value instbw(const Value &x, const Value &fs, keel::Allocator *mr)

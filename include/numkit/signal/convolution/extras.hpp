@@ -15,7 +15,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -107,7 +107,7 @@ keel::i64 finddelay(const Value &                x,
 /// @param max_lag   Cap on the search range. `0` ≡ full.
 /// @param mr        Memory resource (nullptr → process default).
 /// @return          Tuple `(xa, ya)` with `numel(xa) == numel(ya)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 alignsignals(const Value &                x,
              const Value &                y,
              keel::i64                         max_lag = 0,

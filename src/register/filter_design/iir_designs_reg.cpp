@@ -22,8 +22,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -117,11 +115,11 @@ void cheby1_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
     auto [b, a] = cheby1(N, R, Wn, ftype, t.analog, ctx.engine->allocator());
     if (outs.size() >= 3) {   // [z, p, k] = cheby1(...): digital ZPK via tf2zpk
         auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator());
-        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
+        outs[0] = keel::move(z); outs[1] = keel::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
-    outs[0] = std::move(b);
-    if (outs.size() > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (outs.size() > 1) outs[1] = keel::move(a);
 }
 
 void cheby2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -135,11 +133,11 @@ void cheby2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutAr
     auto [b, a] = cheby2(N, R, Wn, ftype, t.analog, ctx.engine->allocator());
     if (outs.size() >= 3) {   // [z, p, k] = cheby2(...): digital ZPK via tf2zpk
         auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator());
-        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
+        outs[0] = keel::move(z); outs[1] = keel::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
-    outs[0] = std::move(b);
-    if (outs.size() > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (outs.size() > 1) outs[1] = keel::move(a);
 }
 
 void besself_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -154,8 +152,8 @@ void besself_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutA
     // flag is therefore redundant; ignore the digital path entirely.
     (void)t.analog;
     auto [b, a] = besself(N, Wn, ftype, /*analog=*/true, ctx.engine->allocator());
-    outs[0] = std::move(b);
-    if (outs.size() > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (outs.size() > 1) outs[1] = keel::move(a);
 }
 
 void ellip_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -170,11 +168,11 @@ void ellip_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
     auto [b, a] = ellip(N, Rp, Rs, Wn, ftype, t.analog, ctx.engine->allocator());
     if (outs.size() >= 3) {   // [z, p, k] = ellip(...): digital ZPK via tf2zpk
         auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator());
-        outs[0] = std::move(z); outs[1] = std::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
+        outs[0] = keel::move(z); outs[1] = keel::move(p); outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
-    outs[0] = std::move(b);
-    if (outs.size() > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (outs.size() > 1) outs[1] = keel::move(a);
 }
 
 namespace {
@@ -198,7 +196,7 @@ inline bool parseAnalogFromOrdArgs(keel::ArrayRef<Value> args, keel::usize start
         const bool analog = parseAnalogFromOrdArgs(args, 4);                      \
         auto [N, Wn] = name(Wp, Ws, Rp, Rs, analog, ctx.engine->allocator());     \
         outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator()); \
-        if (nargout > 1) outs[1] = std::move(Wn);                                 \
+        if (nargout > 1) outs[1] = keel::move(Wn);                                 \
     }
 
 NUMKIT_ORD_REG(buttord)
@@ -222,7 +220,7 @@ void ellipord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     }
     auto [N, Wn] = ellipord(args[0], args[1], args[2].toScalar(), args[3].toScalar(), analog, ctx.engine->allocator());
     outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator());
-    if (nargout > 1) outs[1] = std::move(Wn);
+    if (nargout > 1) outs[1] = keel::move(Wn);
 }
 
 } // namespace detail
@@ -237,9 +235,9 @@ void firpmord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     if (args.size() >= 4 && !args[3].isEmpty()) fs = args[3].toScalar();
     auto [N, ff, aa, wts] = firpmord(args[0], args[1], args[2], fs, ctx.engine->allocator());
     outs[0] = Value::scalar(keel::as<keel::f64>(N), ctx.engine->allocator());
-    if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(ff);
-    if (nargout >= 3 && outs.size() >= 3) outs[2] = std::move(aa);
-    if (nargout >= 4 && outs.size() >= 4) outs[3] = std::move(wts);
+    if (nargout >= 2 && outs.size() >= 2) outs[1] = keel::move(ff);
+    if (nargout >= 3 && outs.size() >= 3) outs[2] = keel::move(aa);
+    if (nargout >= 4 && outs.size() >= 4) outs[3] = keel::move(wts);
 }
 
 } // namespace detail
@@ -255,13 +253,13 @@ void kaiserord_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     auto [N, Wn, beta, ftype] = kaiserord(args[0], args[1], args[2], fs, ctx.engine->allocator());
     auto *mr = ctx.engine->allocator();
     outs[0] = Value::scalar(keel::as<keel::f64>(N), mr);
-    if (nargout >= 2 && outs.size() >= 2) outs[1] = std::move(Wn);
+    if (nargout >= 2 && outs.size() >= 2) outs[1] = keel::move(Wn);
     if (nargout >= 3 && outs.size() >= 3) outs[2] = Value::scalar(beta, mr);
     if (nargout >= 4 && outs.size() >= 4) {
         Value f = Value::matrix(1, ftype.size(), ValueType::CHAR, mr);
         char *cd = f.charDataMut();
         for (keel::usize i = 0; i < ftype.size(); ++i) cd[i] = ftype[i];
-        outs[3] = std::move(f);
+        outs[3] = keel::move(f);
     }
 }
 
@@ -278,12 +276,12 @@ void butter_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     auto [b, a] = butter(N, Wn, ftype, t.analog, ctx.engine->allocator());
     if (nargout >= 3) {   // [z, p, k]: ZPK via tf2zpk (order may differ
         auto [z, p, k] = tf2zpk(b, a, ctx.engine->allocator()); // from MATLAB)
-        outs[0] = std::move(z); outs[1] = std::move(p);
+        outs[0] = keel::move(z); outs[1] = keel::move(p);
         outs[2] = Value::scalar(k, ctx.engine->allocator());
         return;
     }
-    outs[0] = std::move(b);
-    if (nargout > 1) outs[1] = std::move(a);
+    outs[0] = keel::move(b);
+    if (nargout > 1) outs[1] = keel::move(a);
 }
 
 } // namespace detail

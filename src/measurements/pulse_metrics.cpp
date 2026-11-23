@@ -379,10 +379,10 @@ namespace {
 
 // Build a list of (idx, dir) pairs: dir = +1 for rising mid-cross, -1
 // for falling mid-cross. Used by the pulse-shape metrics below.
-keel::Array<std::pair<keel::f64, keel::i32>>
+keel::Array<keel::Pair<keel::f64, keel::i32>>
 midCrossesDirected(const keel::f64 *x, keel::usize n, keel::f64 mid)
 {
-    keel::Array<std::pair<keel::f64, keel::i32>> out;
+    keel::Array<keel::Pair<keel::f64, keel::i32>> out;
     for (keel::usize i = 0; i + 1 < n; ++i) {
         const keel::f64 a = x[i], b = x[i + 1];
         if (a < mid && b >= mid)      out.emplace_back(crossingIdx(x, i, mid), +1);

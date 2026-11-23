@@ -22,8 +22,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -61,15 +59,15 @@ void freqz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 
     if (wvec) {
         auto [Hv, Wv] = freqz(args[0], a, *wvec, mr);
-        outs[0] = std::move(Hv);
+        outs[0] = keel::move(Hv);
         if (nargout > 1)
-            outs[1] = std::move(Wv);
+            outs[1] = keel::move(Wv);
         return;
     }
     auto [H, W] = freqz(args[0], a, npts, whole, fs, mr);
-    outs[0] = std::move(H);
+    outs[0] = keel::move(H);
     if (nargout > 1)
-        outs[1] = std::move(W);
+        outs[1] = keel::move(W);
 }
 
 void phasez_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -91,8 +89,8 @@ void phasez_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
         ++numericSeen;
     }
     auto [phi, W] = phasez(args[0], a, npts, fs, mr);
-    outs[0] = std::move(phi);
-    if (nargout > 1) outs[1] = std::move(W);
+    outs[0] = keel::move(phi);
+    if (nargout > 1) outs[1] = keel::move(W);
 }
 
 void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -145,17 +143,17 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
                 g[k] = (cmag2 < 1e-300) ? 0.0 : ((CR / C).real() - offset);
             }
         }
-        outs[0] = std::move(gd);
+        outs[0] = keel::move(gd);
         if (nargout > 1) {
             auto fv = Value::matrix(nf, 1, ValueType::DOUBLE, mr);
             for (keel::usize k = 0; k < nf; ++k) fv.doubleDataMut()[k] = fvec->elemAsDouble(k);
-            outs[1] = std::move(fv);
+            outs[1] = keel::move(fv);
         }
         return;
     }
     auto [gd, W] = grpdelay(args[0], a, npts, fs, mr);
-    outs[0] = std::move(gd);
-    if (nargout > 1) outs[1] = std::move(W);
+    outs[0] = keel::move(gd);
+    if (nargout > 1) outs[1] = keel::move(W);
 }
 
 } // namespace detail

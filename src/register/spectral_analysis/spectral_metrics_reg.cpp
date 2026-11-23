@@ -17,8 +17,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {
@@ -59,10 +57,10 @@ void obw_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     keel::f64 p = 0.99;
     if (args.size() >= 3 && !args[2].isEmpty()) p = args[2].toScalar();
     auto [bw, flo, fhi, pw] = obw(args[0], fs, p, ctx.engine->allocator());
-    outs[0] = std::move(bw);
-    if (nargout > 1) outs[1] = std::move(flo);
-    if (nargout > 2) outs[2] = std::move(fhi);
-    if (nargout > 3) outs[3] = std::move(pw);
+    outs[0] = keel::move(bw);
+    if (nargout > 1) outs[1] = keel::move(flo);
+    if (nargout > 2) outs[2] = keel::move(fhi);
+    if (nargout > 3) outs[3] = keel::move(pw);
 }
 
 #define NUMKIT_SPEC1_REG(name, fn, mn, mx)                                          \
@@ -167,9 +165,9 @@ void pspectrum_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     }
     parsePspectrumTail(args, idx, opts, nullptr, true, "pspectrum");
     auto res = pspectrum(args[0], fsOrT, opts, ctx.engine->allocator());
-    outs[0] = std::move(res.p);
-    if (nargout > 1) outs[1] = std::move(res.f);
-    if (nargout > 2) outs[2] = std::move(res.t);
+    outs[0] = keel::move(res.p);
+    if (nargout > 1) outs[1] = keel::move(res.f);
+    if (nargout > 2) outs[2] = keel::move(res.t);
 }
 
 void instfreq_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
@@ -188,16 +186,16 @@ void instfreq_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     parsePspectrumTail(args, idx, opts, &method, false, "instfreq");
     if (method == "hilbert") {
         auto [ifr, t] = instfreqHilbert(args[0], fsOrT, ctx.engine->allocator());
-        outs[0] = std::move(ifr);
-        if (nargout > 1) outs[1] = std::move(t);
+        outs[0] = keel::move(ifr);
+        if (nargout > 1) outs[1] = keel::move(t);
         return;
     }
     if (method != "tfmoment")
         throw Error(keel::format("instfreq: 'Method' must be 'tfmoment' or 'hilbert' (got '{}')", method),
                     0, 0, "instfreq", "", "numkit:instfreq:method");
     auto [ifr, t] = instfreqWithTime(args[0], fsOrT, opts, ctx.engine->allocator());
-    outs[0] = std::move(ifr);
-    if (nargout > 1) outs[1] = std::move(t);
+    outs[0] = keel::move(ifr);
+    if (nargout > 1) outs[1] = keel::move(t);
 }
 
 void instbw_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
@@ -214,8 +212,8 @@ void instbw_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     }
     parsePspectrumTail(args, idx, opts, nullptr, false, "instbw");
     auto [ibw, t] = instbwWithTime(args[0], fsOrT, opts, ctx.engine->allocator());
-    outs[0] = std::move(ibw);
-    if (nargout > 1) outs[1] = std::move(t);
+    outs[0] = keel::move(ibw);
+    if (nargout > 1) outs[1] = keel::move(t);
 }
 
 #undef NUMKIT_SPEC1_REG

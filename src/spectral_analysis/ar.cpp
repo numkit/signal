@@ -13,8 +13,7 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
-#include <utility>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -31,7 +30,7 @@ void ar_argcheck(const Value &x, keel::i32 p, const char *fn) {
 
 } // anonymous
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pyulear(const Value &x, keel::i32 p, keel::usize nfft, keel::Allocator *mr) {
     ar_argcheck(x, p, "pyulear");
     if (nfft == 0) nfft = 256;
@@ -48,10 +47,10 @@ pyulear(const Value &x, keel::i32 p, keel::usize nfft, keel::Allocator *mr) {
                                 keel::MutArrayRef<keel::f64>(Pxx.doubleDataMut(), nOut),
                                 keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
                                 scratch.allocator());
-    return std::make_tuple(std::move(Pxx), std::move(F));
+    return keel::make_tuple(keel::move(Pxx), keel::move(F));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pburg(const Value &x, keel::i32 p, keel::usize nfft, keel::Allocator *mr) {
     ar_argcheck(x, p, "pburg");
     if (nfft == 0) nfft = 256;
@@ -68,7 +67,7 @@ pburg(const Value &x, keel::i32 p, keel::usize nfft, keel::Allocator *mr) {
                               keel::MutArrayRef<keel::f64>(Pxx.doubleDataMut(), nOut),
                               keel::MutArrayRef<keel::f64>(F.doubleDataMut(), nOut),
                               scratch.allocator());
-    return std::make_tuple(std::move(Pxx), std::move(F));
+    return keel::make_tuple(keel::move(Pxx), keel::move(F));
 }
 
 } // namespace numkit::signal

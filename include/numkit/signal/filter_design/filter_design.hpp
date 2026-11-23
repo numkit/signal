@@ -8,7 +8,7 @@
 #include <keel/ref.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -26,7 +26,7 @@ namespace numkit::signal {
 /// @throws      Error if Wn is out of (0, 1) or type is unrecognised.
 ///
 /// @code  auto [b, a] = butter(4, 0.3);  // 4th-order lowpass  @endcode
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 butter(keel::i32                          N,
        keel::f64                       Wn,
        keel::StringRef              type = "low",
@@ -83,7 +83,7 @@ Value firls(keel::i32                          N,
 /// 2-output form [S, G] = cell2sos(C) extracts the leading scalar gain
 /// section if present (when C{1} = {scalar_b, scalar_a}).
 /// Linear (length-2) sections are zero-padded on the right to length 3.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cell2sos(const Value &                C,
          keel::Allocator *  mr = nullptr);
 
@@ -159,7 +159,7 @@ Value fir2(keel::i32                          n,
 /// auto [h, err] = firpm(30, {0,0.4,0.5,1}, {1,1,0,0}, {1, 10});   // weighted
 /// auto [h, err] = firpm(30, {0.05, 0.95}, {1, 1}, {}, "hilbert"); // Type III
 /// @endcode
-std::tuple<Value, keel::f64>
+keel::Tuple<Value, keel::f64>
 firpm(keel::i32                          N,
       const Value &                F,
       const Value &                A,

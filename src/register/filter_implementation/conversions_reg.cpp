@@ -15,8 +15,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 #include <numkit/value/argcheck.hpp>
 
 #include "../../signal_detail.hpp"
@@ -38,7 +36,7 @@ void zp2sos_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     auto *mr = ctx.engine->allocator();
     if (nargout >= 2) {
         auto [sos, g] = zp2sosWithGain(args[0], args[1], gain, /*surplusAtOrigin=*/true, mr);
-        outs[0] = narrowDoubleToSingleIf(std::move(sos), anySingle, mr);
+        outs[0] = narrowDoubleToSingleIf(keel::move(sos), anySingle, mr);
         outs[1] = narrowDoubleToSingleIf(Value::scalar(g, mr), anySingle, mr);
     } else {
         outs[0] = narrowDoubleToSingleIf(zp2sos(args[0], args[1], gain, mr), anySingle, mr);
@@ -54,7 +52,7 @@ void tf2sos_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     auto *mr = ctx.engine->allocator();
     if (nargout >= 2) {
         auto [sos, g] = tf2sosWithGain(args[0], args[1], mr);
-        outs[0] = narrowDoubleToSingleIf(std::move(sos), anySingle, mr);
+        outs[0] = narrowDoubleToSingleIf(keel::move(sos), anySingle, mr);
         outs[1] = narrowDoubleToSingleIf(Value::scalar(g, mr), anySingle, mr);
     } else {
         outs[0] = narrowDoubleToSingleIf(tf2sos(args[0], args[1], mr), anySingle, mr);

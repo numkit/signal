@@ -10,8 +10,6 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -95,7 +93,7 @@ Value rceps(const Value &x, keel::Allocator *mr = nullptr);
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    `(y, ym)` pair, each the same length/orientation as `x`.
 /// @see rceps, cceps
-std::pair<Value, Value> rcepsMinPhase(const Value &x,
+keel::Pair<Value, Value> rcepsMinPhase(const Value &x,
                                       keel::Allocator *mr = nullptr);
 
 /// Complex cepstrum: `ifft(log(fft(x)))` with phase unwrapping.

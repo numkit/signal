@@ -16,8 +16,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -31,8 +29,8 @@ void impz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     keel::usize n = (args.size() >= 3)
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "impz"), 3, "n", "impz")) : 0;
     auto [h, t] = impz(b, a, n, ctx.engine->allocator());
-    outs[0] = std::move(h);
-    if (nargout > 1) outs[1] = std::move(t);
+    outs[0] = keel::move(h);
+    if (nargout > 1) outs[1] = keel::move(t);
 }
 
 void impzlength_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -52,8 +50,8 @@ void stepz_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     keel::usize n = (args.size() >= 3)
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "stepz"), 3, "n", "stepz")) : 0;
     auto [s, t] = stepz(b, a, n, ctx.engine->allocator());
-    outs[0] = std::move(s);
-    if (nargout > 1) outs[1] = std::move(t);
+    outs[0] = keel::move(s);
+    if (nargout > 1) outs[1] = keel::move(t);
 }
 
 void phasedelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -64,8 +62,8 @@ void phasedelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutAr
     keel::usize n = (args.size() >= 3)
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "phasedelay"), 3, "n", "phasedelay")) : 512;
     auto [pd, w] = phasedelay(b, a, n, ctx.engine->allocator());
-    outs[0] = std::move(pd);
-    if (nargout > 1) outs[1] = std::move(w);
+    outs[0] = keel::move(pd);
+    if (nargout > 1) outs[1] = keel::move(w);
 }
 
 void zerophase_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -76,8 +74,8 @@ void zerophase_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
     keel::usize n = (args.size() >= 3)
         ? keel::as<keel::usize>(argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "zerophase"), 3, "n", "zerophase")) : 512;
     auto [Hr, w] = zerophase(b, a, n, ctx.engine->allocator());
-    outs[0] = std::move(Hr);
-    if (nargout > 1) outs[1] = std::move(w);
+    outs[0] = keel::move(Hr);
+    if (nargout > 1) outs[1] = keel::move(w);
 }
 
 } // namespace detail

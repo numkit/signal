@@ -11,8 +11,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
-#include <utility>
 
 
 namespace numkit::signal {
@@ -27,8 +25,8 @@ void pmusic_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
                        ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "pmusic"), 3, "nfft", "pmusic") : 256;
     const keel::f64 fs   = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 2.0 * keel::kPi;
     auto [P, F] = pmusic(args[0], p, nfft, fs, ctx.engine->allocator());
-    outs[0] = std::move(P);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(P);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 void peig_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -39,8 +37,8 @@ void peig_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
                        ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "nfft", "peig"), 3, "nfft", "peig") : 256;
     const keel::f64 fs   = (args.size() >= 4 && !args[3].isEmpty()) ? args[3].toScalar() : 2.0 * keel::kPi;
     auto [P, F] = peig(args[0], p, nfft, fs, ctx.engine->allocator());
-    outs[0] = std::move(P);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(P);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 } // namespace detail

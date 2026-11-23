@@ -20,8 +20,7 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -56,9 +55,9 @@ void deconv_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
     argcheck::checkNargin(args.size(), 2, 3, "deconv");
 
     auto [q, r] = deconv(args[0], args[1], ctx.engine->allocator());
-    outs[0] = std::move(q);
+    outs[0] = keel::move(q);
     if (nargout > 1)
-        outs[1] = std::move(r);
+        outs[1] = keel::move(r);
 }
 
 void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -161,12 +160,12 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
                 cOut.doubleDataMut()[dst] = (src >= 0 && src < keel::as<keel::i32>(nc)) ? cd[src] : 0.0;
             }
         }
-        cfull = std::move(cOut);
-        lagsfull = std::move(lOut);
+        cfull = keel::move(cOut);
+        lagsfull = keel::move(lOut);
     }
 
-    outs[0] = std::move(cfull);
-    if (nargout > 1) outs[1] = std::move(lagsfull);
+    outs[0] = keel::move(cfull);
+    if (nargout > 1) outs[1] = keel::move(lagsfull);
 }
 
 void xcov_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs,
@@ -206,8 +205,8 @@ void xcov_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     }
 
     auto result = xcov(x, y, maxlag, scaleopt, mr);
-    outs[0] = std::move(std::get<0>(result));
-    if (nargout > 1) outs[1] = std::move(std::get<1>(result));
+    outs[0] = keel::move(keel::get<0>(result));
+    if (nargout > 1) outs[1] = keel::move(keel::get<1>(result));
 }
 
 void conv2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,

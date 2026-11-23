@@ -11,7 +11,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <utility>
 
 namespace numkit::signal {
 
@@ -156,7 +155,7 @@ Value barthannwin(keel::usize N, keel::Allocator *mr)
     return out;
 }
 
-std::pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
+keel::Pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
                              keel::Allocator *mr)
 {
     if (N == 0 || k == 0) {
@@ -167,7 +166,7 @@ std::pair<Value, Value> dpss(keel::usize N, keel::f64 nw, keel::usize k,
     Value E = Value::matrix(N, k, ValueType::DOUBLE, mr);
     Value V = Value::matrix(k, 1, ValueType::DOUBLE, mr);
     (void)keel::signal::dpss(N, nw, {E.doubleDataMut(), N * k}, {V.doubleDataMut(), k}, mr);
-    return {std::move(E), std::move(V)};
+    return {keel::move(E), keel::move(V)};
 }
 
 } // namespace numkit::signal

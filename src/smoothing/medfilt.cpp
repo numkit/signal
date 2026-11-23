@@ -41,7 +41,7 @@ Value medfilt1(const Value &x, keel::usize k, bool zeropad, keel::Allocator *mr)
 
     const keel::usize total = x.numel();
     auto r = createLike(x, ValueType::DOUBLE, mr);
-    if (total == 0) return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
+    if (total == 0) return detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr);
 
     Value xD = detail::widenSingleToDouble(x, mr);
     const keel::f64 *src = xD.doubleData();
@@ -58,7 +58,7 @@ Value medfilt1(const Value &x, keel::usize k, bool zeropad, keel::Allocator *mr)
                                          keel::MutArrayRef<keel::f64>(dst + c * R, R), mr);
         }
     }
-    return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr);
 }
 
 Value fillgaps(const Value &x, keel::usize maxlen, keel::usize order, keel::Allocator *mr) {
@@ -100,7 +100,7 @@ Value fillgaps(const Value &x, keel::usize maxlen, keel::usize order, keel::Allo
                                          keel::MutArrayRef<keel::f64>(dst + c * R, R), mr);
         }
     }
-    return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr);
 }
 
 } // namespace numkit::signal

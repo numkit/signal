@@ -16,8 +16,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -74,8 +72,8 @@ void resample_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
     auto *mr = ctx.engine->allocator();
     if (nargout >= 2 && outs.size() >= 2) {
         auto [y, b] = resampleWithFilter(args[0], p, q, n_order, beta, mr);
-        outs[0] = std::move(y);
-        outs[1] = std::move(b);
+        outs[0] = keel::move(y);
+        outs[1] = keel::move(b);
     } else {
         outs[0] = resample(args[0], p, q, n_order, beta, mr);
     }

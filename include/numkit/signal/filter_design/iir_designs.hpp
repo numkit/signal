@@ -13,7 +13,7 @@
 #include <keel/string.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -53,7 +53,7 @@ enum class FilterType {
 /// @endcode
 ///
 /// @see cheby2, ellip, butter
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cheby1(keel::i32                          N,
        keel::f64                       Rp,
        const Value &                Wn,
@@ -74,7 +74,7 @@ cheby1(keel::i32                          N,
 /// @return        Tuple `(b, a)`.
 ///
 /// @see cheby1, ellip
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cheby2(keel::i32                          N,
        keel::f64                       Rs,
        const Value &                Wn,
@@ -95,7 +95,7 @@ cheby2(keel::i32                          N,
 /// @param analog  Analog-domain flag.
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        Tuple `(b, a)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 besself(keel::i32                          N,
         const Value &                Wn,
         FilterType                   ftype  = FilterType::Lowpass,
@@ -110,7 +110,7 @@ besself(keel::i32                          N,
 /// @param Wn     Cutoff(s): scalar or 2-element vector.
 /// @param ftype  Response type (low/high/bandpass/stop).
 /// @param analog True for the s-domain ('s' flag).
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 butter(keel::i32                          N,
        const Value &                Wn,
        FilterType                   ftype  = FilterType::Lowpass,
@@ -130,7 +130,7 @@ butter(keel::i32                          N,
 /// @param analog  Analog-domain flag.
 /// @param mr      Memory resource (nullptr → process default).
 /// @return        Tuple `(b, a)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ellip(keel::i32                          N,
       keel::f64                       Rp,
       keel::f64                       Rs,
@@ -164,7 +164,7 @@ ellip(keel::i32                          N,
 /// @endcode
 ///
 /// @see butter, cheb1ord, cheb2ord, ellipord
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 buttord(const Value &                Wp,
         const Value &                Ws,
         keel::f64                       Rp,
@@ -180,7 +180,7 @@ buttord(const Value &                Wp,
 /// @param Wp,Ws,Rp,Rs,analog,mr  See @ref buttord.
 /// @return                       Tuple `(N, Wn)`.
 /// @see buttord, cheby1
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 cheb1ord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
          bool analog = false,
          keel::Allocator *mr = nullptr);
@@ -193,7 +193,7 @@ cheb1ord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
 /// @param Wp,Ws,Rp,Rs,analog,mr  See @ref buttord.
 /// @return                       Tuple `(N, Wn)`.
 /// @see buttord, cheby2
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 cheb2ord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
          bool analog = false,
          keel::Allocator *mr = nullptr);
@@ -208,7 +208,7 @@ cheb2ord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
 /// @param Wp,Ws,Rp,Rs,analog,mr  See @ref buttord.
 /// @return                       Tuple `(N, Wn)`.
 /// @see buttord, ellip
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 ellipord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
          bool analog = false,
          keel::Allocator *mr = nullptr);
@@ -231,7 +231,7 @@ ellipord(const Value &Wp, const Value &Ws, keel::f64 Rp, keel::f64 Rs,
 /// @endcode
 ///
 /// @see firpm
-std::tuple<keel::i32, Value, Value, Value>
+keel::Tuple<keel::i32, Value, Value, Value>
 firpmord(const Value &                F,
          const Value &                A,
          const Value &                dev,
@@ -252,7 +252,7 @@ firpmord(const Value &                F,
 ///             `"low"`, `"high"`, `"stop"`, `"bandpass"`, `"DC-0"`, `"DC-1"`.
 ///
 /// @see fir1, kaiser
-std::tuple<keel::i32, Value, keel::f64, keel::String>
+keel::Tuple<keel::i32, Value, keel::f64, keel::String>
 kaiserord(const Value &                F,
           const Value &                A,
           const Value &                dev,

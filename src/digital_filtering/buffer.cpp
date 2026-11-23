@@ -26,7 +26,7 @@
 
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 #include <algorithm>
 
 namespace numkit::signal {
@@ -231,7 +231,7 @@ Value buffer(const Value &x, keel::i32 n, keel::i32 p, const Value &opt, keel::A
     return r.Y;
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 buffer2(const Value &x, keel::i32 n, keel::i32 p, const Value &opt, keel::Allocator *mr)
 {
     buffer_argcheck(n, p, opt);

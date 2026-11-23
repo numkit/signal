@@ -5,6 +5,7 @@
 // here — they need a full state-space / RPM-resampling stack.
 
 #include <keel/array.h>
+#include <keel/tuple.h>
 #include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
@@ -53,12 +54,12 @@ void tachorpm_argcheck(const Value &x, keel::f64 fs, keel::i32 ppr)
 
 // ── envspectrum ────────────────────────────────────────────────────
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 envspectrum(const Value &x, keel::f64 fs, keel::Allocator *mr)
 {
     const keel::usize N = x.numel();
     if (N == 0)
-        return std::make_tuple(Value::matrix(0, 1, ValueType::DOUBLE, mr),
+        return keel::make_tuple(Value::matrix(0, 1, ValueType::DOUBLE, mr),
                                Value::matrix(0, 1, ValueType::DOUBLE, mr));
 
     // 1. Analytic-signal envelope.
@@ -89,12 +90,12 @@ envspectrum(const Value &x, keel::f64 fs, keel::Allocator *mr)
         esd[i] = (i == 0 || i == nOne - 1) ? 0.5 * a : a;
         fd[i]  = fNyq * keel::as<keel::f64>(i) / keel::as<keel::f64>(nOne - 1);
     }
-    return std::make_tuple(std::move(Es), std::move(F));
+    return keel::make_tuple(keel::move(Es), keel::move(F));
 }
 
 // ── tachorpm ───────────────────────────────────────────────────────
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tachorpm(const Value &x, keel::f64 fs,
          const Value &threshold, keel::i32 ppr, keel::Allocator *mr)
 {
@@ -129,7 +130,7 @@ tachorpm(const Value &x, keel::f64 fs,
     }
     if (rpm.size() >= 2) rpm.back() = rpm[rpm.size() - 2];
 
-    return std::make_tuple(vecCol(mr, rpm), vecCol(mr, times));
+    return keel::make_tuple(vecCol(mr, rpm), vecCol(mr, times));
 }
 
 // ── rainflow ───────────────────────────────────────────────────────
@@ -218,7 +219,7 @@ Value rainflow(const Value &x, keel::Allocator *mr)
 
 // ── tsa ────────────────────────────────────────────────────────────
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tsa(const Value &x, keel::f64 fs,
     const Value &rpm, keel::f64 fs_rpm, keel::i32 n_per_rev,
     keel::Allocator *mr)
@@ -226,7 +227,7 @@ tsa(const Value &x, keel::f64 fs,
     auto signal_v = readVec(x);
     auto rpm_v    = readVec(rpm);
     if (signal_v.empty() || rpm_v.empty() || n_per_rev <= 0) {
-        return std::make_tuple(
+        return keel::make_tuple(
             Value::matrix(0, 1, ValueType::DOUBLE, mr),
             Value::matrix(0, 1, ValueType::DOUBLE, mr));
     }
@@ -277,7 +278,7 @@ tsa(const Value &x, keel::f64 fs,
     for (keel::i32 b = 0; b < n_per_rev; ++b)
         th[b] = twoPi * b / n_per_rev;
 
-    return std::make_tuple(vecCol(mr, avg), vecCol(mr, th));
+    return keel::make_tuple(vecCol(mr, avg), vecCol(mr, th));
 }
 
 } // namespace numkit::signal

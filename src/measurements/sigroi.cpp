@@ -151,7 +151,7 @@ Value extendsigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
     const bool roiSingle = (roi.type() == ValueType::SINGLE);
     const keel::usize N = roi.dims().rows();
     Value out = Value::matrix(N, N == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (N == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    if (N == 0) return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
     keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < N; ++i) {
         keel::i64 s = roiStart(roi, i) - Lpre;
@@ -160,7 +160,7 @@ Value extendsigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
         od[i + 0 * N] = keel::as<keel::f64>(s);
         od[i + 1 * N] = keel::as<keel::f64>(e);
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
 }
 
 // ── shortensigroi ─────────────────────────────────────────────────────
@@ -181,13 +181,13 @@ Value shortensigroi(const Value &roi, keel::i64 Lpre, keel::i64 Lpost,
     }
     const keel::usize M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    if (M == 0) return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
     keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < M; ++i) {
         od[i + 0 * M] = keel::as<keel::f64>(starts[i]);
         od[i + 1 * M] = keel::as<keel::f64>(ends[i]);
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
 }
 
 // ── mergesigroi ───────────────────────────────────────────────────────
@@ -222,13 +222,13 @@ Value mergesigroi(const Value &roi, keel::i64 sep, keel::Allocator *mr)
     }
     const keel::usize M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    if (M == 0) return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
     keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < M; ++i) {
         od[i + 0 * M] = keel::as<keel::f64>(starts[i]);
         od[i + 1 * M] = keel::as<keel::f64>(ends[i]);
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
 }
 
 // ── removesigroi ──────────────────────────────────────────────────────
@@ -254,13 +254,13 @@ Value removesigroi(const Value &roi, keel::i64 maxLen,
     }
     const keel::usize M = starts.size();
     Value out = Value::matrix(M, M == 0 ? 0 : 2, ValueType::DOUBLE, mr);
-    if (M == 0) return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    if (M == 0) return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
     keel::f64 *od = out.doubleDataMut();
     for (keel::usize i = 0; i < M; ++i) {
         od[i + 0 * M] = keel::as<keel::f64>(starts[i]);
         od[i + 1 * M] = keel::as<keel::f64>(ends[i]);
     }
-    return detail::narrowDoubleToSingleIf(std::move(out), roiSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(out), roiSingle, mr);
 }
 
 // ── extractsigroi ─────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
         Value out = Value::matrix(keel::as<keel::usize>(totalLen),
                                   totalLen == 0 ? 0 : 1,
                                   ValueType::DOUBLE, mr);
-        if (totalLen == 0) return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
+        if (totalLen == 0) return detail::narrowDoubleToSingleIf(keel::move(out), xSingle, mr);
         keel::f64 *od = out.doubleDataMut();
         keel::usize pos = 0;
         for (keel::usize i = 0; i < N; ++i) {
@@ -315,7 +315,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
             for (keel::i64 k = s; k <= e; ++k)
                 od[pos++] = x.elemAsDouble(keel::as<keel::usize>(k - 1));
         }
-        return detail::narrowDoubleToSingleIf(std::move(out), xSingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(out), xSingle, mr);
     }
     // Cell-array form.
     Value out = Value::cell(N, N == 0 ? 0 : 1, mr);
@@ -333,7 +333,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
                 for (keel::i64 k = 0; k < segLen; ++k)
                     sd[k] = xd[s - 1 + k];
             }
-            out.cellAt(i) = std::move(seg);
+            out.cellAt(i) = keel::move(seg);
         } else {
             Value seg = Value::matrix(keel::as<keel::usize>(segLen),
                                       segLen == 0 ? 0 : 1,
@@ -343,7 +343,7 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
                 for (keel::i64 k = 0; k < segLen; ++k)
                     sd[k] = x.elemAsDouble(keel::as<keel::usize>(s - 1 + k));
             }
-            out.cellAt(i) = detail::narrowDoubleToSingleIf(std::move(seg), xSingle, mr);
+            out.cellAt(i) = detail::narrowDoubleToSingleIf(keel::move(seg), xSingle, mr);
         }
     }
     return out;

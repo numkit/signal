@@ -17,8 +17,7 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -31,8 +30,8 @@ void envspectrum_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     keel::f64 fs = 0.0;
     if (args.size() >= 2 && !args[1].isEmpty()) fs = args[1].toScalar();
     auto [Es, F] = envspectrum(args[0], fs, ctx.engine->allocator());
-    outs[0] = std::move(Es);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(Es);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 void tachorpm_reg(keel::ArrayRef<Value> args, keel::usize nargout,
@@ -45,8 +44,8 @@ void tachorpm_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     if (args.size() >= 4 && !args[3].isEmpty())
         ppr = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "ppr", "tachorpm"), 4, "ppr", "tachorpm");
     auto [rpm, t] = tachorpm(args[0], fs, thr, ppr, ctx.engine->allocator());
-    outs[0] = std::move(rpm);
-    if (nargout > 1) outs[1] = std::move(t);
+    outs[0] = keel::move(rpm);
+    if (nargout > 1) outs[1] = keel::move(t);
 }
 
 void rainflow_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
@@ -66,14 +65,14 @@ void rainflow_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
 // Dispatcher: 3-arg call -> MATLAB form; 4+ arg call -> nk form.
 namespace {
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 tsa_matlab_form(keel::Allocator *mr, const Value &x, keel::f64 fs,
                 const Value &tPulse)
 {
     const keel::usize nx = x.numel();
     const keel::usize np = tPulse.numel();
     if (nx == 0 || np < 2) {
-        return std::make_tuple(
+        return keel::make_tuple(
             Value::matrix(0, 1, ValueType::DOUBLE, mr),
             Value::matrix(0, 1, ValueType::DOUBLE, mr));
     }
@@ -127,7 +126,7 @@ tsa_matlab_form(keel::Allocator *mr, const Value &x, keel::f64 fs,
         ya[k] = avg[k];
         ta[k] = T_avg * keel::as<keel::f64>(k) / keel::as<keel::f64>(L);
     }
-    return std::make_tuple(std::move(Ya), std::move(Ta));
+    return keel::make_tuple(keel::move(Ya), keel::move(Ta));
 }
 
 } // namespace
@@ -141,8 +140,8 @@ void tsa_reg(keel::ArrayRef<Value> args, keel::usize nargout,
         // MATLAB form: tsa(x, fs, tPulse)
         auto [avg, th] = tsa_matlab_form(ctx.engine->allocator(),
                                          args[0], fs, args[2]);
-        outs[0] = std::move(avg);
-        if (nargout > 1) outs[1] = std::move(th);
+        outs[0] = keel::move(avg);
+        if (nargout > 1) outs[1] = keel::move(th);
         return;
     }
     // 4+ args -> legacy nk form (continuous rpm signal).
@@ -151,8 +150,8 @@ void tsa_reg(keel::ArrayRef<Value> args, keel::usize nargout,
     if (args.size() >= 5 && !args[4].isEmpty())
         npr = argcheck::expectedPositiveInteger(argcheck::expectedReal(args[4], 5, "npr", "tsa"), 5, "npr", "tsa");
     auto [avg, th] = tsa(args[0], fs, args[2], fs_rpm, npr, ctx.engine->allocator());
-    outs[0] = std::move(avg);
-    if (nargout > 1) outs[1] = std::move(th);
+    outs[0] = keel::move(avg);
+    if (nargout > 1) outs[1] = keel::move(th);
 }
 
 } // namespace detail

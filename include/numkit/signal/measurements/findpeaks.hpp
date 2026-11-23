@@ -6,7 +6,7 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -32,7 +32,7 @@ namespace numkit::signal {
 /// auto [pks, locs] = findpeaks({1.0, 3.0, 1.0, 5.0, 2.0});
 /// // pks  = {3.0, 5.0}; locs = {2, 4}
 /// @endcode
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 findpeaks(const Value &                x,
           keel::Allocator *  mr = nullptr);
 

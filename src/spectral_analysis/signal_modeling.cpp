@@ -7,6 +7,7 @@
 // data formulations; complex AR isn't covered here.
 
 #include <keel/array.h>
+#include <keel/tuple.h>
 #include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
@@ -102,10 +103,10 @@ LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, keel::i32 p)
         for (keel::i32 j = 1; j < i; ++j)
             a_new[j] = a_prev[j] + k * a_prev[i - j];
         a_new[i] = k;
-        a_prev = std::move(a_new);
+        a_prev = keel::move(a_new);
         e *= (1.0 - k * k);
     }
-    res.a = std::move(a_prev);
+    res.a = keel::move(a_prev);
     res.e = e;
     return res;
 }
@@ -114,7 +115,7 @@ LevinsonResult levinsonCore(keel::ArrayRef<keel::f64> r, keel::i32 p)
 
 // ── Levinson-Durbin ────────────────────────────────────────────────
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 levinson(const Value &r, keel::i32 n, keel::Allocator *mr)
 {
     auto rv = readVec(r);
@@ -122,7 +123,7 @@ levinson(const Value &r, keel::i32 n, keel::Allocator *mr)
     if (n < 0) n = 0;
     if (n + 1 > keel::as<keel::i32>(rv.size())) rv.resize(n + 1, 0.0);
     auto res = levinsonCore(rv, n);
-    return std::make_tuple(rowVec(res.a, mr),
+    return keel::make_tuple(rowVec(res.a, mr),
                            Value::scalar(res.e, mr),
                            colVec(res.k, mr));
 }
@@ -130,7 +131,7 @@ levinson(const Value &r, keel::i32 n, keel::Allocator *mr)
 // rlevinson(a, e): given AR poly a and final prediction error e,
 // recover the autocorrelation sequence + reflection coefficients via
 // step-down. Returns (R, k).
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 rlevinson(const Value &a, keel::f64 efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
@@ -150,7 +151,7 @@ rlevinson(const Value &a, keel::f64 efinal, keel::Allocator *mr)
         const keel::f64 denom = 1.0 - ki * ki;
         for (keel::i32 j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
-        cur = std::move(prev);
+        cur = keel::move(prev);
         e /= denom;  // step e back up
     }
 
@@ -162,23 +163,23 @@ rlevinson(const Value &a, keel::f64 efinal, keel::Allocator *mr)
         for (keel::i32 j = 1; j <= i - 1; ++j) s += av[j] * R[i - j];
         R[i] = -av[i] * R[0] - s;
     }
-    return std::make_tuple(rowVec(R, mr), colVec(k, mr));
+    return keel::make_tuple(rowVec(R, mr), colVec(k, mr));
 }
 
 // ── AR estimation ─────────────────────────────────────────────────
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 aryule(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     auto v = readVec(x);
     auto R = biasedAutocorr(v, p);
     auto res = levinsonCore(R, p);
-    return std::make_tuple(rowVec(res.a, mr),
+    return keel::make_tuple(rowVec(res.a, mr),
                            Value::scalar(res.e, mr),
                            colVec(res.k, mr));
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 arburg(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     // Burg's algorithm. Maintains forward / backward prediction
@@ -219,16 +220,16 @@ arburg(const Value &x, keel::i32 p, keel::Allocator *mr)
         for (keel::i32 j = 1; j <= i; ++j)
             a_new[j] = a[j] + ki * a[i + 1 - j];
         a_new[i + 1] = ki;
-        a = std::move(a_new);
+        a = keel::move(a_new);
         E *= (1.0 - ki * ki);
     }
 
-    return std::make_tuple(rowVec(a, mr),
+    return keel::make_tuple(rowVec(a, mr),
                            Value::scalar(E, mr),
                            colVec(k, mr));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 lpc(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     // MATLAB's lpc returns (a, g) where g is the prediction error
@@ -236,18 +237,18 @@ lpc(const Value &x, keel::i32 p, keel::Allocator *mr)
     // as aryule, just without the reflection-coef return.
     auto [a, e, k] = aryule(x, p, mr);
     (void)k;
-    return std::make_tuple(std::move(a), std::move(e));
+    return keel::make_tuple(keel::move(a), keel::move(e));
 }
 
 // ── Representation conversions ────────────────────────────────────
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ac2poly(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
     const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
     auto res = levinsonCore(rv, std::max(p, 0));
-    return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
+    return keel::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
 
 Value poly2ac(const Value &a, keel::f64 e, keel::Allocator *mr)
@@ -257,13 +258,13 @@ Value poly2ac(const Value &a, keel::f64 e, keel::Allocator *mr)
     return Rv;
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ac2rc(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
     const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
     auto res = levinsonCore(rv, std::max(p, 0));
-    return std::make_tuple(colVec(res.k, mr),
+    return keel::make_tuple(colVec(res.k, mr),
                            Value::scalar(rv.empty() ? 0.0 : rv[0], mr));
 }
 
@@ -292,7 +293,7 @@ Value schurrc(const Value &R, keel::Allocator *mr)
         for (keel::i32 j = 1; j < i; ++j)
             a_new[j] = a_prev[j] + ki * a_prev[i - j];
         a_new[i] = ki;
-        a_prev = std::move(a_new);
+        a_prev = keel::move(a_new);
         e *= (1.0 - ki * ki);
     }
     return colVec(k, mr);
@@ -318,13 +319,13 @@ Value rc2ac(const Value &k, keel::f64 r0, keel::Allocator *mr)
         a_new[0] = 1.0;
         for (keel::i32 j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
         a_new[i] = ki;
-        a = std::move(a_new);
+        a = keel::move(a_new);
         e *= (1.0 - ki * ki);
     }
     return rowVec(R, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 poly2rc(const Value &a, keel::f64 efinal, keel::Allocator *mr)
 {
     auto av = readVec(a);
@@ -339,7 +340,7 @@ poly2rc(const Value &a, keel::f64 efinal, keel::Allocator *mr)
         keel::Array<keel::f64> prev(i + 1, 0.0, mr); prev[0] = 1.0;
         for (keel::i32 j = 1; j < i; ++j)
             prev[j] = (cur[j] - ki * cur[i - j]) / denom;
-        cur = std::move(prev);
+        cur = keel::move(prev);
     }
     // Zero-lag autocorrelation R0 = efinal / prod_i (1 - k_i^2). This is
     // the second output [k, R0] = poly2rc(a, efinal): the energy of the
@@ -347,10 +348,10 @@ poly2rc(const Value &a, keel::f64 efinal, keel::Allocator *mr)
     keel::f64 prod = 1.0;
     for (keel::f64 ki : k) prod *= (1.0 - ki * ki);
     const keel::f64 r0 = (prod != 0.0) ? efinal / prod : 0.0;
-    return std::make_tuple(colVec(k, mr), Value::scalar(r0, mr));
+    return keel::make_tuple(colVec(k, mr), Value::scalar(r0, mr));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 rc2poly(const Value &k, keel::f64 r0, keel::Allocator *mr)
 {
     auto kv = readVec(k);
@@ -362,14 +363,14 @@ rc2poly(const Value &k, keel::f64 r0, keel::Allocator *mr)
         a_new[0] = 1.0;
         for (keel::i32 j = 1; j < i; ++j) a_new[j] = a[j] + ki * a[i - j];
         a_new[i] = ki;
-        a = std::move(a_new);
+        a = keel::move(a_new);
     }
     // efinal = r0 * prod_i (1 - k_i^2): the final prediction error of the
     // AR model, the inverse of poly2rc's R0 relation. Second output of
     // [a, efinal] = rc2poly(k, r0).
     keel::f64 prod = 1.0;
     for (keel::f64 ki : kv) prod *= (1.0 - ki * ki);
-    return std::make_tuple(rowVec(a, mr), Value::scalar(r0 * prod, mr));
+    return keel::make_tuple(rowVec(a, mr), Value::scalar(r0 * prod, mr));
 }
 
 // is2rc / rc2is — inverse-sine parameterisation. MATLAB scales the inverse
@@ -436,8 +437,8 @@ solveSPD(keel::Array<keel::f64> &A, keel::Array<keel::f64> &b, keel::i32 p)
         if (pivVal < 1e-300) continue;
         if (piv != k) {
             for (keel::i32 j = k; j < p; ++j)
-                std::swap(A[k * p + j], A[piv * p + j]);
-            std::swap(b[k], b[piv]);
+                keel::swap(A[k * p + j], A[piv * p + j]);
+            keel::swap(b[k], b[piv]);
         }
         const keel::f64 diag = A[k * p + k];
         for (keel::i32 i = k + 1; i < p; ++i) {
@@ -504,12 +505,12 @@ ArCovResult solveArCov(keel::ArrayRef<keel::f64> R, keel::i32 p)
     for (keel::i32 k = 0; k < p; ++k) a[k + 1] = a_tail[k];
     keel::f64 e = R[0];
     for (keel::i32 k = 1; k <= p; ++k) e += a[k] * R[k];
-    return {std::move(a), e};
+    return {keel::move(a), e};
 }
 
 } // anonymous
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 arcov(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     auto v = readVec(x);
@@ -520,10 +521,10 @@ arcov(const Value &x, keel::i32 p, keel::Allocator *mr)
     const keel::f64 norm = keel::as<keel::f64>(std::max(N - p, 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
-    return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
+    return keel::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 armcov(const Value &x, keel::i32 p, keel::Allocator *mr)
 {
     auto v = readVec(x);
@@ -532,7 +533,7 @@ armcov(const Value &x, keel::i32 p, keel::Allocator *mr)
     const keel::f64 norm = keel::as<keel::f64>(std::max(2 * (N - p), 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
-    return std::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
+    return keel::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
 
 // ── prony ─────────────────────────────────────────────────────────
@@ -543,7 +544,7 @@ armcov(const Value &x, keel::i32 p, keel::Allocator *mr)
 //      H_{na rows after first nb+1 samples} · [a[1..na]] = -h[nb+1..]
 //   2. Solve by least squares.
 //   3. b = (a convolved with h) truncated to nb+1 terms.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 prony(const Value &h, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
 {
     auto hv = readVec(h);
@@ -589,13 +590,13 @@ prony(const Value &h, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
                 if (i - k < N) s += a[k] * hv[i - k];
             b[i] = s;
         }
-        return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
+        return keel::make_tuple(rowVec(b, mr), rowVec(a, mr));
     }
     // na == 0: pure FIR. b[i] = h[i] for i = 0..nb, a = [1].
     keel::Array<keel::f64> b(nb + 1, 0.0, mr);
     for (keel::i32 i = 0; i <= nb && i < N; ++i) b[i] = hv[i];
     const keel::f64 one = 1.0;
-    return std::make_tuple(rowVec(b, mr), rowVec(keel::ArrayRef<keel::f64>(&one, 1), mr));
+    return keel::make_tuple(rowVec(b, mr), rowVec(keel::ArrayRef<keel::f64>(&one, 1), mr));
 }
 
 // ── stmcb ─────────────────────────────────────────────────────────
@@ -629,7 +630,7 @@ void stmcb_argcheck(const Value &y, const Value &x, keel::i32 nb, keel::i32 na, 
 
 } // anonymous
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 stmcb(const Value &y, const Value &x, keel::i32 nb, keel::i32 na, keel::i32 niter,
       const Value &ai, keel::Allocator *mr)
 {
@@ -699,10 +700,10 @@ stmcb(const Value &y, const Value &x, keel::i32 nb, keel::i32 na, keel::i32 nite
         for (keel::i32 k = 0; k <= nb; ++k) b[k]     = c[k];
         for (keel::i32 k = 0; k < na;  ++k) a[k + 1] = c[nb + 1 + k];
     }
-    return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
+    return keel::make_tuple(rowVec(b, mr), rowVec(a, mr));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 stmcb(const Value &h, keel::i32 nb, keel::i32 na, keel::i32 niter, keel::Allocator *mr)
 {
     return stmcb(h, Value(), nb, na, niter, Value(), mr);
@@ -890,7 +891,7 @@ keel::Array<keel::c64> readComplexVecLocal(const Value &v) {
 
 // Common solver: x is the "step" variable per frequency point —
 // jω_k for invfreqs, e^{-jω_k} for invfreqz.
-std::tuple<keel::Array<keel::f64>, keel::Array<keel::f64>>
+keel::Tuple<keel::Array<keel::f64>, keel::Array<keel::f64>>
 invfreqLSQ(keel::ArrayRef<keel::c64> H,
            keel::ArrayRef<keel::c64> x,
            keel::i32 nb, keel::i32 na)
@@ -945,7 +946,7 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
     for (keel::i32 i = 0; i <= nb; ++i) b[i] = theta[i];
     a[0] = 1.0;
     for (keel::i32 j = 1; j <= na; ++j) a[j] = theta[nb + j];
-    return std::make_tuple(std::move(b), std::move(a));
+    return keel::make_tuple(keel::move(b), keel::move(a));
 }
 
 void invfreqs_argcheck(const Value &H, const Value &w, keel::i32 nb, keel::i32 na)
@@ -970,7 +971,7 @@ void invfreqz_argcheck(const Value &H, const Value &w, keel::i32 nb, keel::i32 n
 
 } // anonymous
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 invfreqs(const Value &H, const Value &w, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
 {
     invfreqs_argcheck(H, w, nb, na);
@@ -979,10 +980,10 @@ invfreqs(const Value &H, const Value &w, keel::i32 nb, keel::i32 na, keel::Alloc
     keel::Array<keel::c64> x(wv.size(), mr);
     for (keel::usize k = 0; k < wv.size(); ++k) x[k] = keel::c64(0.0, wv[k]); // jω
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);
-    return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
+    return keel::make_tuple(rowVec(b, mr), rowVec(a, mr));
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 invfreqz(const Value &H, const Value &w, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
 {
     invfreqz_argcheck(H, w, nb, na);
@@ -992,7 +993,7 @@ invfreqz(const Value &H, const Value &w, keel::i32 nb, keel::i32 na, keel::Alloc
     for (keel::usize k = 0; k < wv.size(); ++k)
         x[k] = keel::exp(keel::c64(0.0, -wv[k])); // z⁻¹
     auto [b, a] = invfreqLSQ(Hv, x, nb, na);
-    return std::make_tuple(rowVec(b, mr), rowVec(a, mr));
+    return keel::make_tuple(rowVec(b, mr), rowVec(a, mr));
 }
 
 } // namespace numkit::signal

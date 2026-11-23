@@ -18,8 +18,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -124,10 +122,10 @@ void findpeaks_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
     }
 
     auto [vals, idxs, wids, proms] = findpeaksImpl(y, locArr, opt, mr);
-    outs[0] = std::move(vals);
-    if (nargout > 1) outs[1] = std::move(idxs);
-    if (nargout > 2) outs[2] = std::move(wids);
-    if (nargout > 3) outs[3] = std::move(proms);
+    outs[0] = keel::move(vals);
+    if (nargout > 1) outs[1] = keel::move(idxs);
+    if (nargout > 2) outs[2] = keel::move(wids);
+    if (nargout > 3) outs[3] = keel::move(proms);
 }
 
 } // namespace detail

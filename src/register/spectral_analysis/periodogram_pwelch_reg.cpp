@@ -15,8 +15,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -63,8 +61,8 @@ void periodogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
         outs[2] = periodogramConf(Pxx, conf, realInput, nfftEven, ctx.engine->allocator());
     }
     if (nargout > 1)
-        outs[1] = std::move(F);
-    outs[0] = std::move(Pxx);
+        outs[1] = keel::move(F);
+    outs[0] = keel::move(Pxx);
 }
 
 void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -114,12 +112,12 @@ void pwelch_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
         }
         for (keel::usize k = 0; k < fullN; ++k)
             f2[k] = fs * keel::as<keel::f64>(k) / keel::as<keel::f64>(fullN);
-        Pxx = std::move(P2);
-        F = std::move(F2);
+        Pxx = keel::move(P2);
+        F = keel::move(F2);
     }
-    outs[0] = std::move(Pxx);
+    outs[0] = keel::move(Pxx);
     if (nargout > 1)
-        outs[1] = std::move(F);
+        outs[1] = keel::move(F);
 }
 
 void cpsd_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -137,8 +135,8 @@ void cpsd_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
             5, "nfft", "cpsd")) : 0;
     const keel::f64 fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
     auto [Pxy, F] = cpsd(args[0], args[1], window, noverlap, nfft, fs, ctx.engine->allocator());
-    outs[0] = std::move(Pxy);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(Pxy);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 void mscohere_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -156,8 +154,8 @@ void mscohere_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
             5, "nfft", "mscohere")) : 0;
     const keel::f64 fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
     auto [Cxy, F] = mscohere(args[0], args[1], window, noverlap, nfft, fs, ctx.engine->allocator());
-    outs[0] = std::move(Cxy);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(Cxy);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 void tfestimate_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
@@ -175,8 +173,8 @@ void tfestimate_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutAr
             5, "nfft", "tfestimate")) : 0;
     const keel::f64 fs       = (args.size() >= 6 && !args[5].isEmpty()) ? args[5].toScalar() : kDefaultFs;
     auto [Txy, F] = tfestimate(args[0], args[1], window, noverlap, nfft, fs, ctx.engine->allocator());
-    outs[0] = std::move(Txy);
-    if (nargout > 1) outs[1] = std::move(F);
+    outs[0] = keel::move(Txy);
+    if (nargout > 1) outs[1] = keel::move(F);
 }
 
 } // namespace detail

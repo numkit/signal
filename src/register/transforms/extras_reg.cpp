@@ -16,8 +16,6 @@
 #include <numkit/value/error.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -55,7 +53,7 @@ void bitrevorder_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
             // dst[bitReverse(i, bits)] = i+1 (1-based MATLAB index).
             id[bitReverse(i, bits)] = keel::as<keel::f64>(i + 1);
         }
-        outs[1] = std::move(I);
+        outs[1] = keel::move(I);
     }
 }
 
@@ -77,8 +75,8 @@ void rceps_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     auto *mr = ctx.engine->allocator();
     if (nargout >= 2) {
         auto [y, ym] = rcepsMinPhase(args[0], mr);
-        outs[0] = std::move(y);
-        outs[1] = std::move(ym);
+        outs[0] = keel::move(y);
+        outs[1] = keel::move(ym);
         return;
     }
     outs[0] = rceps(args[0], mr);

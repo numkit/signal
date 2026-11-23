@@ -14,7 +14,6 @@
 #include <keel/format.h>
 #include <keel/ref.h>
 #include <numkit/signal/library.hpp>
-#include <utility>
 
 #include <numkit/sys/plugin.hpp>
 #include <numkit/sys/plugin.hpp>  // ExternalFunc, CallContext, Span, Value
@@ -312,7 +311,7 @@ void SignalLibrary::install(PluginContext &engine)
     // Local helper â€” signal is MATLAB-mirror, every fn registered in
     // signal.<sub>.<name> AND aliased into compat.<name>.
     auto reg = [&](const char *sub, const char *name, ExternalFunc fn) {
-        engine.registerFunction(keel::format("signal.{}", sub), name, std::move(fn));
+        engine.registerFunction(keel::format("signal.{}", sub), name, keel::move(fn));
         // compat.* registration removed â€” bare-name resolver replaces it
     };
 

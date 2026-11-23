@@ -14,7 +14,7 @@
 #include <keel/math.h>
 #include <numkit/value/value.hpp>
 
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -42,7 +42,7 @@ namespace numkit::signal {
 ///              * `k` — reflection coefficients of length `n`.
 ///
 /// @see rlevinson, aryule, poly2rc
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 levinson(const Value &                r,
          keel::i32                          n  = -1,
          keel::Allocator *  mr = nullptr);
@@ -56,7 +56,7 @@ levinson(const Value &                r,
 ///                reflection coefficients.
 ///
 /// @see levinson
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 rlevinson(const Value &                a,
           keel::f64                       efinal,
           keel::Allocator *  mr = nullptr);
@@ -76,7 +76,7 @@ rlevinson(const Value &                a,
 /// @return    Tuple `(a, e, k)` (see `levinson`).
 ///
 /// @see arburg, levinson, pyulear
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 aryule(const Value &                x,
        keel::i32                          p,
        keel::Allocator *  mr = nullptr);
@@ -93,7 +93,7 @@ aryule(const Value &                x,
 /// @return    Tuple `(a, e, k)` — AR poly, error variance, reflection
 ///            coefficients (see @ref levinson).
 /// @see aryule, pburg
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 arburg(const Value &x, keel::i32 p,
        keel::Allocator *mr = nullptr);
 
@@ -105,7 +105,7 @@ arburg(const Value &x, keel::i32 p,
 /// @return    Tuple `(a, g)` — AR poly and `sqrt(e)` gain factor.
 ///
 /// @see aryule
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 lpc(const Value &                x,
     keel::i32                          p,
     keel::Allocator *  mr = nullptr);
@@ -118,7 +118,7 @@ lpc(const Value &                x,
 /// @param R   Autocorrelation sequence (length n+1).
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(a, e)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ac2poly(const Value &                R,
         keel::Allocator *  mr = nullptr);
 
@@ -135,7 +135,7 @@ Value poly2ac(const Value &                a,
 /// @param R   Autocorrelation sequence.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(k, r0)` — reflection coefficients and `r[0]`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ac2rc(const Value &                R,
       keel::Allocator *  mr = nullptr);
 
@@ -167,7 +167,7 @@ Value rc2ac(const Value &k, keel::f64 r0,
 /// @return        Tuple `(k, R0)`: reflection coefficients of length
 ///                `numel(a) - 1`, and the zero-lag autocorrelation
 ///                `R0 = efinal / prod(1 - k.^2)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 poly2rc(const Value &                a,
         keel::f64                       efinal = 0.0,
         keel::Allocator *  mr     = nullptr);
@@ -179,7 +179,7 @@ poly2rc(const Value &                a,
 /// @return    Tuple `(a, efinal)`: AR coefficient vector of length
 ///            `numel(k) + 1`, and the final prediction error
 ///            `efinal = r0 * prod(1 - k.^2)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 rc2poly(const Value &                k,
         keel::f64                       r0 = 1.0,
         keel::Allocator *  mr = nullptr);
@@ -235,7 +235,7 @@ Value rc2lar(const Value &                k,
 /// @return    Tuple `(a, e)`.
 ///
 /// @see armcov, arburg
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 arcov(const Value &                x,
       keel::i32                          p,
       keel::Allocator *  mr = nullptr);
@@ -250,7 +250,7 @@ arcov(const Value &                x,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(a, e)`.
 /// @see arcov, arburg
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 armcov(const Value &x, keel::i32 p,
        keel::Allocator *mr = nullptr);
 
@@ -266,7 +266,7 @@ armcov(const Value &x, keel::i32 p,
 /// @param na  Denominator order.
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(b, a)`.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 prony(const Value &                h,
       keel::i32                          nb,
       keel::i32                          na,
@@ -286,7 +286,7 @@ prony(const Value &                h,
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Tuple `(b, a)` row vectors.
 /// @see prony, levinson, lpc
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 stmcb(const Value &                h,
       keel::i32                          nb,
       keel::i32                          na,
@@ -304,7 +304,7 @@ stmcb(const Value &                h,
 /// @param ai     Initial denominator estimate (length `na+1` or `na`; empty → @ref prony).
 /// @param mr     Memory resource (nullptr → process default).
 /// @return       Tuple `(b, a)` row vectors.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 stmcb(const Value &                y,
       const Value &                x,
       keel::i32                          nb,
@@ -345,7 +345,7 @@ Value corrmtx(const Value &                x,
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      Tuple `(P, F)` column vectors.
 /// @see peig, corrmtx, pwelch
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 pmusic(const Value &                x,
        keel::i32                          p,
        keel::i32                          nfft = 256,
@@ -364,7 +364,7 @@ pmusic(const Value &                x,
 /// @param mr    Memory resource (nullptr → process default).
 /// @return      Tuple `(P, F)` column vectors.
 /// @see pmusic
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 peig(const Value &                x,
      keel::i32                          p,
      keel::i32                          nfft = 256,
@@ -408,7 +408,7 @@ Value lsf2poly(const Value &                lsf,
 /// @return    Tuple `(b, a)`.
 ///
 /// @see invfreqz, freqs
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 invfreqs(const Value &                H,
          const Value &                w,
          keel::i32                          nb,
@@ -426,7 +426,7 @@ invfreqs(const Value &                H,
 /// @param mr  Memory resource (nullptr → process default).
 /// @return    Tuple `(b, a)`.
 /// @see invfreqs, freqz
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 invfreqz(const Value &H, const Value &w, keel::i32 nb, keel::i32 na,
          keel::Allocator *mr = nullptr);
 

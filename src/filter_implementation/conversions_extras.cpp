@@ -13,7 +13,7 @@
 #include <numkit/signal/internal/shims/polyfun.hpp>      // tf2zp / zp2tf / roots
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 #include <numkit/signal/filter_implementation/conversions.hpp>  // tf2sos
 
 #include <algorithm>
@@ -107,7 +107,7 @@ void sos2zp_argcheck(const Value &sos)
 } // namespace
 
 // ── sos2tf ────────────────────────────────────────────────────────────
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 sos2tf(const Value &sos, keel::f64 g, keel::Allocator *mr)
 {
     sos2tf_argcheck(sos);
@@ -121,11 +121,11 @@ sos2tf(const Value &sos, keel::f64 g, keel::Allocator *mr)
     }
     if (g != 1.0)
         for (auto &v : b) v *= g;
-    return std::make_tuple(rowFromVec(b, mr), rowFromVec(a, mr));
+    return keel::make_tuple(rowFromVec(b, mr), rowFromVec(a, mr));
 }
 
 // ── sos2zp ────────────────────────────────────────────────────────────
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 sos2zp(const Value &sos, keel::f64 g, keel::Allocator *mr)
 {
     sos2zp_argcheck(sos);
@@ -141,22 +141,22 @@ sos2zp(const Value &sos, keel::f64 g, keel::Allocator *mr)
         if (keel::abs(aArr[0]) > 1e-15)
             gain *= bArr[0] / aArr[0];
     }
-    return std::make_tuple(complexColFromVec(zeros, mr),
+    return keel::make_tuple(complexColFromVec(zeros, mr),
                             complexColFromVec(poles, mr),
                             gain);
 }
 
 // ── tf2zpk ────────────────────────────────────────────────────────────
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 tf2zpk(const Value &b, const Value &a, keel::Allocator *mr)
 {
     auto [z, p, k] = numkit::builtin::tf2zp(b, a, mr);
-    return std::make_tuple(std::move(z), std::move(p),
+    return keel::make_tuple(keel::move(z), keel::move(p),
                             (k.numel() == 0) ? 0.0 : k.toScalar());
 }
 
 // ── tf2ss (controllable canonical form) ───────────────────────────────
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
 {
     if (a.numel() == 0)
@@ -228,8 +228,8 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
         Cp[j] = bh[j + 1] - ah[j + 1] * D;
 
     auto DVal = Value::scalar(D, mr);
-    return std::make_tuple(std::move(AVal), std::move(BVal),
-                            std::move(CVal), std::move(DVal));
+    return keel::make_tuple(keel::move(AVal), keel::move(BVal),
+                            keel::move(CVal), keel::move(DVal));
 }
 
 // ── ss2tf ─────────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
 //   a = char poly of A   (Faddeev–LeVerrier or characteristic polynomial)
 //   b = numerator built from the resolvent (a*D + C * adj(zI - A) * B)
 // This is heavy linear algebra; use Faddeev's algorithm.
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ss2tf(const Value &A, const Value &B, const Value &C, keel::f64 D,
       keel::Allocator *mr)
 {
@@ -335,11 +335,11 @@ ss2tf(const Value &A, const Value &B, const Value &C, keel::f64 D,
     std::reverse(a_coeffs.begin(), a_coeffs.end());
     std::reverse(b_coeffs.begin(), b_coeffs.end());
 
-    return std::make_tuple(rowFromVec(b_coeffs, mr), rowFromVec(a_coeffs, mr));
+    return keel::make_tuple(rowFromVec(b_coeffs, mr), rowFromVec(a_coeffs, mr));
 }
 
 // ── ss2zp ─────────────────────────────────────────────────────────────
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 ss2zp(const Value &A, const Value &B, const Value &C, keel::f64 D,
       keel::Allocator *mr)
 {
@@ -348,7 +348,7 @@ ss2zp(const Value &A, const Value &B, const Value &C, keel::f64 D,
 }
 
 // ── zp2ss ─────────────────────────────────────────────────────────────
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 zp2ss(const Value &z, const Value &p, keel::f64 k, keel::Allocator *mr)
 {
     auto [b, a] = numkit::builtin::zp2tf(z, p, k, mr);
@@ -356,7 +356,7 @@ zp2ss(const Value &z, const Value &p, keel::f64 k, keel::Allocator *mr)
 }
 
 // ── sos2ss ────────────────────────────────────────────────────────────
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 sos2ss(const Value &sos, keel::f64 g, keel::Allocator *mr)
 {
     auto [b, a] = sos2tf(sos, g, mr);
@@ -375,7 +375,7 @@ Value ss2sos(const Value &A, const Value &B, const Value &C, keel::f64 D,
 // Cascaded transfer function (NUM, DEN, SV) → zero/pole/gain.
 // Loops over each section: tf2zpk(NUM(i,:), DEN(i,:)) → accumulate.
 // Final gain = prod(SV) * prod(per-section gains).
-std::tuple<Value, Value, keel::f64>
+keel::Tuple<Value, Value, keel::f64>
 ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
 {
     // Vector inputs → reshape to single-row "section".

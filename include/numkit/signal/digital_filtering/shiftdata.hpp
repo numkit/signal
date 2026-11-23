@@ -10,7 +10,7 @@
 
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
-#include <tuple>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -38,7 +38,7 @@ namespace numkit::signal {
 ///             reverse.
 ///
 /// @see unshiftdata
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 shiftdata(const Value &                x,
           keel::i32                          dim = 0,
           keel::Allocator *  mr  = nullptr);

@@ -18,8 +18,7 @@
 #include "../signal_detail.hpp"
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
@@ -54,7 +53,7 @@ keel::signal::StftRange parseStftRange(keel::StringRef range, const char *fn) {
 
 } // anonymous namespace
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usize nfft,
             keel::Allocator *mr) {
     Value xD = detail::widenSingleToDouble(x, mr);
@@ -92,7 +91,7 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
         keel::MutArrayRef<keel::f64>(T.doubleDataMut(), nSegments),
         scratch.allocator());
 
-    return std::make_tuple(std::move(S), std::move(F), std::move(T));
+    return keel::make_tuple(keel::move(S), keel::move(F), keel::move(T));
 }
 
 Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize fftLength,
@@ -191,7 +190,7 @@ Value istft(const Value &S, const Value &window, keel::usize overlap, keel::usiz
     return out;
 }
 
-std::tuple<Value, Value, Value>
+keel::Tuple<Value, Value, Value>
 iscola(const Value &window, keel::usize noverlap, keel::StringRef method, keel::Allocator *mr) {
     const keel::usize M = window.numel();
     if (M == 0)

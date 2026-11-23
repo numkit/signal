@@ -237,7 +237,7 @@ Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
                        : Value::matrix(nx, 1, ValueType::DOUBLE, mr);
         if (nx > 0)
             std::copy(xD.doubleData(), xD.doubleData() + nx, r.doubleDataMut());
-        return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
+        return detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr);
     }
 
     auto [b, a] = cheby1(8, 0.05, Value::scalar(0.8 / keel::as<keel::f64>(factor), mr),
@@ -252,7 +252,7 @@ Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
     keel::f64 *rd = r.doubleDataMut();
     for (keel::usize i = 0; i < outLen; ++i)
         rd[i] = fd[nbeg + i * factor];
-    return detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr);
+    return detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr);
 }
 
 // ── resample ──────────────────────────────────────────────────────────
@@ -267,7 +267,7 @@ Value resample(const Value &x, keel::usize p, keel::usize q, keel::i32 n_order, 
     return resampleWithFilter(x, p, q, n_order, beta_in, mr).first;
 }
 
-std::pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel::usize q, keel::i32 n_order, keel::f64 beta_in, keel::Allocator *mr)
+keel::Pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel::usize q, keel::i32 n_order, keel::f64 beta_in, keel::Allocator *mr)
 {
     detail::requireFloatInput(x, "resample");
     if (p == 0 || q == 0)
@@ -293,7 +293,7 @@ std::pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel::
         const keel::f64 *yid = yi.doubleData();
         for (keel::usize i = 0; i < yr.numel(); ++i)
             od[i] = keel::c64(yrd[i], yid[i]);
-        return {std::move(out), std::move(b)};
+        return {keel::move(out), keel::move(b)};
     }
 
     Value xD = detail::widenSingleToDouble(x, mr);
@@ -372,7 +372,7 @@ std::pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel::
         const keel::i64 idx = delay + keel::as<keel::i64>(i);
         rd[i] = (idx >= 0 && keel::as<keel::usize>(idx) < yfn) ? yfd[idx] : 0.0;
     }
-    return {detail::narrowDoubleToSingleIf(std::move(r), xSingle, mr), std::move(bOut)};
+    return {detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr), keel::move(bOut)};
 }
 
 } // namespace numkit::signal

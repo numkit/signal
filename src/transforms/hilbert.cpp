@@ -16,7 +16,6 @@
 #include "../dsp_helpers.hpp"
 
 #include <algorithm>
-#include <utility>
 
 namespace numkit::signal {
 
@@ -144,20 +143,20 @@ Value envelope(const Value &x, keel::Allocator *mr) {
     return r;
 }
 
-std::pair<Value, Value>
+keel::Pair<Value, Value>
 envelope_full(const Value &x, keel::i32 mode, keel::usize n, keel::Allocator *mr) {
     const keel::usize N = x.numel();
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     Value yupper = createLike(x, ValueType::DOUBLE, mr);
     Value ylower = createLike(x, ValueType::DOUBLE, mr);
-    if (N == 0) return {std::move(yupper), std::move(ylower)};
+    if (N == 0) return {keel::move(yupper), keel::move(ylower)};
 
     if (mode == 3) {
         keel::Array<keel::f64> up(scratch.allocator()), lo(scratch.allocator());
         env_peak(x, n, up, lo, scratch.allocator());
         for (keel::usize i = 0; i < N; ++i) yupper.doubleDataMut()[i] = up[i];
         for (keel::usize i = 0; i < N; ++i) ylower.doubleDataMut()[i] = lo[i];
-        return {std::move(yupper), std::move(ylower)};
+        return {keel::move(yupper), keel::move(ylower)};
     }
 
     const auto v = read_real(x, scratch.allocator());
@@ -170,10 +169,10 @@ envelope_full(const Value &x, keel::i32 mode, keel::usize n, keel::Allocator *mr
     } else {
         (void)keel::signal::envelope_rms(v.as_ref(), n, uRef, lRef);
     }
-    return {std::move(yupper), std::move(ylower)};
+    return {keel::move(yupper), keel::move(ylower)};
 }
 
-std::pair<Value, Value> envelope_pair(const Value &x, keel::Allocator *mr) {
+keel::Pair<Value, Value> envelope_pair(const Value &x, keel::Allocator *mr) {
     return envelope_full(x, 0, 0, mr);
 }
 

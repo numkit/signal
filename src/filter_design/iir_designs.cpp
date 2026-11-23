@@ -5,6 +5,7 @@
 // firpmord / kaiserord), delegating pure kernels to keel::signal.
 
 #include <keel/arena.h>
+#include <keel/tuple.h>
 #include <keel/algo.h>
 #include <keel/array.h>
 #include <keel/core.h>
@@ -66,9 +67,9 @@ Value packDoubleRow(keel::ArrayRef<keel::f64> v, keel::Allocator *mr)
     return out;
 }
 
-std::tuple<Value, Value> packTf(const keel::signal::TfResult &tf, keel::Allocator *mr)
+keel::Tuple<Value, Value> packTf(const keel::signal::TfResult &tf, keel::Allocator *mr)
 {
-    return std::make_tuple(packDoubleRow(tf.b.as_ref(), mr), packDoubleRow(tf.a.as_ref(), mr));
+    return keel::make_tuple(packDoubleRow(tf.b.as_ref(), mr), packDoubleRow(tf.a.as_ref(), mr));
 }
 
 Value packOrderWn(const keel::signal::OrderResult &ord, keel::Allocator *mr)
@@ -94,7 +95,7 @@ void validateOrdSpecs(keel::ArrayRef<keel::f64> Wp, keel::ArrayRef<keel::f64> Ws
 
 } // anonymous
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cheby1(keel::i32 N, keel::f64 Rp, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "cheby1");
@@ -106,7 +107,7 @@ cheby1(keel::i32 N, keel::f64 Rp, const Value &Wn, FilterType ftype, bool analog
     return packTf(tf, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 cheby2(keel::i32 N, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "cheby2");
@@ -118,7 +119,7 @@ cheby2(keel::i32 N, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog
     return packTf(tf, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 besself(keel::i32 N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "besself");
@@ -130,7 +131,7 @@ besself(keel::i32 N, const Value &Wn, FilterType ftype, bool analog, keel::Alloc
     return packTf(tf, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 butter(keel::i32 N, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "butter");
@@ -142,7 +143,7 @@ butter(keel::i32 N, const Value &Wn, FilterType ftype, bool analog, keel::Alloca
     return packTf(tf, mr);
 }
 
-std::tuple<Value, Value>
+keel::Tuple<Value, Value>
 ellip(keel::i32 N, keel::f64 Rp, keel::f64 Rs, const Value &Wn, FilterType ftype, bool analog, keel::Allocator *mr)
 {
     iirOrder_argcheck(N, "ellip");
@@ -154,7 +155,7 @@ ellip(keel::i32 N, keel::f64 Rp, keel::f64 Rs, const Value &Wn, FilterType ftype
     return packTf(tf, mr);
 }
 
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 buttord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -165,10 +166,10 @@ buttord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool a
     const auto st = keel::signal::buttord(Wp.as_ref(), Ws.as_ref(), Rp, Rs, analog, ord);
     if (st != keel::signal::SignalStatus::kOk)
         throw numkit::Error("buttord: invalid filter specification");
-    return std::make_tuple(ord.order, packOrderWn(ord, mr));
+    return keel::make_tuple(ord.order, packOrderWn(ord, mr));
 }
 
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 cheb1ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -179,10 +180,10 @@ cheb1ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     const auto st = keel::signal::cheb1ord(Wp.as_ref(), Ws.as_ref(), Rp, Rs, analog, ord);
     if (st != keel::signal::SignalStatus::kOk)
         throw numkit::Error("cheb1ord: invalid filter specification");
-    return std::make_tuple(ord.order, packOrderWn(ord, mr));
+    return keel::make_tuple(ord.order, packOrderWn(ord, mr));
 }
 
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 cheb2ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -193,10 +194,10 @@ cheb2ord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     const auto st = keel::signal::cheb2ord(Wp.as_ref(), Ws.as_ref(), Rp, Rs, analog, ord);
     if (st != keel::signal::SignalStatus::kOk)
         throw numkit::Error("cheb2ord: invalid filter specification");
-    return std::make_tuple(ord.order, packOrderWn(ord, mr));
+    return keel::make_tuple(ord.order, packOrderWn(ord, mr));
 }
 
-std::tuple<keel::i32, Value>
+keel::Tuple<keel::i32, Value>
 ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool analog, keel::Allocator *mr)
 {
     if (Rp <= 0.0 || Rs <= 0.0)
@@ -222,10 +223,10 @@ ellipord(const Value &Wp_v, const Value &Ws_v, keel::f64 Rp, keel::f64 Rs, bool 
     Value Wn = Value::matrix(1, ord.wn_count, ValueType::DOUBLE, mr);
     for (keel::usize i = 0; i < ord.wn_count; ++i)
         Wn.doubleDataMut()[i] = ord.wn[i];
-    return {ord.order, std::move(Wn)};
+    return {ord.order, keel::move(Wn)};
 }
 
-std::tuple<keel::i32, Value, Value, Value>
+keel::Tuple<keel::i32, Value, Value, Value>
 firpmord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::Allocator *mr)
 {
     const keel::usize mf     = F.numel();
@@ -260,7 +261,7 @@ firpmord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::A
             packDoubleRow(res.w.as_ref(), mr)};
 }
 
-std::tuple<keel::i32, Value, keel::f64, keel::String>
+keel::Tuple<keel::i32, Value, keel::f64, keel::String>
 kaiserord(const Value &F, const Value &A, const Value &dev, keel::f64 fs, keel::Allocator *mr)
 {
     const keel::usize mf     = F.numel();

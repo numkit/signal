@@ -12,12 +12,11 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <tuple>
-#include <utility>
+#include <keel/tuple.h>
 
 namespace numkit::signal {
 
-std::tuple<Value, Value, Value, Value>
+keel::Tuple<Value, Value, Value, Value>
 findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
               keel::Allocator *mr) {
     keel::signal::PeakOptions kopt;
@@ -61,15 +60,15 @@ findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
         std::copy(res.widths.begin(), res.widths.end(), wids.doubleDataMut());
         std::copy(res.prominences.begin(), res.prominences.end(), proms.doubleDataMut());
     }
-    return std::make_tuple(std::move(vals), std::move(locs),
-                           std::move(wids), std::move(proms));
+    return keel::make_tuple(keel::move(vals), keel::move(locs),
+                           keel::move(wids), keel::move(proms));
 }
 
-std::tuple<Value, Value> findpeaks(const Value &x, keel::Allocator *mr) {
+keel::Tuple<Value, Value> findpeaks(const Value &x, keel::Allocator *mr) {
     auto [v, l, w, p] = findpeaksImpl(x, nullptr, PeakOpts{}, mr);
     (void)w;
     (void)p;
-    return std::make_tuple(std::move(v), std::move(l));
+    return keel::make_tuple(keel::move(v), keel::move(l));
 }
 
 } // namespace numkit::signal
