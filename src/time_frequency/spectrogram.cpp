@@ -116,7 +116,7 @@ Value stft(const Value &x, const Value &window, keel::usize overlap, keel::usize
     if (M > N)
         throw Error("stft: signal shorter than window length", 0, 0, "stft", "", "numkit:stft:shortSignal");
 
-    const keel::usize OL = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
+    const keel::usize OL = (overlap == keel::Limits<keel::usize>::kMax) ? (3 * M) / 4 : overlap;
     if (OL >= M)
         throw Error("stft: OverlapLength must be < window length", 0, 0, "stft", "", "numkit:stft:badOverlap");
     const keel::usize NFFT = (fftLength == 0) ? M : fftLength;
@@ -164,7 +164,7 @@ Value istft(const Value &S, const Value &window, keel::usize overlap, keel::usiz
     if (M == 0)
         throw Error("istft: window must be non-empty", 0, 0, "istft", "", "numkit:istft:badWindow");
 
-    const keel::usize OL = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
+    const keel::usize OL = (overlap == keel::Limits<keel::usize>::kMax) ? (3 * M) / 4 : overlap;
     if (OL >= M)
         throw Error("istft: OverlapLength must be < window length", 0, 0, "istft", "", "numkit:istft:badOverlap");
 

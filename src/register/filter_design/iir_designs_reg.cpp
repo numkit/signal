@@ -21,7 +21,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cstddef>
 #include <cstring>
 #include <tuple>
 #include <utility>

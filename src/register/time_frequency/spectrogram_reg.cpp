@@ -22,7 +22,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cstddef>
 #include <tuple>
 #include <utility>
 
@@ -399,14 +398,14 @@ void stft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     const keel::usize nvStart = parseOptionalFs(args, fsGiven, fs);
 
     Value window           = Value();
-    keel::usize overlap    = SIZE_MAX;
+    keel::usize overlap    = keel::Limits<keel::usize>::kMax;
     keel::usize fftLength  = 0;
     keel::String range      = keel::String::from("centered");  // matches MATLAB R2019b+ default
     parseStftNVPairs(args, nvStart, window, overlap, fftLength, range);
 
     // Resolve sizes (mirrors stft() internals) so we can build f, t.
     const keel::usize M    = resolveWindowLen(window);
-    const keel::usize OL   = (overlap == SIZE_MAX) ? (3 * M) / 4 : overlap;
+    const keel::usize OL   = (overlap == keel::Limits<keel::usize>::kMax) ? (3 * M) / 4 : overlap;
     const keel::usize hop  = (OL < M) ? (M - OL) : 1;
     const keel::usize NFFT = (fftLength == 0) ? M : fftLength;
     const bool isMatrix    = (args[0].dims().rows() > 1 && args[0].dims().cols() > 1);
@@ -432,7 +431,7 @@ void istft_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     const keel::usize nvStart = parseOptionalFs(args, fsGiven, fs);
 
     Value window           = Value();
-    keel::usize overlap    = SIZE_MAX;
+    keel::usize overlap    = keel::Limits<keel::usize>::kMax;
     keel::usize fftLength  = 0;
     keel::String range      = keel::String::from("centered");
     parseStftNVPairs(args, nvStart, window, overlap, fftLength, range);

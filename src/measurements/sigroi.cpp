@@ -30,7 +30,6 @@
 #include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
 #include <algorithm>
-#include <cstdint>
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 #include "../dsp_helpers.hpp"       // Complex typedef (extractsigroi)

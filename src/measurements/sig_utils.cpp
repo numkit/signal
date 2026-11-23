@@ -37,7 +37,6 @@
 #include <numkit/value/value.hpp>
 
 #include <algorithm>
-#include <cstdint>
 #include <utility>
 
 namespace numkit::signal {

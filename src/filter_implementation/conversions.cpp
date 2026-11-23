@@ -21,8 +21,6 @@
 #include <numkit/ops/poly_helpers.hpp>
 
 #include <algorithm>
-#include <cstddef>
-#include <cstdint>
 #include <utility>
 
 namespace numkit::signal {

@@ -5,7 +5,6 @@
 #include <keel/memory.h>
 #include <numkit/value/value.hpp>
 
-#include <cstdint>
 
 namespace numkit::signal {
 

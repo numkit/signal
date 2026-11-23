@@ -13,7 +13,6 @@
 #include <keel/core.h>
 #include <numkit/value/value.hpp>
 
-#include <cstddef>
 #include <tuple>
 
 namespace numkit::signal {
