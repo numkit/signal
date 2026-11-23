@@ -17,7 +17,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -246,7 +245,7 @@ Value risetime(const Value &x, const Value &fs, keel::Allocator *mr)
     const keel::f64 f = scalarOrDefault(fs, 1.0);
     keel::Array<keel::f64> out(mr);
     for (const auto &t : trs)
-        if (t.sign > 0) out.push_back((t.endIdx - t.startIdx) / std::max(f, 1.0));
+        if (t.sign > 0) out.push_back((t.endIdx - t.startIdx) / keel::max(f, 1.0));
     return colVec(out, mr);
 }
 
@@ -258,7 +257,7 @@ Value falltime(const Value &x, const Value &fs, keel::Allocator *mr)
     const keel::f64 f = scalarOrDefault(fs, 1.0);
     keel::Array<keel::f64> out(mr);
     for (const auto &t : trs)
-        if (t.sign < 0) out.push_back((t.endIdx - t.startIdx) / std::max(f, 1.0));
+        if (t.sign < 0) out.push_back((t.endIdx - t.startIdx) / keel::max(f, 1.0));
     return colVec(out, mr);
 }
 
@@ -271,7 +270,7 @@ Value slewrate(const Value &x, const Value &fs, keel::Allocator *mr)
     const keel::f64 range = (lh.high - lh.low) * (kHighPct - kLowPct);
     keel::Array<keel::f64> out(mr);
     for (const auto &t : trs) {
-        const keel::f64 dur = (t.endIdx - t.startIdx) / std::max(f, 1.0);
+        const keel::f64 dur = (t.endIdx - t.startIdx) / keel::max(f, 1.0);
         if (dur > 0.0) out.push_back(t.sign * range / dur);
         else           out.push_back(0.0);
     }
@@ -367,7 +366,7 @@ Value settlingtime(const Value &x, const Value &fs, keel::f64 tol, keel::Allocat
             if (keel::abs(v[i] - dest) > band) lastOut = i;
         }
         const keel::f64 settled = keel::as<keel::f64>(lastOut) - t.startIdx;
-        out.push_back(std::max(0.0, settled) / std::max(f, 1.0));
+        out.push_back(keel::max(0.0, settled) / keel::max(f, 1.0));
     }
     return colVec(out, mr);
 }
@@ -404,7 +403,7 @@ Value pulsewidth(const Value &x, const Value &fs, keel::Allocator *mr)
     // A pulse runs from a +1 crossing to the next -1 crossing.
     for (keel::usize i = 0; i + 1 < crs.size(); ++i) {
         if (crs[i].second == +1 && crs[i + 1].second == -1)
-            out.push_back((crs[i + 1].first - crs[i].first) / std::max(f, 1.0));
+            out.push_back((crs[i + 1].first - crs[i].first) / keel::max(f, 1.0));
     }
     return colVec(out, mr);
 }
@@ -421,7 +420,7 @@ Value pulseperiod(const Value &x, const Value &fs, keel::Allocator *mr)
     keel::Array<keel::f64> rising(mr);
     for (const auto &c : crs) if (c.second == +1) rising.push_back(c.first);
     for (keel::usize i = 0; i + 1 < rising.size(); ++i)
-        out.push_back((rising[i + 1] - rising[i]) / std::max(f, 1.0));
+        out.push_back((rising[i + 1] - rising[i]) / keel::max(f, 1.0));
     return colVec(out, mr);
 }
 
@@ -436,7 +435,7 @@ Value pulsesep(const Value &x, const Value &fs, keel::Allocator *mr)
     // Separation: trailing edge of one pulse to leading edge of the next.
     for (keel::usize i = 0; i + 1 < crs.size(); ++i) {
         if (crs[i].second == -1 && crs[i + 1].second == +1)
-            out.push_back((crs[i + 1].first - crs[i].first) / std::max(f, 1.0));
+            out.push_back((crs[i + 1].first - crs[i].first) / keel::max(f, 1.0));
     }
     return colVec(out, mr);
 }
@@ -503,7 +502,7 @@ void pulseRiseFall(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArr
         // is (upper, lower). Map to MATLAB's lower/upper crossing times.
         const keel::f64 lowerCrossIdx = rising ? t.startIdx : t.endIdx;
         const keel::f64 upperCrossIdx = rising ? t.endIdx   : t.startIdx;
-        dur.push_back((t.endIdx - t.startIdx) / std::max(f, 1.0));
+        dur.push_back((t.endIdx - t.startIdx) / keel::max(f, 1.0));
         ltv.push_back(idxToTime(lowerCrossIdx, f));
         utv.push_back(idxToTime(upperCrossIdx, f));
     }

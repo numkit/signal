@@ -21,7 +21,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <algorithm>
 
 #include "../../signal_detail.hpp"
 
@@ -129,7 +128,7 @@ void spectrogram_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutA
             win.resize(L);
             for (keel::usize i = 0; i < L; ++i) win[i] = window.elemAsDouble(i);
         } else {
-            keel::usize L = std::max<keel::usize>(
+            keel::usize L = keel::max<keel::usize>(
                 1, keel::as<keel::usize>(keel::floor(keel::as<keel::f64>(nx) / 4.5)));
             if (L > nx && nx > 0) L = nx;
             win.resize(L);

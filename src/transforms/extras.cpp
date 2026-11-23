@@ -20,7 +20,6 @@
 
 #include <numkit/value/value_type.hpp>   // mtypeName / isIntegerType
 
-#include <algorithm>
 
 
 namespace numkit::signal {
@@ -176,7 +175,7 @@ Value rceps(const Value &x, keel::Allocator *mr)
     dftExact(X.data(), n, +1, mr);
     for (keel::usize i = 0; i < n; ++i) {
         const keel::f64 mag = keel::abs(X[i]);
-        X[i] = keel::c64(keel::log(std::max(mag, 1e-300)), 0.0);
+        X[i] = keel::c64(keel::log(keel::max(mag, 1e-300)), 0.0);
     }
     dftExact(X.data(), n, -1, mr);
     const keel::f64 invN = 1.0 / keel::as<keel::f64>(n);
@@ -255,7 +254,7 @@ Value cceps(const Value &x, keel::f64 *ndOut, keel::Allocator *mr)
         while (phase - prevPhase < -keel::kPi) phase += 2.0 * keel::kPi;
         prevPhase = phase;
         ph[i]   = phase;
-        lmag[i] = keel::log(std::max(mag, 1e-300));
+        lmag[i] = keel::log(keel::max(mag, 1e-300));
     }
     const keel::usize nh  = (n + 1) / 2;                 // fix((n+1)/2)
     const keel::usize idx = (n == 1) ? 0 : nh;           // MATLAB's 1-based nh+1

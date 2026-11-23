@@ -20,7 +20,6 @@
 #include "../signal_detail.hpp"
 #include <numkit/ops/poly_helpers.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -64,8 +63,8 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
         }
         if (mateIdx < pool.size()) {
             out = { keel::c64(pick.real(), 0.0), keel::c64(pool[mateIdx].real(), 0.0), true };
-            const keel::usize hi = std::max(pickIdx, mateIdx);
-            const keel::usize lo = std::min(pickIdx, mateIdx);
+            const keel::usize hi = keel::max(pickIdx, mateIdx);
+            const keel::usize lo = keel::min(pickIdx, mateIdx);
             pool.erase(hi);
             pool.erase(lo);
         } else {
@@ -85,8 +84,8 @@ bool popPair(keel::Array<keel::c64> &pool, RootPair &out)
             throw Error("zp2sos: complex root has no conjugate in input",
                          0, 0, "zp2sos", "", "numkit:zp2sos:noConj");
         out = { pick, pool[mateIdx], true };
-        const keel::usize hi = std::max(pickIdx, mateIdx);
-        const keel::usize lo = std::min(pickIdx, mateIdx);
+        const keel::usize hi = keel::max(pickIdx, mateIdx);
+        const keel::usize lo = keel::min(pickIdx, mateIdx);
         pool.erase(hi);
         pool.erase(lo);
     }
@@ -137,8 +136,8 @@ bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
         if (mateIdx < zeros.size()) {
             out = { keel::c64(pick.real(), 0.0),
                     keel::c64(zeros[mateIdx].real(), 0.0), true };
-            const keel::usize hi = std::max(pickIdx, mateIdx);
-            const keel::usize lo = std::min(pickIdx, mateIdx);
+            const keel::usize hi = keel::max(pickIdx, mateIdx);
+            const keel::usize lo = keel::min(pickIdx, mateIdx);
             zeros.erase(hi);
             zeros.erase(lo);
         } else {
@@ -158,8 +157,8 @@ bool popClosestZeroPair(keel::Array<keel::c64> &zeros, keel::c64 target,
             throw Error("zp2sos: complex zero has no conjugate in input",
                          0, 0, "zp2sos", "", "numkit:zp2sos:noConj");
         out = { pick, zeros[mateIdx], true };
-        const keel::usize hi = std::max(pickIdx, mateIdx);
-        const keel::usize lo = std::min(pickIdx, mateIdx);
+        const keel::usize hi = keel::max(pickIdx, mateIdx);
+        const keel::usize lo = keel::min(pickIdx, mateIdx);
         zeros.erase(hi);
         zeros.erase(lo);
     }

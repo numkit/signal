@@ -20,7 +20,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 
 
 namespace numkit::signal {
@@ -245,8 +244,8 @@ tsa(const Value &x, keel::f64 fs,
             // Linear-interpolate rpm at time t.
             const keel::f64 idxR = t * fs_rpm;
             const keel::usize i0 = keel::as<keel::usize>(keel::floor(idxR));
-            const keel::usize i1 = std::min(i0 + 1, rpm_v.size() - 1);
-            const keel::f64 frac = std::min(std::max(idxR - i0, 0.0), 1.0);
+            const keel::usize i1 = keel::min(i0 + 1, rpm_v.size() - 1);
+            const keel::f64 frac = keel::min(keel::max(idxR - i0, 0.0), 1.0);
             const keel::f64 rpmI =
                 (i0 < rpm_v.size())
                 ? rpm_v[i0] + frac * (rpm_v[i1] - rpm_v[i0])

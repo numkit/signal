@@ -13,6 +13,7 @@
 // bugs/signal/pmusic-peig.
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/math.h>
@@ -21,8 +22,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
-#include <numeric>
 #include <keel/tuple.h>
 
 
@@ -109,8 +108,8 @@ pseudospectrum(const Value &x, keel::i32 p, keel::i32 nfft, keel::f64 fs, bool e
 
     // Ascending eigenvalue order; noise subspace = the smallest (M-p) vectors.
     keel::Array<keel::i32> ord(M, mr);
-    std::iota(ord.begin(), ord.end(), 0);
-    std::sort(ord.begin(), ord.end(), [&](keel::i32 a, keel::i32 b) { return lam[a] < lam[b]; });
+    keel::iota(ord.begin(), ord.end(), 0);
+    keel::sort(ord.begin(), ord.end(), [&](keel::i32 a, keel::i32 b) { return lam[a] < lam[b]; });
     const keel::i32 nNoise = M - p;
 
     const keel::i32 nf = nfft / 2 + 1;

@@ -12,7 +12,6 @@
 #include <numkit/value/value.hpp>
 #include "dct_detail.hpp"
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -40,7 +39,7 @@ Value runDctLines(const Value &x, keel::i32 n, keel::i32 dim, keel::i32 type, bo
 
     keel::Array<keel::f64> inBuf(nOut, 0.0, mr);
     keel::Array<keel::f64> outBuf(nOut, 0.0, mr);
-    const keel::usize copyN = std::min(nOut, nNative);
+    const keel::usize copyN = keel::min(nOut, nNative);
 
     for (keel::usize lineIdx = 0; lineIdx < nLines; ++lineIdx) {
         if (d == 1) {

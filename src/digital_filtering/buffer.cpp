@@ -18,6 +18,7 @@
 // PMR HARD RULE.
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/string.h>
@@ -27,7 +28,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 #include <keel/tuple.h>
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -96,7 +96,7 @@ BufferResult bufferCore(const Value &x, keel::i32 n, keel::i32 p, const Value &o
             return r;
         }
         keel::f64 *yd = r.Y.doubleDataMut();
-        std::fill(yd, yd + Nn * numFrames, 0.0);
+        keel::fill(yd, yd + Nn * numFrames, 0.0);
         for (keel::usize f = 0; f < numFrames; ++f) {
             const keel::usize base = offset + f * step;
             for (keel::usize i = 0; i < Nn; ++i) {
@@ -158,7 +158,7 @@ BufferResult bufferCore(const Value &x, keel::i32 n, keel::i32 p, const Value &o
     BufferResult r;
     r.Y = Value::matrix(Nn, numFramesOut, ValueType::DOUBLE, mr);
     keel::f64 *yd = r.Y.doubleDataMut();
-    std::fill(yd, yd + Nn * numFramesOut, 0.0);
+    keel::fill(yd, yd + Nn * numFramesOut, 0.0);
 
     // Index helper into "effective" input (initVec || x).
     auto effGet = [&](keel::usize idx) -> keel::f64 {
@@ -181,7 +181,7 @@ BufferResult bufferCore(const Value &x, keel::i32 n, keel::i32 p, const Value &o
                      ? (lastConsumedComplete - initLen)
                      : 0;
     if (numComplete == 0) zStart = 0;  // all of x is partial
-    r.partialStart = std::min(zStart, N);
+    r.partialStart = keel::min(zStart, N);
     r.partialEnd = N;
     return r;
 }

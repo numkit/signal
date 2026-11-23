@@ -1,6 +1,7 @@
 // toolboxes/signal/src/multirate/multirate.cpp
 
 #include <keel/core.h>
+#include <keel/algo.h>
 #include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
@@ -22,8 +23,6 @@
 #include "../signal_detail.hpp"     // shared argcheck cores
 #include "../dsp_helpers.hpp"       // Complex typedef
 
-#include <algorithm>
-#include <numeric>
 
 
 namespace numkit::signal {
@@ -236,7 +235,7 @@ Value decimate(const Value &x, keel::usize factor, keel::Allocator *mr)
         auto r = isRow ? Value::matrix(1, nx, ValueType::DOUBLE, mr)
                        : Value::matrix(nx, 1, ValueType::DOUBLE, mr);
         if (nx > 0)
-            std::copy(xD.doubleData(), xD.doubleData() + nx, r.doubleDataMut());
+            keel::copy(xD.doubleData(), xD.doubleData() + nx, r.doubleDataMut());
         return detail::narrowDoubleToSingleIf(keel::move(r), xSingle, mr);
     }
 
@@ -299,7 +298,7 @@ keel::Pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel:
     Value xD = detail::widenSingleToDouble(x, mr);
 
     // Reduce P/Q by their GCD first.
-    const keel::usize g = std::gcd(p, q);
+    const keel::usize g = keel::gcd(p, q);
     p /= g;
     q /= g;
 
@@ -315,7 +314,7 @@ keel::Pair<Value, Value> resampleWithFilter(const Value &x, keel::usize p, keel:
     // and matches firls(L-1, [0 W W 1], [1 1 0 0]) to machine precision.
     const keel::i32    N    = (n_order > 0) ? n_order : 10;
     const keel::f64 beta = beta_in;
-    const keel::usize pqmax = std::max(p, q);
+    const keel::usize pqmax = keel::max(p, q);
     const keel::f64 fc = 1.0 / (2.0 * keel::as<keel::f64>(pqmax));
     const keel::f64 W  = 2.0 * fc;
     const keel::i32    L  = 2 * N * keel::as<keel::i32>(pqmax) + 1;

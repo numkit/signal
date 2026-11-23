@@ -19,6 +19,7 @@
 // via ScratchArena/ScratchVec.
 
 #include <keel/core.h>
+#include <keel/algo.h>
 #include <keel/format.h>
 #include <keel/memory.h>
 #include <keel/arena.h>
@@ -29,7 +30,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/value_type.hpp>   // mtypeName (argcheck got-clauses)
 
-#include <algorithm>
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 #include "../dsp_helpers.hpp"       // Complex typedef (extractsigroi)
@@ -123,16 +123,16 @@ Value sigroi2binmask(const Value &roi, keel::i64 len_user,
     if (len < 0) {
         len = 0;
         for (keel::usize i = 0; i < N; ++i)
-            len = std::max(len, roiEnd(roi, i));
+            len = keel::max(len, roiEnd(roi, i));
     }
     Value out = Value::matrix(keel::as<keel::usize>(len), len == 0 ? 0 : 1,
                               ValueType::LOGICAL, mr);
     if (len == 0) return out;
     keel::u8 *od = out.logicalDataMut();
-    std::fill(od, od + len, keel::u8(0));
+    keel::fill(od, od + len, keel::u8(0));
     for (keel::usize i = 0; i < N; ++i) {
-        const keel::i64 s = std::max<keel::i64>(1, roiStart(roi, i));
-        const keel::i64 e = std::min<keel::i64>(len, roiEnd(roi, i));
+        const keel::i64 s = keel::max<keel::i64>(1, roiStart(roi, i));
+        const keel::i64 e = keel::min<keel::i64>(len, roiEnd(roi, i));
         for (keel::i64 k = s; k <= e; ++k) od[k - 1] = 1;
     }
     return out;
@@ -205,7 +205,7 @@ Value mergesigroi(const Value &roi, keel::i64 sep, keel::Allocator *mr)
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     keel::Array<keel::usize> idx(N, scratch.allocator());
     for (keel::usize i = 0; i < N; ++i) idx[i] = i;
-    std::sort(idx.begin(), idx.end(),
+    keel::sort(idx.begin(), idx.end(),
               [&](keel::usize a, keel::usize b) { return roiStart(roi, a) < roiStart(roi, b); });
 
     keel::Array<keel::i64> starts(0, scratch.allocator()), ends(0, scratch.allocator());
@@ -283,8 +283,8 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
         // Compute total length first.
         keel::i64 totalLen = 0;
         for (keel::usize i = 0; i < N; ++i) {
-            const keel::i64 s = std::max<keel::i64>(1, roiStart(roi, i));
-            const keel::i64 e = std::min<keel::i64>(L, roiEnd(roi, i));
+            const keel::i64 s = keel::max<keel::i64>(1, roiStart(roi, i));
+            const keel::i64 e = keel::min<keel::i64>(L, roiEnd(roi, i));
             if (e >= s) totalLen += (e - s + 1);
         }
         if (totalLen == 0)
@@ -296,8 +296,8 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
             const keel::c64 *xd = x.complexData();
             keel::usize pos = 0;
             for (keel::usize i = 0; i < N; ++i) {
-                const keel::i64 s = std::max<keel::i64>(1, roiStart(roi, i));
-                const keel::i64 e = std::min<keel::i64>(L, roiEnd(roi, i));
+                const keel::i64 s = keel::max<keel::i64>(1, roiStart(roi, i));
+                const keel::i64 e = keel::min<keel::i64>(L, roiEnd(roi, i));
                 for (keel::i64 k = s; k <= e; ++k)
                     od[pos++] = xd[k - 1];
             }
@@ -310,8 +310,8 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
         keel::f64 *od = out.doubleDataMut();
         keel::usize pos = 0;
         for (keel::usize i = 0; i < N; ++i) {
-            const keel::i64 s = std::max<keel::i64>(1, roiStart(roi, i));
-            const keel::i64 e = std::min<keel::i64>(L, roiEnd(roi, i));
+            const keel::i64 s = keel::max<keel::i64>(1, roiStart(roi, i));
+            const keel::i64 e = keel::min<keel::i64>(L, roiEnd(roi, i));
             for (keel::i64 k = s; k <= e; ++k)
                 od[pos++] = x.elemAsDouble(keel::as<keel::usize>(k - 1));
         }
@@ -320,8 +320,8 @@ Value extractsigroi(const Value &x, const Value &roi, bool concat,
     // Cell-array form.
     Value out = Value::cell(N, N == 0 ? 0 : 1, mr);
     for (keel::usize i = 0; i < N; ++i) {
-        const keel::i64 s = std::max<keel::i64>(1, roiStart(roi, i));
-        const keel::i64 e = std::min<keel::i64>(L, roiEnd(roi, i));
+        const keel::i64 s = keel::max<keel::i64>(1, roiStart(roi, i));
+        const keel::i64 e = keel::min<keel::i64>(L, roiEnd(roi, i));
         const keel::i64 segLen = (e >= s) ? (e - s + 1) : 0;
         if (xComplex) {
             Value seg = segLen == 0

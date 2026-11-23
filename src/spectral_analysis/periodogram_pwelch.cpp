@@ -16,7 +16,6 @@
 #include <numkit/value/value.hpp>
 #include "../dsp_helpers.hpp"
 
-#include <algorithm>
 #include <keel/tuple.h>
 
 namespace numkit::signal {
@@ -32,7 +31,7 @@ keel::Array<keel::f64> resolveWelchWindow(const Value &window, keel::usize nx,
         for (keel::usize i = 0; i < winLen; ++i) win[i] = w[i];
         return win;
     }
-    keel::usize winLen = std::max<keel::usize>(
+    keel::usize winLen = keel::max<keel::usize>(
         1, keel::as<keel::usize>(keel::floor(keel::as<keel::f64>(nx) / 4.5)));
     if (winLen > nx) winLen = nx;
     keel::Array<keel::f64> win(winLen, 0.0, alloc);
@@ -47,7 +46,7 @@ periodogram(const Value &x, const Value &window, keel::usize nfft, keel::f64 fs,
             keel::Allocator *mr) {
     const keel::usize N = x.numel();
     const bool isCplx = x.isComplex();
-    if (nfft == 0) nfft = std::max<keel::usize>(256, nextPow2(N));
+    if (nfft == 0) nfft = keel::max<keel::usize>(256, nextPow2(N));
 
     keel::ArrayRef<keel::f64> winRef(
         (window.numel() == N) ? window.doubleData() : nullptr,
@@ -116,7 +115,7 @@ pwelch(const Value &x, const Value &window, keel::usize noverlap, keel::usize nf
     const auto win = resolveWelchWindow(window, nx, scratch.allocator());
     const keel::usize winLen = win.size();
     if (noverlap == 0) noverlap = winLen / 2;
-    if (nfft == 0)     nfft = std::max<keel::usize>(256, nextPow2(winLen));
+    if (nfft == 0)     nfft = keel::max<keel::usize>(256, nextPow2(winLen));
 
     if (isCplx) {
         auto Pxx = Value::matrix(nfft, 1, ValueType::DOUBLE, mr);
@@ -150,7 +149,7 @@ cpsd(const Value &x, const Value &y, const Value &window, keel::usize noverlap, 
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     const auto win = resolveWelchWindow(window, nx, scratch.allocator());
     if (noverlap == 0) noverlap = win.size() / 2;
-    if (nfft == 0)     nfft = std::max<keel::usize>(256, nextPow2(win.size()));
+    if (nfft == 0)     nfft = keel::max<keel::usize>(256, nextPow2(win.size()));
 
     const keel::usize nOut = nfft / 2 + 1;
     Value Pxy = Value::matrix(nOut, 1, ValueType::COMPLEX, mr);
@@ -175,7 +174,7 @@ mscohere(const Value &x, const Value &y, const Value &window, keel::usize noverl
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     const auto win = resolveWelchWindow(window, nx, scratch.allocator());
     if (noverlap == 0) noverlap = win.size() / 2;
-    if (nfft == 0)     nfft = std::max<keel::usize>(256, nextPow2(win.size()));
+    if (nfft == 0)     nfft = keel::max<keel::usize>(256, nextPow2(win.size()));
 
     const keel::usize nOut = nfft / 2 + 1;
     Value Cxy = Value::matrix(nOut, 1, ValueType::DOUBLE, mr);
@@ -200,7 +199,7 @@ tfestimate(const Value &x, const Value &y, const Value &window, keel::usize nove
     keel::ArenaTemp scratch = keel::get_scratch(mr);
     const auto win = resolveWelchWindow(window, nx, scratch.allocator());
     if (noverlap == 0) noverlap = win.size() / 2;
-    if (nfft == 0)     nfft = std::max<keel::usize>(256, nextPow2(win.size()));
+    if (nfft == 0)     nfft = keel::max<keel::usize>(256, nextPow2(win.size()));
 
     const keel::usize nOut = nfft / 2 + 1;
     Value Txy = Value::matrix(nOut, 1, ValueType::COMPLEX, mr);

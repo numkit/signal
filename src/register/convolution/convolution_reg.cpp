@@ -19,7 +19,6 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 #include <keel/tuple.h>
 
 namespace numkit::signal {
@@ -101,7 +100,7 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     keel::c64 *ccd = isCplx ? cfull.complexDataMut() : nullptr;
     const keel::f64 *ld = lagsfull.doubleData();
     const keel::usize nx = x.numel(), ny = y.numel();
-    const keel::usize N  = std::max(nx, ny);
+    const keel::usize N  = keel::max(nx, ny);
 
     // scaleopt (case-insensitive). Previously accepted-and-ignored.
     keel::String opt = scaleopt.clone();

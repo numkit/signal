@@ -3,6 +3,7 @@
 // isfir / isstable / isminphase / ismaxphase / islinphase / isallpass.
 
 #include <keel/core.h>
+#include <keel/algo.h>
 #include <keel/memory.h>
 #include <keel/complex.h>
 #include <keel/math.h>
@@ -14,7 +15,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -41,11 +41,11 @@ keel::f64 maxRootRadius(const Value &p, keel::Allocator *mr)
     if (r.isComplex()) {
         const keel::c64 *src = r.complexData();
         for (keel::usize i = 0; i < r.numel(); ++i)
-            mx = std::max(mx, keel::abs(src[i]));
+            mx = keel::max(mx, keel::abs(src[i]));
     } else {
         const keel::f64 *src = r.doubleData();
         for (keel::usize i = 0; i < r.numel(); ++i)
-            mx = std::max(mx, keel::abs(src[i]));
+            mx = keel::max(mx, keel::abs(src[i]));
     }
     return mx;
 }
@@ -117,7 +117,7 @@ bool ismaxphase(const Value &b, const Value &a, keel::Allocator *mr)
     if (b.numel() < 2) return false;          // constant has no zeros
     auto coeffs = trimTrailingZeros(b);
     if (coeffs.size() < 2) return false;
-    std::reverse(coeffs.begin(), coeffs.end());
+    keel::reverse(coeffs.begin(), coeffs.end());
     auto reversed = Value::matrix(1, coeffs.size(), ValueType::DOUBLE, mr);
     keel::f64 *dst = reversed.doubleDataMut();
     for (keel::usize i = 0; i < coeffs.size(); ++i) dst[i] = coeffs[i];

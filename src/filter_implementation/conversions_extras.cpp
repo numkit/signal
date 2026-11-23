@@ -2,6 +2,7 @@
 // sos2tf / sos2zp / tf2zpk + tf↔ss + sos↔ss + zpk↔ss adapters.
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -16,7 +17,6 @@
 #include <keel/tuple.h>
 #include <numkit/signal/filter_implementation/conversions.hpp>  // tf2sos
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -207,7 +207,7 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
     // when negated.
     auto AVal = Value::matrix(N, N, ValueType::DOUBLE, mr);
     keel::f64 *Ap = AVal.doubleDataMut();
-    std::fill(Ap, Ap + N * N, 0.0);
+    keel::fill(Ap, Ap + N * N, 0.0);
     // Top row (column-major: Ap[r + c*N]).
     for (keel::usize j = 0; j < N; ++j)
         Ap[0 + j * N] = -ah[j + 1];
@@ -218,7 +218,7 @@ tf2ss(const Value &b, const Value &a, keel::Allocator *mr)
     // B: column vector with 1 in FIRST entry.
     auto BVal = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     keel::f64 *Bp = BVal.doubleDataMut();
-    std::fill(Bp, Bp + N, 0.0);
+    keel::fill(Bp, Bp + N, 0.0);
     Bp[0] = 1.0;
 
     // C: 1xN row, C(j) = bh[j+1] - ah[j+1]*D for j = 0..N-1.
@@ -332,8 +332,8 @@ ss2tf(const Value &A, const Value &B, const Value &C, keel::f64 D,
         b_coeffs[N - 1 - k] = Dscalar * a_coeffs[N - 1 - k] + CMB[k];
 
     // Reverse to MATLAB ordering (highest-power first).
-    std::reverse(a_coeffs.begin(), a_coeffs.end());
-    std::reverse(b_coeffs.begin(), b_coeffs.end());
+    keel::reverse(a_coeffs.begin(), a_coeffs.end());
+    keel::reverse(b_coeffs.begin(), b_coeffs.end());
 
     return keel::make_tuple(rowFromVec(b_coeffs, mr), rowFromVec(a_coeffs, mr));
 }
@@ -387,7 +387,7 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
     };
     const keel::usize Knum = rowsOf(NUM);
     const keel::usize Kden = rowsOf(DEN);
-    const keel::usize K = std::max(Knum, Kden);
+    const keel::usize K = keel::max(Knum, Kden);
     if (K == 0)
         throw Error("ctf2zp: NUM/DEN must be non-empty",
                     0, 0, "ctf2zp", "", "numkit:ctf2zp:Empty");
@@ -429,8 +429,8 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
     keel::Array<keel::c64> zeros(mr), poles(mr);
     keel::f64 gainAccum = 1.0;
     for (keel::usize i = 0; i < K; ++i) {
-        Value brow = extractRow(NUM, std::min(i, Knum - 1), Knum);
-        Value arow = extractRow(DEN, std::min(i, Kden - 1), Kden);
+        Value brow = extractRow(NUM, keel::min(i, Knum - 1), Knum);
+        Value arow = extractRow(DEN, keel::min(i, Kden - 1), Kden);
         auto [zsec, psec, gsec] = tf2zpk(brow, arow, mr);
         const keel::usize nz = zsec.numel();
         const keel::usize np = psec.numel();
@@ -462,9 +462,9 @@ ctf2zp(const Value &NUM, const Value &DEN, const Value &SV, keel::Allocator *mr)
     Value P = Value::matrix(poles.size(), poles.empty() ? 0 : 1,
                              ValueType::COMPLEX, mr);
     if (!zeros.empty())
-        std::copy(zeros.begin(), zeros.end(), Z.complexDataMut());
+        keel::copy(zeros.begin(), zeros.end(), Z.complexDataMut());
     if (!poles.empty())
-        std::copy(poles.begin(), poles.end(), P.complexDataMut());
+        keel::copy(poles.begin(), poles.end(), P.complexDataMut());
     return {Z, P, gainAccum};
 }
 

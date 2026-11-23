@@ -14,7 +14,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 #include <numkit/value/argcheck.hpp>
 
 #include "../../signal_detail.hpp"

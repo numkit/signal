@@ -19,7 +19,6 @@
 #include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 #include <numkit/value/argcheck.hpp>
 
 namespace numkit::signal {
@@ -125,7 +124,7 @@ keel::i32 filtord(const Value &b, const Value &a)
     auto av = trimTrailingZeros(a);
     const keel::usize lb = bv.empty() ? 0 : bv.size();
     const keel::usize la = av.empty() ? 0 : av.size();
-    const keel::usize n  = std::max(lb, la);
+    const keel::usize n  = keel::max(lb, la);
     return (n == 0) ? 0 : keel::as<keel::i32>(n) - 1;
 }
 

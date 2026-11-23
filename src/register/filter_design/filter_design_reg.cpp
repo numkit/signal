@@ -20,7 +20,6 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/value.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 

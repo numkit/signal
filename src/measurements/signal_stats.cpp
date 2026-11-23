@@ -14,7 +14,6 @@
 
 #include <numkit/ops/reductions.hpp>  // numkit::ops::applyAlongDim
 
-#include <algorithm>
 
 namespace numkit::signal {
 

@@ -5,6 +5,7 @@
 // fftshift / ifftshift moved to transforms/transform_helpers.cpp).
 
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -493,7 +494,7 @@ Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
         }
         if (isRowVec && cols == 1) {
             Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
-            std::copy(od, od + len, rowOut.doubleDataMut());
+            keel::copy(od, od + len, rowOut.doubleDataMut());
             return detail::narrowDoubleToSingleIf(keel::move(rowOut), ySingle, mr);
         }
         return detail::narrowDoubleToSingleIf(keel::move(out), ySingle, mr);
@@ -536,7 +537,7 @@ Value demod(const Value &y, keel::f64 Fc, keel::f64 Fs,
     // Restore row-vector orientation if input was row.
     if (isRowVec && cols == 1) {
         Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
-        std::copy(out.doubleData(), out.doubleData() + len, rowOut.doubleDataMut());
+        keel::copy(out.doubleData(), out.doubleData() + len, rowOut.doubleDataMut());
         return detail::narrowDoubleToSingleIf(keel::move(rowOut), ySingle, mr);
     }
     return detail::narrowDoubleToSingleIf(keel::move(out), ySingle, mr);
@@ -668,7 +669,7 @@ Value modulate(const Value &x, keel::f64 Fc, keel::f64 Fs,
 
     if (isRowVec && len > 0) {
         Value rowOut = Value::matrix(1, len, ValueType::DOUBLE, mr);
-        std::copy(od, od + len, rowOut.doubleDataMut());
+        keel::copy(od, od + len, rowOut.doubleDataMut());
         return detail::narrowDoubleToSingleIf(keel::move(rowOut), xSingle, mr);
     }
     return detail::narrowDoubleToSingleIf(keel::move(out), xSingle, mr);

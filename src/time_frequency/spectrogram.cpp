@@ -17,7 +17,6 @@
 #include "../dsp_helpers.hpp"
 #include "../signal_detail.hpp"
 
-#include <algorithm>
 #include <keel/tuple.h>
 
 namespace numkit::signal {
@@ -63,18 +62,18 @@ spectrogram(const Value &x, const Value &window, keel::usize noverlap, keel::usi
     keel::usize winLen;
     keel::Array<keel::f64> win(scratch.allocator());
     if (window.numel() > 0) {
-        winLen = std::min(window.numel(), nx);
+        winLen = keel::min(window.numel(), nx);
         win.resize(winLen);
         for (keel::usize i = 0; i < winLen; ++i) win[i] = window.elemAsDouble(i);
     } else {
-        winLen = std::max<keel::usize>(
+        winLen = keel::max<keel::usize>(
             1, keel::as<keel::usize>(keel::floor(keel::as<keel::f64>(nx) / 4.5)));
         if (winLen > nx) winLen = nx;
         win.resize(winLen);
         keel::signal::hamming(win.as_mut_ref());
     }
     if (noverlap == 0) noverlap = winLen / 2;
-    if (nfft == 0)     nfft = std::max<keel::usize>(256, nextPow2(winLen));
+    if (nfft == 0)     nfft = keel::max<keel::usize>(256, nextPow2(winLen));
 
     const keel::usize nFreqs = nfft / 2 + 1;
     const keel::usize step = winLen - noverlap;

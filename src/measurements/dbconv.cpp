@@ -16,7 +16,6 @@
 
 #include <numkit/ops/helpers.hpp>  // createLike (toolboxes/builtin/src/)
 
-#include <algorithm>
 
 namespace numkit::signal {
 

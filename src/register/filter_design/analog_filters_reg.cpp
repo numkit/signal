@@ -4,6 +4,7 @@
 // Engine-coupled glue: marshals CallContext args/outs into the engine-free
 // compute API declared in the headers below. See project_layering_refactor.
 #include <keel/array.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/ref.h>
@@ -19,7 +20,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -249,8 +249,8 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
     keel::f64 loNum = 1e300, hiNum = 0.0;
     for (auto &r : ez) {
         const bool integ = keel::abs(keel::c64(r.re, r.im)) < 1e-10;
-        loNum = std::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
-        hiNum = std::max(hiNum, 3.0 * keel::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
+        loNum = keel::min(loNum, keel::abs(r.re + (integ ? 1.0 : 0.0)) + 2.0 * r.im);
+        hiNum = keel::max(hiNum, 3.0 * keel::abs(r.re + (integ ? 1.0 : 0.0)) + 1.5 * r.im);
     }
     const keel::i32 low = keel::as<keel::i32>(keel::round(log10v(0.1 * loNum) - 0.5));
     const keel::i32 high = keel::as<keel::i32>(keel::round(log10v(hiNum) + 0.5));
@@ -277,19 +277,19 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
     for (keel::usize k = 0; k < ez.size(); ++k)
         if (ez[k].im > keel::abs(ez[k].re))
             osc.push_back(keel::as<keel::i32>(k));
-    std::stable_sort(osc.begin(), osc.end(),
+    keel::stable_sort(osc.begin(), osc.end(),
                      [&](keel::i32 x, keel::i32 y) { return keel::abs(ez[x].re) > keel::abs(ez[y].re); });
     const keel::f64 npts2 = 2.0 + 8.0 / keel::ceil(keel::abs((diffzp + kEps) / 10.0));
 
     keel::Array<keel::f64> f = w.clone();
     keel::Array<keel::f64> z;
     for (keel::i32 k : osc) {
-        const keel::f64 r1 = std::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
+        const keel::f64 r1 = keel::max(0.8 * ez[k].im - 3.0 * keel::abs(ez[k].re),
                                    keel::pow(10.0, keel::as<keel::f64>(low)));
         const keel::f64 r2 = 1.2 * ez[k].im + 4.0 * keel::abs(ez[k].re);
         auto outside = [&](keel::f64 x) { return x > r2 || x < r1; };
-        z.resize(std::remove_if(z.begin(), z.end(), [&](keel::f64 x) { return !outside(x); }) - z.begin());
-        f.resize(std::remove_if(f.begin(), f.end(), [&](keel::f64 x) { return !outside(x); }) - f.begin());
+        z.resize(keel::remove_if(z.begin(), z.end(), [&](keel::f64 x) { return !outside(x); }) - z.begin());
+        f.resize(keel::remove_if(f.begin(), f.end(), [&](keel::f64 x) { return !outside(x); }) - f.begin());
         keel::i64 cnt = 0;
         for (keel::f64 x : w)
             if (x >= r1 && x <= r2)
@@ -298,7 +298,7 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
         z.append(seg.as_ref());
     }
     f.append(z.as_ref());
-    std::sort(f.begin(), f.end()); // w_long
+    keel::sort(f.begin(), f.end()); // w_long
 
     // Resample to exactly 200 points at evenly spaced INDEX positions,
     // linear in log10 (the caller-side interp1 of the classic code).
@@ -319,7 +319,7 @@ keel::Array<keel::f64> freqsAutoGridVec(const Value &b, const Value &a, keel::i3
         // (the value is unchanged: t == 0 kills the difference). The
         // unclamped read was benign in Release but tripped the MSVC
         // Debug iterator assert (bugs/closed/signal/freqs-autogrid-debug-oob).
-        const keel::usize j2 = std::min(j + 1, lw.size() - 1);
+        const keel::usize j2 = keel::min(j + 1, lw.size() - 1);
         const keel::f64 lv = lw[j] + t * (lw[j2] - lw[j]);
         out[i] = keel::pow(10.0, lv);
     }
@@ -356,7 +356,7 @@ void freqs_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     // form, resampled to n); only a VECTOR means "exactly these
     // frequencies" (bugs/closed/signal/freqs-scalar-w).
     if (args[2].numel() == 1 && !args[2].isChar() && !args[2].isString()) {
-        const keel::i32 npts = std::max(2, argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "freqs"), 3, "n", "freqs"));
+        const keel::i32 npts = keel::max(2, argcheck::expectedPositiveInteger(argcheck::expectedReal(args[2], 3, "n", "freqs"), 3, "n", "freqs"));
         auto w = freqsAutoGrid(args[0], args[1], ctx.engine->allocator(), npts);
         outs[0] = freqs(args[0], args[1], w, ctx.engine->allocator());
         if (nargout > 1)

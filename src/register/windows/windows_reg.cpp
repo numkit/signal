@@ -7,6 +7,7 @@
 // Phase 2b compute/register split â€” see project_layering_refactor memory.
 
 #include <keel/core.h>
+#include <keel/algo.h>
 #include <keel/math.h>
 #include <keel/format.h>
 #include <keel/memory.h>
@@ -20,7 +21,6 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/error.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -54,7 +54,7 @@ Value applySflag(keel::usize N, bool periodic, Fn impl, keel::Allocator *mr)
     Value full = impl(N + 1);
     Value out = Value::matrix(N, 1, ValueType::DOUBLE, mr);
     if (N > 0)
-        std::copy(full.doubleData(), full.doubleData() + N, out.doubleDataMut());
+        keel::copy(full.doubleData(), full.doubleData() + N, out.doubleDataMut());
     return out;
 }
 
@@ -223,9 +223,9 @@ void dpss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef
     const keel::usize N = keel::as<keel::usize>(argcheck::expectedPositiveInteger(
         argcheck::expectedReal(args[0], 1, "N", "dpss"), 1, "N", "dpss"));
     const keel::f64 nw = args[1].toScalar();
-    keel::usize k = std::min(N, std::max<keel::usize>(1, keel::as<keel::usize>(keel::round_i64(2.0 * nw))));
+    keel::usize k = keel::min(N, keel::max<keel::usize>(1, keel::as<keel::usize>(keel::round_i64(2.0 * nw))));
     if (args.size() >= 3 && args[2].isNumeric() && !args[2].isEmpty()) {
-        k = std::min(N, keel::as<keel::usize>(std::max(1.0, keel::round(args[2].elemAsDouble(args[2].numel() - 1)))));
+        k = keel::min(N, keel::as<keel::usize>(keel::max(1.0, keel::round(args[2].elemAsDouble(args[2].numel() - 1)))));
     }
     auto [E, V] = dpss(N, nw, k, ctx.engine->allocator());
     outs[0] = keel::move(E);

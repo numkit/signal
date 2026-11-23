@@ -28,8 +28,6 @@
 
 #include "../signal_detail.hpp"     // shared argcheck cores
 
-#include <algorithm>
-#include <numeric>
 
 
 namespace numkit::signal {
@@ -298,7 +296,7 @@ obw(const Value &x, const Value &fs, keel::f64 p, keel::Allocator *mr)
         for (keel::usize i = 1; i < nOut; ++i) {
             if (cum[i] >= target) {
                 const keel::f64 t = (target - cum[i - 1])
-                               / std::max(cum[i] - cum[i - 1], 1e-300);
+                               / keel::max(cum[i] - cum[i - 1], 1e-300);
                 return F[i - 1] + t * (F[i] - F[i - 1]) + 0.5 * df;
             }
         }
@@ -528,13 +526,13 @@ HarmonicAnalysis analyseHarmonics(keel::ArrayRef<keel::f64> P)
     // skirt. Everything else contributes to noise (after skipping DC
     // bins at the start).
     keel::Array<keel::u8> mark(nbins, 0); // 1=fund, 2=harm
-    for (keel::i32 j = std::max(0, f0 - kSkirtBins);
-         j < std::min(nbins, f0 + kSkirtBins + 1); ++j) mark[j] = 1;
+    for (keel::i32 j = keel::max(0, f0 - kSkirtBins);
+         j < keel::min(nbins, f0 + kSkirtBins + 1); ++j) mark[j] = 1;
     for (keel::i32 n = 2; n <= kHarmonics; ++n) {
         const keel::i32 bin = n * f0;
         if (bin >= nbins) break;
-        for (keel::i32 j = std::max(0, bin - kSkirtBins);
-             j < std::min(nbins, bin + kSkirtBins + 1); ++j) {
+        for (keel::i32 j = keel::max(0, bin - kSkirtBins);
+             j < keel::min(nbins, bin + kSkirtBins + 1); ++j) {
             if (mark[j] == 0) mark[j] = 2;
         }
     }
@@ -656,15 +654,15 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
     for (keel::i32 k = dcL; k <= dcR; ++k) Pxx[k] = 0.0;
 
     // Fundamental peak
-    keel::i32 iFund = keel::as<keel::i32>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    keel::i32 iFund = keel::as<keel::i32>(keel::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
     keel::i32 fL = 0, fR = 0;
     keel::f64 Pfund = getTone(iFund, fL, fR);
     for (keel::i32 k = fL; k <= fR; ++k) Pxx[k] = 0.0;
 
     // Max spur
-    keel::i32 spurBin = keel::as<keel::i32>(std::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
-    keel::i32 iLeftBin = std::max(0, spurBin - 1);
-    keel::i32 iRightBin = std::min(keel::as<keel::i32>(nBins) - 1, spurBin + 1);
+    keel::i32 spurBin = keel::as<keel::i32>(keel::max_element(Pxx.begin(), Pxx.end()) - Pxx.begin());
+    keel::i32 iLeftBin = keel::max(0, spurBin - 1);
+    keel::i32 iRightBin = keel::min(keel::as<keel::i32>(nBins) - 1, spurBin + 1);
     keel::i32 iSpur = iLeftBin;
     for (keel::i32 k = iLeftBin + 1; k <= iRightBin; ++k)
         if (Pxx[k] > Pxx[iSpur]) iSpur = k;
@@ -763,9 +761,9 @@ keel::f64 leakageToOverlapRatio(keel::f64 leakage)
         0.62876,  0.57164, 0.48362, 0.33120, 0.08660,
         0.0
     };
-    const keel::f64 clamped = std::max(0.0, std::min(1.0, leakage));
+    const keel::f64 clamped = keel::max(0.0, keel::min(1.0, leakage));
     const keel::f64 pos = clamped * 20.0;
-    const keel::usize idx = std::min<keel::usize>(19, keel::as<keel::usize>( keel::floor(pos) ));
+    const keel::usize idx = keel::min<keel::usize>(19, keel::as<keel::usize>( keel::floor(pos) ));
     const keel::f64 frac = pos - keel::as<keel::f64>(idx);
     return kTable[idx] * (1.0 - frac) + kTable[idx + 1] * frac;
 }
@@ -890,7 +888,7 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
                         0, 0, caller, "", keel::format("numkit:{}:expectedVector", caller));
         keel::usize wlen = 0;
         if (opts.timeResolution > 0.0) {
-            wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, keel::round(opts.timeResolution * fs))));
+            wlen = keel::min(N, keel::as<keel::usize>(keel::max(1.0, keel::round(opts.timeResolution * fs))));
         } else {
             keel::usize D = 2;
             if (N >= 64) {
@@ -901,10 +899,10 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
             }
             wlen = (N + D - 1) / D;
         }
-        wlen = std::max<keel::usize>(1, std::min(N, wlen));
+        wlen = keel::max<keel::usize>(1, keel::min(N, wlen));
         keel::usize nov = keel::as<keel::usize>(keel::floor(r * keel::as<keel::f64>(wlen)));
         if (nov >= wlen) nov = wlen - 1;
-        const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
+        const keel::usize hop = keel::max<keel::usize>(1, wlen - nov);
         const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
 
         Value P = Value::matrix(nF, nT, ValueType::DOUBLE, mr);
@@ -973,15 +971,15 @@ PspectrumResult pspectrumImpl(const Value &x, const Value &fsOrT,
     // 'power' mode
     keel::usize wlen = 0;
     if (opts.timeResolution > 0.0) {
-        wlen = std::min(N, keel::as<keel::usize>(std::max(1.0, keel::round(opts.timeResolution * fs))));
+        wlen = keel::min(N, keel::as<keel::usize>(keel::max(1.0, keel::round(opts.timeResolution * fs))));
     } else {
         const keel::usize target = keel::as<keel::usize>(keel::ceil(1024.0 * kaiserEnbwFactor(beta, mr)));
-        wlen = std::min(N, std::max<keel::usize>(2, target));
+        wlen = keel::min(N, keel::max<keel::usize>(2, target));
     }
-    wlen = std::max<keel::usize>(1, std::min(N, wlen));
+    wlen = keel::max<keel::usize>(1, keel::min(N, wlen));
     keel::usize nov = keel::as<keel::usize>(keel::floor(r * keel::as<keel::f64>(wlen)));
     if (nov >= wlen) nov = wlen - 1;
-    const keel::usize hop = std::max<keel::usize>(1, wlen - nov);
+    const keel::usize hop = keel::max<keel::usize>(1, wlen - nov);
     const keel::usize nT = (N > wlen) ? ((N - wlen + hop - 1) / hop + 1) : 1;
 
     const auto wFull = normalizedKaiser(wlen, beta, mr);
@@ -1218,7 +1216,7 @@ instbwWithTime(const Value &x, const Value &fs,
                 const keel::f64 df = fd[k] - mu;
                 varNum += col[k] * df * df;
             }
-            ibd[m] = scale * keel::sqrt(std::max(0.0, varNum / den));
+            ibd[m] = scale * keel::sqrt(keel::max(0.0, varNum / den));
         }
         return {keel::move(ibw), keel::move(spec.t)};
     }
@@ -1254,7 +1252,7 @@ instbwWithTime(const Value &x, const Value &fs,
                 const keel::f64 df = fd[k] - mu;
                 varNum += col[k] * df * df;
             }
-            ibd[m] = scale * keel::sqrt(std::max(0.0, varNum / den));
+            ibd[m] = scale * keel::sqrt(keel::max(0.0, varNum / den));
         }
     }
     return {keel::move(ibwMat), keel::move(tVec)};

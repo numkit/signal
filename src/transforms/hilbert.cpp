@@ -3,6 +3,7 @@
 // Analytic signal (hilbert) and envelopes delegating FFT/FIR/RMS kernels to keel::signal.
 
 #include <keel/arena.h>
+#include <keel/algo.h>
 #include <keel/array.h>
 #include <keel/complex.h>
 #include <keel/core.h>
@@ -15,7 +16,6 @@
 #include <numkit/value/value.hpp>
 #include "../dsp_helpers.hpp"
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -42,15 +42,15 @@ keel::Array<keel::usize> findpeaks_mindist(const keel::Array<keel::f64> &x, keel
         return peaks;
     }
     keel::Array<keel::usize> order = cand.clone(mr);
-    std::sort(order.begin(), order.end(),
+    keel::sort(order.begin(), order.end(),
               [&](keel::usize a, keel::usize b) { return x[a] > x[b]; });
     keel::Array<keel::u8> accepted(N, 0, mr);
     for (keel::usize idx : order) {
         bool ok = true;
         const keel::i64 lo = keel::as<keel::i64>(idx) - keel::as<keel::i64>(n);
         const keel::i64 hi = keel::as<keel::i64>(idx) + keel::as<keel::i64>(n);
-        for (keel::i64 j = std::max(keel::i64{0}, lo);
-             j <= std::min(keel::as<keel::i64>(N) - 1, hi); ++j)
+        for (keel::i64 j = keel::max(keel::i64{0}, lo);
+             j <= keel::min(keel::as<keel::i64>(N) - 1, hi); ++j)
             if (accepted[keel::as<keel::usize>(j)]) { ok = false; break; }
         if (ok) accepted[idx] = 1;
     }

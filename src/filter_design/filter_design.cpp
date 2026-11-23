@@ -21,7 +21,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -257,7 +256,7 @@ cell2sos(const Value &C, keel::Allocator *mr)
     if (outRows == 0) return {S, Value::scalar(g, mr)};
 
     keel::f64 *Sd = S.doubleDataMut();
-    std::fill(Sd, Sd + outRows * 6, 0.0);
+    keel::fill(Sd, Sd + outRows * 6, 0.0);
     for (keel::usize i = 0; i < outRows; ++i) {
         const Value &pair = C.cellAt(startIdx + i);
         if (!pair.isCell() || pair.numel() != 2)

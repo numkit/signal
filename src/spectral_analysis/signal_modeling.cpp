@@ -22,7 +22,6 @@
 #include <numkit/value/error.hpp>
 
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -247,7 +246,7 @@ ac2poly(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
     const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
-    auto res = levinsonCore(rv, std::max(p, 0));
+    auto res = levinsonCore(rv, keel::max(p, 0));
     return keel::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
 }
 
@@ -263,7 +262,7 @@ ac2rc(const Value &R, keel::Allocator *mr)
 {
     auto rv = readVec(R);
     const keel::i32 p = keel::as<keel::i32>(rv.size()) - 1;
-    auto res = levinsonCore(rv, std::max(p, 0));
+    auto res = levinsonCore(rv, keel::max(p, 0));
     return keel::make_tuple(colVec(res.k, mr),
                            Value::scalar(rv.empty() ? 0.0 : rv[0], mr));
 }
@@ -389,7 +388,7 @@ Value rc2is(const Value &k, keel::Allocator *mr)
     for (auto &y : v) {
         // Clamp into [-1, 1] to avoid asin domain errors on numerical
         // overshoots.
-        const keel::f64 c = std::max(-1.0, std::min(1.0, y));
+        const keel::f64 c = keel::max(-1.0, keel::min(1.0, y));
         y = kTwoOverPi * keel::asin(c);
     }
     return colVec(v, mr);
@@ -409,7 +408,7 @@ Value rc2lar(const Value &k, keel::Allocator *mr)
 {
     auto v = readVec(k);
     for (auto &y : v) {
-        const keel::f64 c = std::max(-0.99999999, std::min(0.99999999, y));
+        const keel::f64 c = keel::max(-0.99999999, keel::min(0.99999999, y));
         y = keel::log((1.0 + c) / (1.0 - c));
     }
     return colVec(v, mr);
@@ -518,7 +517,7 @@ arcov(const Value &x, keel::i32 p, keel::Allocator *mr)
     // Normalise by the count of summed terms (N - p) so e has the
     // same units as the residual variance.
     const keel::i32 N = keel::as<keel::i32>(v.size());
-    const keel::f64 norm = keel::as<keel::f64>(std::max(N - p, 1));
+    const keel::f64 norm = keel::as<keel::f64>(keel::max(N - p, 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
     return keel::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
@@ -530,7 +529,7 @@ armcov(const Value &x, keel::i32 p, keel::Allocator *mr)
     auto v = readVec(x);
     auto R = covMatrixForwardBackward(v, p);
     const keel::i32 N = keel::as<keel::i32>(v.size());
-    const keel::f64 norm = keel::as<keel::f64>(std::max(2 * (N - p), 1));
+    const keel::f64 norm = keel::as<keel::f64>(keel::max(2 * (N - p), 1));
     for (auto &r : R) r /= norm;
     auto res = solveArCov(R, p);
     return keel::make_tuple(rowVec(res.a, mr), Value::scalar(res.e, mr));
@@ -553,7 +552,7 @@ prony(const Value &h, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
         // Build linear system M · a_tail = -rhs, where M is (N-1-nb) × na
         // and rhs is length (N-1-nb). M[i, j] = h[nb+1+i-1-j] (padded
         // with zeros on the left), rhs[i] = h[nb+1+i].
-        const keel::i32 rows = std::max(N - 1 - nb, 1);
+        const keel::i32 rows = keel::max(N - 1 - nb, 1);
         keel::Array<keel::f64> M(keel::as<keel::usize>(rows) * keel::as<keel::usize>(na), 0.0, mr);
         keel::Array<keel::f64> rhs(rows, 0.0, mr);
         for (keel::i32 i = 0; i < rows; ++i) {
@@ -586,7 +585,7 @@ prony(const Value &h, keel::i32 nb, keel::i32 na, keel::Allocator *mr)
         keel::Array<keel::f64> b(nb + 1, 0.0, mr);
         for (keel::i32 i = 0; i <= nb; ++i) {
             keel::f64 s = 0.0;
-            for (keel::i32 k = 0; k <= std::min(i, na); ++k)
+            for (keel::i32 k = 0; k <= keel::min(i, na); ++k)
                 if (i - k < N) s += a[k] * hv[i - k];
             b[i] = s;
         }
@@ -677,7 +676,7 @@ stmcb(const Value &y, const Value &x, keel::i32 nb, keel::i32 na, keel::i32 nite
         for (keel::i32 n = 0; n < N; ++n) {
             keel::f64    se  = xv[n];
             keel::f64    sg  = yv[n];
-            const keel::i32 lim = std::min(na, n);
+            const keel::i32 lim = keel::min(na, n);
             for (keel::i32 i = 1; i <= lim; ++i) { se -= a[i] * e[n - i]; sg -= a[i] * g[n - i]; }
             e[n] = se;
             g[n] = sg;
@@ -722,7 +721,7 @@ Value corrmtx(const Value &x, keel::i32 m, keel::Allocator *mr)
     const keel::i32 cols = m + 1;
     auto X = Value::matrix(rows, cols, ValueType::DOUBLE, mr);
     keel::f64 *d = X.doubleDataMut();
-    std::fill(d, d + rows * cols, 0.0);
+    keel::fill(d, d + rows * cols, 0.0);
     for (keel::i32 j = 0; j < cols; ++j) {
         for (keel::i32 i = 0; i < rows; ++i) {
             const keel::i32 idx = i - j;     // x[i-j], zero outside [0, N)
@@ -797,7 +796,7 @@ Value poly2lsf(const Value &a, keel::Allocator *mr)
             if (a_ang > 1e-9 && a_ang < keel::kPi - 1e-9) angles.push_back(a_ang);
         }
     }
-    std::sort(angles.begin(), angles.end());
+    keel::sort(angles.begin(), angles.end());
     // Should yield N angles.
     if (keel::as<keel::i32>(angles.size()) > N) angles.resize(N);
     return colVec(angles, mr);
@@ -906,7 +905,7 @@ invfreqLSQ(keel::ArrayRef<keel::c64> H,
     keel::Array<keel::f64> rhs(2 * K, 0.0);
     for (keel::i32 k = 0; k < K; ++k) {
         // Build x^0..x^max(nb, na) once.
-        const keel::i32 M = std::max(nb, na);
+        const keel::i32 M = keel::max(nb, na);
         keel::Array<keel::c64> xpow(M + 1);
         xpow[0] = keel::c64(1.0, 0.0);
         for (keel::i32 i = 1; i <= M; ++i) xpow[i] = xpow[i - 1] * x[k];

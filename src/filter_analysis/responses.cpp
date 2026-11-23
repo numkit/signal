@@ -15,7 +15,6 @@
 #include <numkit/signal/digital_filtering/filter.hpp>   // filter()
 #include <numkit/signal/filter_analysis/frequency_response.hpp>  // freqz, phasez
 
-#include <algorithm>
 
 
 namespace numkit::signal {
@@ -60,11 +59,11 @@ keel::f64 maxRootRadius(const Value &p, keel::Allocator *mr)
     if (r.isComplex()) {
         const keel::c64 *src = r.complexData();
         for (keel::usize i = 0; i < r.numel(); ++i)
-            mx = std::max(mx, keel::abs(src[i]));
+            mx = keel::max(mx, keel::abs(src[i]));
     } else {
         const keel::f64 *src = r.doubleData();
         for (keel::usize i = 0; i < r.numel(); ++i)
-            mx = std::max(mx, keel::abs(src[i]));
+            mx = keel::max(mx, keel::abs(src[i]));
     }
     return mx;
 }
@@ -88,12 +87,12 @@ keel::usize impzlength(const Value &b, const Value &a, keel::Allocator *mr)
     responses_argcheck(b, a);
     if (isTrivialA(a)) {
         // FIR: response length is degree + 1 = numel(b).
-        return std::max<keel::usize>(b.numel(), 1);
+        return keel::max<keel::usize>(b.numel(), 1);
     }
     const keel::f64 rho = maxRootRadius(a, mr);
     if (!(rho > 0.0)) {
         // Trivial / no IIR contribution -> fall back to FIR length.
-        return std::max<keel::usize>(b.numel(), 1);
+        return keel::max<keel::usize>(b.numel(), 1);
     }
     if (rho >= 1.0) {
         // Unstable / undefined -> cap so callers don't accidentally

@@ -3,6 +3,7 @@
 // findpeaks delegating peak detection, prominence, width, and filtering to keel::signal::findpeaks.
 
 #include <keel/arena.h>
+#include <keel/algo.h>
 #include <keel/core.h>
 #include <keel/memory.h>
 #include <keel/signal.h>
@@ -11,7 +12,6 @@
 
 #include <numkit/value/value.hpp>
 
-#include <algorithm>
 #include <keel/tuple.h>
 
 namespace numkit::signal {
@@ -55,10 +55,10 @@ findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
     Value wids  = makeRowOrCol(keepN);
     Value proms = makeRowOrCol(keepN);
     if (keepN > 0) {
-        std::copy(res.values.begin(), res.values.end(), vals.doubleDataMut());
-        std::copy(res.locations.begin(), res.locations.end(), locs.doubleDataMut());
-        std::copy(res.widths.begin(), res.widths.end(), wids.doubleDataMut());
-        std::copy(res.prominences.begin(), res.prominences.end(), proms.doubleDataMut());
+        keel::copy(res.values.begin(), res.values.end(), vals.doubleDataMut());
+        keel::copy(res.locations.begin(), res.locations.end(), locs.doubleDataMut());
+        keel::copy(res.widths.begin(), res.widths.end(), wids.doubleDataMut());
+        keel::copy(res.prominences.begin(), res.prominences.end(), proms.doubleDataMut());
     }
     return keel::make_tuple(keel::move(vals), keel::move(locs),
                            keel::move(wids), keel::move(proms));

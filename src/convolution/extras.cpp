@@ -15,7 +15,6 @@
 #include <numkit/signal/convolution/convolution.hpp>     // xcorr
 #include <numkit/signal/transforms/fft.hpp>              // fft / ifft
 
-#include <algorithm>
 
 #include "signal_detail.hpp"     // shared argcheck cores
 
@@ -44,7 +43,7 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
     auto out = Value::matrix(1, n, ValueType::DOUBLE, mr);
     if (n == 0) return out;
     keel::f64 *dst = out.doubleDataMut();
-    std::fill(dst, dst + n, 0.0);
+    keel::fill(dst, dst + n, 0.0);
 
     // Fast path: when n ≥ nx + ny - 1 (the default form), circular
     // conv of period n equals linear conv truncated/padded to n. We
@@ -58,8 +57,8 @@ Value cconv(const Value &x, const Value &y, keel::usize n, keel::Allocator *mr)
         auto yp = Value::matrix(n, 1, ValueType::DOUBLE, mr);
         keel::f64 *xd = xp.doubleDataMut();
         keel::f64 *yd = yp.doubleDataMut();
-        std::fill(xd, xd + n, 0.0);
-        std::fill(yd, yd + n, 0.0);
+        keel::fill(xd, xd + n, 0.0);
+        keel::fill(yd, yd + n, 0.0);
         for (keel::usize i = 0; i < nx; ++i) xd[i] = readReal(x, i);
         for (keel::usize i = 0; i < ny; ++i) yd[i] = readReal(y, i);
         // nk's fft pads non-pow2 to nextPow2 internally, so for
@@ -221,7 +220,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
     if (anyCplx) {
         auto outC = Value::matrix(rOut, cOut, ValueType::COMPLEX, mr);
         keel::c64 *dstC = outC.complexDataMut();
-        std::fill(dstC, dstC + rOut * cOut, keel::c64(0.0, 0.0));
+        keel::fill(dstC, dstC + rOut * cOut, keel::c64(0.0, 0.0));
         auto getC = [](const Value &v, keel::usize r, keel::usize c, keel::usize rows) -> keel::c64 {
             const keel::usize idx = r + c * rows;
             return v.isComplex() ? v.complexData()[idx] : keel::c64(v.elemAsDouble(idx), 0.0);
@@ -245,7 +244,7 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
     }
     auto out = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
     keel::f64 *dst = out.doubleDataMut();
-    std::fill(dst, dst + rOut * cOut, 0.0);
+    keel::fill(dst, dst + rOut * cOut, 0.0);
 
     // FFT-based fast path: cross-correlation == conv2(A, flip(B)). Pad
     // A (zero) and the flipped B into rOut × cOut grids, fft2 both,
@@ -260,8 +259,8 @@ Value xcorr2(const Value &A, const Value &B, keel::Allocator *mr)
         auto Bf = Value::matrix(rOut, cOut, ValueType::DOUBLE, mr);
         keel::f64 *ad = Ap.doubleDataMut();
         keel::f64 *bd = Bf.doubleDataMut();
-        std::fill(ad, ad + cellsOut, 0.0);
-        std::fill(bd, bd + cellsOut, 0.0);
+        keel::fill(ad, ad + cellsOut, 0.0);
+        keel::fill(bd, bd + cellsOut, 0.0);
         // Place A in the top-left.
         for (keel::usize j = 0; j < cA; ++j)
             for (keel::usize i = 0; i < rA; ++i)
@@ -343,7 +342,7 @@ alignsignals(const Value &x, const Value &y, keel::i64 max_lag, keel::Allocator 
     const keel::usize pad_x = (d > 0) ? keel::as<keel::usize>(d) : 0;
     const keel::usize pad_y = (d < 0) ? keel::as<keel::usize>(-d) : 0;
     // Then trail-pad whichever ends short so both outputs are same length.
-    const keel::usize finalLen = std::max(nx + pad_x, ny + pad_y);
+    const keel::usize finalLen = keel::max(nx + pad_x, ny + pad_y);
 
     auto orient = [&](const Value &src, keel::usize lead_pad) {
         const bool isRow = (src.dims().rows() == 1);
@@ -351,7 +350,7 @@ alignsignals(const Value &x, const Value &y, keel::i64 max_lag, keel::Allocator 
                     ? Value::matrix(1, finalLen, ValueType::DOUBLE, mr)
                     : Value::matrix(finalLen, 1, ValueType::DOUBLE, mr);
         keel::f64 *dst = out.doubleDataMut();
-        std::fill(dst, dst + finalLen, 0.0);
+        keel::fill(dst, dst + finalLen, 0.0);
         const keel::usize n = src.numel();
         for (keel::usize i = 0; i < n; ++i)
             dst[lead_pad + i] = src.elemAsDouble(i);

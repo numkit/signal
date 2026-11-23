@@ -36,7 +36,6 @@
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-#include <algorithm>
 
 namespace numkit::signal {
 
@@ -125,7 +124,7 @@ CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
     if (N == 0) return R;
 
     // Defaults: tmean = mean(x(1:25)), tdev = std(x(1:25)).
-    const keel::usize baseN = std::min<keel::usize>(25, N);
+    const keel::usize baseN = keel::min<keel::usize>(25, N);
     keel::f64 tmeanEff = tmean_user;
     keel::f64 tdevEff  = tdev_user;
     if (!have_tmean) {
@@ -142,7 +141,7 @@ CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
         const keel::f64 m = sum / keel::as<keel::f64>(baseN);
         const keel::f64 var = (sumsq - keel::as<keel::f64>(baseN) * m * m)
                           / keel::as<keel::f64>(baseN > 1 ? baseN - 1 : 1);
-        tdevEff = keel::sqrt(std::max(0.0, var));
+        tdevEff = keel::sqrt(keel::max(0.0, var));
     }
     if (tdevEff <= 0.0) tdevEff = 1.0;  // guard
 
@@ -153,8 +152,8 @@ CusumResult cusum(const Value &x, keel::f64 climit, keel::f64 mshift,
     const keel::f64 half_shift = 0.5 * mshift;
     for (keel::usize i = 0; i < N; ++i) {
         const keel::f64 z = (x.elemAsDouble(i) - tmeanEff) / tdevEff;
-        up = std::max(0.0, up + z - half_shift);
-        lo = std::max(0.0, lo - z - half_shift);
+        up = keel::max(0.0, up + z - half_shift);
+        lo = keel::max(0.0, lo - z - half_shift);
         us[i] = up;
         ls[i] = lo;
         if (iup_first < 0 && up > climit) iup_first = keel::as<keel::i64>(i + 1);
