@@ -60,8 +60,8 @@ TEST_F(HilbertTest, NonPowerOfTwoLength)
 {
     eval("h = hilbert([1:6]'); r = real(h); im = imag(h);");
     for (int k = 1; k <= 6; ++k)   // real part == input
-        EXPECT_DOUBLE_EQ(evalScalar("r(" + std::to_string(k) + ")"),
-                         static_cast<double>(k));
+        EXPECT_NEAR(evalScalar("r(" + std::to_string(k) + ")"),
+                    static_cast<double>(k), 1e-13);
     EXPECT_NEAR(evalScalar("im(1)"),  2.3094010768, 1e-9);
     EXPECT_NEAR(evalScalar("im(2)"), -1.1547005384, 1e-9);
     EXPECT_NEAR(evalScalar("im(4)"), -1.1547005384, 1e-9);

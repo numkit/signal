@@ -20,7 +20,6 @@
 #include <numkit/value/argcheck.hpp>
 #include <numkit/value/value.hpp>
 
-#include <cstring>
 
 namespace numkit::signal {
 
@@ -32,7 +31,7 @@ inline FilterType parseFtype(const Value &v) {
     auto s = v.toString();
     // Case-insensitive compare
     auto eq = [&](const char *t) {
-        if (s.size() != std::strlen(t)) return false;
+        if (s.size() != keel::StringRef(t).size()) return false;
         for (keel::usize i = 0; i < s.size(); ++i)
             if (keel::to_ascii_lower(s[i]) != (keel::u8)t[i]) return false;
         return true;
