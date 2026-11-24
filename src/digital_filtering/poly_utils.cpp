@@ -1,48 +1,28 @@
 // toolboxes/signal/src/digital_filtering/poly_utils.cpp
-// Signal Processing toolbox polynomial utilities — polyscale + polystab.
-// Clean-room implementation written from public references
-// and the public references it cites:
-//   * A. V. Oppenheim & R. W. Schafer, Discrete-Time Signal Processing,
-//     3rd ed., Pearson, 2010 — z-transform scaling property (§3.2),
-//     minimum-phase systems / conjugate-reciprocal root reflection (§5.6);
-//   * J. D. Markel & A. H. Gray, Linear Prediction of Speech, Springer,
-//     1976 — radial root scaling as LPC bandwidth expansion;
-//   * M. H. Hayes, Statistical Digital Signal Processing and Modeling,
-//     Wiley, 1996 — spectral factorisation / stabilisation.
-// polyscale scales every root of a polynomial by a factor (coefficient
-// k is multiplied by alpha^k). polystab returns the minimum-phase
-// polynomial with the same magnitude response, reflecting any root with
-// |root| > 1 to its conjugate reciprocal 1/conj(root).
+// Signal Processing toolbox polynomial utilities — polyscale + polystab
+// (delegates numeric kernels to keel::signal).
 
-#include <keel/core.h>
-#include <keel/memory.h>
+#include <keel/algo.h>
 #include <keel/arena.h>
 #include <keel/array.h>
 #include <keel/complex.h>
-#include <keel/math.h>
+#include <keel/core.h>
+#include <keel/memory.h>
+#include <keel/signal.h>
 #include <numkit/signal/digital_filtering/poly_utils.hpp>
 
-#include <numkit/signal/internal/shims/polyfun.hpp>  // numkit::builtin::roots / numkit::builtin::poly
-
-#include <numkit/value/value.hpp>
 #include <numkit/value/error.hpp>
 #include <numkit/value/value.hpp>
 
-
-#include "../signal_detail.hpp"   // shared argcheck cores
+#include "../signal_detail.hpp"
 
 namespace numkit::signal {
 
 namespace {
 
-// ── Element access ────────────────────────────────────────────────────
-// Read element k of a Value uniformly as a Complex. Column-major linear
-// index; works for DOUBLE and COMPLEX inputs (the only numeric types
-// these two functions need to handle).
 inline keel::c64 elemAsComplex(const Value &v, keel::usize k)
 {
-    if (v.type() == ValueType::COMPLEX)
-        return v.complexData()[k];
+    if (v.type() == ValueType::COMPLEX) return v.complexData()[k];
     return keel::c64(v.elemAsDouble(k), 0.0);
 }
 
@@ -51,13 +31,10 @@ inline bool isComplex(const Value &v)
     return v.type() == ValueType::COMPLEX;
 }
 
-// A Value counts as a vector if it is empty, or one of rows/cols is 1
-// (a scalar is the 1×1 degenerate case), with no higher dimensions.
 inline bool isVectorShape(const Value &v)
 {
     const Dims &d = v.dims();
-    if (d.ndim() > 2)
-        return false;
+    if (d.ndim() > 2) return false;
     return v.isEmpty() || d.rows() == 1 || d.cols() == 1;
 }
 
@@ -65,14 +42,12 @@ void polyscale_argcheck(const Value &p, const Value &scale)
 {
     detail::requireFloatInput(p, "polyscale", "p", 1);
     detail::requireFloatInput(scale, "polyscale", "scale", 2);
-    if (p.isEmpty())
-        return;
+    if (p.isEmpty()) return;
     const keel::usize n = isVectorShape(p) ? p.numel() : p.dims().cols();
     const keel::usize scaleN = scale.numel();
     if (scaleN != 1 && scaleN != n) {
         throw numkit::Error(
-            "polyscale: scale must be a scalar or a vector matching the "
-            "polynomial length",
+            "polyscale: scale must be a scalar or a vector matching the polynomial length",
             0, 0, "polyscale", "", "numkit:polyscale:BadScale");
     }
 }
@@ -88,248 +63,71 @@ void polystab_argcheck(const Value &a)
 
 } // anonymous namespace
 
-// ─────────────────────────────────────────────────────────────────────
-// polyscale — scale every root of a polynomial by a factor.
-// Spec §1.  Scaling the roots of A(z) by α is the z-transform scaling
-// property A(z) ↦ A(z/α): the coefficient of z^(N-1-k) is multiplied by
-// α^k, so for a length-N coefficient row in descending-power order
-//     b[k] = a[k] · p(k),   k = 0 .. N-1
-// where p(k) = α^k for scalar α, or p(k) = alpha[k]^k for a row-vector
-// alpha (per-coefficient factor). A matrix `a` is treated as one
-// polynomial per row, each scaled with the same power factors.
-// ─────────────────────────────────────────────────────────────────────
-Value polyscale(const Value &p, const Value &scale,
-                keel::Allocator *mr)
+Value polyscale(const Value &p, const Value &scale, keel::Allocator *mr)
 {
-    // Reference (R2025b) validates p and scale as double/single/complex
-    // (logical and integer classes are rejected with sigcheckfloattype).
     polyscale_argcheck(p, scale);
     const bool pSingle = (p.type() == ValueType::SINGLE);
-
-    // Edge case: empty polynomial → empty result (0×0).
     if (p.isEmpty())
         return Value::matrix(0, 0, pSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
-    // Determine the per-row layout of `a`.
-    //   * vector input  → one polynomial of length n (output is 1×n row)
-    //   * matrix m×n    → m polynomials, each length n (output m×n)
     const Dims &pd = p.dims();
-    keel::usize m, n;
-    if (isVectorShape(p)) {
-        m = 1;
-        n = p.numel();
-    } else {
-        m = pd.rows();
-        n = pd.cols();
-    }
-
-    // Resolve the scale argument: either a scalar or a length-n vector.
-    const keel::usize scaleN = scale.numel();
-    const bool scaleScalar = (scaleN == 1);
-
-    // Result is complex iff either input is complex.
+    const keel::usize m = isVectorShape(p) ? 1 : pd.rows();
+    const keel::usize n = isVectorShape(p) ? p.numel() : pd.cols();
+    const keel::usize total = m * n;
     const bool wantComplex = isComplex(p) || isComplex(scale);
 
-    // ── Build the per-coefficient power factors p(k), k = 0 .. n-1 ────
-    // p(0) = α^0 = 1 always; p(k) = base(k)^k where base(k) is the
-    // scalar α or alpha[k].  Computed once, reused for every row.
-    keel::ArenaTemp arena = keel::get_scratch(mr);
-    keel::Array<keel::c64> factor(n, arena.allocator());
-    if (n > 0)
-        factor[0] = keel::c64(1.0, 0.0);
-    if (scaleScalar) {
-        const keel::c64 a = elemAsComplex(scale, 0);
-        // Successive multiplication: factor[k] = factor[k-1] · α.
-        for (keel::usize k = 1; k < n; ++k)
-            factor[k] = factor[k - 1] * a;
-    } else {
-        // Per-coefficient base: factor[k] = alpha[k]^k via repeated mul.
-        for (keel::usize k = 1; k < n; ++k) {
-            const keel::c64 base = elemAsComplex(scale, k);
-            keel::c64 acc(1.0, 0.0);
-            for (keel::usize e = 0; e < k; ++e)
-                acc *= base;
-            factor[k] = acc;
-        }
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    if (wantComplex) {
+        keel::Array<keel::c64> pBuf(total, scratch.allocator());
+        for (keel::usize i = 0; i < total; ++i) pBuf[i] = elemAsComplex(p, i);
+        keel::Array<keel::c64> sBuf(scale.numel(), scratch.allocator());
+        for (keel::usize i = 0; i < scale.numel(); ++i) sBuf[i] = elemAsComplex(scale, i);
+        Value out = Value::matrix(m, n, ValueType::COMPLEX, mr);
+        (void)keel::signal::polyscale_c64(
+            pBuf.as_ref(), m, n, sBuf.as_ref(),
+            keel::MutArrayRef<keel::c64>(out.complexDataMut(), total), scratch.allocator());
+        return out;
     }
 
-    // ── Apply: b(i,k) = a(i,k) · factor(k) ───────────────────────────
-    Value out = Value::matrix(m, n,
-                              wantComplex ? ValueType::COMPLEX
-                                          : ValueType::DOUBLE,
-                              mr);
-    if (wantComplex) {
-        keel::c64 *dst = out.complexDataMut();
-        for (keel::usize i = 0; i < m; ++i) {
-            for (keel::usize k = 0; k < n; ++k) {
-                // Column-major linear index for an m×n result.
-                const keel::usize lin = k * m + i;
-                dst[lin] = elemAsComplex(p, lin) * factor[k];
-            }
-        }
-    } else {
-        keel::f64 *dst = out.doubleDataMut();
-        for (keel::usize i = 0; i < m; ++i) {
-            for (keel::usize k = 0; k < n; ++k) {
-                const keel::usize lin = k * m + i;
-                // factor[k] is purely real here (both inputs real).
-                dst[lin] = p.elemAsDouble(lin) * factor[k].real();
-            }
-        }
-    }
-    return detail::narrowDoubleToSingleIf(keel::move(out), pSingle && !wantComplex, mr);
+    keel::Array<keel::f64> pBuf(total, scratch.allocator());
+    for (keel::usize i = 0; i < total; ++i) pBuf[i] = p.elemAsDouble(i);
+    keel::Array<keel::f64> sBuf(scale.numel(), scratch.allocator());
+    for (keel::usize i = 0; i < scale.numel(); ++i) sBuf[i] = scale.elemAsDouble(i);
+    Value out = Value::matrix(m, n, ValueType::DOUBLE, mr);
+    (void)keel::signal::polyscale(
+        pBuf.as_ref(), m, n, sBuf.as_ref(),
+        keel::MutArrayRef<keel::f64>(out.doubleDataMut(), total), scratch.allocator());
+    return detail::narrowDoubleToSingleIf(keel::move(out), pSingle, mr);
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// polystab — stabilise a polynomial (minimum-phase version).
-// Spec §2.  Returns a polynomial with the same magnitude response as the
-// input but with every root inside or on the unit circle. A root r with
-// |r| > 1 is reflected to its conjugate reciprocal 1/conj(r) — magnitude
-// 1/|r|, same angle — which preserves |A(e^jω)| and changes only the
-// phase (Oppenheim & Schafer §5.6, minimum-phase systems).
-// Procedure:
-//   1. roots r_k of a            (numkit::builtin::roots)
-//   2. r_k ← 1/conj(r_k)  when |r_k| > 1, else keep
-//   3. rebuild monic poly p      (numkit::builtin::poly)
-//   4. p ← p · (first non-zero coefficient of a)   — restore gain
-//   5. a real → take real part to drop round-off
-// ─────────────────────────────────────────────────────────────────────
 Value polystab(const Value &a, keel::Allocator *mr)
 {
-    // Reference (R2025b): double/single/complex vectors only — logical
-    // and integer classes are rejected (the eig step voices inputType).
     polystab_argcheck(a);
     const bool aSingle = (a.type() == ValueType::SINGLE);
-
-    // Empty input → empty result (0×0).
     if (a.isEmpty())
         return Value::matrix(0, 0, aSingle ? ValueType::SINGLE : ValueType::DOUBLE, mr);
 
     const bool aComplex = isComplex(a);
     const keel::usize n = a.numel();
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
 
-    // Scalar input: no roots to move — return unchanged, as a 1×1 row.
-    if (n == 1) {
-        Value out = Value::matrix(1, 1,
-                                  aComplex ? ValueType::COMPLEX
-                                           : ValueType::DOUBLE,
-                                  mr);
-        if (aComplex)
-            out.complexDataMut()[0] = elemAsComplex(a, 0);
-        else
-            out.doubleDataMut()[0] = a.elemAsDouble(0);
-        return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
-    }
-
-    // ── Step 4 (gain): first non-zero coefficient of a ───────────────
-    // roots() ignores leading zeros, so the gain is taken from the
-    // first coefficient that is actually non-zero. If every coefficient
-    // is zero, a is the zero polynomial — return it unchanged.
-    keel::c64 gain(0.0, 0.0);
-    bool gainFound = false;
-    for (keel::usize k = 0; k < n; ++k) {
-        const keel::c64 c = elemAsComplex(a, k);
-        if (c != keel::c64(0.0, 0.0)) {
-            gain = c;
-            gainFound = true;
-            break;
-        }
-    }
-    if (!gainFound) {
-        // All-zero polynomial: nothing to stabilise. Return a copy as a
-        // 1×n row.
-        Value out = Value::matrix(1, n,
-                                  aComplex ? ValueType::COMPLEX
-                                           : ValueType::DOUBLE,
-                                  mr);
-        if (aComplex) {
-            keel::c64 *dst = out.complexDataMut();
-            for (keel::usize k = 0; k < n; ++k)
-                dst[k] = elemAsComplex(a, k);
-        } else {
-            keel::f64 *dst = out.doubleDataMut();
-            for (keel::usize k = 0; k < n; ++k)
-                dst[k] = a.elemAsDouble(k);
-        }
-        return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
-    }
-
-    // ── Step 1: roots of a ───────────────────────────────────────────
-    keel::ArenaTemp arena = keel::get_scratch(mr);
-    Value aWork = detail::widenSingleToDouble(a, arena.allocator());
-    Value rv = numkit::builtin::roots(aWork, arena.allocator());
-    const keel::usize nr = rv.numel();
-
-    // No finite roots (e.g. a degree-0 leftover after stripping) — the
-    // stabilised polynomial is just the gain.
-    if (nr == 0) {
-        Value out = Value::matrix(1, 1,
-                                  aComplex ? ValueType::COMPLEX
-                                           : ValueType::DOUBLE,
-                                  mr);
-        if (aComplex)
-            out.complexDataMut()[0] = gain;
-        else
-            out.doubleDataMut()[0] = gain.real();
-        return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
-    }
-
-    // ── Step 2: reflect roots with |r| > 1 to 1/conj(r) ──────────────
-    keel::Array<keel::c64> stabRoots(nr, arena.allocator());
-    bool rootsComplex = false;
-    for (keel::usize k = 0; k < nr; ++k) {
-        keel::c64 r = elemAsComplex(rv, k);
-        const keel::f64 mag = keel::abs(r);
-        if (mag > 1.0) {
-            // Conjugate reciprocal: magnitude 1/|r|, unchanged angle.
-            // 1/conj(r) = r / |r|^2.
-            r = r / (mag * mag);
-        }
-        // A root on the unit circle satisfies 1/conj(r) == r, so the
-        // boundary is a no-op; a zero root stays zero. Both handled by
-        // the |r| > 1 guard above.
-        stabRoots[k] = r;
-        if (r.imag() != 0.0)
-            rootsComplex = true;
-    }
-
-    // ── Step 3: rebuild the monic polynomial from the stabilised roots.
-    // numkit::builtin::poly needs a COMPLEX vector to yield a COMPLEX result;
-    // if all stabilised roots are real, a DOUBLE root vector suffices.
-    Value rootVec;
-    if (rootsComplex) {
-        rootVec = Value::matrix(nr, 1, ValueType::COMPLEX, arena.allocator());
-        keel::c64 *rd = rootVec.complexDataMut();
-        for (keel::usize k = 0; k < nr; ++k)
-            rd[k] = stabRoots[k];
-    } else {
-        rootVec = Value::matrix(nr, 1, ValueType::DOUBLE, arena.allocator());
-        keel::f64 *rd = rootVec.doubleDataMut();
-        for (keel::usize k = 0; k < nr; ++k)
-            rd[k] = stabRoots[k].real();
-    }
-    Value monic = numkit::builtin::poly(rootVec, arena.allocator());
-    const keel::usize mlen = monic.numel();
-
-    // ── Steps 4 & 5: apply gain, drop round-off for real input ───────
-    // Result is complex only if the input a is complex; for a real a,
-    // reflection maps conjugate pairs to conjugate pairs so the
-    // rebuilt polynomial is real up to round-off — take the real part.
-    Value out = Value::matrix(1, mlen,
-                              aComplex ? ValueType::COMPLEX
-                                       : ValueType::DOUBLE,
-                              mr);
     if (aComplex) {
-        keel::c64 *dst = out.complexDataMut();
-        for (keel::usize k = 0; k < mlen; ++k)
-            dst[k] = elemAsComplex(monic, k) * gain;
-    } else {
-        keel::f64 *dst = out.doubleDataMut();
-        const keel::f64 g = gain.real();
-        for (keel::usize k = 0; k < mlen; ++k)
-            dst[k] = elemAsComplex(monic, k).real() * g;
+        keel::Array<keel::c64> av(n, scratch.allocator());
+        for (keel::usize k = 0; k < n; ++k) av[k] = elemAsComplex(a, k);
+        keel::Array<keel::c64> res(scratch.allocator());
+        (void)keel::signal::polystab_c64(av.as_ref(), res, scratch.allocator());
+        Value out = Value::matrix(1, res.size(), ValueType::COMPLEX, mr);
+        if (!res.empty()) keel::copy_n(out.complexDataMut(), res.data(), res.size());
+        return out;
     }
-    return detail::narrowDoubleToSingleIf(keel::move(out), aSingle && !aComplex, mr);
+
+    keel::Array<keel::f64> av(n, scratch.allocator());
+    for (keel::usize k = 0; k < n; ++k) av[k] = a.elemAsDouble(k);
+    keel::Array<keel::f64> res(scratch.allocator());
+    (void)keel::signal::polystab(av.as_ref(), res, scratch.allocator());
+    Value out = Value::matrix(1, res.size(), ValueType::DOUBLE, mr);
+    if (!res.empty()) keel::copy_n(out.doubleDataMut(), res.data(), res.size());
+    return detail::narrowDoubleToSingleIf(keel::move(out), aSingle, mr);
 }
 
 } // namespace numkit::signal
