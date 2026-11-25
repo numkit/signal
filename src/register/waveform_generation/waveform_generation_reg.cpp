@@ -211,7 +211,7 @@ void chirp_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
                         0, 0, "chirp", "", "numkit:chirp:badShapeType");
         shape = args[6].toString();
     }
-    outs[0] = chirp(args[0], f0, t1, f1, method, ctx.engine->allocator(), phi, shape);
+    outs[0] = chirp(args[0], f0, t1, f1, method, phi, shape, ctx.engine->allocator());
 }
 
 } // namespace detail

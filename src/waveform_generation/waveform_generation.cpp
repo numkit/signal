@@ -210,8 +210,8 @@ Value diric(const Value &x, keel::i32 n, keel::Allocator *mr)
 }
 
 Value chirp(const Value &t, keel::f64 f0, keel::f64 t1, keel::f64 f1,
-            keel::StringRef method, keel::Allocator *mr,
-            keel::f64 phi_deg, keel::StringRef quad_shape)
+            keel::StringRef method, keel::f64 phi_deg, keel::StringRef quad_shape,
+            keel::Allocator *mr)
 {
     if (t1 <= 0)
         throw Error("chirp: t1 must be positive",

@@ -107,21 +107,23 @@ Value pulstranHandle(keel::ArrayRef<keel::f64>           t,
 ///                       \f$ \beta = (f_1/f_0)^{1/t_1} \f$. Requires
 ///                       `f0 > 0`, `f1 > 0`, `f1 != f0`.
 ///
-/// @param t       Time samples.
-/// @param f0      Initial frequency in Hz.
-/// @param t1      Reference time.
-/// @param f1      Frequency at time `t1` (Hz).
-/// @param method  `"linear"` (default), `"quadratic"`, or `"logarithmic"`.
-/// @param mr      Memory resource (nullptr → process default).
-/// @return        Same-shape DOUBLE array.
-Value chirp(const Value &                t,
-            keel::f64                       f0,
-            keel::f64                       t1,
-            keel::f64                       f1,
-            keel::StringRef              method = "linear",
-            keel::Allocator *  mr     = nullptr,
-            keel::f64                       phi_deg = 0.0,
-            keel::StringRef              quad_shape = "");
+/// @param t          Time samples.
+/// @param f0         Initial frequency in Hz.
+/// @param t1         Reference time.
+/// @param f1         Frequency at time `t1` (Hz).
+/// @param method     `"linear"` (default), `"quadratic"`, or `"logarithmic"`.
+/// @param phi_deg    Initial phase in degrees. Default 0.
+/// @param quad_shape Quadratic shape (`"concave"` or `"convex"`). Default `""`.
+/// @param mr         Memory resource (nullptr → process default).
+/// @return           Same-shape DOUBLE array.
+Value chirp(const Value &       t,
+            keel::f64           f0,
+            keel::f64           t1,
+            keel::f64           f1,
+            keel::StringRef     method     = "linear",
+            keel::f64           phi_deg    = 0.0,
+            keel::StringRef     quad_shape = "",
+            keel::Allocator *   mr         = nullptr);
 
 /// Square wave with period 2π.
 ///
