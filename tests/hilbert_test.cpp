@@ -76,3 +76,29 @@ TEST_F(HilbertTest, NonPowerOfTwoConstantEnvelope)
     for (int k = 1; k <= 100; k += 17)
         EXPECT_NEAR(evalScalar("e(" + std::to_string(k) + ")"), 1.0, 1e-9);
 }
+
+TEST_F(HilbertTest, PreservesVectorOrientationAndOperatesColumnwiseOnMatrices)
+{
+    // Row vector stays 1xN, column vector stays Nx1.
+    eval("hr = hilbert([1 2 3 4]); hc = hilbert([1; 2; 3; 4]);");
+    EXPECT_EQ(evalScalar("size(hr, 1)"), 1.0);
+    EXPECT_EQ(evalScalar("size(hr, 2)"), 4.0);
+    EXPECT_EQ(evalScalar("size(hc, 1)"), 4.0);
+    EXPECT_EQ(evalScalar("size(hc, 2)"), 1.0);
+
+    // 2-D matrix operates along columns (first non-singleton dim).
+    eval("A = [1 2; 3 4; 5 6]; H = hilbert(A);");
+    EXPECT_EQ(evalScalar("size(H, 1)"), 3.0);
+    EXPECT_EQ(evalScalar("size(H, 2)"), 2.0);
+    EXPECT_NEAR(evalScalar("real(H(1,1))"), 1.0, 1e-12);
+    EXPECT_NEAR(evalScalar("imag(H(1,1))"), 1.1547005383792515, 1e-9);
+    EXPECT_NEAR(evalScalar("real(H(2,2))"), 4.0, 1e-12);
+    EXPECT_NEAR(evalScalar("imag(H(2,2))"), -2.309401076758503, 1e-9);
+
+    // Explicit n zero-pads or truncates along the first non-singleton dim.
+    eval("Hp = hilbert(A, 8); Ht = hilbert(A, 2);");
+    EXPECT_EQ(evalScalar("size(Hp, 1)"), 8.0);
+    EXPECT_EQ(evalScalar("size(Hp, 2)"), 2.0);
+    EXPECT_EQ(evalScalar("size(Ht, 1)"), 2.0);
+    EXPECT_EQ(evalScalar("size(Ht, 2)"), 2.0);
+}

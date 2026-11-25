@@ -122,13 +122,65 @@ void env_peak(const Value &x, keel::usize n, keel::Array<keel::f64> &up,
 
 } // anonymous
 
-Value hilbert(const Value &x, keel::Allocator *mr) {
-    const keel::usize N = x.numel();
+namespace {
+
+Value hilbert_impl(const Value &x, bool hasN, keel::usize nArg, keel::Allocator *mr) {
+    const auto &inDims = x.dims();
+    const keel::i32 nd = inDims.ndims();
+    keel::i32 dim = 0;
+    for (keel::i32 d = 0; d < nd; ++d) {
+        if (inDims.dim(d) != 1) {
+            dim = d;
+            break;
+        }
+    }
+    const keel::usize L = (dim < nd) ? inDims.dim(dim) : 0;
+    const keel::usize N = hasN ? nArg : L;
+
+    keel::usize outDims[Dims::kMaxRank];
+    for (keel::i32 d = 0; d < nd; ++d) outDims[d] = inDims.dim(d);
+    if (dim < nd) outDims[dim] = N;
+
+    keel::usize outNumel = (nd > 0) ? 1 : 0;
+    for (keel::i32 d = 0; d < nd; ++d) outNumel *= outDims[d];
+    if (outNumel == 0 || L == 0) {
+        return Value::matrixND(outDims, nd, ValueType::DOUBLE, mr);
+    }
+
+    Value out = Value::matrixND(outDims, nd, ValueType::COMPLEX, mr);
+    keel::c64 *outPtr = out.complexDataMut();
+    const keel::usize nSlices = outNumel / N;
+
     keel::ArenaTemp scratch = keel::get_scratch(mr);
-    const auto xr = read_real(x, scratch.allocator());
-    keel::Array<keel::c64> buf(N, keel::c64(0.0, 0.0), scratch.allocator());
-    (void)keel::signal::hilbert(xr.as_ref(), buf.as_mut_ref(), scratch.allocator());
-    return packComplexResult(buf.data(), N, mr);
+    keel::Array<keel::f64> sliceIn(N, 0.0, scratch.allocator());
+    const keel::usize copyLen = keel::min(L, N);
+    const bool isCplx = x.isComplex();
+    const keel::c64 *cxPtr = isCplx ? x.complexData() : nullptr;
+
+    for (keel::usize s = 0; s < nSlices; ++s) {
+        const keel::usize srcBase = s * L;
+        for (keel::usize i = 0; i < copyLen; ++i) {
+            sliceIn[i] = isCplx ? cxPtr[srcBase + i].re : x.elemAsDouble(srcBase + i);
+        }
+        for (keel::usize i = copyLen; i < N; ++i) {
+            sliceIn[i] = 0.0;
+        }
+        (void)keel::signal::hilbert(
+            sliceIn.as_ref(),
+            keel::MutArrayRef<keel::c64>(outPtr + s * N, N),
+            scratch.allocator());
+    }
+    return out;
+}
+
+} // anonymous
+
+Value hilbert(const Value &x, keel::Allocator *mr) {
+    return hilbert_impl(x, false, 0, mr);
+}
+
+Value hilbert(const Value &x, keel::usize n, keel::Allocator *mr) {
+    return hilbert_impl(x, true, n, mr);
 }
 
 Value envelope(const Value &x, keel::Allocator *mr) {

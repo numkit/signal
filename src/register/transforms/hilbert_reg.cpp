@@ -24,7 +24,15 @@ namespace detail {
 void hilbert_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 1, 2, "hilbert");
-    outs[0] = hilbert(args[0], ctx.engine->allocator());
+    auto *mr = ctx.engine->allocator();
+    if (args.size() >= 2 && !args[1].isEmpty()) {
+        const keel::f64 nVal = argcheck::expectedReal(args[1], 2, "n", "hilbert");
+        argcheck::expectedNonNegative(nVal, 2, "n", "hilbert");
+        const keel::i32 nInt = argcheck::expectedInteger(nVal, 2, "n", "hilbert");
+        outs[0] = hilbert(args[0], keel::as<keel::usize>(nInt), mr);
+        return;
+    }
+    outs[0] = hilbert(args[0], mr);
 }
 
 void envelope_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)

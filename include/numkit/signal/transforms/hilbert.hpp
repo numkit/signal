@@ -37,6 +37,19 @@ namespace numkit::signal {
 Value hilbert(const Value &                x,
               keel::Allocator *  mr = nullptr);
 
+/// Analytic signal via the discrete Hilbert transform with explicit FFT length `n`.
+///
+/// Operates along the first non-singleton dimension of `x`, zero-padding or
+/// truncating each slice to length `n`.
+///
+/// @param x   Input signal (vector, matrix, or N-D array; real part is used).
+/// @param n   Transform length along the first non-singleton dimension.
+/// @param mr  Memory resource (nullptr → process default).
+/// @return    COMPLEX array matching `x`'s shape with the active dimension set to `n`.
+Value hilbert(const Value &                x,
+              keel::usize                  n,
+              keel::Allocator *  mr = nullptr);
+
 /// Amplitude envelope of a real signal: `|hilbert(x)|`.
 ///
 /// @param x   Real input signal.
