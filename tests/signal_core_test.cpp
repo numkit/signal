@@ -405,10 +405,10 @@ TEST_F(SignalCoreTest, ChirpBadT1Throws)
 
 TEST_F(SignalCoreTest, RectpulsDefaultWidthOne)
 {
-    // Default width 1 → support is (-0.5, 0.5).
+    // Default width 1 -> half-open support [-0.5, 0.5).
     eval("y = rectpuls([-0.6 -0.5 -0.3 0 0.3 0.5 0.6]);");
     EXPECT_DOUBLE_EQ(evalScalar("y(1)"), 0.0);
-    EXPECT_DOUBLE_EQ(evalScalar("y(2)"), 0.0);  // boundary excluded
+    EXPECT_DOUBLE_EQ(evalScalar("y(2)"), 1.0);  // left boundary included
     EXPECT_DOUBLE_EQ(evalScalar("y(3)"), 1.0);
     EXPECT_DOUBLE_EQ(evalScalar("y(4)"), 1.0);
     EXPECT_DOUBLE_EQ(evalScalar("y(5)"), 1.0);
