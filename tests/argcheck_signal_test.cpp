@@ -560,3 +560,19 @@ TEST_F(ArgcheckSignalTest, DirectCApiContracts)
         FAIL() << "medfilt1 k=0 must not throw";
     }
 }
+
+TEST_F(ArgcheckSignalTest, HardenedRegEmptyAndInvalidInputs)
+{
+    expectError("bandpass(zeros(16, 1), 0.2);", "numkit:bandpass:badCutoff");
+    expectError("bandpass(zeros(16, 1), 'ab');", "numkit:bandpass:badCutoff");
+    expectError("bandpass(zeros(16, 1), [0.1 NaN]);", "numkit:bandpass:badCutoff");
+    expectError("bandstop(zeros(16, 1), []);", "numkit:bandstop:badCutoff");
+    expectError("sigrangebinmask(1:8, 'ab');", "numkit:sigrangebinmask:BadBound");
+    expectError("pspectrum(1:32, 100, 'FrequencyLimits', {1, 10});", "numkit:pspectrum:invalidFrequencyLimits");
+    expectError("pspectrum(1:32, 100, 'FrequencyLimits', [0 Inf]);", "numkit:pspectrum:invalidFrequencyLimits");
+    expectError("vco(zeros(8, 1), 'ab', 100);", "numkit:vco:BadRange");
+    expectError("vco(zeros(8, 1), [0 NaN], 100);", "numkit:vco:BadRange");
+    expectError("ss2sos(0, 1, 1, 'x');", "numkit:ss2sos:invalidD");
+    expectError("grpdelay(1, 1, {0.1, 0.2});", "numkit:grpdelay:inputType");
+    expectError("conv2({1, 2}, [1 2], eye(3));", "numkit:conv2:inputType");
+}

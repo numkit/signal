@@ -99,6 +99,9 @@ void sigrangebinmask_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     argcheck::checkNargin(args.size(), 2, 2, "sigrangebinmask");  // reference has an option-string tail (unimplemented)
     auto *mr = ctx.engine->allocator();
     const Value &bound = args[1];
+    if ((!bound.isNumeric() && !bound.isLogical()) || bound.isComplex())
+        throw Error("sigrangebinmask: bound must be a real numeric scalar or 2-element vector",
+                    0, 0, "sigrangebinmask", "", "numkit:sigrangebinmask:BadBound");
     if (bound.numel() == 1)
         outs[0] = sigrangebinmask(args[0], bound.toScalar(), mr);
     else if (bound.numel() == 2)

@@ -71,14 +71,26 @@ void vco_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArray
     if (args.size() >= 3 && !args[2].isEmpty()) fs = args[2].toScalar();
     if (args.size() >= 2 && !args[1].isEmpty()) {
         const Value &rng = args[1];
-        if (rng.numel() == 1)
-            outs[0] = vco(args[0], rng.toScalar(), fs, mr);
-        else if (rng.numel() == 2)
-            outs[0] = vco(args[0], rng.elemAsDouble(0), rng.elemAsDouble(1),
-                          fs, mr);
-        else
+        if (!rng.isNumeric() || rng.isComplex())
+            throw Error("vco: range must be a real numeric scalar Fc or 2-element vector [Fmin Fmax]",
+                        0, 0, "vco", "", "numkit:vco:BadRange");
+        if (rng.numel() == 1) {
+            const keel::f64 fc = rng.elemAsDouble(0);
+            if (!keel::is_finite(fc))
+                throw Error("vco: range must be finite",
+                            0, 0, "vco", "", "numkit:vco:BadRange");
+            outs[0] = vco(args[0], fc, fs, mr);
+        } else if (rng.numel() == 2) {
+            const keel::f64 fmin = rng.elemAsDouble(0);
+            const keel::f64 fmax = rng.elemAsDouble(1);
+            if (!keel::is_finite(fmin) || !keel::is_finite(fmax))
+                throw Error("vco: range must be finite",
+                            0, 0, "vco", "", "numkit:vco:BadRange");
+            outs[0] = vco(args[0], fmin, fmax, fs, mr);
+        } else {
             throw Error("vco: range must be scalar Fc or [Fmin Fmax]",
                         0, 0, "vco", "", "numkit:vco:BadRange");
+        }
     } else {
         outs[0] = vco(args[0], fs / 4.0, fs, mr);
     }
@@ -121,6 +133,12 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
         // Extract t and d into double buffers; library takes Span.
         const Value &tv = args[0];
         const Value &dv = args[1];
+        if ((!tv.isNumeric() && !tv.isLogical()) || tv.isComplex())
+            throw Error("pulstran: time vector t must be real numeric",
+                        0, 0, "pulstran", "", "numkit:pulstran:tType");
+        if ((!dv.isNumeric() && !dv.isLogical()) || dv.isComplex())
+            throw Error("pulstran: delay vector d must be real numeric",
+                        0, 0, "pulstran", "", "numkit:pulstran:dType");
         const keel::usize nt = tv.numel();
         const keel::usize nd = dv.numel();
         keel::ArenaTemp scratch = keel::get_scratch(mr);
@@ -136,7 +154,7 @@ void pulstran_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 
         // MATLAB convention: output shape mirrors t's shape.
         // Library returns a column; if t was a row, reshape.
-        if (tv.dims().rows() == 1 && tv.dims().cols() >= 1) {
+        if (tv.dims().rows() == 1 && tv.dims().cols() >= 1 && r.numel() == nt && r.type() == ValueType::DOUBLE) {
             Value row = Value::matrix(1, nt, ValueType::DOUBLE, mr);
             for (keel::usize i = 0; i < nt; ++i)
                 row.doubleDataMut()[i] = r.doubleData()[i];

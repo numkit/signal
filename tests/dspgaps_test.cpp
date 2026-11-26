@@ -381,6 +381,9 @@ TEST_P(DspGapsTest, IdctMatrixRoundTrip)
 {
     eval("M = [1 5; 2 6; 3 7; 4 8]; R = idct(dct(M));");
     auto *R = getVarPtr("R");
+    ASSERT_NE(R, nullptr);
+    EXPECT_EQ(R->dims().rows(), 4u);
+    EXPECT_EQ(R->dims().cols(), 2u);
     EXPECT_NEAR(evalScalar("R(1,1)"), 1.0, 1e-12);
     EXPECT_NEAR(evalScalar("R(2,2)"), 6.0, 1e-12);
     EXPECT_NEAR(evalScalar("R(4,1)"), 4.0, 1e-12);

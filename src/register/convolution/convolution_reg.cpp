@@ -120,14 +120,21 @@ void xcorr_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
             scaleElem(i, (div > 0.0) ? (1.0 / div) : 0.0);
         }
     } else if (opt == "coeff" || opt == "normalized") {
+        if ((!x.isNumeric() && !x.isLogical()) || (!y.isNumeric() && !y.isLogical()))
+            throw Error("xcorr: inputs must be numeric or logical",
+                        0, 0, "xcorr", "", "numkit:xcorr:inputType");
         keel::f64 c0x = 0.0, c0y = 0.0;
-        for (keel::usize i = 0; i < nx; ++i) {
-            if (x.isComplex()) c0x += keel::norm(x.complexData()[i]);
-            else { keel::f64 v = x.elemAsDouble(i); c0x += v * v; }
+        if (x.isComplex()) {
+            const keel::c64 *xd = x.complexData();
+            for (keel::usize i = 0; i < nx; ++i) c0x += keel::norm(xd[i]);
+        } else {
+            for (keel::usize i = 0; i < nx; ++i) { keel::f64 v = x.elemAsDouble(i); c0x += v * v; }
         }
-        for (keel::usize i = 0; i < ny; ++i) {
-            if (y.isComplex()) c0y += keel::norm(y.complexData()[i]);
-            else { keel::f64 v = y.elemAsDouble(i); c0y += v * v; }
+        if (y.isComplex()) {
+            const keel::c64 *yd = y.complexData();
+            for (keel::usize i = 0; i < ny; ++i) c0y += keel::norm(yd[i]);
+        } else {
+            for (keel::usize i = 0; i < ny; ++i) { keel::f64 v = y.elemAsDouble(i); c0y += v * v; }
         }
         const keel::f64 denom = keel::sqrt(c0x * c0y);
         if (denom > 0.0)
@@ -227,8 +234,28 @@ void conv2_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArr
                             0, 0, "conv2", "", "numkit:conv2:badShape");
             shape = args[3].toString();
         }
+        if ((!args[0].isNumeric() && !args[0].isLogical()) ||
+            (!args[1].isNumeric() && !args[1].isLogical())) {
+            throw Error("conv2: first two arguments u and v must be numeric or logical vectors",
+                        0, 0, "conv2", "", "numkit:conv2:inputType");
+        }
         const keel::usize m = args[0].numel();
         const keel::usize n = args[1].numel();
+        if (args[0].isComplex() || args[1].isComplex()) {
+            Value k = Value::matrix(m, n, ValueType::COMPLEX, mr);
+            keel::c64 *kd = k.complexDataMut();
+            for (keel::usize c = 0; c < n; ++c) {
+                const keel::c64 vc = args[1].isComplex() ? args[1].complexData()[c]
+                                                         : keel::c64(args[1].elemAsDouble(c), 0.0);
+                for (keel::usize r = 0; r < m; ++r) {
+                    const keel::c64 ur = args[0].isComplex() ? args[0].complexData()[r]
+                                                             : keel::c64(args[0].elemAsDouble(r), 0.0);
+                    kd[r + c * m] = ur * vc;
+                }
+            }
+            outs[0] = conv2(args[2], k, shape, mr);
+            return;
+        }
         Value k = Value::matrix(m, n, ValueType::DOUBLE, mr);
         keel::f64 *kd = k.doubleDataMut();
         for (keel::usize c = 0; c < n; ++c) {

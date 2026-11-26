@@ -60,10 +60,19 @@ void tf2ss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
     if (nargout > 3) outs[3] = keel::move(D);
 }
 
+static keel::f64 extractRealD(const Value &v, const char *fn)
+{
+    if (v.numel() == 0) return 0.0;
+    if ((!v.isNumeric() && !v.isLogical()) || v.isComplex())
+        throw Error(keel::format_small<128>("{}: feedthrough matrix D must be real numeric", fn),
+                    0, 0, fn, "", keel::format_small<64>("numkit:{}:invalidD", fn));
+    return v.elemAsDouble(0);
+}
+
 void ss2tf_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "ss2tf");
-    const keel::f64 D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
+    const keel::f64 D = extractRealD(args[3], "ss2tf");
     auto [b, a] = ss2tf(args[0], args[1], args[2], D, ctx.engine->allocator());
     outs[0] = keel::move(b);
     if (nargout > 1) outs[1] = keel::move(a);
@@ -72,7 +81,7 @@ void ss2tf_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRe
 void ss2zp_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 5, "ss2zp");
-    const keel::f64 D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
+    const keel::f64 D = extractRealD(args[3], "ss2zp");
     auto [z, p, gain] = ss2zp(args[0], args[1], args[2], D, ctx.engine->allocator());
     outs[0] = keel::move(z);
     if (nargout > 1) outs[1] = keel::move(p);
@@ -103,7 +112,7 @@ void sos2ss_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArrayR
 void ss2sos_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 4, 7, "ss2sos");
-    const keel::f64 D = (args[3].numel() == 0) ? 0.0 : args[3].elemAsDouble(0);
+    const keel::f64 D = extractRealD(args[3], "ss2sos");
     outs[0] = ss2sos(args[0], args[1], args[2], D, ctx.engine->allocator());
 }
 

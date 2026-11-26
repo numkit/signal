@@ -29,7 +29,7 @@ findpeaksImpl(const Value &x, const keel::f64 *locArr, const PeakOpts &opt,
     kopt.max_width        = opt.maxWidth;
     kopt.use_min_dist     = opt.useMinDist;
     kopt.min_dist         = opt.minDist;
-    kopt.max_peaks        = opt.nPeaks;
+    kopt.max_peaks        = keel::as<keel::i32>(opt.nPeaks);
     kopt.sort_mode        = (opt.sortMode == 1) ? keel::signal::PeakSort::kAscend
                           : (opt.sortMode == 2) ? keel::signal::PeakSort::kDescend
                                                 : keel::signal::PeakSort::kNone;

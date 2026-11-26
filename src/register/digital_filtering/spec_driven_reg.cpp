@@ -54,25 +54,35 @@ void highpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::Mut
 void bandpass_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "bandpass");
-    if (args[1].numel() != 2)
-        throw Error("bandpass: cutoff must be a 2-element [flo fhi]",
+    if (!args[1].isNumeric() || args[1].isComplex() || args[1].numel() != 2)
+        throw Error("bandpass: cutoff must be a 2-element real numeric vector [flo fhi]",
                      0, 0, "bandpass", "", "numkit:bandpass:badCutoff");
     const keel::f64 fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const keel::i32 order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandpass"), 4, "order", "bandpass") : 8;
-    outs[0] = bandpass(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->allocator());
+    const keel::f64 flo = args[1].elemAsDouble(0);
+    const keel::f64 fhi = args[1].elemAsDouble(1);
+    if (!keel::is_finite(flo) || !keel::is_finite(fhi))
+        throw Error("bandpass: cutoff frequencies must be finite",
+                     0, 0, "bandpass", "", "numkit:bandpass:badCutoff");
+    outs[0] = bandpass(args[0], flo, fhi, fs, order, ctx.engine->allocator());
 }
 
 void bandstop_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/, keel::MutArrayRef<Value> outs, CallContext &ctx)
 {
     argcheck::checkNargin(args.size(), 2, 9, "bandstop");
-    if (args[1].numel() != 2)
-        throw Error("bandstop: cutoff must be a 2-element [flo fhi]",
+    if (!args[1].isNumeric() || args[1].isComplex() || args[1].numel() != 2)
+        throw Error("bandstop: cutoff must be a 2-element real numeric vector [flo fhi]",
                      0, 0, "bandstop", "", "numkit:bandstop:badCutoff");
     const keel::f64 fs = (args.size() >= 3) ? args[2].toScalar() : 2.0;
     const keel::i32 order = (args.size() >= 4)
         ? argcheck::expectedPositiveInteger(argcheck::expectedReal(args[3], 4, "order", "bandstop"), 4, "order", "bandstop") : 8;
-    outs[0] = bandstop(args[0], args[1].elemAsDouble(0), args[1].elemAsDouble(1), fs, order, ctx.engine->allocator());
+    const keel::f64 flo = args[1].elemAsDouble(0);
+    const keel::f64 fhi = args[1].elemAsDouble(1);
+    if (!keel::is_finite(flo) || !keel::is_finite(fhi))
+        throw Error("bandstop: cutoff frequencies must be finite",
+                     0, 0, "bandstop", "", "numkit:bandstop:badCutoff");
+    outs[0] = bandstop(args[0], flo, fhi, fs, order, ctx.engine->allocator());
 }
 
 } // namespace detail

@@ -114,6 +114,13 @@ void grpdelay_reg(keel::ArrayRef<Value> args, keel::usize nargout, keel::MutArra
         ++numericSeen;
     }
     if (fvec) {
+        if ((!args[0].isNumeric() && !args[0].isLogical()) || args[0].isComplex() ||
+            (!a.isNumeric() && !a.isLogical()) || a.isComplex())
+            throw Error("grpdelay: filter coefficients b and a must be real numeric vectors",
+                        0, 0, "grpdelay", "", "numkit:grpdelay:inputType");
+        if ((!fvec->isNumeric() && !fvec->isLogical()) || fvec->isComplex())
+            throw Error("grpdelay: frequency vector must be real numeric",
+                        0, 0, "grpdelay", "", "numkit:grpdelay:inputType");
         const keel::usize nf = fvec->numel();
         const keel::usize nb = args[0].numel(), na = a.numel();
         auto gd = Value::matrix(nf, 1, ValueType::DOUBLE, mr);

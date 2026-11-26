@@ -129,11 +129,16 @@ static void parsePspectrumTail(keel::ArrayRef<Value> args, keel::usize startIdx,
         } else if (key == "timeresolution") {
             opts.timeResolution = argcheck::expectedReal(val, keel::as<keel::i32>(i + 2), "TimeResolution", caller);
         } else if (key == "frequencylimits") {
-            if (val.numel() != 2 || val.isComplex() || val.isChar() || val.isString())
-                throw Error(keel::format("{}: 'FrequencyLimits' must be a 2-element real vector", caller),
+            if (!val.isNumeric() || val.isComplex() || val.numel() != 2)
+                throw Error(keel::format("{}: 'FrequencyLimits' must be a 2-element real numeric vector", caller),
                             0, 0, caller, "", keel::format("numkit:{}:invalidFrequencyLimits", caller));
-            opts.fmin = val.elemAsDouble(0);
-            opts.fmax = val.elemAsDouble(1);
+            const keel::f64 fmin = val.elemAsDouble(0);
+            const keel::f64 fmax = val.elemAsDouble(1);
+            if (!keel::is_finite(fmin) || !keel::is_finite(fmax))
+                throw Error(keel::format("{}: 'FrequencyLimits' elements must be finite", caller),
+                            0, 0, caller, "", keel::format("numkit:{}:invalidFrequencyLimits", caller));
+            opts.fmin = fmin;
+            opts.fmax = fmax;
         } else if (key == "twosided") {
             opts.hasTwoSided = true;
             opts.twoSided = val.toBool();
