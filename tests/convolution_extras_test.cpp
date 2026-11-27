@@ -152,3 +152,27 @@ TEST_F(ConvolutionExtrasTest, DspIirFilterStatefulAndReset)
     eval("lf.release(); a_reset = lf(1);");
     EXPECT_NEAR(evalScalar("a_reset"), 1.0, 1e-12);
 }
+
+TEST_F(ConvolutionExtrasTest, DspVariableFractionalDelayAndArrayPlot)
+{
+    eval("vfd = dsp.VariableFractionalDelay;");
+    eval("y1 = vfd([1; 2; 3; 4], 1.5);");
+    EXPECT_NEAR(evalScalar("y1(1)"), 0.0, 1e-12);
+    EXPECT_NEAR(evalScalar("y1(2)"), 0.5, 1e-12);
+    EXPECT_NEAR(evalScalar("y1(3)"), 1.5, 1e-12);
+    EXPECT_NEAR(evalScalar("y1(4)"), 2.5, 1e-12);
+    // Stateful continuity across frames
+    eval("y2 = vfd([5; 6], 1.5);");
+    EXPECT_NEAR(evalScalar("y2(1)"), 3.5, 1e-12);
+    EXPECT_NEAR(evalScalar("y2(2)"), 4.5, 1e-12);
+    // Complex signal support + reset
+    eval("vfd.reset(); yc = vfd([1+2i; 3+4i; 5+6i], 1.0);");
+    EXPECT_NEAR(evalScalar("real(yc(2))"), 1.0, 1e-12);
+    EXPECT_NEAR(evalScalar("imag(yc(2))"), 2.0, 1e-12);
+
+    eval("ap = dsp.ArrayPlot('NumInputPorts', 2, 'ShowGrid', true, 'Title', 'T');");
+    eval("ap.YLimits = [-2 2]; ap.XOffset = -10; ap.SampleIncrement = 0.5;");
+    eval("step(ap, [1; 2; 3], [4; 5; 6]);");
+    EXPECT_NEAR(evalScalar("ap.NumInputPorts"), 2.0, 1e-12);
+    EXPECT_NEAR(evalScalar("ap.XOffset"), -10.0, 1e-12);
+}

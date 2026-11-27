@@ -455,6 +455,386 @@ void dspFirInterp_ctor_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
     outs[0] = Value::object("dsp.FIRInterpolator", keel::move(st), mr);
 }
 
+// ── dsp.VariableFractionalDelay ─────────────────────────────────────────
+struct VarFracDelayPayload final : public NativePayload {
+    keel::String interpMethod;
+    keel::i32 maxDelay = 65535;
+    keel::f64 initCond = 0.0;
+    // Per-channel circular history buffer: ring[ch] of size cap, head = next write slot
+    keel::Array<keel::Array<keel::c64>> rings;
+    keel::usize ringCap = 0;
+    keel::usize head = 0;
+    keel::usize filled = 0;
+    bool isComplex = false;
+
+    explicit VarFracDelayPayload(keel::Allocator *mr = nullptr)
+        : interpMethod(keel::String::from("Linear"))
+        , rings(mr)
+    {}
+
+    void resetStates()
+    {
+        rings.clear();
+        ringCap = 0;
+        head = 0;
+        filled = 0;
+        isComplex = false;
+    }
+
+    keel::Arc<NativePayload> clone(keel::Allocator *alloc = nullptr) const override
+    {
+        auto *a = alloc ? alloc : keel::default_allocator();
+        auto p = keel::make_arc_in<VarFracDelayPayload>(a, a);
+        p->interpMethod = interpMethod.clone();
+        p->maxDelay = maxDelay;
+        p->initCond = initCond;
+        p->ringCap = ringCap;
+        p->head = head;
+        p->filled = filled;
+        p->isComplex = isComplex;
+        p->rings.reserve(rings.size());
+        for (keel::usize i = 0; i < rings.size(); ++i)
+            p->rings.push_back(rings[i].clone(a));
+        return p;
+    }
+};
+
+void vfdApplyNV(VarFracDelayPayload &p, keel::ArrayRef<Value> args)
+{
+    for (keel::usize i = 0; i + 1 < args.size(); i += 2) {
+        if (!args[i].isChar() && !args[i].isString()) continue;
+        const keel::String k = args[i].toString();
+        if (k.equals_ignore_ascii_case("InterpolationMethod")) {
+            p.interpMethod = args[i + 1].toString();
+        } else if (k.equals_ignore_ascii_case("MaximumDelay")) {
+            p.maxDelay = keel::max(1, keel::as<keel::i32>(keel::round_i64(args[i + 1].toScalar())));
+            p.resetStates();
+        } else if (k.equals_ignore_ascii_case("InitialConditions")) {
+            p.initCond = args[i + 1].toScalar();
+            p.resetStates();
+        }
+    }
+}
+
+void vfdStepImpl(Value &self, keel::ArrayRef<Value> args,
+                 keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
+                 CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 2, 2, "dsp.VariableFractionalDelay.step");
+    auto *mr = allocOf(ctx);
+    ObjectState *os = self.objectStateMut();
+    if (!os || !os->native)
+        throw Error("dsp.VariableFractionalDelay: invalid object state.", 0, 0, "step", "", "numkit:dsp:InvalidObject");
+    auto &p = *static_cast<VarFracDelayPayload *>(os->native.get());
+
+    const Value &x = args[0];
+    const Value &dVal = args[1];
+    if (x.isEmpty()) {
+        outs[0] = Value::matrix(x.dims().rows(), x.dims().cols(), x.type(), mr);
+        return;
+    }
+    const keel::usize nRows = x.dims().rows();
+    const keel::usize nCols = x.dims().cols();
+    const bool outComplex = x.isComplex() || p.isComplex;
+    if (outComplex) p.isComplex = true;
+
+    // Determine max integer delay needed in this frame so ring stays compact.
+    keel::f64 maxD = 0.0;
+    const keel::usize dNum = dVal.numel();
+    for (keel::usize i = 0; i < dNum; ++i) {
+        const keel::f64 dv = keel::clamp(dVal.elemAsDouble(i), 0.0, keel::as<keel::f64>(p.maxDelay));
+        if (dv > maxD) maxD = dv;
+    }
+    const keel::usize reqCap = keel::as<keel::usize>(keel::floor(maxD)) + 4;
+    const keel::usize maxCap = keel::as<keel::usize>(p.maxDelay) + 4;
+    const keel::usize targetCap = keel::min(maxCap, keel::max<keel::usize>(reqCap, 64));
+
+    if (p.rings.size() != nCols) {
+        p.rings.clear();
+        p.rings.reserve(nCols);
+        for (keel::usize ch = 0; ch < nCols; ++ch)
+            p.rings.push_back(keel::Array<keel::c64>(targetCap, keel::c64{p.initCond, 0.0}, mr));
+        p.ringCap = targetCap;
+        p.head = 0;
+        p.filled = 0;
+    } else if (targetCap > p.ringCap) {
+        // Grow ring while preserving most recent p.filled samples in chronological order.
+        const keel::usize oldCap = p.ringCap;
+        const keel::usize keep = keel::min(p.filled, oldCap);
+        for (keel::usize ch = 0; ch < nCols; ++ch) {
+            keel::Array<keel::c64> nr(targetCap, keel::c64{p.initCond, 0.0}, mr);
+            for (keel::usize k = 0; k < keep; ++k) {
+                const keel::usize oldIdx = (p.head + oldCap - keep + k) % oldCap;
+                nr[k] = p.rings[ch][oldIdx];
+            }
+            p.rings[ch] = keel::move(nr);
+        }
+        p.ringCap = targetCap;
+        p.head = keep % targetCap;
+        p.filled = keep;
+    }
+
+    Value y = Value::matrix(nRows, nCols, outComplex ? ValueType::COMPLEX : ValueType::DOUBLE, mr);
+    const keel::usize cap = p.ringCap;
+    const keel::f64 dMaxF = keel::as<keel::f64>(p.maxDelay);
+
+    for (keel::usize r = 0; r < nRows; ++r) {
+        const keel::usize curPos = p.head;
+        for (keel::usize ch = 0; ch < nCols; ++ch) {
+            const keel::usize idx = r + ch * nRows;
+            const keel::c64 xin = x.isComplex()
+                ? x.complexData()[idx]
+                : keel::c64{x.elemAsDouble(idx), 0.0};
+            p.rings[ch][curPos] = xin;
+
+            const keel::f64 dRaw = (dNum == 1)
+                ? dVal.elemAsDouble(0)
+                : (dNum == nRows ? dVal.elemAsDouble(r) : dVal.elemAsDouble(idx % dNum));
+            const keel::f64 d = keel::clamp(dRaw, 0.0, dMaxF);
+            const keel::usize d0 = keel::as<keel::usize>(keel::floor(d));
+            const keel::f64 frac = d - keel::as<keel::f64>(d0);
+
+            auto sampleAt = [&](keel::usize lag) -> keel::c64 {
+                if (lag > p.filled || lag >= cap)
+                    return keel::c64{p.initCond, 0.0};
+                const keel::usize slot = (curPos + cap - lag) % cap;
+                return p.rings[ch][slot];
+            };
+
+            const keel::c64 s0 = sampleAt(d0);
+            const keel::c64 s1 = (frac > 0.0) ? sampleAt(d0 + 1) : s0;
+            const keel::c64 yout{
+                (1.0 - frac) * s0.re + frac * s1.re,
+                (1.0 - frac) * s0.im + frac * s1.im
+            };
+            if (outComplex) y.complexDataMut()[idx] = yout;
+            else y.doubleDataMut()[idx] = yout.re;
+        }
+        p.head = (p.head + 1) % cap;
+        if (p.filled < cap) ++p.filled;
+    }
+    outs[0] = keel::move(y);
+}
+
+BuiltinClass makeVarFracDelayClass()
+{
+    BuiltinClass cls;
+    cls.name = keel::String::from("dsp.VariableFractionalDelay");
+    cls.isHandle = true;
+    cls.construct = [](keel::ArrayRef<Value> args, CallContext &ctx) -> Value {
+        auto *mr = allocOf(ctx);
+        auto payload = keel::make_arc_in<VarFracDelayPayload>(mr, mr);
+        vfdApplyNV(*payload, args);
+        auto st = keel::make_arc_in<ObjectState>(mr, mr);
+        st->native = keel::move(payload);
+        return Value::object("dsp.VariableFractionalDelay", keel::move(st), mr);
+    };
+    cls.subsref = &vfdStepImpl;
+    cls.methods.put(keel::String::from("step"), &vfdStepImpl);
+    cls.methods.put(keel::String::from("reset"),
+                    [](Value &self, keel::ArrayRef<Value>, keel::usize,
+                       keel::MutArrayRef<Value> outs, CallContext &) {
+                        if (ObjectState *os = self.objectStateMut(); os && os->native)
+                            static_cast<VarFracDelayPayload *>(os->native.get())->resetStates();
+                        if (!outs.empty()) outs[0] = Value();
+                    });
+    cls.methods.put(keel::String::from("release"),
+                    [](Value &self, keel::ArrayRef<Value>, keel::usize,
+                       keel::MutArrayRef<Value> outs, CallContext &) {
+                        if (ObjectState *os = self.objectStateMut(); os && os->native)
+                            static_cast<VarFracDelayPayload *>(os->native.get())->resetStates();
+                        if (!outs.empty()) outs[0] = Value();
+                    });
+    cls.methods.put(keel::String::from("clone"),
+                    [](Value &self, keel::ArrayRef<Value>, keel::usize,
+                       keel::MutArrayRef<Value> outs, CallContext &ctx) {
+                        auto *mr = allocOf(ctx);
+                        if (const ObjectState *os = self.objectStateConst())
+                            outs[0] = Value::object("dsp.VariableFractionalDelay", os->deepCopy(mr), mr);
+                    });
+    cls.propGet = [](const Value &self, keel::StringRef name, Value &out, CallContext &ctx) -> bool {
+        auto *mr = allocOf(ctx);
+        const ObjectState *os = self.objectStateConst();
+        if (!os || !os->native) return false;
+        const auto &p = *static_cast<const VarFracDelayPayload *>(os->native.get());
+        if (name.equals_ignore_ascii_case("InterpolationMethod")) { out = Value::fromString(p.interpMethod, mr); return true; }
+        if (name.equals_ignore_ascii_case("MaximumDelay")) { out = Value::scalar(keel::as<keel::f64>(p.maxDelay), mr); return true; }
+        if (name.equals_ignore_ascii_case("InitialConditions")) { out = Value::scalar(p.initCond, mr); return true; }
+        return false;
+    };
+    cls.propSet = [](Value &self, keel::StringRef name, const Value &val, CallContext &) -> bool {
+        ObjectState *os = self.objectStateMut();
+        if (!os || !os->native) return false;
+        auto &p = *static_cast<VarFracDelayPayload *>(os->native.get());
+        if (name.equals_ignore_ascii_case("InterpolationMethod")) { p.interpMethod = val.toString(); return true; }
+        if (name.equals_ignore_ascii_case("MaximumDelay")) { p.maxDelay = keel::max(1, keel::as<keel::i32>(keel::round_i64(val.toScalar()))); p.resetStates(); return true; }
+        if (name.equals_ignore_ascii_case("InitialConditions")) { p.initCond = val.toScalar(); p.resetStates(); return true; }
+        return false;
+    };
+    return cls;
+}
+
+void dspVarFracDelay_ctor_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                              keel::MutArrayRef<Value> outs, CallContext &ctx)
+{
+    auto *mr = allocOf(ctx);
+    auto payload = keel::make_arc_in<VarFracDelayPayload>(mr, mr);
+    vfdApplyNV(*payload, args);
+    auto st = keel::make_arc_in<ObjectState>(mr, mr);
+    st->native = keel::move(payload);
+    outs[0] = Value::object("dsp.VariableFractionalDelay", keel::move(st), mr);
+}
+
+// ── dsp.ArrayPlot ───────────────────────────────────────────────────────
+struct ArrayPlotPayload final : public NativePayload {
+    keel::i32 numInputPorts = 1;
+    keel::f64 xOffset = 0.0;
+    keel::f64 sampleIncrement = 1.0;
+    bool showGrid = false;
+    keel::String title;
+    keel::String xLabel;
+    keel::String yLabel;
+    keel::String name;
+    keel::Array<keel::f64> yLimits;
+    keel::Array<keel::f64> position;
+
+    explicit ArrayPlotPayload(keel::Allocator *mr = nullptr)
+        : title(keel::String::from(""))
+        , xLabel(keel::String::from(""))
+        , yLabel(keel::String::from(""))
+        , name(keel::String::from("Array Plot"))
+        , yLimits(mr)
+        , position(mr)
+    {
+        yLimits.push_back(-10.0);
+        yLimits.push_back(10.0);
+        position.push_back(100.0);
+        position.push_back(100.0);
+        position.push_back(600.0);
+        position.push_back(400.0);
+    }
+
+    keel::Arc<NativePayload> clone(keel::Allocator *alloc = nullptr) const override
+    {
+        auto *a = alloc ? alloc : keel::default_allocator();
+        auto p = keel::make_arc_in<ArrayPlotPayload>(a, a);
+        p->numInputPorts = numInputPorts;
+        p->xOffset = xOffset;
+        p->sampleIncrement = sampleIncrement;
+        p->showGrid = showGrid;
+        p->title = title.clone();
+        p->xLabel = xLabel.clone();
+        p->yLabel = yLabel.clone();
+        p->name = name.clone();
+        p->yLimits = yLimits.clone(a);
+        p->position = position.clone(a);
+        return p;
+    }
+};
+
+void arrayPlotApplyNV(ArrayPlotPayload &p, keel::ArrayRef<Value> args, keel::Allocator *mr)
+{
+    for (keel::usize i = 0; i + 1 < args.size(); i += 2) {
+        if (!args[i].isChar() && !args[i].isString()) continue;
+        const keel::String k = args[i].toString();
+        if (k.equals_ignore_ascii_case("NumInputPorts")) p.numInputPorts = keel::max(1, keel::as<keel::i32>(keel::round_i64(args[i + 1].toScalar())));
+        else if (k.equals_ignore_ascii_case("XOffset")) p.xOffset = args[i + 1].toScalar();
+        else if (k.equals_ignore_ascii_case("SampleIncrement")) p.sampleIncrement = args[i + 1].toScalar();
+        else if (k.equals_ignore_ascii_case("ShowGrid")) p.showGrid = args[i + 1].toBool();
+        else if (k.equals_ignore_ascii_case("Title")) p.title = args[i + 1].toString();
+        else if (k.equals_ignore_ascii_case("XLabel")) p.xLabel = args[i + 1].toString();
+        else if (k.equals_ignore_ascii_case("YLabel")) p.yLabel = args[i + 1].toString();
+        else if (k.equals_ignore_ascii_case("Name")) p.name = args[i + 1].toString();
+        else if (k.equals_ignore_ascii_case("YLimits")) p.yLimits = toRealVec(args[i + 1], mr);
+        else if (k.equals_ignore_ascii_case("Position")) p.position = toRealVec(args[i + 1], mr);
+    }
+}
+
+void arrayPlotStepImpl(Value & /*self*/, keel::ArrayRef<Value> args,
+                       keel::usize /*nargout*/, keel::MutArrayRef<Value> outs,
+                       CallContext &)
+{
+    argcheck::checkNargin(args.size(), 1, 16, "dsp.ArrayPlot.step");
+    if (!outs.empty()) outs[0] = Value();
+}
+
+BuiltinClass makeArrayPlotClass()
+{
+    BuiltinClass cls;
+    cls.name = keel::String::from("dsp.ArrayPlot");
+    cls.isHandle = true;
+    cls.construct = [](keel::ArrayRef<Value> args, CallContext &ctx) -> Value {
+        auto *mr = allocOf(ctx);
+        auto payload = keel::make_arc_in<ArrayPlotPayload>(mr, mr);
+        arrayPlotApplyNV(*payload, args, mr);
+        auto st = keel::make_arc_in<ObjectState>(mr, mr);
+        st->native = keel::move(payload);
+        return Value::object("dsp.ArrayPlot", keel::move(st), mr);
+    };
+    cls.subsref = &arrayPlotStepImpl;
+    cls.methods.put(keel::String::from("step"), &arrayPlotStepImpl);
+    auto noop = [](Value &, keel::ArrayRef<Value>, keel::usize, keel::MutArrayRef<Value> outs, CallContext &) {
+        if (!outs.empty()) outs[0] = Value();
+    };
+    cls.methods.put(keel::String::from("reset"), noop);
+    cls.methods.put(keel::String::from("release"), noop);
+    cls.methods.put(keel::String::from("show"), noop);
+    cls.methods.put(keel::String::from("hide"), noop);
+    cls.methods.put(keel::String::from("clone"),
+                    [](Value &self, keel::ArrayRef<Value>, keel::usize,
+                       keel::MutArrayRef<Value> outs, CallContext &ctx) {
+                        auto *mr = allocOf(ctx);
+                        if (const ObjectState *os = self.objectStateConst())
+                            outs[0] = Value::object("dsp.ArrayPlot", os->deepCopy(mr), mr);
+                    });
+    cls.propGet = [](const Value &self, keel::StringRef name, Value &out, CallContext &ctx) -> bool {
+        auto *mr = allocOf(ctx);
+        const ObjectState *os = self.objectStateConst();
+        if (!os || !os->native) return false;
+        const auto &p = *static_cast<const ArrayPlotPayload *>(os->native.get());
+        if (name.equals_ignore_ascii_case("NumInputPorts")) { out = Value::scalar(keel::as<keel::f64>(p.numInputPorts), mr); return true; }
+        if (name.equals_ignore_ascii_case("XOffset")) { out = Value::scalar(p.xOffset, mr); return true; }
+        if (name.equals_ignore_ascii_case("SampleIncrement")) { out = Value::scalar(p.sampleIncrement, mr); return true; }
+        if (name.equals_ignore_ascii_case("ShowGrid")) { out = Value::logicalScalar(p.showGrid, mr); return true; }
+        if (name.equals_ignore_ascii_case("Title")) { out = Value::fromString(p.title, mr); return true; }
+        if (name.equals_ignore_ascii_case("XLabel")) { out = Value::fromString(p.xLabel, mr); return true; }
+        if (name.equals_ignore_ascii_case("YLabel")) { out = Value::fromString(p.yLabel, mr); return true; }
+        if (name.equals_ignore_ascii_case("Name")) { out = Value::fromString(p.name, mr); return true; }
+        if (name.equals_ignore_ascii_case("YLimits")) { out = fromRealVecRow(p.yLimits, mr); return true; }
+        if (name.equals_ignore_ascii_case("Position")) { out = fromRealVecRow(p.position, mr); return true; }
+        return false;
+    };
+    cls.propSet = [](Value &self, keel::StringRef name, const Value &val, CallContext &ctx) -> bool {
+        auto *mr = allocOf(ctx);
+        ObjectState *os = self.objectStateMut();
+        if (!os || !os->native) return false;
+        auto &p = *static_cast<ArrayPlotPayload *>(os->native.get());
+        if (name.equals_ignore_ascii_case("NumInputPorts")) { p.numInputPorts = keel::max(1, keel::as<keel::i32>(keel::round_i64(val.toScalar()))); return true; }
+        if (name.equals_ignore_ascii_case("XOffset")) { p.xOffset = val.toScalar(); return true; }
+        if (name.equals_ignore_ascii_case("SampleIncrement")) { p.sampleIncrement = val.toScalar(); return true; }
+        if (name.equals_ignore_ascii_case("ShowGrid")) { p.showGrid = val.toBool(); return true; }
+        if (name.equals_ignore_ascii_case("Title")) { p.title = val.toString(); return true; }
+        if (name.equals_ignore_ascii_case("XLabel")) { p.xLabel = val.toString(); return true; }
+        if (name.equals_ignore_ascii_case("YLabel")) { p.yLabel = val.toString(); return true; }
+        if (name.equals_ignore_ascii_case("Name")) { p.name = val.toString(); return true; }
+        if (name.equals_ignore_ascii_case("YLimits")) { p.yLimits = toRealVec(val, mr); return true; }
+        if (name.equals_ignore_ascii_case("Position")) { p.position = toRealVec(val, mr); return true; }
+        return true; // tolerate additional visualization properties cleanly
+    };
+    return cls;
+}
+
+void dspArrayPlot_ctor_reg(keel::ArrayRef<Value> args, keel::usize /*nargout*/,
+                           keel::MutArrayRef<Value> outs, CallContext &ctx)
+{
+    auto *mr = allocOf(ctx);
+    auto payload = keel::make_arc_in<ArrayPlotPayload>(mr, mr);
+    arrayPlotApplyNV(*payload, args, mr);
+    auto st = keel::make_arc_in<ObjectState>(mr, mr);
+    st->native = keel::move(payload);
+    outs[0] = Value::object("dsp.ArrayPlot", keel::move(st), mr);
+}
+
 } // anonymous namespace
 
 void installDspSystemObjects(PluginContext &engine)
@@ -463,6 +843,10 @@ void installDspSystemObjects(PluginContext &engine)
     engine.registerFunction("dsp", "IIRFilter", &dspIirFilter_ctor_reg);
     engine.registerClass(makeFirInterpClass());
     engine.registerFunction("dsp", "FIRInterpolator", &dspFirInterp_ctor_reg);
+    engine.registerClass(makeVarFracDelayClass());
+    engine.registerFunction("dsp", "VariableFractionalDelay", &dspVarFracDelay_ctor_reg);
+    engine.registerClass(makeArrayPlotClass());
+    engine.registerFunction("dsp", "ArrayPlot", &dspArrayPlot_ctor_reg);
 }
 
 } // namespace numkit::signal::detail
