@@ -229,6 +229,12 @@ Value thd(const Value &x, const Value &fs = Value::Empty,
 Value sfdr(const Value &x, const Value &fs = Value::Empty,
            keel::Allocator *mr = nullptr);
 
+/// @brief Spurious-free dynamic range with spur power (dB) and spur frequency
+/// (`[r, spurpow, spurfreq] = sfdr(x, fs)`).
+keel::Tuple<Value, Value, Value>
+sfdrFull(const Value &x, const Value &fs = Value::Empty,
+         keel::Allocator *mr = nullptr);
+
 // ─────────────────────────────────────────────────────────────────────
 // Power spectrum / spectrogram and time-frequency moment metrics
 // ─────────────────────────────────────────────────────────────────────

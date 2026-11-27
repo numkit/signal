@@ -91,7 +91,22 @@ NUMKIT_SPEC1_NV_REG(spectralskewness, spectralskewness)
 NUMKIT_SPEC1_REG(snr,              snr, 1, 6)
 NUMKIT_SPEC1_REG(sinad,            sinad, 1, 4)
 NUMKIT_SPEC1_REG(thd,              thd, 1, 6)
-NUMKIT_SPEC1_REG(sfdr,             sfdr, 1, 4)
+
+void sfdr_reg(keel::ArrayRef<Value> args, keel::usize nargout,
+              keel::MutArrayRef<Value> outs, CallContext &ctx)
+{
+    argcheck::checkNargin(args.size(), 1, 4, "sfdr");
+    const Value &fs = (args.size() >= 2) ? args[1] : Value::Empty;
+    auto *mr = ctx.engine->allocator();
+    if (nargout <= 1) {
+        outs[0] = sfdr(args[0], fs, mr);
+        return;
+    }
+    auto [r, sp, sf] = sfdrFull(args[0], fs, mr);
+    outs[0] = keel::move(r);
+    if (nargout > 1 && outs.size() > 1) outs[1] = keel::move(sp);
+    if (nargout > 2 && outs.size() > 2) outs[2] = keel::move(sf);
+}
 static keel::String toLowerCopy(keel::StringRef sv)
 {
     keel::String s = keel::String::from(sv);

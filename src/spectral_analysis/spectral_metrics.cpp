@@ -397,6 +397,112 @@ Value sfdr(const Value &x, const Value &fs, keel::Allocator *mr)
     return Value::scalar(out, mr);
 }
 
+keel::Tuple<Value, Value, Value>
+sfdrFull(const Value &x, const Value &fs, keel::Allocator *mr)
+{
+    keel::ArenaTemp scratch = keel::get_scratch(mr);
+    auto *sa = scratch.allocator();
+    auto xv = readRealVec(x, sa);
+    const keel::usize n = xv.size();
+    if (n < 2) {
+        const keel::f64 nan = keel::Limits<keel::f64>::quiet_nan();
+        return {Value::scalar(nan, mr), Value::scalar(nan, mr), Value::scalar(nan, mr)};
+    }
+    const keel::f64 fsIn = scalarOr(fs, 1.0);
+    const keel::f64 fsEff = (fsIn > 0.0) ? fsIn : 1.0;
+
+    keel::Array<keel::f64> w(n, 0.0, sa);
+    keel::signal::kaiser(w.as_mut_ref(), 38.0);
+    keel::f64 sumW = 0.0;
+    keel::f64 sumW2 = 0.0;
+    for (keel::usize i = 0; i < n; ++i) {
+        sumW += w[i];
+        sumW2 += w[i] * w[i];
+    }
+    const keel::f64 rbw = (sumW > 0.0) ? (fsEff * sumW2 / (sumW * sumW)) : 0.0;
+
+    const keel::usize nBins = n / 2 + 1;
+    const keel::f64 df = fsEff / keel::as<keel::f64>(n);
+    keel::Array<keel::f64> pxx(nBins, 0.0, sa);
+    keel::Array<keel::f64> f(nBins, 0.0, sa);
+    (void)keel::signal::periodogram(xv.as_ref(), w.as_ref(), n, fsEff,
+                                    pxx.as_mut_ref(), f.as_mut_ref(), sa);
+
+    auto getTone = [&](keel::i32 idxTone, keel::i32 &outL, keel::i32 &outR, keel::f64 &outFreq) noexcept -> keel::f64 {
+        keel::i32 iL = idxTone - 1;
+        keel::i32 iR = idxTone + 1;
+        while (iL >= 0 && pxx[keel::as<keel::usize>(iL)] <= pxx[keel::as<keel::usize>(iL + 1)]) --iL;
+        while (iR < keel::as<keel::i32>(nBins) && pxx[keel::as<keel::usize>(iR - 1)] >= pxx[keel::as<keel::usize>(iR)]) ++iR;
+        ++iL;
+        --iR;
+        outL = iL;
+        outR = iR;
+        keel::f64 power = 0.0;
+        keel::f64 fNum = 0.0;
+        if (iL < iR) {
+            const keel::i32 len = iR - iL + 1;
+            for (keel::i32 k = 0; k < len; ++k) {
+                keel::f64 wBin = 0.0;
+                if (k == 0) {
+                    wBin = f[keel::as<keel::usize>(iL + 1)] - f[keel::as<keel::usize>(iL)];
+                } else if (k + 1 == len) {
+                    wBin = f[keel::as<keel::usize>(iR)] - f[keel::as<keel::usize>(iR - 1)];
+                } else {
+                    wBin = 0.5 * (f[keel::as<keel::usize>(iL + k + 1)] - f[keel::as<keel::usize>(iL + k - 1)]);
+                }
+                const keel::f64 dp = pxx[keel::as<keel::usize>(iL + k)] * wBin;
+                power += dp;
+                fNum += f[keel::as<keel::usize>(iL + k)] * dp;
+            }
+        } else {
+            power = pxx[keel::as<keel::usize>(iR)] * df;
+            fNum = f[keel::as<keel::usize>(iR)] * power;
+        }
+        outFreq = (power > 0.0) ? (fNum / power) : f[keel::as<keel::usize>(idxTone)];
+        if (power < rbw * pxx[keel::as<keel::usize>(idxTone)]) {
+            power = rbw * pxx[keel::as<keel::usize>(idxTone)];
+        }
+        return power;
+    };
+
+    auto argmaxPxx = [&]() noexcept -> keel::i32 {
+        keel::i32 best = 0;
+        for (keel::usize i = 1; i < nBins; ++i) {
+            if (pxx[i] > pxx[keel::as<keel::usize>(best)]) best = keel::as<keel::i32>(i);
+        }
+        return best;
+    };
+
+    pxx[0] *= 2.0;
+    keel::i32 dcL = 0, dcR = 0;
+    keel::f64 dummyF = 0.0;
+    (void)getTone(0, dcL, dcR, dummyF);
+    for (keel::i32 k = dcL; k <= dcR; ++k) pxx[keel::as<keel::usize>(k)] = 0.0;
+
+    const keel::i32 iFund = argmaxPxx();
+    keel::i32 fL = 0, fR = 0;
+    const keel::f64 pFund = getTone(iFund, fL, fR, dummyF);
+    for (keel::i32 k = fL; k <= fR; ++k) pxx[keel::as<keel::usize>(k)] = 0.0;
+
+    const keel::i32 spurBin = argmaxPxx();
+    const keel::i32 iLeftBin = keel::max(keel::i32{0}, spurBin - 1);
+    const keel::i32 iRightBin = keel::min(keel::as<keel::i32>(nBins) - 1, spurBin + 1);
+    keel::i32 iSpur = iLeftBin;
+    for (keel::i32 k = iLeftBin + 1; k <= iRightBin; ++k) {
+        if (pxx[keel::as<keel::usize>(k)] > pxx[keel::as<keel::usize>(iSpur)]) iSpur = k;
+    }
+    keel::i32 sL = 0, sR = 0;
+    keel::f64 fSpur = 0.0;
+    const keel::f64 pSpur = getTone(iSpur, sL, sR, fSpur);
+
+    const keel::f64 inf = keel::Limits<keel::f64>::infinity();
+    const keel::f64 rDb = (pFund <= 0.0) ? -inf
+                        : (pSpur <= 0.0) ? inf
+                        : 10.0 * keel::log10(pFund / pSpur);
+    const keel::f64 spDb = (pSpur <= 0.0) ? -inf : 10.0 * keel::log10(pSpur);
+    return {Value::scalar(rDb, mr), Value::scalar(spDb, mr), Value::scalar(fSpur, mr)};
+}
+
 PspectrumResult pspectrum(const Value &x, const Value &fsOrT,
                           const PspectrumOptions &opts, keel::Allocator *mr)
 {

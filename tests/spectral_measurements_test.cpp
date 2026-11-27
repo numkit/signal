@@ -41,6 +41,17 @@ TEST_P(SpectralMeasurementsTest, DistortionMetrics)
     EXPECT_NEAR(evalScalar("sinad(x, Fs)"), -evalScalar("thd(x, Fs)"), 1.0);
     EXPECT_NEAR(evalScalar("sinad(x, Fs)"), 25.85, 1.0);
     EXPECT_NEAR(evalScalar("sfdr(x, Fs)"), 26.0, 1.0);       // 20*log10(1/0.05)
+
+    // 3-output [r, spurpow, spurfreq] = sfdr(x [, fs]) matches reference values
+    eval("t2 = (0:999)/Fs; xs = cos(2*pi*100*t2) + 0.01*cos(2*pi*250*t2);");
+    eval("[r_sf, sp_sf, sf_sf] = sfdr(xs, Fs);");
+    EXPECT_NEAR(evalScalar("r_sf"),  40.0,          1e-6);
+    EXPECT_NEAR(evalScalar("sp_sf"), -43.010299957, 1e-5);
+    EXPECT_NEAR(evalScalar("sf_sf"), 250.0,         1e-5);
+    eval("[r_sf1, sp_sf1, sf_sf1] = sfdr(xs);");
+    EXPECT_NEAR(evalScalar("r_sf1"),  40.0,          1e-6);
+    EXPECT_NEAR(evalScalar("sp_sf1"), -43.010299957, 1e-5);
+    EXPECT_NEAR(evalScalar("sf_sf1"), 0.25,          1e-6);
 }
 
 TEST_P(SpectralMeasurementsTest, SpectralShape)
