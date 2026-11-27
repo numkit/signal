@@ -33,7 +33,8 @@
     "envspectrum", "tachorpm", "rainflow", "tsa",
     "statelevels", "midcross", "risetime", "falltime", "slewrate", "overshoot", "undershoot", "settlingtime", "pulsewidth", "pulseperiod", "pulsesep", "dutycycle",
     "binmask2sigroi", "sigroi2binmask", "extendsigroi", "shortensigroi", "mergesigroi", "removesigroi", "extractsigroi", "sigrangebinmask",
-    "seqperiod", "zerocrossrate", "cusum", "rms", "rssq", "peak2peak", "peak2rms"
+    "seqperiod", "zerocrossrate", "cusum", "rms", "rssq", "peak2peak", "peak2rms",
+    "dsp.IIRFilter", "dsp.FIRInterpolator"
   ],
   "functions": [
     "fft", "ifft", "fft2", "ifft2", "fftn", "ifftn", "czt", "fftshift", "ifftshift", "interpft",
@@ -63,6 +64,7 @@
     "envspectrum", "tachorpm", "rainflow", "tsa",
     "statelevels", "midcross", "risetime", "falltime", "slewrate", "overshoot", "undershoot", "settlingtime", "pulsewidth", "pulseperiod", "pulsesep", "dutycycle",
     "binmask2sigroi", "sigroi2binmask", "extendsigroi", "shortensigroi", "mergesigroi", "removesigroi", "extractsigroi", "sigrangebinmask",
-    "seqperiod", "zerocrossrate", "cusum", "rms", "rssq", "peak2peak", "peak2rms"
+    "seqperiod", "zerocrossrate", "cusum", "rms", "rssq", "peak2peak", "peak2rms",
+    "dsp.IIRFilter", "dsp.FIRInterpolator"
   ]
 }

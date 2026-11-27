@@ -135,3 +135,20 @@ TEST_F(ConvolutionExtrasTest, AlignsignalsRoundtripDelayedRamp)
     eval("[~, ix] = max(xa); [~, iy] = max(ya);");
     EXPECT_DOUBLE_EQ(evalScalar("ix"), evalScalar("iy"));
 }
+
+TEST_F(ConvolutionExtrasTest, DspIirFilterStatefulAndReset)
+{
+    eval("lf = dsp.IIRFilter('Structure', 'Direct form II transposed', 'Numerator', [1 0], 'Denominator', [1 -1]);");
+    eval("ig = dsp.IIRFilter('Structure', 'Direct form II transposed', 'Numerator', [0 1], 'Denominator', [1 -1]);");
+    eval("a1 = step(lf, 1); a2 = step(lf, 2); a3 = step(lf, 3);");
+    eval("b1 = step(ig, 1); b2 = step(ig, 2); b3 = step(ig, 3);");
+    EXPECT_NEAR(evalScalar("a1"), 1.0, 1e-12);
+    EXPECT_NEAR(evalScalar("a2"), 3.0, 1e-12);
+    EXPECT_NEAR(evalScalar("a3"), 6.0, 1e-12);
+    EXPECT_NEAR(evalScalar("b1"), 0.0, 1e-12);
+    EXPECT_NEAR(evalScalar("b2"), 1.0, 1e-12);
+    EXPECT_NEAR(evalScalar("b3"), 3.0, 1e-12);
+
+    eval("lf.release(); a_reset = lf(1);");
+    EXPECT_NEAR(evalScalar("a_reset"), 1.0, 1e-12);
+}

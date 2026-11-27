@@ -19,6 +19,7 @@
 #include <numkit/sys/plugin.hpp>  // ExternalFunc, CallContext, Span, Value
 
 namespace numkit::signal::detail {
+void installDspSystemObjects(PluginContext &engine);
 // Forward declarations for adapters implemented in dedicated files
 // (public C++ API functions live in numkit::signal; these are their
 // Engine-registration bridges).
@@ -597,6 +598,8 @@ void SignalLibrary::install(PluginContext &engine)
     reg("measurements", "rssq",      &signal::detail::rssq_reg);
     reg("measurements", "peak2peak", &signal::detail::peak2peak_reg);
     reg("measurements", "peak2rms",  &signal::detail::peak2rms_reg);
+
+    signal::detail::installDspSystemObjects(engine);
 
     // â”€â”€ Core promotions (namespace_design.md Â§7, closed whitelist) â”€â”€â”€â”€â”€
     // These 6 functions are general-purpose and reachable by short name
